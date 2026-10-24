@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "godot": {
+      "command": "npx",
+      "args": ["-y", "@coding-solo/godot-mcp@0.1.1"],
+      "env": {
+        "GODOT_PATH": "/home/user/godot-test/tools/godot-headless.sh",
+        "DEBUG": "false"
+      }
+    }
+  }
+}
