@@ -7,6 +7,13 @@
   屏幕上有虚拟按键（左下 `<` `>` 移动，右下 `^` 跳跃，支持同时按），电脑上可用方向键 / A D / 空格。
 - 在线试玩：https://snodgrasssanderfer-source.github.io/godot-test/
 
+## 项目
+
+| 项目 | 说明 |
+| --- | --- |
+| `game/` | **Box Jumper**：第一轮的 2D 网页小游戏（GitHub Pages） |
+| [`pixel-town/`](pixel-town/README.md) | **像素小镇 v0.1**：手机第一人称像素种田游戏，导出安卓 APK（见它自己的 README） |
+
 ## 目录结构
 
 | 路径 | 说明 |
@@ -14,6 +21,9 @@
 | `game/` | Godot 项目（`project.godot`、`main.tscn`、`scripts/`、`assets/`、`export_presets.cfg`） |
 | `art/crate/` | 木箱的 Blender 源文件、建模脚本 `make_crate.py`、预览图 `crate_preview.png` |
 | `tools/setup_env.sh` | **环境初始化脚本**：安装 Godot + 网页导出模板 + Blender + godot-mcp（校验哈希，可重复运行） |
+| `tools/setup_android.sh` | 安卓导出环境：JDK 17、Android SDK、Godot 安卓导出模板、debug 密钥 |
+| `tools/export_android.sh` | 导出并签名像素小镇的 APK |
+| `tools/subset_font.py` | 裁剪像素小镇用的中文像素字体 |
 | `tools/export_web.sh` | 无界面导出网页版到 `build/web/` |
 | `tools/godot-headless.sh` | 给 MCP 用的包装脚本：总是加 `--headless` 启动 Godot |
 | `.mcp.json` | Godot MCP + Blender MCP 配置 |
@@ -59,6 +69,8 @@ tools/setup_env.sh                 # 全部安装
 tools/setup_env.sh --godot-only    # 只装 Godot + 模板（CI 用这个）
 godot --headless --version && blender --background --version   # 确认能运行
 ```
+
+做安卓游戏时，再运行 `tools/setup_android.sh`（也可以把它的内容接在 setup 脚本后面一起粘贴进环境设置）。
 
 下载来源：Godot 和导出模板来自 GitHub Releases（`github.com/godotengine/godot/releases`），
 Blender 来自 `download.blender.org`。网络受限时，需要在环境的 Network access 里放行这些域名。
