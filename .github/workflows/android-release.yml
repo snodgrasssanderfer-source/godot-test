@@ -1,14 +1,26 @@
 name: Android release (像素小镇)
 
-# Push a tag like "pixel-town-v0.1.0" to build the APK and publish it as a
-# GitHub Release. The version in the tag should match version/name in
-# pixel-town/export_presets.cfg.
+# Builds the APK and publishes it as a GitHub Release whenever pixel-town/
+# changes and the version in pixel-town/export_presets.cfg (version/name) has
+# no release yet. To ship a new version: bump version/name and version/code,
+# update pixel-town/CHANGELOG.md, push.
 on:
   push:
-    tags: ["pixel-town-v*"]
+    branches: [main, "claude/**"]
+    paths:
+      - "pixel-town/**"
+      - "tools/setup_env.sh"
+      - "tools/setup_android.sh"
+      - "tools/export_android.sh"
+      - ".github/workflows/android-release.yml"
+  workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: android-release
+  cancel-in-progress: false
 
 env:
   INSTALL_ROOT: /home/runner/opt
@@ -19,7 +31,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check whether this version is already released
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(grep -oP '^version/name="\K[^"]+' pixel-town/export_presets.cfg)"
+          echo "tag=pixel-town-v$version" >> "$GITHUB_OUTPUT"
+          if gh release view "pixel-town-v$version" >/dev/null 2>&1; then
+            echo "Release pixel-town-v$version already exists, nothing to do."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Cache Godot + export templates
+        if: steps.version.outputs.release == 'true'
         uses: actions/cache@v4
         with:
           path: |
@@ -28,21 +55,28 @@ jobs:
           key: godot-android-${{ hashFiles('tools/setup_env.sh', 'tools/setup_android.sh') }}
 
       - name: Install Godot
+        if: steps.version.outputs.release == 'true'
         run: tools/setup_env.sh --godot-only
 
       - name: Install Android toolchain
+        if: steps.version.outputs.release == 'true'
         run: tools/setup_android.sh
 
       - name: Logic test
+        if: steps.version.outputs.release == 'true'
         run: godot --headless --path pixel-town --script res://tests/test_game_state.gd
 
       - name: Export APK
+        if: steps.version.outputs.release == 'true'
         run: tools/export_android.sh
 
       - name: Publish release
+        if: steps.version.outputs.release == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          name: 像素小镇 ${{ github.ref_name }}
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: 像素小镇 ${{ steps.version.outputs.tag }}
           body_path: pixel-town/CHANGELOG.md
           prerelease: true
           files: build/pixel-town-v*.apk

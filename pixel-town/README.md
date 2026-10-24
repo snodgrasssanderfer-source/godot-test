@@ -11,7 +11,7 @@
 
 ## 下载
 
-安卓 APK（arm64，debug 密钥签名）在 GitHub Releases（推送 `pixel-town-v*` 标签后由 `.github/workflows/android-release.yml` 自动构建发布）：
+安卓 APK（arm64，debug 密钥签名）在 GitHub Releases（由 `.github/workflows/android-release.yml` 自动构建发布）：
 https://github.com/snodgrasssanderfer-source/godot-test/releases
 
 第一次安装要允许"安装未知来源应用"。debug 签名的 APK 只适合自己测试，不能上架应用商店。
@@ -100,7 +100,13 @@ tools/setup_android.sh      # JDK 17 + Android SDK + 安卓导出模板 + debug 
 tools/export_android.sh     # 输出 build/pixel-town-v<版本>.apk，并用 apksigner 验证签名
 ```
 
-- 版本号在 `pixel-town/export_presets.cfg` 里（`version/name` 和 `version/code`），每次发布前加一。
+- 版本号在 `pixel-town/export_presets.cfg` 里（`version/name` 和 `version/code`）。
+- **发布新版本**：改大版本号，在 `pixel-town/CHANGELOG.md` 写更新内容，然后 push。
+  GitHub Actions（`.github/workflows/android-release.yml`）发现这个版本还没有 Release，
+  就会在云端安装 Godot 和 Android SDK、跑逻辑测试、导出 APK，
+  再创建 `pixel-town-v<版本>` Release 并上传 APK。版本已经发布过的话会直接跳过。
+- CI 每次构建都会生成新的 debug 密钥，所以不同版本的签名不一样，升级时可能要先卸载旧版。
+  以后要让签名固定，把自己的 keystore 存进仓库的 Actions secrets，在工作流里传给 `GODOT_ANDROID_KEYSTORE_*` 即可。
 - 签名用的是标准 Android debug 密钥（`~/.android/debug.keystore`，密码 `android`），
   通过 Godot 的 `GODOT_ANDROID_KEYSTORE_*` 环境变量传入，不写进仓库。
   以后要上架的话，换成自己的 release 密钥即可。
