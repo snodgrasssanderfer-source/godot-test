@@ -1,0 +1,48 @@
+name: Android release (像素小镇)
+
+# Push a tag like "pixel-town-v0.1.0" to build the APK and publish it as a
+# GitHub Release. The version in the tag should match version/name in
+# pixel-town/export_presets.cfg.
+on:
+  push:
+    tags: ["pixel-town-v*"]
+
+permissions:
+  contents: write
+
+env:
+  INSTALL_ROOT: /home/runner/opt
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot + export templates
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/opt/godot
+            ~/.local/share/godot/export_templates
+          key: godot-android-${{ hashFiles('tools/setup_env.sh', 'tools/setup_android.sh') }}
+
+      - name: Install Godot
+        run: tools/setup_env.sh --godot-only
+
+      - name: Install Android toolchain
+        run: tools/setup_android.sh
+
+      - name: Logic test
+        run: godot --headless --path pixel-town --script res://tests/test_game_state.gd
+
+      - name: Export APK
+        run: tools/export_android.sh
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: 像素小镇 ${{ github.ref_name }}
+          body_path: pixel-town/CHANGELOG.md
+          prerelease: true
+          files: build/pixel-town-v*.apk

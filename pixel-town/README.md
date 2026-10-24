@@ -11,7 +11,7 @@
 
 ## 下载
 
-安卓 APK（arm64，debug 密钥签名）在 GitHub Releases：
+安卓 APK（arm64，debug 密钥签名）在 GitHub Releases（推送 `pixel-town-v*` 标签后由 `.github/workflows/android-release.yml` 自动构建发布）：
 https://github.com/snodgrasssanderfer-source/godot-test/releases
 
 第一次安装要允许"安装未知来源应用"。debug 签名的 APK 只适合自己测试，不能上架应用商店。
