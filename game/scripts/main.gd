@@ -13,6 +13,18 @@ const PLATFORMS := [
 	Rect2(1100, 330, 200, 24),
 ]
 
+const CRATE_SIZE := 48.0
+
+# Bottom-center positions of the crates (on the ground / platforms).
+const CRATES := [
+	Vector2(640, 500),     # obstacle before the gap
+	Vector2(1260, 330),    # on the high right platform
+	Vector2(1440, 500),    # little stack at the end
+	Vector2(1440, 452),
+	Vector2(1492, 500),
+]
+
+@onready var crate_render: SubViewport = $CrateRender
 @onready var level: Node2D = $Level
 @onready var player: CharacterBody2D = $Player
 
@@ -23,7 +35,9 @@ func _ready() -> void:
 	spawn_point = player.position
 	for rect in PLATFORMS:
 		level.add_child(_make_platform(rect))
-	print("Box Jumper ready: %d platforms" % PLATFORMS.size())
+	for point in CRATES:
+		level.add_child(_make_crate(point))
+	print("Box Jumper ready: %d platforms, %d crates" % [PLATFORMS.size(), CRATES.size()])
 
 
 func _physics_process(_delta: float) -> void:
@@ -46,4 +60,22 @@ func _make_platform(rect: Rect2) -> StaticBody2D:
 	visual.size = rect.size
 	visual.position = -rect.size / 2.0
 	body.add_child(visual)
+	return body
+
+
+## A solid crate whose picture is the Blender model rendered by $CrateRender.
+func _make_crate(bottom_center: Vector2) -> StaticBody2D:
+	var body := StaticBody2D.new()
+	body.position = bottom_center - Vector2(0, CRATE_SIZE / 2.0)
+
+	var shape := RectangleShape2D.new()
+	shape.size = Vector2(CRATE_SIZE, CRATE_SIZE)
+	var collision := CollisionShape2D.new()
+	collision.shape = shape
+	body.add_child(collision)
+
+	var sprite := Sprite2D.new()
+	sprite.texture = crate_render.get_texture()
+	sprite.scale = Vector2.ONE * (CRATE_SIZE * 1.4 / crate_render.size.x)
+	body.add_child(sprite)
 	return body

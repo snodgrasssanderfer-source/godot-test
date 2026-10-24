@@ -7,6 +7,18 @@
         "GODOT_PATH": "/home/user/godot-test/tools/godot-headless.sh",
         "DEBUG": "false"
       }
+    },
+    "blender": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/sandraschi/blender-mcp@b786a397747970a17b74983c9aab657b8a014789",
+        "blender-mcp",
+        "--stdio"
+      ],
+      "env": {
+        "BLENDER_EXECUTABLE": "/usr/bin/blender"
+      }
     }
   }
 }
