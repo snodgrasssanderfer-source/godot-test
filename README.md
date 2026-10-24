@@ -13,35 +13,55 @@
 | --- | --- |
 | `game/` | Godot 项目（`project.godot`、`main.tscn`、`scripts/`、`assets/`、`export_presets.cfg`） |
 | `art/crate/` | 木箱的 Blender 源文件、建模脚本 `make_crate.py`、预览图 `crate_preview.png` |
-| `tools/install_blender.sh` | 安装 Blender（apt）+ numpy |
-| `tools/install_godot.sh` | 下载并安装 Godot + 网页导出模板（校验 SHA512） |
+| `tools/setup_env.sh` | **环境初始化脚本**：安装 Godot + 网页导出模板 + Blender + godot-mcp（校验哈希，可重复运行） |
 | `tools/export_web.sh` | 无界面导出网页版到 `build/web/` |
 | `tools/godot-headless.sh` | 给 MCP 用的包装脚本：总是加 `--headless` 启动 Godot |
-| `.mcp.json` | Godot MCP 配置 |
+| `.mcp.json` | Godot MCP + Blender MCP 配置 |
 | `.github/workflows/deploy-web.yml` | 自动导出并发布到 GitHub Pages |
 
 ## 安装了什么
 
 | 组件 | 版本 | 位置 |
 | --- | --- | --- |
-| Godot（Linux x86_64，标准版非 .NET） | 4.7.2-stable | `/opt/godot/`，软链接 `/usr/local/bin/godot` |
-| 网页导出模板（只解压了 `web_*`） | 4.7.2.stable | `~/.local/share/godot/export_templates/4.7.2.stable/` |
-| MCP 服务器 Coding-Solo/godot-mcp | 0.1.1（npm 包 `@coding-solo/godot-mcp`） | 通过 `npx` 按需下载 |
-| Blender（Ubuntu 软件包） | 4.0.2 | `/usr/bin/blender` |
-| python3-numpy（Blender 的 glTF 导出器需要） | Ubuntu 24.04 源 | — |
-| MCP 服务器 sandraschi/blender-mcp | git 提交 `b786a39`（2026-10-24） | 通过 `uvx` 按需安装 |
+| Godot（Linux x86_64，标准版，不是 .NET 版） | 4.7.2-stable | `/opt/godot/`，软链接 `/usr/local/bin/godot` |
+| 网页导出模板（只解压了 `web_*`） | 4.7.2.stable（必须和 Godot 版本号完全一致） | `~/.local/share/godot/export_templates/4.7.2.stable/` |
+| Blender（官方 Linux 版） | 5.1.2 | `/opt/blender-5.1.2-linux-x64/`，`/opt/blender` 指向它，软链接 `/usr/local/bin/blender` |
+| MCP 服务器 Coding-Solo/godot-mcp | GitHub 提交 `1209744`（2026-04-16） | 本地构建到 `/opt/godot-mcp/build/` |
+| MCP 服务器 sandraschi/blender-mcp | GitHub 提交 `b786a39`（2026-10-24） | 通过 `uvx` 按需安装 |
 | Node.js / uv（云环境自带） | 22 / — | — |
 
-下载来源是 GitHub Releases（`github.com/godotengine/godot/releases`）。
-注意：云环境的网络策略屏蔽了 `godotengine.org` / `downloads.godotengine.org`，但 GitHub Releases 可以下载。
-完整模板包有 1.2 GB，脚本下载后只保留网页模板（约 90 MB）。
+版本号都写在 `tools/setup_env.sh` 开头的变量里，升级时只改那里。
 
-新会话里重新安装（容器是临时的，每次新会话都要装一次）：
+### 为什么选这些版本（2026-10-24 调查）
+
+- **Godot 4.7.2**：本身就是最新稳定版。godot-mcp 只调用 Godot 命令行，issue 里没有 4.7 不兼容的报告
+  （#111 只是问什么时候适配 4.7，#125 是放错仓库的 Godot 安卓 bug），实测运行项目、读输出和报错都正常。
+- **Blender 5.1.2，不是最新的 5.2.3**：blender-mcp 的 README 写的是支持 "Blender 3.0+"，
+  作者自己的配置示例用的是 Blender 5.1，代码也按 5.x 的 API 写（`BLENDER_EEVEE`）；但没有任何文档或 issue 提到 5.2。
+  所以选"有人验证过"的 5.1 系列的最新补丁版。
+- **godot-mcp 从 GitHub 构建，不用 npm 的 0.1.1**：npm 上的 0.1.1 是 2026-01 发布的，之后 master
+  修了一个远程代码执行漏洞（#95，通过 `add_node`/`create_scene` 实例化任意 GDScript），但没发新版到 npm。
+  `npx github:...` 构建 git 版本会报 npm 的 `GitFetcher requires an Arborist constructor` 错误，所以改成先 clone 再本地构建。
+- **blender-mcp `b786a39`**：已经是最新提交，issue 里没有 Linux 或版本兼容问题。
+
+## 环境初始化（新会话不用重装）
+
+`tools/setup_env.sh` 一次装好全部工具：Godot、版本一致的网页导出模板、Blender、godot-mcp 构建，
+并预先下载 blender-mcp。所有下载都会校验官方 SHA512/SHA256；已经装好的部分会跳过，可以重复运行。
+从零安装大约 2.5 分钟（导出模板完整包有 1.2 GB，只保留约 90 MB 的网页模板）。
+
+**放进云环境设置**（cloud environment 菜单 → Edit → Setup script）：脚本不依赖仓库里的其他文件，
+可以把 `tools/setup_env.sh` 的全部内容直接粘贴进去，新会话启动时就会自动装好。
+也可以在会话里手动运行：
 
 ```bash
-tools/install_godot.sh            # 默认 4.7.2-stable，也可以传版本号，例如 4.8-stable
-godot --headless --version        # 确认能运行
+tools/setup_env.sh                 # 全部安装
+tools/setup_env.sh --godot-only    # 只装 Godot + 模板（CI 用这个）
+godot --headless --version && blender --background --version   # 确认能运行
 ```
+
+下载来源：Godot 和导出模板来自 GitHub Releases（`github.com/godotengine/godot/releases`），
+Blender 来自 `download.blender.org`。网络受限时，需要在环境的 Network access 里放行这些域名。
 
 ## MCP 怎么配的
 
@@ -51,18 +71,26 @@ godot --headless --version        # 确认能运行
 {
   "mcpServers": {
     "godot": {
-      "command": "npx",
-      "args": ["-y", "@coding-solo/godot-mcp@0.1.1"],
+      "command": "node",
+      "args": ["/opt/godot-mcp/build/index.js"],
       "env": {
         "GODOT_PATH": "/home/user/godot-test/tools/godot-headless.sh",
         "DEBUG": "false"
       }
+    },
+    "blender": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/sandraschi/blender-mcp@b786a397747970a17b74983c9aab657b8a014789",
+               "blender-mcp", "--stdio"],
+      "env": { "BLENDER_EXECUTABLE": "/opt/blender/blender" }
     }
   }
 }
 ```
 
-要点：
+### Godot MCP
+
+- `/opt/godot-mcp/build/index.js` 由 `tools/setup_env.sh` 构建。没有运行 setup 脚本的话，这个 MCP 起不来。
 - godot-mcp 的 `run_project` 启动 Godot 时**不加 `--headless`**，云容器里没有显示器会直接失败。
   所以 `GODOT_PATH` 指向 `tools/godot-headless.sh`，它会以 `godot --headless ...` 的方式启动。
 - `GODOT_PATH` 必须是绝对路径。云会话里仓库固定在 `/home/user/<仓库名>`，复用到其他仓库时改成对应路径。
@@ -74,46 +102,27 @@ godot --headless --version        # 确认能运行
   godot --headless --path game --quit-after 120   # 跑 120 帧后退出，看输出有没有 ERROR
   ```
 
-## Blender 美术管线
-
-### 安装
-
-```bash
-tools/install_blender.sh          # apt 安装 Blender 4.0.2 + python3-numpy
-blender --background --version    # 确认能运行
-```
-
-为什么是 4.0.2：云环境的网络策略屏蔽了 `download.blender.org` 及其镜像，只能用 Ubuntu 源里的版本。
-想用最新版（5.x）的话，在环境设置的 Network access 里放行 `download.blender.org`，
-然后下载官方 Linux tar.xz 解压，再把 `.mcp.json` 里的 `BLENDER_EXECUTABLE` 改成解压后的 `blender` 路径。
-（PyPI 上的 `bpy` 5.x 也能装，但它只是 Python 模块，没有 `blender` 命令，MCP 用不了。）
-
-Ubuntu 版 Blender 用的是系统 Python，所以 glTF 导出需要 `python3-numpy`，不装会报 `No module named 'numpy'`。
-
 ### Blender MCP
 
-`.mcp.json` 里的 `blender` 服务器：
-
-```json
-"blender": {
-  "command": "uvx",
-  "args": ["--from", "git+https://github.com/sandraschi/blender-mcp@b786a397747970a17b74983c9aab657b8a014789",
-           "blender-mcp", "--stdio"],
-  "env": { "BLENDER_EXECUTABLE": "/usr/bin/blender" }
-}
-```
-
-要点：
 - 用的是 **sandraschi/blender-mcp**，它会自动以 `blender --background` 启动 Blender，不需要界面也不需要装插件。
+- `BLENDER_EXECUTABLE` 指向 `/opt/blender/blender`。这是个固定路径（软链接），以后升级 Blender 只要改链接，不用改 `.mcp.json`。
 - **不要写成 `uvx blender-mcp`**：PyPI 上叫 `blender-mcp` 的包其实是 ahujasid 那个（不支持后台模式），
   所以这里用 `--from git+...` 从 GitHub 安装，并固定到某个提交，避免上游改动导致不可用。
-- 已验证：工具列表能列出 72 个工具；`script_execute`（参数 `code`）能在后台 Blender 里跑 bpy 代码并返回 `print` 输出。
+- 已验证：能列出 72 个工具；`script_execute`（参数 `code`）能在后台 Blender 里跑 bpy 代码并返回 `print` 输出，
+  也能通过它重新生成木箱，例如：
+
+  ```python
+  import runpy; runpy.run_path("/home/user/godot-test/art/crate/make_crate.py", run_name="__main__")
+  ```
+
   脚本出错时会返回 `success: false`，但**不带 Python 报错详情**，要看完整报错就改用命令行跑脚本。
 - 每次调用都启动一个新的 Blender 进程，调用之间场景不保留。建模这类多步操作，最好写成一个完整脚本一次跑完。
 
+## Blender 美术管线
+
 ### 从建模到导入 Godot
 
-1. **建模 + 渲染预览 + 导出**（一个脚本全部完成，可重复运行）：
+1. **建模 + 渲染预览 + 导出**（一个脚本全部完成，可重复运行；也可以通过 Blender MCP 的 `script_execute` 运行）：
 
    ```bash
    blender --background --factory-startup --python art/crate/make_crate.py
@@ -156,13 +165,14 @@ cd build/web && python3 -m http.server 8000
 
 ## 部署到 GitHub Pages
 
-`.github/workflows/deploy-web.yml` 在 push 到 `main` 或 `claude/**` 分支时（也可以在 Actions 页面手动运行）：
-1. 用 `tools/install_godot.sh` 安装 Godot 和网页模板（有缓存，第二次起很快）；
+`.github/workflows/deploy-web.yml` 在 push 到 `main` 或 `claude/**` 分支时运行（也可以在 Actions 页面手动运行）。
+其他分支（例如 `upgrade-versions`）不会部署，合并到 `main` 后才会上线。流程：
+1. 用 `tools/setup_env.sh --godot-only` 安装 Godot 和网页模板（有缓存，setup 脚本改动后会重新下载）；
 2. 用 `tools/export_web.sh` 导出；
 3. 用 `peaceiris/actions-gh-pages` 把 `build/web` 推到 `gh-pages` 分支。
 
 GitHub Pages 的来源设置为 **Deploy from a branch → `gh-pages` / (root)**
 （仓库 Settings → Pages）。访问地址：`https://<用户名>.github.io/<仓库名>/`。
 
-复用到新项目：复制 `tools/`、`.mcp.json`、`.github/workflows/deploy-web.yml`（要做美术再加上 `art/` 里的脚本写法），
+复用到新项目：复制 `tools/`（包括 `setup_env.sh`）、`.mcp.json`、`.github/workflows/deploy-web.yml`（要做美术再加上 `art/` 里的脚本写法），
 把 Godot 项目放进 `game/`（导出预设名叫 `Web`），改一下 `.mcp.json` 里的路径即可。

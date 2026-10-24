@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GODOT_VERSION: 4.7.2-stable
+  INSTALL_ROOT: /home/runner/opt
 
 jobs:
   deploy:
@@ -25,12 +25,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ~/godot
+            ~/opt/godot
             ~/.local/share/godot/export_templates
-          key: godot-${{ env.GODOT_VERSION }}-web
+          key: godot-web-${{ hashFiles('tools/setup_env.sh') }}
 
       - name: Install Godot
-        run: GODOT_INSTALL_DIR=$HOME/godot tools/install_godot.sh "$GODOT_VERSION"
+        run: tools/setup_env.sh --godot-only
 
       - name: Export web build
         run: tools/export_web.sh
