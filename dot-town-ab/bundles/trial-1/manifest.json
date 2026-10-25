@@ -1,0 +1,13 @@
+{
+  "parts": [
+    "source.zip.part000",
+    "source.zip.part001",
+    "source.zip.part002",
+    "source.zip.part003",
+    "source.zip.part004"
+  ],
+  "sha256": "d64a564c4b602cb05fcf64e2f44c3a6b6cc9131220b62498b9b2fb25176354e5",
+  "package": "org.dot.town.a",
+  "label": "小镇试作 1",
+  "exclude_filter": "build/*,addons/*,tests.gd,tests.gd.uid,tests.tscn,editor_tools*"
+}
