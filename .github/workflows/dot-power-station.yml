@@ -24,7 +24,7 @@ jobs:
         run: python dot-power-station/ci.py prepare
       - name: Install pinned MCP client and server
         run: |
-          python -m pip install mcp==1.26.0
+          python -m pip install mcp==1.30.0
           npm install --prefix dot-power-station/mcp --ignore-scripts @yanhuifair/godot-mcp@1.12.18
       - name: Export through Godot MCP and verify APK
         run: python dot-power-station/ci.py build
