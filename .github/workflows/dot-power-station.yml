@@ -1,0 +1,40 @@
+name: dot Power Station Android release
+on:
+  push:
+    branches: ["dot/power-station-release"]
+    paths: ["dot-power-station/manifest.json"]
+permissions:
+  contents: write
+concurrency:
+  group: dot-power-station-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Prepare isolated source and official toolchain
+        run: python dot-power-station/ci.py prepare
+      - name: Install pinned MCP client and server
+        run: |
+          python -m pip install mcp==1.26.0
+          npm install --prefix dot-power-station/mcp --ignore-scripts @yanhuifair/godot-mcp@1.12.18
+      - name: Export through Godot MCP and verify APK
+        run: python dot-power-station/ci.py build
+      - name: Publish independent prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=dot-power-station-v0.1.0
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release already exists; refusing to overwrite it."
+            exit 1
+          fi
+          gh release create "$TAG" dot-power-station/output/power-station-android.apk dot-power-station/output/power-station-source.zip dot-power-station/output/SHA256SUMS.txt --target main --prerelease --latest=false --title "废站供电 · dot 工作流测试 v0.1.0" --notes-file dot-power-station/RELEASE_NOTES.md
