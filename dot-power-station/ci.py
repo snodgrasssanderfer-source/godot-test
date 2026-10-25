@@ -37,7 +37,7 @@ def prepare():
 async def build():
  from mcp import ClientSession,StdioServerParameters
  from mcp.client.stdio import stdio_client
- p=json.loads((R/'paths.json').read_text());project=WORK/'android-project';mcp=R/'mcp-source'
+ p=json.loads((R/'paths.json').read_text());project=WORK/'android-project';(project/'build').mkdir(exist_ok=True);mcp=R/'mcp-source'
  cli=mcp/'dist/utils/godot_cli.js';s=cli.read_text();old="['--path', projectPath, '--export', preset, outputPath]";new="['--headless', '--path', projectPath, '--export-release', preset, outputPath]"
  assert old in s or new in s,'Unexpected MCP exporter implementation'
  cli.write_text(s.replace(old,new));env=dict(os.environ,GODOT_PATH=p['godot'],JAVA_HOME=p['java'])
@@ -45,8 +45,8 @@ async def build():
   async with ClientSession(rd,wr) as session:
    await session.initialize()
    options={'architectures/armeabi-v7a':'false','architectures/arm64-v8a':'true','architectures/x86':'false','architectures/x86_64':'false','package/unique_name':'"org.dot.powerstation.lab"','package/name':'"废站供电"','package/signed':'true','version/code':'1','version/name':'"1.0-test"','permissions/internet':'false','keystore/release':json.dumps(p['key']),'keystore/release_user':'"androiddebugkey"','keystore/release_password':'"android"'}
-   result=await session.call_tool('create_export_preset',{'name':'Android','platform':'Android','export_path':str(OUT/'power-station-android.apk'),'exclude_filter':'build/*,tools/*','options':options});assert not result.isError,result
-   result=await session.call_tool('export_project',{'preset':'Android','output_path':str(OUT/'power-station-android.apk')});assert not result.isError,result
+   result=await session.call_tool('create_export_preset',{'name':'Android','platform':'Android','export_path':'build/power-station-android.apk','exclude_filter':'build/*,tools/*','options':options});assert not result.isError,result
+   result=await session.call_tool('export_project',{'preset':'Android','output_path':'build/power-station-android.apk'});assert not result.isError,result
    print(result.model_dump_json(),flush=True)
    end=time.monotonic()+600
    while time.monotonic()<end:
@@ -54,6 +54,7 @@ async def build():
     if 'Process exited' in text:
      print(text,flush=True);assert 'Process exited with code 0' in text,'Godot export failed';break
    else:raise RuntimeError('MCP export did not complete in 10 minutes')
+ shutil.copy2(project/'build/power-station-android.apk',OUT/'power-station-android.apk')
  apk=OUT/'power-station-android.apk';assert apk.stat().st_size>1000000
  sdk=pathlib.Path(p['sdk']);bt=sorted((sdk/'build-tools').iterdir(),key=lambda x:[int(n) if n.isdigit() else 0 for n in x.name.split('.')])[-1]
  subprocess.run([str(bt/'apksigner'),'verify','--verbose',str(apk)],check=True)
