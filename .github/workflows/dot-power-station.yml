@@ -27,7 +27,12 @@ jobs:
           python -m pip install mcp==1.30.0
           git clone https://github.com/yanhuifair/Godot-MCP.git dot-power-station/mcp-source
           git -C dot-power-station/mcp-source checkout 284fd040fafa536223f1cbcdbbcc15bd6edbc1f7
-          npm ci --prefix dot-power-station/mcp-source --ignore-scripts
+          cd dot-power-station/mcp-source
+          rm package-lock.json
+          npm pkg delete devDependencies
+          npm pkg set 'devDependencies.typescript=5.5.4' 'devDependencies.@types/node=22.19.0' 'devDependencies.@types/express=5.0.6' 'overrides.once=1.4.0'
+          npm install --ignore-scripts
+          cd ../..
           npm run build --prefix dot-power-station/mcp-source
       - name: Export through Godot MCP and verify APK
         run: python dot-power-station/ci.py build
