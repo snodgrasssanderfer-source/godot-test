@@ -59,9 +59,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG=dot-town-comparison-v0.1.0
+          TAG=dot-town-comparison-v0.1.1
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release already exists; refusing to overwrite."
             exit 1
           fi
-          gh release create "$TAG" release-files/* --target main --prerelease --latest=false --title "小镇试作 · 双版本对照 v0.1.0" --notes-file dot-town-ab/RELEASE_NOTES.md
+          gh release create "$TAG" release-files/* --target main --prerelease --latest=false --title "小镇试作 · 双版本对照 v0.1.1" --notes-file dot-town-ab/RELEASE_NOTES.md

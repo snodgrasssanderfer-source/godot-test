@@ -45,7 +45,7 @@ async def build():
  async with stdio_client(StdioServerParameters(command='node',args=[str(mcp/'dist/index.js'),'-p',str(project)],env=env)) as (rd,wr):
   async with ClientSession(rd,wr) as session:
    await session.initialize()
-   options={'architectures/armeabi-v7a':'false','architectures/arm64-v8a':'true','architectures/x86':'false','architectures/x86_64':'false','package/unique_name':json.dumps(manifest['package']),'package/name':json.dumps(manifest['label']),'package/signed':'true','version/code':'1','version/name':'"1.0-test"','permissions/internet':'false','keystore/release':json.dumps(p['key']),'keystore/release_user':'"androiddebugkey"','keystore/release_password':'"android"'}
+   options={'architectures/armeabi-v7a':'false','architectures/arm64-v8a':'true','architectures/x86':'false','architectures/x86_64':'false','package/unique_name':json.dumps(manifest['package']),'package/name':json.dumps(manifest['label'],ensure_ascii=False),'package/signed':'true','version/code':'1','version/name':'"1.0-test"','permissions/internet':'false','keystore/release':json.dumps(p['key']),'keystore/release_user':'"androiddebugkey"','keystore/release_password':'"android"'}
    result=await session.call_tool('create_export_preset',{'name':'Android','platform':'Android','export_path':'build/power-station-android.apk','exclude_filter':manifest.get('exclude_filter','build/*,tools/*'),'options':options});assert not result.isError,result
    result=await session.call_tool('export_project',{'preset':'Android','output_path':'build/power-station-android.apk'});assert not result.isError,result
    print(result.model_dump_json(),flush=True)
