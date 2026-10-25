@@ -25,7 +25,10 @@ jobs:
       - name: Install pinned MCP client and server
         run: |
           python -m pip install mcp==1.30.0
-          npm install --prefix dot-power-station/mcp --ignore-scripts @yanhuifair/godot-mcp@1.12.18
+          git clone https://github.com/yanhuifair/Godot-MCP.git dot-power-station/mcp-source
+          git -C dot-power-station/mcp-source checkout 284fd040fafa536223f1cbcdbbcc15bd6edbc1f7
+          npm ci --prefix dot-power-station/mcp-source --ignore-scripts
+          npm run build --prefix dot-power-station/mcp-source
       - name: Export through Godot MCP and verify APK
         run: python dot-power-station/ci.py build
       - name: Publish independent prerelease

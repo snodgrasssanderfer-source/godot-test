@@ -37,7 +37,7 @@ def prepare():
 async def build():
  from mcp import ClientSession,StdioServerParameters
  from mcp.client.stdio import stdio_client
- p=json.loads((R/'paths.json').read_text());project=WORK/'android-project';mcp=R/'mcp/node_modules/@yanhuifair/godot-mcp'
+ p=json.loads((R/'paths.json').read_text());project=WORK/'android-project';mcp=R/'mcp-source'
  cli=mcp/'dist/utils/godot_cli.js';s=cli.read_text();old="['--path', projectPath, '--export', preset, outputPath]";new="['--headless', '--path', projectPath, '--export-release', preset, outputPath]"
  assert old in s or new in s,'Unexpected MCP exporter implementation'
  cli.write_text(s.replace(old,new));env=dict(os.environ,GODOT_PATH=p['godot'],JAVA_HOME=p['java'])
