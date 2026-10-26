@@ -1,0 +1,33 @@
+{
+  "parts": [
+    "source.zip.part000",
+    "source.zip.part001",
+    "source.zip.part002",
+    "source.zip.part003",
+    "source.zip.part004",
+    "source.zip.part005",
+    "source.zip.part006",
+    "source.zip.part007",
+    "source.zip.part008",
+    "source.zip.part009",
+    "source.zip.part010",
+    "source.zip.part011",
+    "source.zip.part012",
+    "source.zip.part013",
+    "source.zip.part014",
+    "source.zip.part015",
+    "source.zip.part016",
+    "source.zip.part017",
+    "source.zip.part018",
+    "source.zip.part019",
+    "source.zip.part020",
+    "source.zip.part021",
+    "source.zip.part022",
+    "source.zip.part023",
+    "source.zip.part024"
+  ],
+  "sha256": "a2941ab0d564f7ee8c903ed0951039fc7e635a0d5dfba00681976046064bdf05",
+  "package": "org.dot.town.expansion",
+  "label": "像素小镇·丰年物语",
+  "exclude_filter": "tests/*,addons/*,*.bak,build/*,builds/*"
+}

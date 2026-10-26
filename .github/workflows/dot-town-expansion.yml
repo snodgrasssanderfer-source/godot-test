@@ -1,0 +1,67 @@
+name: dot Town Expansion Android release
+on:
+  push:
+    branches: ["dot/town-expansion-release"]
+    paths: ["dot-town-expansion/release.json"]
+permissions:
+  contents: read
+concurrency:
+  group: dot-town-expansion-release
+  cancel-in-progress: false
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [expansion]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Prepare independent source and verified toolchain
+        run: python dot-town-expansion/ci.py prepare ${{ matrix.group }}
+      - name: Install pinned MCP tooling
+        run: |
+          python -m pip install mcp==1.30.0
+          git clone https://github.com/yanhuifair/Godot-MCP.git dot-town-expansion/mcp-source
+          git -C dot-town-expansion/mcp-source checkout 284fd040fafa536223f1cbcdbbcc15bd6edbc1f7
+          cd dot-town-expansion/mcp-source
+          rm package-lock.json
+          npm pkg delete devDependencies
+          npm pkg set 'devDependencies.typescript=5.5.4' 'devDependencies.@types/node=22.19.0' 'devDependencies.@types/express=5.0.6' 'overrides.once=1.4.0'
+          npm install --ignore-scripts
+          npm run build
+      - name: Export through MCP and verify Android package
+        run: python dot-town-expansion/ci.py build ${{ matrix.group }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.group }}
+          path: dot-town-expansion/output/${{ matrix.group }}/*
+          retention-days: 3
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-files
+          merge-multiple: true
+      - name: Publish independent expansion prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=dot-town-expansion-v1.0.0
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release already exists; refusing to overwrite."
+            exit 1
+          fi
+          gh release create "$TAG" release-files/* --target main --prerelease --latest=false --title "像素小镇 · 丰年物语 v1.0.0" --notes-file dot-town-expansion/RELEASE_NOTES.md
