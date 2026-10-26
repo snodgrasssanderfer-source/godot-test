@@ -48,8 +48,8 @@ async def build():
    source_options={line.split('=',1)[0].strip():line.split('=',1)[1].strip() for line in (project/'export_presets.cfg').read_text().split('[preset.0.options]',1)[1].splitlines() if '=' in line and not line.lstrip().startswith(';')}
    options={'architectures/armeabi-v7a':'false','architectures/arm64-v8a':'true','architectures/x86':'false','architectures/x86_64':'false','package/unique_name':json.dumps(manifest['package']),'package/name':json.dumps(manifest['label'],ensure_ascii=False),'package/signed':'true','version/code':'1','version/name':'"1.0.0"','permissions/internet':'false','keystore/release':json.dumps(p['key']),'keystore/release_user':'"androiddebugkey"','keystore/release_password':'"android"'}
    source_options.update(options);options=source_options
-   result=await session.call_tool('create_export_preset',{'name':'Android','platform':'Android','export_path':'build/town-expansion.apk','include_filter':'assets/fonts/OFL.txt','exclude_filter':manifest.get('exclude_filter','build/*,tools/*'),'options':options});assert not result.isError,result
-   result=await session.call_tool('export_project',{'preset':'Android','output_path':'build/town-expansion.apk'});assert not result.isError,result
+   result=await session.call_tool('create_export_preset',{'name':'AndroidCI','platform':'Android','export_path':'build/town-expansion.apk','include_filter':'assets/fonts/OFL.txt','exclude_filter':manifest.get('exclude_filter','build/*,tools/*'),'options':options});assert not result.isError,result
+   result=await session.call_tool('export_project',{'preset':'AndroidCI','output_path':'build/town-expansion.apk'});assert not result.isError,result
    print(result.model_dump_json(),flush=True)
    end=time.monotonic()+600
    while time.monotonic()<end:
