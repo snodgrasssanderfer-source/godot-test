@@ -1,0 +1,41 @@
+{
+  "executed_android_binaries": false,
+  "results": [
+    {
+      "file": "libdsh_proot.so",
+      "bytes": 257088,
+      "sha256": "caa5d7d65952b258b3427322448db91b5eebea4aa72ab66c77174b86c8437f94",
+      "elf_class": 64,
+      "machine": "AArch64",
+      "elf_type": "PIE/DYN",
+      "interpreter": "/system/bin/linker64",
+      "needed": [
+        "libdl.so",
+        "libc.so"
+      ],
+      "load_alignments": [
+        16384,
+        16384,
+        16384
+      ],
+      "load_offset_vaddr_congruence": true,
+      "static_checks": "passed"
+    },
+    {
+      "file": "libdsh_proot_loader.so",
+      "bytes": 1632,
+      "sha256": "f149774236db1e69b36cc1e4ed3866c7094db2eee52da0d4956aa63a9bb26929",
+      "elf_class": 64,
+      "machine": "AArch64",
+      "elf_type": "EXEC",
+      "interpreter": null,
+      "needed": [],
+      "load_alignments": [
+        16384,
+        16384
+      ],
+      "load_offset_vaddr_congruence": true,
+      "static_checks": "passed"
+    }
+  ]
+}

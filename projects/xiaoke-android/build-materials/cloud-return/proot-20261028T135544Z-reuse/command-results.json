@@ -1,0 +1,46 @@
+{
+  "mode": "reuse_verified_previous_build",
+  "new_compilation_performed": false,
+  "previous_compile_exit_code": null,
+  "previous_exit_code_note": "The original build exit code was not preserved in a file. Do not substitute a guessed success code. The saved log, pinned source/script hashes and exact output hashes are preserved.",
+  "current_static_commands": [
+    {
+      "argv": [
+        "readelf",
+        "-h",
+        "-lW",
+        "-d",
+        "-n",
+        "/workspace/xiaoke-proot-return-git/projects/xiaoke-android/build-materials/cloud-return/proot-20261028T135544Z-reuse/libdsh_proot.so"
+      ],
+      "started_utc": "2026-10-28T14:00:17.908474+00:00",
+      "exit_code": 0,
+      "stdout_file": "elf/libdsh_proot.so.readelf.txt",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "readelf",
+        "-h",
+        "-lW",
+        "-d",
+        "-n",
+        "/workspace/xiaoke-proot-return-git/projects/xiaoke-android/build-materials/cloud-return/proot-20261028T135544Z-reuse/libdsh_proot_loader.so"
+      ],
+      "started_utc": "2026-10-28T14:00:17.910518+00:00",
+      "exit_code": 0,
+      "stdout_file": "elf/libdsh_proot_loader.so.readelf.txt",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "python3",
+        "/workspace/xiaoke-proot-return-git/projects/xiaoke-android/build-materials/cloud-return/proot-20261028T135544Z-reuse/verify-artifacts.py"
+      ],
+      "checked_at_utc": "2026-10-28T14:03:16.791134+00:00",
+      "exit_code": 0,
+      "stdout_file": "verification-results.json",
+      "stderr": ""
+    }
+  ]
+}

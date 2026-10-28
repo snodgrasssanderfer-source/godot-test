@@ -1,0 +1,8 @@
+# 上轮使用的构建命令；本轮只核验和复用，没有重新执行此命令。
+# 历史退出码未单独落盘；完整历史编译输出见 build-log.previous.txt。
+DSH_LOADER_INFO_PY=/workspace/dsh-companion/scripts/proot-loader-info.py \
+ANDROID_NDK_HOME=/workspace/dsh-build-tools/ndk \
+OPERIT_BUILD_DIR=/workspace/dsh-build-tools/proot-output \
+OPERIT_ANDROID_RUNTIME_ABIS=arm64-v8a \
+OPERIT_ANDROID_RUNTIME_COMPONENTS=proot \
+bash /workspace/dsh-build-tools/proot-build/operit2/tools/android-runtime/build_android_tools_wsl.sh

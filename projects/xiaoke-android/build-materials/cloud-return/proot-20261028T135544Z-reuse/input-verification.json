@@ -1,0 +1,79 @@
+{
+  "verified_at_utc": "2026-10-28T13:55:44.527126+00:00",
+  "checks": [
+    {
+      "name": "corresponding-source.tar.gz",
+      "sha256": "3caab4b8457540dc693e617a7da843191e507cf0903b2424773448bf0b3709cc",
+      "bytes": 29178908,
+      "matches_fixed_input": true
+    },
+    {
+      "name": "ndk.zip",
+      "sha256": "c5db6031a549b5274eed920c45ee3c7da1ac3f1f416cbb512dd9d88417bdf009",
+      "bytes": 783674133,
+      "matches_fixed_input": true
+    },
+    {
+      "name": "operit2-source.tar.gz",
+      "sha256": "291ecf2da99cc168099b239e0db74f72a08b2e02285efa80d255eec27581f30e",
+      "bytes": 5004458,
+      "matches_fixed_input": true
+    },
+    {
+      "name": "termux-proot-v5.1.107.78.tar.gz",
+      "sha256": "f3377ba49dcd833370420c34c5081b4c243ecbb85b2a9881a4f4586012599afa",
+      "bytes": 299355,
+      "matches_fixed_input": true
+    },
+    {
+      "name": "talloc-2.4.3.tar.gz",
+      "sha256": "dc46c40b9f46bb34dd97fe41f548b0e8b247b77a918576733c528e83abd854dd",
+      "bytes": 684092,
+      "matches_fixed_input": true
+    },
+    {
+      "name": "busybox-1.38.0.tar.bz2",
+      "sha256": "34f9ea6ff8636f2c9241153b9114eefa9e65674a45318ae1ef95bb5f31c53bb2",
+      "bytes": 2695723,
+      "matches_fixed_input": true
+    },
+    {
+      "name": "bash-5.2.37.tar.gz",
+      "sha256": "9599b22ecd1d5787ad7d3b7bf0c59f312b3396d1e281175dd1f8a4014da621ff",
+      "bytes": 11128314,
+      "matches_fixed_input": true
+    },
+    {
+      "name": "build_android_tools_wsl.sh",
+      "sha256": "c39cf27e31cc3c0b4c235d285a324297c1ecd984fbfe3514f1cd1a581e7efbf3",
+      "matches_checkpoint": true
+    },
+    {
+      "name": "termux-proot-operit-android.patch",
+      "sha256": "f4ade2d2b9ff8e32283224dd869a2e551987e06d8c2c8bed820ba6ef87748f5a",
+      "matches_checkpoint": true
+    },
+    {
+      "name": "proot-loader-info.py",
+      "sha256": "26c2114a94c2bed30a98088a4901d8f96bacd7dea703ef0fa0eeff8322fd1612",
+      "matches_checkpoint": true
+    },
+    {
+      "name": "liboperit_proot.so",
+      "sha256": "caa5d7d65952b258b3427322448db91b5eebea4aa72ab66c77174b86c8437f94",
+      "bytes": 257088,
+      "matches_previous_record": true
+    },
+    {
+      "name": "liboperit_loader.so",
+      "sha256": "f149774236db1e69b36cc1e4ed3866c7094db2eee52da0d4956aa63a9bb26929",
+      "bytes": 1632,
+      "matches_previous_record": true
+    }
+  ],
+  "instructions": {
+    "AGENTS.md": "none found in relevant ancestors",
+    ".agents/skills": "none found",
+    "git_workflow": "Chinese conventional commits, read source/.agents/rules/git-workflow.md"
+  }
+}

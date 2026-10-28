@@ -1,0 +1,26 @@
+{
+  "return_id": "proot-20261028T135544Z-reuse",
+  "checkpoint": "b93d665a5a3828f1838d9b01e3503248fb379ec5",
+  "mode": "reuse_verified_previous_build",
+  "historical_build_utc": "2026-10-28T09:30 (log/artifact timestamp; no new compilation this turn)",
+  "verification_started_utc": "2026-10-28T13:55:44Z",
+  "host": "Linux x86_64",
+  "target": "Android arm64-v8a, API 24 toolchain",
+  "operit_commit": "dc4c3a9405dc7ed3ef69b2ac9a6ace65374d77cf",
+  "ndk": "r29-beta4 / 29.0.14033849-beta4",
+  "script_changed_this_turn": false,
+  "outputs": [
+    {
+      "file": "libdsh_proot.so",
+      "bytes": 257088,
+      "sha256": "caa5d7d65952b258b3427322448db91b5eebea4aa72ab66c77174b86c8437f94"
+    },
+    {
+      "file": "libdsh_proot_loader.so",
+      "bytes": 1632,
+      "sha256": "f149774236db1e69b36cc1e4ed3866c7094db2eee52da0d4956aa63a9bb26929"
+    }
+  ],
+  "runtime_tested": false,
+  "android16_device_tested": false
+}
