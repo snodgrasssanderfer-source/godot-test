@@ -1,0 +1,501 @@
+/**
+ * 运行时自检：把原生侧逐项检查的结果，翻译成「哪一环断了 + 下一步」。
+ *
+ * 为什么需要它：运行时链路（Shell → Node → 沙箱启动器 → 内核 Landlock → 沙箱内执行 →
+ * PTY → 访客数据目录 → 附件目录 → 硬链接 → ripgrep → C 编译环境）任何一环断掉，用户看到的往往只有一句
+ * 「bash 工具不可用」，而排查通常又要靠 bash —— 可 bash 本身可能正是断掉的那一环。
+ * 自检由原生侧逐环探测，不依赖 bash；本模块只负责三件事：
+ *
+ *  - 常量集合：检查项顺序、状态与结论码。载荷里的 id/code 必须命中这些集合，
+ *    未知取值一律拒绝整个载荷（界面只渲染这些受控映射，不渲染载荷里的自由文本）；
+ *  - 严格校验：[validateSelfCheckReport] 按冻结契约校验形态，包括
+ *    「ok 不带 code、非 ok 必须带 code」以及重复项、越界计数这类自相矛盾的组合；
+ *  - 文案映射：[selfCheckAdvice] 给出每一项的结论与下一步，界面再包一层 `t()`。
+ *
+ * 最后三项（`c_compiler` / `make` / `python3`）与其他项不同：它们是**能力项**而不是断链项 ——
+ * 回答「这台设备能不能现场构建含原生模块的插件」。它们只用 `warn`（缺能力不该让整次自检显示为
+ * 失败），并且三态分得清：确实没有（`_MISSING`）、工具自己回答了可用（`ok`）、工具起了但给出非 0
+ * 退出码（`_UNUSABLE`）、**没拿到退出码**（`_PROBE_UNKNOWN`，进程没起来 / 超时 / 没有可写临时目录）。
+ * 后两者都按不可用呈现：绝不把不可用的编译器说成已支持，也不承诺装完就能编译。
+ *
+ * 再往后四项（`plugins` / `accessibility` / `virtualscreen` / `webview`）来自**宿主**而不是访客脚本：
+ * 访客脚本（`android/app/src/main/assets/support/runtime-self-check.cjs`）一行未改，它仍然只产出前
+ * 14 项；这四项由 Android 侧读设备事实后追加，走同一套 id / 码白名单与状态规则。语义上有三点不同：
+ *
+ *  - 前三项是**可选功能**的状态（插件链接、无障碍服务、副屏所需的悬浮窗权限），没有它们不影响
+ *    改用例与 bash，因此只报 `warn`；
+ *  - `webview` 是唯一会报 `fail` 的新项：系统 WebView 不可用时应用界面本身就渲染不出来；
+ *  - 这四项的 `*_PROBE_UNKNOWN` 表示「宿主这次没读到事实」，一律按 `warn` 呈现 —— 既不写成 `ok`
+ *    （会掩盖没测到），也不写成 `fail`（会凭空造出一个故障）。
+ *
+ * 措辞边界：沙箱与内核相关的结论只复述已确认的现象，不把可能的来源写成单一断言
+ * （例如「沙箱探测判定为不可用」同时列出「内核不支持」与「启动器无法完成探测」两种可能），
+ * 也不写「一定能修好」这类绝对承诺。
+ *
+ * 本模块是纯函数、不依赖 React 与桥接，便于单测。
+ */
+
+
+/** 检查项顺序：与原生侧固定一致，界面按这个顺序展示。 */
+export const SELF_CHECK_IDS = [
+  'shell',
+  'node',
+  'sandbox_launcher',
+  'sandbox_probe',
+  'sandbox_exec',
+  'pty',
+  'pty_sandbox',
+  'dsh_home',
+  'attachments',
+  'hardlink',
+  'rg',
+  // 以下三项是**追加**的编译环境能力项：前 11 项的 id 与索引是冻结契约（`hardlink` 必须仍是索引 9）。
+  'c_compiler',
+  'make',
+  'python3',
+  // 以下四项由**宿主**追加（访客脚本仍只产出上面 14 项），顺序与原生侧 `RuntimeSelfCheckPolicy.CHECK_IDS` 一致。
+  'plugins',
+  'accessibility',
+  'virtualscreen',
+  'webview',
+] as const
+
+export type SelfCheckId = typeof SELF_CHECK_IDS[number]
+
+export const SELF_CHECK_STATUSES = ['ok', 'warn', 'fail', 'skipped'] as const
+
+export type SelfCheckStatus = typeof SELF_CHECK_STATUSES[number]
+
+/**
+ * 结论码全集。
+ *
+ * 与检查项 id 一样，这是校验用的白名单：不在表里的码说明原生侧与前端版本不一致，
+ * 界面无法给出可信的结论，因此拒绝整个载荷，而不是把它当成未知文本显示出来。
+ */
+export const SELF_CHECK_CODES = [
+  'SHELL_MISSING',
+  'NODE_MISSING',
+  'LAUNCHER_MISSING',
+  'LAUNCHER_NOT_EXECUTABLE',
+  'PROBE_UNUSABLE',
+  'PROBE_PARTIAL',
+  'EXEC_LAUNCHER_FAILED',
+  'EXEC_LAUNCHER_DENIED',
+  'EXEC_COMMAND_FAILED',
+  'PTY_MODULE_MISSING',
+  'PTY_LOAD_FAILED',
+  'PTY_EXIT_EARLY',
+  'PTY_TIMEOUT',
+  'HOME_MISSING',
+  'HOME_NOT_WRITABLE',
+  'ATTACHMENTS_MISSING',
+  'ATTACHMENTS_NOT_WRITABLE',
+  'HARDLINK_DENIED',
+  'RG_MISSING',
+  'RG_NOT_EXECUTABLE',
+  // 编译环境能力项：每个工具三态 —— 确实没有 / 工具给出非 0 退出码 / 没拿到退出码。
+  'CC_MISSING',
+  'CC_UNUSABLE',
+  'CC_PROBE_UNKNOWN',
+  'MAKE_MISSING',
+  'MAKE_UNUSABLE',
+  'MAKE_PROBE_UNKNOWN',
+  'PYTHON3_MISSING',
+  'PYTHON3_UNUSABLE',
+  'PYTHON3_PROBE_UNKNOWN',
+  // 宿主追加的四项设备事实：前三项只 warn（可选功能没开 / 插件链接可人工修），webview 是唯一 fail。
+  // 每项各带一个 `_PROBE_UNKNOWN`：宿主没能读到事实时用它，而不是用 ok 掩盖「没测到」。
+  'PLUGIN_LINK_MISSING',
+  'PLUGIN_LINK_FAILED',
+  'PLUGIN_PROBE_UNKNOWN',
+  'ACCESSIBILITY_NOT_CONNECTED',
+  'ACCESSIBILITY_PROBE_UNKNOWN',
+  'OVERLAY_PERMISSION_MISSING',
+  'OVERLAY_PROBE_UNKNOWN',
+  'WEBVIEW_UNAVAILABLE',
+  'WEBVIEW_PROBE_UNKNOWN',
+] as const
+
+export type SelfCheckCode = typeof SELF_CHECK_CODES[number]
+
+/** 自检操作：`check` 只检查，`repair` 修复权限位与缺失目录。 */
+export type SelfCheckOperation = 'check' | 'repair'
+
+export interface SelfCheckItem {
+  id: SelfCheckId
+  status: SelfCheckStatus
+  /** `ok` 不带结论码；其余状态必须给出一个受控码。 */
+  code?: SelfCheckCode
+}
+
+export interface SelfCheckCheckReport {
+  operation: 'check'
+  /** 运行时所在设备的可用空间（字节）；界面用 [formatBytes] 显示。 */
+  availableBytes: number
+  /** 访客里 dsh 的版本号；读不到时为 null。 */
+  dshVersion: string | null
+  /** 系统 WebView 的版本号（宿主追加的纯信息，不是检查项）；读不到或旧桥接时为 null。 */
+  webViewVersion: string | null
+  checks: SelfCheckItem[]
+}
+
+export interface SelfCheckRepairReport {
+  operation: 'repair'
+  availableBytes: number
+  /** 实际修复的项数。 */
+  repaired: number
+  /** 判定为可修复、参与尝试的项数。 */
+  candidates: number
+}
+
+export type SelfCheckReport = SelfCheckCheckReport | SelfCheckRepairReport
+
+/** 检查项的中文标签；`sandbox_probe` 等项的含义由结论码补足。 */
+const SELF_CHECK_LABELS: Readonly<Record<SelfCheckId, string>> = {
+  shell: 'Shell 环境（bash）',
+  node: 'Node.js',
+  sandbox_launcher: '沙箱启动器 landlock-run',
+  sandbox_probe: '内核 Landlock 支持',
+  sandbox_exec: '沙箱内命令执行',
+  pty: 'PTY 模块 node-pty',
+  pty_sandbox: '沙箱内 PTY',
+  dsh_home: '访客数据目录',
+  attachments: '附件目录',
+  hardlink: '硬链接（原子写入的前提）',
+  rg: 'ripgrep',
+  c_compiler: 'C 编译器（cc / gcc / clang）',
+  make: 'make 构建工具',
+  python3: 'Python 3（node-gyp 的前提）',
+  plugins: '插件链接（已启用的插件）',
+  accessibility: '无障碍服务',
+  virtualscreen: '副屏所需的悬浮窗权限',
+  webview: '系统 WebView',
+}
+
+interface SelfCheckAdvice {
+  /** 检查项的中文标签。 */
+  label: string
+  /** 结论：这个结果通常意味着什么；`ok` 项为空串。 */
+  meaning: string
+  /** 下一步：用户可以做什么；`ok` 项为空串。 */
+  nextStep: string
+}
+
+/**
+ * 结论码文案表。
+ *
+ * 每条都是「结论 + 下一步」，措辞与 `docs/项目状态.md` 的既有结论一致，
+ * 不做比现象更绝对的推断。`warn` 与 `fail` 共用同一句：两者都要让用户知道
+ * 断在哪里，区别只体现在状态徽章上。
+ */
+const SELF_CHECK_CODE_ADVICE: Readonly<Record<SelfCheckCode, { meaning: string; nextStep: string }>> = {
+  SHELL_MISSING: {
+    meaning: '运行时里找不到 bash',
+    nextStep: '重新安装或更新运行环境',
+  },
+  NODE_MISSING: {
+    meaning: '运行时里找不到 node',
+    nextStep: '重新安装或更新运行环境',
+  },
+  LAUNCHER_MISSING: {
+    meaning: '找不到沙箱启动器 landlock-run',
+    nextStep: '重新安装或更新运行环境；修复权限不能恢复缺失的程序',
+  },
+  LAUNCHER_NOT_EXECUTABLE: {
+    meaning: '沙箱启动器没有执行位，任何被沙箱包裹的命令都无法启动',
+    nextStep: '点「修复运行时权限」即可修好，不需要重新下载运行时',
+  },
+  PROBE_UNUSABLE: {
+    // 两种来源：内核确实不支持 Landlock，或启动器被尝试执行但拿不到结果（被信号杀死/超时）。
+    // 后者不能说成「内核不支持」，因此文案同时覆盖两种，也不写成绝对断言。
+    meaning: '沙箱探测判定为不可用（内核不支持 Landlock，或启动器无法完成探测）',
+    nextStep: '修复权限不能补齐内核能力；需要继续使用时，在当前 Harness 会话选择 danger-full-access',
+  },
+  PROBE_PARTIAL: {
+    meaning: '内核只支持部分 Landlock 能力（老 ABI）',
+    nextStep: '一般仍可用；若 bash 工具仍失败请反馈此结果',
+  },
+  EXEC_LAUNCHER_FAILED: {
+    meaning: '沙箱启动器在真正执行时失败（授权根目录不存在或启动器级错误）',
+    nextStep: '先查看 Landlock 探测结果；探测正常时再检查访客数据目录与运行日志',
+  },
+  EXEC_LAUNCHER_DENIED: {
+    // 与上一条分开：这一条说明受限执行被内核拒绝（权限被判否），不是授权根缺失。
+    meaning: '沙箱启动器执行被内核拒绝（受限进程拿不到启动器文件）',
+    nextStep: '先看 Landlock 探测：探测通过却报这一条时，升级应用版本或导出诊断日志反馈；修复权限位对此无效',
+  },
+  EXEC_COMMAND_FAILED: {
+    meaning: '被沙箱包裹的命令执行失败',
+    nextStep: '结合运行日志查看具体报错',
+  },
+  PTY_MODULE_MISSING: {
+    meaning: '运行时里找不到 node-pty，dsh 的 bash 工具无法创建终端',
+    nextStep: '重新安装或更新运行环境',
+  },
+  PTY_LOAD_FAILED: {
+    meaning: 'node-pty 无法加载',
+    nextStep: '重新安装或更新运行环境',
+  },
+  PTY_EXIT_EARLY: {
+    meaning: 'PTY 子进程在就绪前退出——与 dsh bash 工具报的是同一现象',
+    nextStep: '对照「PTY 模块 node-pty」与「沙箱内 PTY」：裸 PTY 正常而沙箱内失败时，优先检查沙箱；两者都失败时，先检查 PTY 和运行日志',
+  },
+  PTY_TIMEOUT: {
+    meaning: 'PTY 在限定时间内没有就绪',
+    nextStep: '关闭其它应用后重试；反复出现请反馈自检结果',
+  },
+  HOME_MISSING: {
+    meaning: '访客数据目录不存在',
+    nextStep: '重装运行时（会话、密钥、附件会保留）',
+  },
+  HOME_NOT_WRITABLE: {
+    meaning: '访客数据目录不可写',
+    nextStep: '先确认设备剩余空间，再重装运行时',
+  },
+  ATTACHMENTS_MISSING: {
+    meaning: '附件目录不存在，截图等附件无法落盘',
+    nextStep: '点「修复运行时权限」会自动补建该目录',
+  },
+  ATTACHMENTS_NOT_WRITABLE: {
+    meaning: '附件目录不可写——这正是「Unable to persist attachment」那类报错的成因',
+    nextStep: '确认剩余空间；必要时重装运行时',
+  },
+  HARDLINK_DENIED: {
+    // 与 attachments 分开报的意义：目录能写 ≠ 能建硬链接。真机上 open+write+unlink 正常而
+    // link(2) 一律被拒，只有这一项才会如实报出「附件不可能落盘、write 也建不了新文件」。
+    // EXDEV（跨设备）也落在这个码上：errno 不同，结论相同 —— 硬链接在这个环境里不可用。
+    meaning: '本机不允许创建硬链接（同目录与跨目录都被拒绝）。dsh 的 write 工具新建文件与所有附件落盘都依赖硬链接做原子安装，因此这两条链路会失败。',
+    nextStep: '这是运行环境（PRoot/内核策略）层面的限制，应用侧无法绕过；需要写入新文件时改用 bash 重定向或终端里的 cp/mv，图片与截图类附件在当前版本上不可用。',
+  },
+  RG_MISSING: {
+    meaning: '运行时里找不到 ripgrep',
+    nextStep: '重新安装或更新运行环境',
+  },
+  RG_NOT_EXECUTABLE: {
+    meaning: 'ripgrep 没有执行位，grep / glob 工具会失败',
+    nextStep: '点「修复运行时权限」即可修好',
+  },
+  CC_MISSING: {
+    // 能力项：说的是「这台设备现在能不能编译」，不是「运行时哪一环断了」。安装提示只给
+    // 「可以装什么、装它要什么前提」—— 运行时自带 apt，但访客内能否联网取包尚未验证，
+    // 因此不写「装完就能编译」，也不写「一定能修好」。
+    meaning: '运行时里没有 C 编译器（cc、gcc、clang 都没有找到）',
+    nextStep: '本应用不内置编译器，也不代为安装：需要现场编译原生模块（node-gyp 一类）的插件在当前设备上装不上。要自己补，可在运行时自带的 Ubuntu 终端里尝试安装 Debian/Ubuntu 系的 build-essential —— 运行时基于 ubuntu-base-24.04、apt 存在，但访客内能否联网取包尚未验证。',
+  },
+  CC_UNUSABLE: {
+    meaning: '找到了 C 编译器，但一次最小的编译加链接没有通过（通常是缺工具链的其余部分：binutils、C 库头文件，或没有可用的临时目录）',
+    nextStep: '在运行时自带的 Ubuntu 终端里补齐该工具链（Debian/Ubuntu 系是 build-essential），或先在该终端手动编译一个最小程序看具体报错；补齐之前需要现场编译原生模块的插件装不上。',
+  },
+  CC_PROBE_UNKNOWN: {
+    // 没拿到退出码一律按不可用呈现：这里绝不能出现「可能已经支持」这类会让用户以为能编译的措辞。
+    meaning: '编译器文件在，但探测没有拿到它的退出码（进程没起来、超时被杀，或连可写的产物目录都没有），因此无法确认它能编译',
+    nextStep: '按不可用处理：需要现场编译原生模块的插件在当前设备上装不上。可在运行时自带的 Ubuntu 终端里手动跑一次 cc --version 与一次最小编译，看是不是探测本身被挡住了。',
+  },
+  MAKE_MISSING: {
+    meaning: '运行时里没有 make',
+    nextStep: '本应用不内置编译器，也不代为安装：make 是 node-gyp 构建原生模块的必需项，缺它时含原生模块的插件在当前设备上装不上。要自己补，可在运行时自带的 Ubuntu 终端里尝试安装 build-essential 或单装 make（apt 存在，但访客内能否联网取包尚未验证）。',
+  },
+  MAKE_UNUSABLE: {
+    meaning: '找到了 make，但它没能正常回答版本查询',
+    nextStep: 'node-gyp 需要一个能正常运行的 GNU make；可在运行时自带的 Ubuntu 终端里手动跑一次 make --version 看具体报错。',
+  },
+  MAKE_PROBE_UNKNOWN: {
+    meaning: 'make 文件在，但探测没有拿到它的退出码（进程没起来或超时），因此无法确认它能用',
+    nextStep: '按不可用处理；可在运行时自带的 Ubuntu 终端里手动跑一次 make --version 确认。',
+  },
+  PYTHON3_MISSING: {
+    meaning: '运行时里没有 python3',
+    nextStep: '本应用不内置编译器，也不代为安装：node-gyp 依赖 python3，缺它时含原生模块的插件在当前设备上装不上；带 Python 3 的运行时包不会缺这一项，请先重装或更新运行时。',
+  },
+  PYTHON3_UNUSABLE: {
+    meaning: '找到了 python3，但它没能正常回答版本查询',
+    nextStep: 'node-gyp 需要一个能正常启动的 python3；可在运行时自带的 Ubuntu 终端里手动跑一次 python3 --version 看具体报错。',
+  },
+  PYTHON3_PROBE_UNKNOWN: {
+    meaning: 'python3 文件在，但探测没有拿到它的退出码（进程没起来或超时），因此无法确认它能用',
+    nextStep: '按不可用处理；可在运行时自带的 Ubuntu 终端里手动跑一次 python3 --version 确认。',
+  },
+  PLUGIN_LINK_MISSING: {
+    // 与运行时断链分开：插件是应用自己管的东西，修复入口在插件设置页，
+    // 自检里的「修复运行时权限」只修权限位与附件目录，不管插件链接。
+    meaning: '有已启用的插件在运行时里缺少链接文件，该插件的工具这次加载不上',
+    nextStep: '到「插件设置」页点「立即修复插件」重新链接；仍失败就重新安装该插件。「修复运行时权限」不管这一项。',
+  },
+  PLUGIN_LINK_FAILED: {
+    meaning: '上一次插件修复没有成功——插件文件仍然不可用（多见于保留区已无副本，只能重装）',
+    nextStep: '到「插件设置」页点「立即修复插件」重试；反复失败请重新安装该插件，或导出运行日志反馈。',
+  },
+  PLUGIN_PROBE_UNKNOWN: {
+    meaning: '这次没读到插件状态（插件管理器还没就绪，或运行时尚未安装完成）',
+    nextStep: '稍后重新运行自检即可确认；插件列表本身以「插件设置」页显示的为准。',
+  },
+  ACCESSIBILITY_NOT_CONNECTED: {
+    // 可选功能：只有「应用自动化能力」需要它，没开不代表应用有问题。
+    meaning: '无障碍服务未连接。它只被「应用自动化能力」用到，属于可选功能，不影响 bash 与插件',
+    nextStep: '需要该功能时，在系统设置 → 无障碍里打开本应用的无障碍服务；不需要就不用处理。',
+  },
+  ACCESSIBILITY_PROBE_UNKNOWN: {
+    meaning: '这次没读到无障碍服务的连接状态',
+    nextStep: '需要该功能时，到系统设置 → 无障碍里确认本应用的服务是开启状态；不影响其余功能。',
+  },
+  OVERLAY_PERMISSION_MISSING: {
+    meaning: '没有「显示在其他应用上层」权限，副屏用不了（属于可选功能）',
+    nextStep: '需要副屏时，在系统设置 → 应用 → 本应用里授予悬浮窗权限；不需要就不用处理。',
+  },
+  OVERLAY_PROBE_UNKNOWN: {
+    meaning: '这次没读到悬浮窗权限的状态',
+    nextStep: '需要副屏时，到系统设置里确认本应用已获得「显示在其他应用上层」权限；不影响其余功能。',
+  },
+  WEBVIEW_UNAVAILABLE: {
+    // 这一项是四个新项里唯一会 fail 的：界面本身依赖系统 WebView 渲染。
+    meaning: '系统 WebView 不可用——应用界面本身就是用它渲染的，此时界面通常已经打不开',
+    nextStep: '在系统应用商店更新或重新启用 Android System WebView（或 Chrome）；它是系统组件，应用侧无法代装或替换。',
+  },
+  WEBVIEW_PROBE_UNKNOWN: {
+    meaning: '这次没读到系统 WebView 的信息（查询被系统拒绝或还没初始化），无法确认它的版本',
+    nextStep: '界面能正常打开时通常只是查询失败，不用处理；界面显示异常时再更新系统 WebView 后重试。',
+  },
+}
+
+/**
+ * 出现这些码时，「修复运行时权限」才有意义：都是权限位或缺失目录，
+ * 修复动作只做补权限与补建目录，不会去动运行时里的其它文件。
+ *
+ * 宿主追加的四项都不在这里：`PLUGIN_LINK_*` 的修复入口在「插件设置」页（按钮「立即修复插件」），
+ * 无障碍与悬浮窗权限只能去系统设置里授予，而 `WEBVIEW_*` 是系统组件、应用侧修不了。
+ */
+export const SELF_CHECK_REPAIRABLE_CODES: readonly SelfCheckCode[] = [
+  'LAUNCHER_NOT_EXECUTABLE',
+  'ATTACHMENTS_MISSING',
+  'RG_NOT_EXECUTABLE',
+]
+
+/** 是否存在由「修复运行时权限」覆盖的结论码。 */
+export function selfCheckNeedsRepair(checks: readonly SelfCheckItem[]): boolean {
+  return checks.some(item => item.code !== undefined && SELF_CHECK_REPAIRABLE_CODES.includes(item.code))
+}
+
+/**
+ * 取一项检查的展示文案（中文原文，界面用 `t()` 包一层）。
+ *
+ * `ok` 项没有结论与下一步，返回空串：界面据此只显示标签与徽章，
+ * 不再编造一句「一切正常」之外的推断。
+ */
+export function selfCheckAdvice(item: SelfCheckItem): SelfCheckAdvice {
+  const label = SELF_CHECK_LABELS[item.id]
+  if (item.code === undefined) return { label, meaning: '', nextStep: '' }
+  const advice = SELF_CHECK_CODE_ADVICE[item.code]
+  return { label, meaning: advice.meaning, nextStep: advice.nextStep }
+}
+
+const SELF_CHECK_ID_SET = new Set<string>(SELF_CHECK_IDS)
+const SELF_CHECK_STATUS_SET = new Set<string>(SELF_CHECK_STATUSES)
+const SELF_CHECK_CODE_SET = new Set<string>(SELF_CHECK_CODES)
+const SELF_CHECK_ID_ORDER = new Map<string, number>(SELF_CHECK_IDS.map((id, index) => [id, index]))
+
+/**
+ * dsh 版本号：界面会显示它，因此只接受短的可打印标识。
+ * 形如 `0.1.5-rc.2`；控制字符、空白与超长文本一律拒绝。
+ */
+const VERSION_TEXT_PATTERN = /^[0-9A-Za-z][0-9A-Za-z._+-]{0,63}$/
+
+function asRecord(value: unknown, label: string): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error(`${label}格式无效`)
+  }
+  return value as Record<string, unknown>
+}
+
+function selfCheckCount(value: unknown, label: string): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
+    throw new Error(`${label}格式无效`)
+  }
+  return value
+}
+
+function selfCheckItem(value: unknown): SelfCheckItem {
+  const record = asRecord(value, '自检项')
+  const id = record.id
+  if (typeof id !== 'string' || !SELF_CHECK_ID_SET.has(id)) throw new Error('自检项标识无效')
+  const status = record.status
+  if (typeof status !== 'string' || !SELF_CHECK_STATUS_SET.has(status)) throw new Error('自检项状态无效')
+  if (status === 'ok') {
+    // 契约：ok 不带 code。带了说明载荷自相矛盾（会渲染出「正常 + 修复建议」）。
+    if (record.code !== undefined) throw new Error('自检项状态与结论码不一致')
+    return { id: id as SelfCheckId, status: 'ok' }
+  }
+  const code = record.code
+  if (typeof code !== 'string' || !SELF_CHECK_CODE_SET.has(code)) throw new Error('自检项结论码无效')
+  return { id: id as SelfCheckId, status: status as SelfCheckStatus, code: code as SelfCheckCode }
+}
+
+/**
+ * 按冻结契约校验自检结果载荷，形态不符即抛错。
+ *
+ * 拒绝的情形（除字段类型外）：未知的 id 或 code、重复的检查项、`ok` 带 code、
+ * 非 `ok` 不带 code、`repair` 的已修复项数大于可修复项数，以及格式非法的版本号
+ * （`dshVersion` 必填可为 null，`webViewVersion` 可缺省、可为 null）。
+ * 未知字段一律忽略：界面只读已知字段，多出来的内容既不显示也不保存。
+ */
+export function validateSelfCheckReport(value: unknown): SelfCheckReport {
+  const record = asRecord(value, '自检结果')
+  const availableBytes = selfCheckCount(record.availableBytes, '自检可用空间')
+  if (record.operation === 'repair') {
+    const repaired = selfCheckCount(record.repaired, '自检已修复项数')
+    const candidates = selfCheckCount(record.candidates, '自检可修复项数')
+    if (repaired > candidates) throw new Error('自检已修复项数超过可修复项数')
+    return { operation: 'repair', availableBytes, repaired, candidates }
+  }
+  if (record.operation !== 'check') throw new Error('自检操作类型无效')
+
+  let dshVersion: string | null = null
+  if (record.dshVersion !== null) {
+    if (typeof record.dshVersion !== 'string' || !VERSION_TEXT_PATTERN.test(record.dshVersion)) {
+      throw new Error('dsh 版本格式无效')
+    }
+    dshVersion = record.dshVersion
+  }
+
+  // WebView 版本是宿主追加的字段：旧桥接不带它，此时按「读不到」记 null。
+  // 带了就必须与 dshVersion 走同一条白名单 —— 形态不符即认为载荷与契约不一致，整份拒收：
+  // 同一个界面上的两个版本号如果一条严一条松，显示出来的数字可信度就说不清了。
+  let webViewVersion: string | null = null
+  if (record.webViewVersion !== undefined && record.webViewVersion !== null) {
+    if (typeof record.webViewVersion !== 'string' || !VERSION_TEXT_PATTERN.test(record.webViewVersion)) {
+      throw new Error('WebView 版本格式无效')
+    }
+    webViewVersion = record.webViewVersion
+  }
+
+  const rawChecks: unknown = record.checks
+  if (!Array.isArray(rawChecks) || rawChecks.length > SELF_CHECK_IDS.length) throw new Error('自检项列表格式无效')
+  const checks: SelfCheckItem[] = []
+  const seen = new Set<string>()
+  for (const raw of rawChecks) {
+    const item = selfCheckItem(raw)
+    if (seen.has(item.id)) throw new Error('自检项标识重复')
+    seen.add(item.id)
+    checks.push(item)
+  }
+  // 无论载荷里是什么顺序，界面都按固定顺序展示：同一环路的先后关系不能随载荷变化。
+  checks.sort((left, right) => (SELF_CHECK_ID_ORDER.get(left.id) ?? 0) - (SELF_CHECK_ID_ORDER.get(right.id) ?? 0))
+  return {
+    operation: 'check', availableBytes, dshVersion, webViewVersion, checks,
+  }
+}
+
+/** 非抛错版本：调用方只想知道「这个载荷能不能用」时使用。 */
+export function isSelfCheckReport(value: unknown): value is SelfCheckReport {
+  try {
+    validateSelfCheckReport(value)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** 校验自检操作类型；写入桥接前调用，避免把未知操作透传到原生侧。 */
+export function validateSelfCheckOperation(value: unknown): SelfCheckOperation {
+  if (value !== 'check' && value !== 'repair') throw new Error('自检操作类型无效')
+  return value
+}

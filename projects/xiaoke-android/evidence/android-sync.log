@@ -1,0 +1,27 @@
+$ pnpm run build && cap sync android
+$ tsc -b && vite build
+vite v6.0.7 building for production...
+transforming...
+✓ 1650 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                          19.39 kB │ gzip:  14.30 kB
+dist/assets/app-mark-DEBnZ0MM.png       119.58 kB
+dist/assets/TerminalPanel-LZoznX6r.css    4.08 kB │ gzip:   1.67 kB
+dist/assets/index-PbwZ_FBa.css           79.15 kB │ gzip:  14.04 kB
+dist/assets/TerminalPanel-sGMfOCaR.js     7.17 kB │ gzip:   3.06 kB
+dist/assets/react-B7Erz9g5.js           142.32 kB │ gzip:  45.67 kB
+dist/assets/xterm-D8fwPfOX.js           289.73 kB │ gzip:  72.18 kB
+dist/assets/index-Dcj9Gig9.js           518.75 kB │ gzip: 188.21 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 4.28s
+✔ Copying web assets from dist to android/app/src/main/assets/public in 9.22ms
+✔ Creating capacitor.config.json in android/app/src/main/assets in 1.05ms
+✔ copy android in 39.49ms
+✔ Updating Android plugins in 5.66ms
+✔ update android in 39.26ms
+[info] Sync finished in 0.101s

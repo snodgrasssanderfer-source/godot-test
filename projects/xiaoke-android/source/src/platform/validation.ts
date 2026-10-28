@@ -1,0 +1,2827 @@
+import type {
+  AccessibilityAutomationAction,
+  AccessibilityAutomationActionInput,
+  AccessibilityAutomationActionKind,
+  AccessibilityAutomationAppConfig,
+  AccessibilityAutomationAppConfigDetail,
+  AccessibilityAutomationBlocked,
+  AccessibilityAutomationConfigCorrupt,
+  AccessibilityAutomationRule,
+  AccessibilityAutomationRuleDetail,
+  AccessibilityAutomationRuleInput,
+  AccessibilityAutomationRules,
+  AccessibilityAutomationRulesCorrupt,
+  AccessibilityAutomationRuleWriteMode,
+  AccessibilityAutomationSelectorInput,
+  AccessibilityAutomationRun,
+  AccessibilityAutomationRuns,
+  AccessibilityAutomationState,
+  AllFilesAccessResult,
+  AppUpdateChannel,
+  AppUpdateState,
+  AutomationTaskState,
+  AutomationTaskStatus,
+  AutomationTaskStepStatus,
+  DeviceCapabilityId,
+  DeviceCapabilityReport,
+  DeviceCapabilityState,
+  DeviceCommand,
+  DeviceCommandResult,
+  DiagnosticLogExport,
+  DiagnosticLogState,
+  DiagnosticLogText,
+  HarnessLog,
+  KeepAliveState,
+  MailboxAvailability,
+  MailboxDirectoryState,
+  MailboxExportResult,
+  MailboxImportResult,
+  MailboxRoot,
+  MailboxState,
+  MediaPermissionResult,
+  ModelConnectivityResult,
+  ModelProviderId,
+  NotificationPermission,
+  NotificationPermissionResult,
+  OverlayBallState,
+  ProviderApiKeys,
+  RootEngineStatus,
+  RuntimeInstallResult,
+  RuntimeIntent,
+  RuntimePhase,
+  AppUpdateProgress,
+  RuntimeProgress,
+  RuntimeReleaseEntry,
+  RuntimeReleaseList,
+  RuntimeCleanupOutcome,
+  RuntimeCleanupState,
+  PluginCleanupLedger,
+  RuntimeSessionListReason,
+  RuntimeSessionListResult,
+  RuntimeSessionSummary,
+  RuntimeSessionSnapshot,
+  RuntimeSessionSnapshotRestoreResult,
+  RuntimeSessionSnapshotState,
+  RuntimeResidueCleanupState,
+  RuntimeResidueState,
+  RuntimeSettings,
+  RuntimeSettingsUpdate,
+  RuntimeSource,
+  RuntimeState,
+  RuntimeLibraryEntry,
+  RuntimeVersionInfo,
+  RuntimeVersionsState,
+  RuntimeWorkspaceFileList,
+  ShizukuState,
+  StorageAccessState,
+  StorageDirAvailability,
+  StorageDirectoryState,
+  StorageDirEntry,
+  StorageDirsState,
+  TerminalChunk,
+  TerminalExit,
+  VirtualScreenAutoFollow,
+  VirtualScreenOrientation,
+  VirtualScreenPreviewMode,
+  VirtualScreenSettings,
+  VirtualScreenSettingsUpdate,
+  VirtualScreenStartRequest,
+  VirtualScreenState,
+} from './types'
+import {
+  ACCESSIBILITY_AUTOMATION_ACTION_KINDS,
+  ACCESSIBILITY_AUTOMATION_ACTIONS,
+  ACCESSIBILITY_AUTOMATION_RESET_ON_VALUES,
+  ACCESSIBILITY_AUTOMATION_RUNTIMES,
+  ACCESSIBILITY_AUTOMATION_SWIPE_DIRECTIONS,
+  ACCESSIBILITY_SERVICE_STATUSES,
+  AUTOMATION_KEY_CODES,
+  AUTOMATION_RULE_LIMITS,
+  DIAGNOSTIC_LOG_MAX_CHARS,
+  DIAGNOSTIC_LOG_WINDOW_OPTIONS,
+  DIAGNOSTIC_RETENTION_MAX,
+  DIAGNOSTIC_RETENTION_MIN,
+  HARNESS_LOG_MAX_CHARS,
+  HARNESS_LOG_WINDOW_OPTIONS,
+  MAX_STORAGE_DIRECTORIES,
+  MODEL_PROVIDER_IDS,
+  VIRTUAL_SCREEN_AUTO_FOLLOW_VALUES,
+  VIRTUAL_SCREEN_MAX_DPI,
+  VIRTUAL_SCREEN_MAX_EDGE,
+  VIRTUAL_SCREEN_MIN_DPI,
+  VIRTUAL_SCREEN_MIN_EDGE,
+  VIRTUAL_SCREEN_ORIENTATION_VALUES,
+  VIRTUAL_SCREEN_PREVIEW_MODES,
+  normalizeVirtualScreenPreviewMode,
+} from './types'
+import { validateCustomCredentialIds, validateCustomCredentialUpdates, validateCustomModelProviders } from './customProviders'
+import { validateSelfCheckReport, type SelfCheckReport } from '../runtimeSelfCheck'
+
+const SHA256_PATTERN = /^[a-f0-9]{64}$/
+const SESSION_ID_PATTERN = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i
+const IDENTIFIER_PATTERN = /^[A-Za-z0-9._-]+$/
+const SHIZUKU_VERSION_PATTERN = /^[A-Za-z0-9._+-]+$/
+const ERROR_CODE_PATTERN = /^[A-Z0-9_]+$/
+const MAX_URL_LENGTH = 2048
+const MAX_IDENTIFIER_LENGTH = 96
+const MAX_ERROR_CODE_LENGTH = 96
+const MAX_TERMINAL_OUTPUT_BYTES = 96 * 1024
+const API_KEY_PATTERN = /^[\x21-\x7e]{1,200}$/
+const MODEL_PROVIDER_ID_SET = new Set<string>(MODEL_PROVIDER_IDS)
+/** 投递区可用性档位（与原生 `MailboxAvailability` 一一对应）。 */
+const MAILBOX_AVAILABILITIES = new Set<MailboxAvailability>([
+  'available',
+  'needsPermission',
+  'unsupported',
+  'unwritable',
+])
+/** 投递区路径与文件名的字符上限；与原生侧的 240 保持一致。 */
+const MAX_MAILBOX_PATH_LENGTH = 240
+/** 原生侧最多列出的 inbox tar 候选数；超出即视为载荷不符合契约。 */
+const MAX_MAILBOX_TARS = 5
+/** 单次目录浏览最多返回的条目数；原生侧超出时以 truncated 标记。 */
+const MAX_MAILBOX_DIRECTORY_ENTRIES = 256
+/** 工作区文件列表与原生 `RuntimeWorkspaceFiles` 的上限保持一致。 */
+const MAX_RUNTIME_WORKSPACE_FILES = 100
+const MAX_RUNTIME_WORKSPACE_PATH_LENGTH = 240
+/** 原生侧最多回传的版本槽数（当前 + 上一版本 + 内置）；超出即视为载荷不符合契约。 */
+const MAX_RUNTIME_VERSIONS = 3
+const RUNTIME_PHASES = new Set<RuntimePhase>([
+  'not-installed',
+  'preparing',
+  'downloading',
+  'verifying',
+  'extracting',
+  'ready',
+  'running',
+  'stopping',
+  'error',
+])
+
+function asRecord(value: unknown, label: string): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error(`${label}格式无效`)
+  }
+  return value as Record<string, unknown>
+}
+
+/**
+ * 校验布尔标量。
+ *
+ * 类型不符（含 undefined、null、字符串化的 'true'/'false' 与 1/0）一律抛错，
+ * 不做静默转换；错误消息格式与文件内其他校验辅助一致：`${label}格式无效`。
+ */
+function requiredBoolean(value: unknown, label: string): boolean {
+  if (typeof value !== 'boolean') throw new Error(`${label}格式无效`)
+  return value
+}
+
+function requiredIdentifier(value: unknown, label: string, maximumLength = MAX_IDENTIFIER_LENGTH): string {
+  if (typeof value !== 'string' || value.length === 0 || value.length > maximumLength || !IDENTIFIER_PATTERN.test(value)) {
+    throw new Error(`${label}格式无效`)
+  }
+  return value
+}
+
+function optionalIdentifier(value: unknown, label: string, pattern = IDENTIFIER_PATTERN, maximumLength = MAX_IDENTIFIER_LENGTH): string | undefined {
+  if (value === undefined) return undefined
+  if (typeof value !== 'string' || value.length === 0 || value.length > maximumLength || !pattern.test(value)) {
+    throw new Error(`${label}格式无效`)
+  }
+  return value
+}
+
+/**
+ * 非负安全整数标量校验器：要求是安全整数且 >= 0，否则抛出受控格式异常。
+ * 作为基础原语收拢平台层所有计数类校验逻辑（byteCount、diagnosticCount、accessibilityNonNegative 等）。
+ */
+export function assertNonNegativeInteger(value: unknown, label: string, suffix = '格式无效'): number {
+  if (!Number.isSafeInteger(value) || (value as number) < 0) throw new Error(`${label}${suffix}`)
+  return value as number
+}
+
+const byteCount = assertNonNegativeInteger
+
+function runtimePhase(value: unknown): RuntimePhase {
+  if (typeof value !== 'string' || !RUNTIME_PHASES.has(value as RuntimePhase)) throw new Error('运行时阶段格式无效')
+  return value as RuntimePhase
+}
+
+function containsControlCharacter(value: string): boolean {
+  return Array.from(value).some(character => {
+    const code = character.charCodeAt(0)
+    return code <= 31 || code === 127
+  })
+}
+
+/**
+ * 工作区文件只能是运行时工作区下的相对普通文件路径。
+ *
+ * 这条校验同时用于原生返回的列表和后续打开/分享/删除的入参：列表不是可信来源，
+ * 不能让畸形载荷先进入 UI 再等用户点按钮时才失败。
+ */
+export function validateRuntimeWorkspaceFilePath(value: unknown): string {
+  if (
+    typeof value !== 'string' || value.length < 1 || value.length > MAX_RUNTIME_WORKSPACE_PATH_LENGTH ||
+    value.startsWith('/') || value.includes('\\') || containsControlCharacter(value)
+  ) {
+    throw new Error('工作区文件路径无效')
+  }
+  const segments = value.split('/')
+  if (segments.some(segment => segment.length === 0 || segment === '.' || segment === '..')) {
+    throw new Error('工作区文件路径无效')
+  }
+  return value
+}
+
+/** 原生工作区文件列表的结构校验；未知字段被忽略，路径逐条走同一套规则。 */
+export function validateRuntimeWorkspaceFileList(value: unknown): RuntimeWorkspaceFileList {
+  const source = asRecord(value, '工作区文件列表')
+  if (!Array.isArray(source.files) || source.files.length > MAX_RUNTIME_WORKSPACE_FILES) {
+    throw new Error('工作区文件列表格式无效')
+  }
+  const files = source.files.map(validateRuntimeWorkspaceFilePath)
+  if (new Set(files).size !== files.length) throw new Error('工作区文件列表包含重复路径')
+  if (typeof source.truncated !== 'boolean') throw new Error('工作区文件列表截断标记格式无效')
+  return { files, truncated: source.truncated }
+}
+
+function modelProviderId(value: unknown): ModelProviderId {
+  if (typeof value !== 'string' || !MODEL_PROVIDER_ID_SET.has(value)) throw new Error('模型供应商格式无效')
+  return value as ModelProviderId
+}
+
+function configuredModelProviders(value: unknown, legacyApiKey: unknown): ModelProviderId[] {
+  const providers: ModelProviderId[] = []
+  if (value !== undefined) {
+    if (!Array.isArray(value) || value.length > MODEL_PROVIDER_IDS.length) throw new Error('模型凭据状态格式无效')
+    for (const item of value) {
+      const provider = modelProviderId(item)
+      if (providers.includes(provider)) throw new Error('模型凭据状态包含重复供应商')
+      providers.push(provider)
+    }
+  }
+  if (legacyApiKey !== undefined) {
+    if (typeof legacyApiKey !== 'string') throw new Error('旧版模型凭据格式无效')
+    const normalized = legacyApiKey.trim()
+    if (normalized !== '') {
+      if (!API_KEY_PATTERN.test(normalized)) throw new Error('旧版模型凭据包含非法字符或长度无效')
+      if (!providers.includes('deepseek')) providers.unshift('deepseek')
+    }
+  }
+  return MODEL_PROVIDER_IDS.filter(provider => providers.includes(provider))
+}
+
+function providerApiKeyUpdates(value: unknown): ProviderApiKeys {
+  if (value === undefined) return {}
+  const record = asRecord(value, '模型凭据更新')
+  if (Object.keys(record).length > MODEL_PROVIDER_IDS.length) throw new Error('模型凭据更新数量无效')
+  const result: ProviderApiKeys = {}
+  for (const [rawProvider, rawKey] of Object.entries(record)) {
+    const provider = modelProviderId(rawProvider)
+    if (typeof rawKey !== 'string') throw new Error('模型凭据必须是字符串')
+    const key = rawKey.trim()
+    if (!API_KEY_PATTERN.test(key)) throw new Error('模型凭据包含非法字符或长度无效')
+    result[provider] = key
+  }
+  return result
+}
+
+function clearedProviderApiKeys(value: unknown): ModelProviderId[] {
+  if (value === undefined) return []
+  if (!Array.isArray(value) || value.length > MODEL_PROVIDER_IDS.length) throw new Error('模型凭据清除列表格式无效')
+  const result: ModelProviderId[] = []
+  for (const item of value) {
+    const provider = modelProviderId(item)
+    if (result.includes(provider)) throw new Error('模型凭据清除列表包含重复供应商')
+    result.push(provider)
+  }
+  return result
+}
+
+function isBlockedIpv4(hostname: string): boolean {
+  const parts = hostname.split('.').map(part => Number(part))
+  if (parts.length !== 4 || parts.some(part => !Number.isInteger(part) || part < 0 || part > 255)) return false
+  const [first, second] = parts as [number, number, number, number]
+  return first === 0
+    || first === 10
+    || first === 127
+    || (first === 169 && second === 254)
+    || (first === 172 && second >= 16 && second <= 31)
+    || (first === 192 && second === 168)
+    || first >= 224
+}
+
+function isBlockedIpv6(hostname: string): boolean {
+  if (!hostname.includes(':')) return false
+  return hostname === '::'
+    || hostname === '::1'
+    || hostname.startsWith('::')
+    || hostname.startsWith('fc')
+    || hostname.startsWith('fd')
+    || /^fe[89ab]/.test(hostname)
+}
+
+function isBlockedManifestHost(hostname: string): boolean {
+  const normalized = hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.+$/, '')
+  return normalized === 'localhost'
+    || normalized.endsWith('.localhost')
+    || normalized.endsWith('.local')
+    || isBlockedIpv4(normalized)
+    || isBlockedIpv6(normalized)
+}
+
+export function validateRuntimeSource(source: RuntimeSource): RuntimeSource {
+  const manifestUrl = source.manifestUrl.trim()
+  const manifestSha256 = source.manifestSha256.trim().toLowerCase()
+
+  if (manifestUrl.length === 0 && manifestSha256.length === 0) {
+    return { manifestUrl: '', manifestSha256: '' }
+  }
+  if (manifestUrl.length === 0 || manifestSha256.length === 0) {
+    throw new Error('运行时清单地址与 SHA-256 必须同时填写或同时留空')
+  }
+  if (manifestUrl.length > MAX_URL_LENGTH) {
+    throw new Error('运行时清单地址长度无效')
+  }
+  if (containsControlCharacter(manifestUrl)) {
+    throw new Error('运行时清单地址包含非法字符')
+  }
+
+  let parsed: URL
+  try {
+    parsed = new URL(manifestUrl)
+  } catch {
+    throw new Error('运行时清单地址格式无效')
+  }
+
+  if (parsed.protocol !== 'https:' || parsed.username !== '' || parsed.password !== '') {
+    throw new Error('运行时清单必须使用不含凭据的 HTTPS 地址')
+  }
+  if (isBlockedManifestHost(parsed.hostname)) {
+    throw new Error('运行时清单不能指向本机、私网或链路本地地址')
+  }
+  if (parsed.hash !== '') {
+    throw new Error('运行时清单地址不能包含片段')
+  }
+  if (!SHA256_PATTERN.test(manifestSha256)) {
+    throw new Error('清单 SHA-256 必须是 64 位小写十六进制')
+  }
+
+  return { manifestUrl: parsed.toString(), manifestSha256 }
+}
+
+export function validateSettings(settings: RuntimeSettings): RuntimeSettings {
+  const source = validateRuntimeSource(settings)
+  if (typeof settings.keepScreenAwake !== 'boolean') {
+    throw new Error('屏幕常亮设置格式无效')
+  }
+  if (!Number.isInteger(settings.terminalFontSize) || settings.terminalFontSize < 11 || settings.terminalFontSize > 24) {
+    throw new Error('终端字号必须是 11 到 24 之间的整数')
+  }
+  const keepRuntimeInBackground = settings.keepRuntimeInBackground === undefined ? false : settings.keepRuntimeInBackground
+  if (typeof keepRuntimeInBackground !== 'boolean') throw new Error('后台保持设置格式无效')
+  const overlayBallEnabled = settings.overlayBallEnabled === undefined ? false : settings.overlayBallEnabled
+  if (typeof overlayBallEnabled !== 'boolean') throw new Error('悬浮球设置格式无效')
+  return {
+    ...source,
+    keepScreenAwake: settings.keepScreenAwake,
+    terminalFontSize: settings.terminalFontSize,
+    configuredModelProviders: configuredModelProviders(settings.configuredModelProviders, settings.apiKey),
+    ...(settings.harnessConfiguredModelProviders === undefined ? {} : {
+      harnessConfiguredModelProviders: configuredModelProviders(settings.harnessConfiguredModelProviders, undefined),
+    }),
+    ...(settings.customModelProviders === undefined ? {} : { customModelProviders: validateCustomModelProviders(settings.customModelProviders) }),
+    ...(settings.configuredCustomModelProviders === undefined ? {} : {
+      configuredCustomModelProviders: validateCustomCredentialIds(settings.configuredCustomModelProviders, '自定义模型凭据状态'),
+    }),
+    ...(settings.harnessConfiguredCustomModelProviders === undefined ? {} : {
+      harnessConfiguredCustomModelProviders: validateCustomCredentialIds(settings.harnessConfiguredCustomModelProviders, 'Harness 自定义模型凭据状态'),
+    }),
+    keepRuntimeInBackground,
+    overlayBallEnabled,
+  }
+}
+
+export function validateSettingsUpdate(settings: RuntimeSettingsUpdate): RuntimeSettingsUpdate {
+  const validated = validateSettings(settings)
+  const providerApiKeys = providerApiKeyUpdates(settings.providerApiKeys)
+  const clearProviderApiKeys = clearedProviderApiKeys(settings.clearProviderApiKeys)
+  const allowedCustomIds = validated.customModelProviders === undefined ? undefined : new Set(validated.customModelProviders.map(provider => provider.id))
+  const customProviderApiKeys = validateCustomCredentialUpdates(settings.customProviderApiKeys, allowedCustomIds)
+  const clearCustomProviderApiKeys = validateCustomCredentialIds(settings.clearCustomProviderApiKeys, '自定义模型凭据清除列表', allowedCustomIds)
+  if (clearProviderApiKeys.some(provider => providerApiKeys[provider] !== undefined)) {
+    throw new Error('同一模型凭据不能同时更新和清除')
+  }
+  if (clearCustomProviderApiKeys.some(id => customProviderApiKeys[id] !== undefined)) throw new Error('同一自定义模型凭据不能同时更新和清除')
+  const result: RuntimeSettingsUpdate = {
+    ...validated,
+    ...(Object.keys(providerApiKeys).length === 0 ? {} : { providerApiKeys }),
+    ...(clearProviderApiKeys.length === 0 ? {} : { clearProviderApiKeys }),
+    ...(Object.keys(customProviderApiKeys).length === 0 ? {} : { customProviderApiKeys }),
+    ...(clearCustomProviderApiKeys.length === 0 ? {} : { clearCustomProviderApiKeys }),
+  }
+  if (settings.overlayBallEnabled === undefined) delete result.overlayBallEnabled
+  return result
+}
+
+export function validateStoredSettings(value: unknown): RuntimeSettings {
+  const settings = asRecord(value, '运行时设置')
+  if (typeof settings.manifestUrl !== 'string' || typeof settings.manifestSha256 !== 'string') {
+    throw new Error('运行时来源格式无效')
+  }
+  if (typeof settings.keepScreenAwake !== 'boolean') throw new Error('屏幕常亮设置格式无效')
+  if (!Number.isInteger(settings.terminalFontSize) || (settings.terminalFontSize as number) < 11 || (settings.terminalFontSize as number) > 24) {
+    throw new Error('终端字号必须是 11 到 24 之间的整数')
+  }
+  const keepRuntimeInBackground = settings.keepRuntimeInBackground === undefined
+    ? false
+    : settings.keepRuntimeInBackground === true
+  if (settings.keepRuntimeInBackground !== undefined && typeof settings.keepRuntimeInBackground !== 'boolean') {
+    throw new Error('后台保持设置格式无效')
+  }
+  const overlayBallEnabled = settings.overlayBallEnabled === undefined ? false : settings.overlayBallEnabled
+  if (typeof overlayBallEnabled !== 'boolean') throw new Error('悬浮球设置格式无效')
+  const configuredProviders = configuredModelProviders(settings.configuredModelProviders, settings.apiKey)
+  const customSettings = {
+    ...(settings.harnessConfiguredModelProviders === undefined ? {} : {
+      harnessConfiguredModelProviders: configuredModelProviders(settings.harnessConfiguredModelProviders, undefined),
+    }),
+    ...(settings.customModelProviders === undefined ? {} : { customModelProviders: validateCustomModelProviders(settings.customModelProviders) }),
+    ...(settings.configuredCustomModelProviders === undefined ? {} : {
+      configuredCustomModelProviders: validateCustomCredentialIds(settings.configuredCustomModelProviders, '自定义模型凭据状态'),
+    }),
+    ...(settings.harnessConfiguredCustomModelProviders === undefined ? {} : {
+      harnessConfiguredCustomModelProviders: validateCustomCredentialIds(settings.harnessConfiguredCustomModelProviders, 'Harness 自定义模型凭据状态'),
+    }),
+  }
+  if (settings.manifestUrl === '' && settings.manifestSha256 === '') {
+    return {
+      manifestUrl: '',
+      manifestSha256: '',
+      keepScreenAwake: settings.keepScreenAwake,
+      terminalFontSize: settings.terminalFontSize as number,
+      configuredModelProviders: configuredProviders,
+      ...customSettings,
+      keepRuntimeInBackground,
+      overlayBallEnabled,
+    }
+  }
+  const source = validateRuntimeSource({
+    manifestUrl: settings.manifestUrl,
+    manifestSha256: settings.manifestSha256,
+  })
+  return {
+    ...source,
+    keepScreenAwake: settings.keepScreenAwake,
+    terminalFontSize: settings.terminalFontSize as number,
+    configuredModelProviders: configuredProviders,
+    ...customSettings,
+    keepRuntimeInBackground,
+    overlayBallEnabled,
+  }
+}
+
+export function assertSessionId(sessionId: string): string {
+  if (!SESSION_ID_PATTERN.test(sessionId)) throw new Error('终端会话标识无效')
+  return sessionId
+}
+
+export function assertTerminalSize(columns: number, rows: number): void {
+  if (!Number.isInteger(columns) || columns < 20 || columns > 300) throw new Error('终端列数无效')
+  if (!Number.isInteger(rows) || rows < 4 || rows > 150) throw new Error('终端行数无效')
+}
+
+export function assertTerminalKind(kind: string): asserts kind is 'ubuntu' | 'device' {
+  if (kind !== 'ubuntu' && kind !== 'device') throw new Error('终端类型无效')
+}
+
+export function assertBase64Input(value: string, maximumBytes: number): void {
+  if (
+    value.length === 0
+    || value.length % 4 !== 0
+    || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)
+  ) {
+    throw new Error('终端输入编码无效')
+  }
+  const padding = value.endsWith('==') ? 2 : value.endsWith('=') ? 1 : 0
+  const decodedBytes = (value.length / 4) * 3 - padding
+  if (decodedBytes > maximumBytes) throw new Error('终端输入长度无效')
+}
+
+export function validateRuntimeState(value: unknown): RuntimeState {
+  const state = asRecord(value, '运行时状态')
+  const downloadedBytes = byteCount(state.downloadedBytes, '已处理字节数')
+  const totalBytes = byteCount(state.totalBytes, '总字节数')
+  if (totalBytes > 0 && downloadedBytes > totalBytes) throw new Error('运行时进度无效')
+  if (typeof state.runnerAvailable !== 'boolean') throw new Error('本机运行器状态格式无效')
+  if (typeof state.updateAvailable !== 'boolean') throw new Error('运行时更新状态格式无效')
+
+  const installedVersion = optionalIdentifier(state.installedVersion, '运行时版本')
+  const errorCode = optionalIdentifier(state.errorCode, '运行时错误码', ERROR_CODE_PATTERN, MAX_ERROR_CODE_LENGTH)
+  let harnessUrl: string | undefined
+  if (state.harnessUrl !== undefined) {
+    if (typeof state.harnessUrl !== 'string' || state.harnessUrl.length > MAX_URL_LENGTH) throw new Error('Harness 地址格式无效')
+    let parsed: URL
+    try {
+      parsed = new URL(state.harnessUrl)
+    } catch {
+      throw new Error('Harness 地址格式无效')
+    }
+    if (parsed.protocol !== 'http:' || parsed.hostname !== '127.0.0.1' || parsed.username !== '' || parsed.password !== '' || parsed.hash !== '') {
+      throw new Error('Harness 地址必须是无凭据的本机 HTTP 地址')
+    }
+    harnessUrl = parsed.toString()
+  }
+
+  return {
+    phase: runtimePhase(state.phase),
+    architecture: requiredIdentifier(state.architecture, '运行时架构', 64),
+    downloadedBytes,
+    totalBytes,
+    runnerAvailable: state.runnerAvailable,
+    updateAvailable: state.updateAvailable,
+    ...(installedVersion === undefined ? {} : { installedVersion }),
+    ...(harnessUrl === undefined ? {} : { harnessUrl }),
+    ...(errorCode === undefined ? {} : { errorCode }),
+  }
+}
+
+/**
+ * 运行时版本操作目标：目前只有「上一版本」可切换或删除。
+ *
+ * 取值在前端就拦死，不让原生侧去猜未知目标。
+ */
+export function assertRuntimeVersionTarget(value: unknown): 'previous' {
+  if (value !== 'previous') throw new Error('运行时版本操作目标无效')
+  return value
+}
+
+/**
+ * 版本库条目标识：64 位小写十六进制，与原生侧归档目录名同一格式。
+ *
+ * 锁定的目标只可能是「本地下载好的某个归档」，即版本库里的一条记录；
+ * `previous` / `bundled` 是槽位而不是归档，传进来这里就拦死，不让原生侧去猜。
+ */
+export function assertRuntimeVersionPinTarget(value: unknown): string {
+  if (typeof value !== 'string' || !SHA256_PATTERN.test(value.trim())) throw new Error('版本库条目标识格式无效')
+  return value.trim()
+}
+
+export function validateRuntimeVersions(value: unknown): RuntimeVersionsState {
+  const state = asRecord(value, '运行时版本状态')
+  const source = state.versions
+  if (!Array.isArray(source) || source.length > MAX_RUNTIME_VERSIONS) throw new Error('运行时版本列表格式无效')
+  if (typeof state.canSwitch !== 'boolean') throw new Error('运行时版本切换状态格式无效')
+  if (typeof state.canDelete !== 'boolean') throw new Error('运行时版本删除状态格式无效')
+
+  const versions: RuntimeVersionInfo[] = source.map(entry => {
+    const item = asRecord(entry, '运行时版本条目')
+    if (item.slot !== 'current' && item.slot !== 'previous' && item.slot !== 'bundled') {
+      throw new Error('运行时版本槽位格式无效')
+    }
+    if (typeof item.active !== 'boolean') throw new Error('运行时版本使用状态格式无效')
+    const version = requiredIdentifier(item.version, '运行时版本号')
+    const runtimeId = requiredIdentifier(item.runtimeId, '运行时标识')
+    const extractedBytes = byteCount(item.extractedBytes, '运行时体积')
+    const dshVersion = optionalIdentifier(item.dshVersion, 'dsh 版本')
+    return {
+      slot: item.slot,
+      version,
+      runtimeId,
+      extractedBytes,
+      active: item.active,
+      ...(dshVersion === undefined ? {} : { dshVersion }),
+    }
+  })
+
+  let library: RuntimeLibraryEntry[] | undefined
+  if (Array.isArray(state.library)) {
+    library = state.library.map(entry => {
+      const item = asRecord(entry, '版本库条目')
+      const id = typeof item.id === 'string' && SHA256_PATTERN.test(item.id.trim())
+        ? item.id.trim()
+        : (() => { throw new Error('版本库条目标识格式无效') })()
+      const version = requiredIdentifier(item.version, '版本库条目版本号')
+      const dshVersion = optionalIdentifier(item.dshVersion, 'dsh 版本')
+      const bytes = byteCount(item.bytes, '版本库条目大小')
+      const active = typeof item.active === 'boolean' ? item.active : false
+      // 锁定状态是「谁会被自动淘汰」的判据，缺了就必须报错：默认成 false 等于悄悄解锁。
+      if (typeof item.pinned !== 'boolean') throw new Error('版本库条目锁定状态格式无效')
+      // 落地时间可以缺（老版本库的归档没有这条记录），但给了就必须是个读得懂的 ISO 时间。
+      const downloadedAtRaw = item.downloadedAt
+      let downloadedAt: string | undefined
+      if (downloadedAtRaw !== undefined && downloadedAtRaw !== null) {
+        if (typeof downloadedAtRaw !== 'string' || !Number.isFinite(Date.parse(downloadedAtRaw))) {
+          throw new Error('版本库条目落地时间格式无效')
+        }
+        downloadedAt = downloadedAtRaw
+      }
+      return {
+        id,
+        version,
+        bytes,
+        active,
+        pinned: item.pinned,
+        ...(dshVersion === undefined ? {} : { dshVersion }),
+        ...(downloadedAt === undefined ? {} : { downloadedAt }),
+      }
+    })
+  }
+
+  const libraryCapacity = typeof state.libraryCapacity === 'number' && Number.isInteger(state.libraryCapacity) && state.libraryCapacity >= 0
+    ? state.libraryCapacity
+    : undefined
+
+  return {
+    versions,
+    canSwitch: state.canSwitch,
+    canDelete: state.canDelete,
+    ...(library === undefined ? {} : { library }),
+    ...(libraryCapacity === undefined ? {} : { libraryCapacity }),
+  }
+}
+
+/**
+ * 运行时占用盘点：份数、字节数与截断标记。
+ *
+ * 只认这三个字段的形状——残留载荷里根本没有路径字段的位置，这里也就不该有。
+ */
+export function validateRuntimeResidue(value: unknown): RuntimeResidueState {
+  const state = asRecord(value, '运行时占用状态')
+  return {
+    count: byteCount(state.count, '运行时残留份数'),
+    bytes: byteCount(state.bytes, '运行时残留体积'),
+    truncated: requiredBoolean(state.truncated, '运行时残留截断标记'),
+  }
+}
+
+const MAX_RESIDUE_MESSAGE_LENGTH = 200
+
+/**
+ * 一次清理残留的结果：**这一次尝试**的份数、字节数与一句如实说明。
+ *
+ * `cleaned` / `failed` 不是「当前还剩几份」——界面一律重新查一次盘点；`message` 只给人看不参与
+ * 判断，但空串与超长仍然拦掉，免得把一条没有内容的提示渲染给用户。
+ */
+export function validateRuntimeResidueCleanup(value: unknown): RuntimeResidueCleanupState {
+  const state = asRecord(value, '运行时残留清理结果')
+  const message = state.message
+  if (typeof message !== 'string' || message.trim().length === 0 || message.length > MAX_RESIDUE_MESSAGE_LENGTH) {
+    throw new Error('运行时残留清理说明格式无效')
+  }
+  return {
+    cleaned: byteCount(state.cleaned, '运行时残留回收份数'),
+    failed: byteCount(state.failed, '运行时残留失败份数'),
+    reclaimedBytes: byteCount(state.reclaimedBytes, '运行时残留回收体积'),
+    message,
+  }
+}
+
+/** 缓存条目的名字：原生侧白名单里的小写 token（`diagnostics`/`share`/`proot-tmp`）。 */
+const CACHE_ENTRY_NAME_PATTERN = /^[a-z0-9][a-z0-9._-]{0,31}$/u
+
+/** 白名单条目数上限：多出来的条目说明原生侧改变了形状，这里宁可拒绝也不显示一半。 */
+const MAX_CACHE_ENTRIES = 8
+
+/**
+ * 插件档逐包列表的上限：与原生账本的 `PluginInstallLock.MAX_ENTRIES`（256）同值。
+ *
+ * 这里**不做截断**：超过上限说明原生侧换了形状（或账本被人塞成了别的东西），
+ * 显示前 256 条会让人以为「就这些插件」—— 半份盘点比读不到更容易误判。
+ */
+const MAX_CLEANUP_PACKAGES = 256
+
+/**
+ * npm 包名（含作用域名）：与原生 `PluginInstallLock.isPackageName`（长度 1..214、不含 `..`、
+ * 同一正则）和 [src/platform/plugins.ts] 的 `packageId` **必须逐字一致**。
+ *
+ * 这里是逐包清理唯一的入参形状判定：这里放松，串会在原生侧被 `CLEANUP_SCOPE_INVALID` 拒掉
+ * （界面明明放过了，用户看到的是「格式不合法」）；这里收紧，合法的包名根本发不出去，
+ * 用户就没有任何办法清它的数据。
+ */
+const PLUGIN_PACKAGE_ID_PATTERN = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/u
+const MAX_PLUGIN_PACKAGE_ID_LENGTH = 214
+
+const CLEANUP_LEDGERS = new Set<PluginCleanupLedger>(['ok', 'missing', 'invalid', 'unwritable'])
+
+function cleanupEntryName(value: unknown): string {
+  if (typeof value !== 'string' || !CACHE_ENTRY_NAME_PATTERN.test(value)) throw new Error('缓存条目名称格式无效')
+  return value
+}
+
+function cleanupPackageId(value: unknown, label: string): string {
+  if (
+    typeof value !== 'string' ||
+    value.length === 0 ||
+    value.length > MAX_PLUGIN_PACKAGE_ID_LENGTH ||
+    value.includes('..') ||
+    !PLUGIN_PACKAGE_ID_PATTERN.test(value)
+  ) {
+    throw new Error(`${label}格式无效`)
+  }
+  return value
+}
+
+function cleanupLedger(value: unknown): PluginCleanupLedger {
+  if (typeof value !== 'string' || !CLEANUP_LEDGERS.has(value as PluginCleanupLedger)) {
+    throw new Error('插件账本状态格式无效')
+  }
+  return value as PluginCleanupLedger
+}
+
+/**
+ * 逐包清理的请求参数：不传、传 `null`，或 `packageName` 为 `undefined` ⇒ 整档清空。
+ *
+ * 只有这一种「省略」是允许的：传了就必须是合法包名（空串也算不合法 —— 原生侧同样会拒，
+ * 两边对同一份输入给出同一个结论，才不会有「界面放过了但一定失败」的按钮）。
+ */
+export function validatePluginCleanupRequest(options?: { packageName?: string } | null): { packageName?: string } {
+  if (options === undefined || options === null) return {}
+  const request = asRecord(options, '插件数据清理请求')
+  if (request.packageName === undefined) return {}
+  return { packageName: cleanupPackageId(request.packageName, '插件标识') }
+}
+
+/**
+ * 数据清理面板状态：缓存档逐条现状 + 插件数据档的账本状态与逐包现状。
+ *
+ * 载荷里没有路径、没有目录内容；插件档的逐包列表**带包名**（界面按包选择清哪一个），
+ * 它不进诊断也不进审计。条目数超过各自上限时整体拒绝，而不是只显示前面几条 ——
+ * 半份盘点比读不到更容易让人误判「已经清干净了」。
+ */
+export function validateRuntimeCleanupState(value: unknown): RuntimeCleanupState {
+  const state = asRecord(value, '数据清理状态')
+  const cache = asRecord(state.cache, '缓存档状态')
+  const items = cache.entries
+  if (!Array.isArray(items) || items.length > MAX_CACHE_ENTRIES) throw new Error('缓存条目列表格式无效')
+  const plugin = asRecord(state.plugin, '插件数据档状态')
+  const packages = plugin.packages
+  if (!Array.isArray(packages) || packages.length > MAX_CLEANUP_PACKAGES) {
+    throw new Error('插件数据档包列表格式无效')
+  }
+  return {
+    runtimeRunning: requiredBoolean(state.runtimeRunning, '运行时运行标记'),
+    cache: {
+      entries: items.map((item, index) => {
+        const entry = asRecord(item, `缓存条目 ${index + 1}`)
+        return {
+          name: cleanupEntryName(entry.name),
+          present: requiredBoolean(entry.present, '缓存条目存在标记'),
+          files: byteCount(entry.files, '缓存条目文件数'),
+          bytes: byteCount(entry.bytes, '缓存条目体积'),
+        }
+      }),
+      files: byteCount(cache.files, '缓存档文件数'),
+      bytes: byteCount(cache.bytes, '缓存档体积'),
+    },
+    plugin: {
+      ledger: cleanupLedger(plugin.ledger),
+      checked: byteCount(plugin.checked, '插件账本条目数'),
+      packages: packages.map((item, index) => {
+        const entry = asRecord(item, `插件条目 ${index + 1}`)
+        return {
+          id: cleanupPackageId(entry.id, `插件条目 ${index + 1} 的标识`),
+          present: requiredBoolean(entry.present, '插件条目存在标记'),
+          files: byteCount(entry.files, '插件条目文件数'),
+          bytes: byteCount(entry.bytes, '插件条目体积'),
+        }
+      }),
+    },
+  }
+}
+
+/**
+ * 一次分级清理的结果：只描述**这一次尝试**，界面必须重新盘点而不是自己相减。
+ *
+ * `ok` 不从载荷里读，而是由 `failed === 0` 推出：界面用它决定显示「已清理」还是「有失败」，
+ * 两个字段互相矛盾时（载荷里 `ok: true` 却带着失败数）必须是更保守的那一侧赢。
+ */
+export function validateRuntimeCleanupOutcome(value: unknown): RuntimeCleanupOutcome {
+  const state = asRecord(value, '清理结果')
+  const failed = byteCount(state.failed, '清理失败数')
+  return {
+    scope: byteCount(state.scope, '清理覆盖范围'),
+    targets: byteCount(state.targets, '清理目标数'),
+    removed: byteCount(state.removed, '清理成功数'),
+    fallback: byteCount(state.fallback, '清理兜底数'),
+    failed,
+    files: byteCount(state.files, '清理文件数'),
+    bytes: byteCount(state.bytes, '清理体积'),
+    skipped: byteCount(state.skipped, '清理跳过数'),
+    ok: failed === 0,
+  }
+}
+
+export function validateRuntimeProgress(value: unknown): RuntimeProgress {
+  const progress = asRecord(value, '运行时进度')
+  const downloadedBytes = byteCount(progress.downloadedBytes, '已处理字节数')
+  const totalBytes = byteCount(progress.totalBytes, '总字节数')
+  if (totalBytes > 0 && downloadedBytes > totalBytes) throw new Error('运行时进度无效')
+  const errorCode = optionalIdentifier(progress.errorCode, '运行时错误码', ERROR_CODE_PATTERN, MAX_ERROR_CODE_LENGTH)
+  return { phase: runtimePhase(progress.phase), downloadedBytes, totalBytes, ...(errorCode === undefined ? {} : { errorCode }) }
+}
+
+/**
+ * 应用更新包下载进度：只接受两个字节数。
+ *
+ * 与运行时进度不同，这里没有阶段，`totalBytes` 必须为正（发布页声明的包体大小）：
+ * 进度条要算百分比，总量未知时画不出有意义的读数，宁可判为无效也不显示假的 0%。
+ */
+export function validateAppUpdateProgress(value: unknown): AppUpdateProgress {
+  const progress = asRecord(value, '应用更新进度')
+  const downloadedBytes = byteCount(progress.downloadedBytes, '已下载字节数')
+  const totalBytes = byteCount(progress.totalBytes, '总字节数')
+  if (totalBytes <= 0 || downloadedBytes > totalBytes) throw new Error('应用更新进度无效')
+  return { downloadedBytes, totalBytes }
+}
+
+export function validateShizukuState(value: unknown): ShizukuState {
+  const state = asRecord(value, 'Shizuku 状态')
+  if (typeof state.installed !== 'boolean' || typeof state.running !== 'boolean' || typeof state.connected !== 'boolean') {
+    throw new Error('Shizuku 状态格式无效')
+  }
+  if (state.permission !== 'granted' && state.permission !== 'denied' && state.permission !== 'undetermined') {
+    throw new Error('Shizuku 权限状态格式无效')
+  }
+  if (state.connected && (!state.running || state.permission !== 'granted')) throw new Error('Shizuku 连接状态无效')
+  const rawVersion = typeof state.version === 'number' ? String(state.version) : state.version
+  const normalizedVersion = rawVersion === '' || rawVersion === null ? undefined : rawVersion
+  const version = normalizedVersion === undefined
+    ? undefined
+    : optionalIdentifier(normalizedVersion, 'Shizuku 版本', SHIZUKU_VERSION_PATTERN, 32)
+  // 应用版本名（13.6.0 这种）与服务端 API 版本是两件事，走同一条标识符校验；
+  // 原生侧已先按同一字符集过滤过，这里只做兜底；未运行或读不到时原生回传空串，此处归一为 undefined。
+  const rawAppVersion = typeof state.appVersion === 'number' ? String(state.appVersion) : state.appVersion
+  const normalizedAppVersion = rawAppVersion === '' || rawAppVersion === null ? undefined : rawAppVersion
+  const appVersion = normalizedAppVersion === undefined
+    ? undefined
+    : optionalIdentifier(normalizedAppVersion, 'Shizuku 应用版本', SHIZUKU_VERSION_PATTERN, 32)
+  return {
+    installed: state.installed,
+    running: state.running,
+    permission: state.permission,
+    connected: state.connected,
+    ...(version === undefined ? {} : { version }),
+    ...(appVersion === undefined ? {} : { appVersion }),
+  }
+}
+
+const NOTIFICATION_PERMISSIONS = new Set<NotificationPermission>(['granted', 'prompt', 'unsupported'])
+const RUNTIME_INTENTS = new Set<RuntimeIntent>(['running', 'stopped', 'unknown'])
+
+/**
+ * 校验后台保持与恢复状态。
+ * 只接受布尔值、固定枚举与时间戳；任何额外字段都不会被回传使用。
+ */
+export function validateKeepAliveState(value: unknown): KeepAliveState {
+  const state = asRecord(value, '后台保持状态')
+  if (
+    typeof state.keepRuntimeInBackground !== 'boolean' ||
+    typeof state.foregroundServiceActive !== 'boolean' ||
+    typeof state.deviceShellReady !== 'boolean' ||
+    typeof state.reconnectRequired !== 'boolean'
+  ) {
+    throw new Error('后台保持状态格式无效')
+  }
+  if (typeof state.notificationPermission !== 'string' || !NOTIFICATION_PERMISSIONS.has(state.notificationPermission as NotificationPermission)) {
+    throw new Error('通知权限状态格式无效')
+  }
+  if (typeof state.lastIntent !== 'string' || !RUNTIME_INTENTS.has(state.lastIntent as RuntimeIntent)) {
+    throw new Error('运行意图格式无效')
+  }
+  const lastPhase = state.lastPhase === undefined ? undefined : runtimePhase(state.lastPhase)
+  let lastUpdatedAtMillis: number | undefined
+  if (state.lastUpdatedAtMillis !== undefined) {
+    if (!Number.isSafeInteger(state.lastUpdatedAtMillis) || (state.lastUpdatedAtMillis as number) < 0) {
+      throw new Error('状态更新时间格式无效')
+    }
+    lastUpdatedAtMillis = state.lastUpdatedAtMillis as number
+  }
+  // 「一轮对话结束」的两项信号：原生侧始终带上（从未收到时为 0），这里与其它可选字段一致，
+  // 缺失就不写回，调用方按 0 处理——外壳只比较"序号有没有变新"，不依赖字段一定存在。
+  let lastTurnCompletedAtMillis: number | undefined
+  if (state.lastTurnCompletedAtMillis !== undefined) {
+    if (!Number.isSafeInteger(state.lastTurnCompletedAtMillis) || (state.lastTurnCompletedAtMillis as number) < 0) {
+      throw new Error('对话完成时间格式无效')
+    }
+    lastTurnCompletedAtMillis = state.lastTurnCompletedAtMillis as number
+  }
+  let turnCompletionSequence: number | undefined
+  if (state.turnCompletionSequence !== undefined) {
+    if (!Number.isSafeInteger(state.turnCompletionSequence) || (state.turnCompletionSequence as number) < 0) {
+      throw new Error('对话完成序号格式无效')
+    }
+    turnCompletionSequence = state.turnCompletionSequence as number
+  }
+  // 受控失败令牌：缺省/null 表示无失败；异常形态按无令牌丢弃，不让一条提示拖垮整份状态。
+  const foregroundStartError = optionalFailureToken(state.foregroundStartError)
+  return {
+    keepRuntimeInBackground: state.keepRuntimeInBackground,
+    foregroundServiceActive: state.foregroundServiceActive,
+    notificationPermission: state.notificationPermission as NotificationPermission,
+    deviceShellReady: state.deviceShellReady,
+    reconnectRequired: state.reconnectRequired,
+    lastIntent: state.lastIntent as RuntimeIntent,
+    ...(foregroundStartError === null ? {} : { foregroundStartError }),
+    ...(lastPhase === undefined ? {} : { lastPhase }),
+    ...(lastUpdatedAtMillis === undefined ? {} : { lastUpdatedAtMillis }),
+    ...(lastTurnCompletedAtMillis === undefined ? {} : { lastTurnCompletedAtMillis }),
+    ...(turnCompletionSequence === undefined ? {} : { turnCompletionSequence }),
+  }
+}
+
+/**
+ * 前台服务启动失败令牌的可选校验。
+ *
+ * 原生侧只可能给 null/缺省或一小组受控枚举（全小写字母、数字、下划线，最长 64）；
+ * 任何其他形态都按「没有失败令牌」丢弃，而不是让整份状态校验失败——
+ * 状态查询的健壮性优先级高于展示一条错误提示。
+ */
+function optionalFailureToken(value: unknown): string | null {
+  if (value === null || value === undefined) return null
+  if (typeof value !== 'string') return null
+  if (value.length === 0 || value.length > 64) return null
+  return /^[a-z][a-z0-9_]*$/.test(value) ? value : null
+}
+
+export function validateNotificationPermissionResult(value: unknown): NotificationPermissionResult {
+  const result = asRecord(value, '通知权限结果')
+  if (typeof result.granted !== 'boolean' || typeof result.supported !== 'boolean') {
+    throw new Error('通知权限结果格式无效')
+  }
+  return { granted: result.granted, supported: result.supported }
+}
+
+const diagnosticCount = assertNonNegativeInteger
+
+/** 诊断日志保留天数：必须是 1–30 的整数，与原生侧夹取范围一致。 */
+export function assertDiagnosticRetentionDays(value: number): number {
+  if (!Number.isInteger(value) || value < DIAGNOSTIC_RETENTION_MIN || value > DIAGNOSTIC_RETENTION_MAX) {
+    throw new Error(`诊断日志保留天数必须是 ${DIAGNOSTIC_RETENTION_MIN} 到 ${DIAGNOSTIC_RETENTION_MAX} 之间的整数`)
+  }
+  return value
+}
+
+/**
+ * 校验诊断日志状态。
+ * 只接受布尔值、计数与时间戳：日志正文永远不会经原生接口回传 WebView。
+ */
+export function validateDiagnosticLogState(value: unknown): DiagnosticLogState {
+  const state = asRecord(value, '诊断日志状态')
+  if (typeof state.enabled !== 'boolean') throw new Error('诊断日志状态格式无效')
+  return {
+    enabled: state.enabled,
+    retentionDays: assertDiagnosticRetentionDays(state.retentionDays as number),
+    fileCount: diagnosticCount(state.fileCount, '诊断日志文件数'),
+    totalBytes: diagnosticCount(state.totalBytes, '诊断日志总字节数'),
+    lastEntryAtMillis: diagnosticCount(state.lastEntryAtMillis, '诊断日志最近记录时间'),
+  }
+}
+
+export function validateDiagnosticLogExport(value: unknown): DiagnosticLogExport {
+  const state = validateDiagnosticLogState(value)
+  const record = asRecord(value, '诊断日志导出结果')
+  // 导出文件名由原生侧以 UTC 时间戳生成：不含路径分隔符，也不含设备或用户信息。
+  if (typeof record.fileName !== 'string' || !/^[A-Za-z0-9._-]{1,128}$/.test(record.fileName)) {
+    throw new Error('诊断日志导出文件名格式无效')
+  }
+  return {
+    ...state,
+    fileName: record.fileName,
+    exportedBytes: diagnosticCount(record.exportedBytes, '诊断日志导出字节数'),
+  }
+}
+
+/**
+ * 校验运行日志尾部快照。
+ *
+ * 这是唯一会把访客输出带回 WebView 的通道，因此只接受严格形态：
+ * `available` 必须是布尔值，`text` 必须是字符串且有长度上限（防异常载荷打爆界面）；
+ * `available` 为 false 时按契约必须是空串，不接受「不可用却带内容」的自相矛盾载荷；
+ * `maxBytes` 必须是受控档位之一，避免界面按一个根本不存在的窗口去解释内容。
+ */
+export function validateHarnessLog(value: unknown): HarnessLog {
+  const log = asRecord(value, '运行日志')
+  if (typeof log.available !== 'boolean') throw new Error('运行日志可用状态格式无效')
+  if (typeof log.text !== 'string') throw new Error('运行日志内容格式无效')
+  if (log.text.length > HARNESS_LOG_MAX_CHARS) throw new Error('运行日志内容长度无效')
+  if (!log.available && log.text !== '') throw new Error('运行日志内容与可用状态不一致')
+  return {
+    available: log.available,
+    text: log.text,
+    maxBytes: assertLogWindow(log.maxBytes, HARNESS_LOG_WINDOW_OPTIONS, '运行日志窗口'),
+  }
+}
+
+/**
+ * 校验诊断日志的应用内查看结果。
+ *
+ * 与状态接口不同，这里会带回日志正文；正文只有受控字段（事件、级别、状态码、计数），
+ * 因此仍然按「有上限的纯文本」校验：长度上限之外不接受其它形态。
+ */
+export function validateDiagnosticLogText(value: unknown): DiagnosticLogText {
+  const record = asRecord(value, '诊断日志内容')
+  if (typeof record.text !== 'string') throw new Error('诊断日志内容格式无效')
+  if (record.text.length > DIAGNOSTIC_LOG_MAX_CHARS) throw new Error('诊断日志内容长度无效')
+  if (typeof record.truncated !== 'boolean') throw new Error('诊断日志截断状态格式无效')
+  return {
+    text: record.text,
+    maxBytes: assertLogWindow(record.maxBytes, DIAGNOSTIC_LOG_WINDOW_OPTIONS, '诊断日志窗口'),
+    totalBytes: diagnosticCount(record.totalBytes, '诊断日志总字节数'),
+    truncated: record.truncated,
+  }
+}
+
+/**
+ * 校验运行时自检结果。
+ *
+ * 契约（检查项 id、状态、结论码与形态规则）定义在 [runtimeSelfCheck] 里，
+ * 那里同时被界面直接使用；这里只是把它接进平台层统一的校验入口，
+ * 让桥接封装与其它方法保持同一种写法。
+ */
+export function validateRuntimeSelfCheckReport(value: unknown): SelfCheckReport {
+  return validateSelfCheckReport(value)
+}
+
+/** 窗口字节数必须落在界面已知的档位里；原生侧与前端共用同一组取值。 */
+function assertLogWindow(value: unknown, options: readonly number[], label: string): number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || !options.includes(value)) {
+    throw new Error(`${label}取值无效`)
+  }
+  return value
+}
+
+export function validateTerminalSession(value: unknown): { sessionId: string } {
+  const session = asRecord(value, '终端会话')
+  if (typeof session.sessionId !== 'string') throw new Error('终端会话标识无效')
+  return { sessionId: assertSessionId(session.sessionId) }
+}
+
+export function validateTerminalChunk(value: unknown): TerminalChunk {
+  const chunk = asRecord(value, '终端输出')
+  if (typeof chunk.sessionId !== 'string' || typeof chunk.dataBase64 !== 'string') throw new Error('终端输出格式无效')
+  const sessionId = assertSessionId(chunk.sessionId)
+  assertBase64Input(chunk.dataBase64, MAX_TERMINAL_OUTPUT_BYTES)
+  return { sessionId, dataBase64: chunk.dataBase64 }
+}
+
+export function validateTerminalExit(value: unknown): TerminalExit {
+  const exit = asRecord(value, '终端退出状态')
+  if (typeof exit.sessionId !== 'string') throw new Error('终端会话标识无效')
+  if (!Number.isInteger(exit.exitCode) || (exit.exitCode as number) < -1 || (exit.exitCode as number) > 255) {
+    throw new Error('终端退出码格式无效')
+  }
+  return { sessionId: assertSessionId(exit.sessionId), exitCode: exit.exitCode as number }
+}
+
+const DEVICE_COMMANDS = new Set<DeviceCommand>([
+  'screenshot',
+  'uiDump',
+  'tap',
+  'inputText',
+  'deviceInfo',
+  'listPackages',
+  'getSetting',
+  'battery',
+  'launchApp',
+  'foregroundPackage',
+  'wait',
+  'fileList',
+  'fileRead',
+  'fileWrite',
+  'fileMkdir',
+  'fileDownload',
+  'fileUpload',
+  'shell',
+  'backgroundTasks',
+])
+// 文件上传通过 Base64 传递，原生侧仍有 128 KiB 解码上限；这里保留 JSON 参数的有界窗口。
+const MAX_DEVICE_PARAM_CHARS = 180_000
+/** 「白名单验证密码」的长度区间；密码本身不会被前端留存或回显。 */
+const ACCESSIBILITY_PASSWORD_MIN_CHARS = 6
+const ACCESSIBILITY_PASSWORD_MAX_CHARS = 64
+
+export function validateDeviceCommand(value: unknown): DeviceCommand {
+  if (typeof value !== 'string' || !DEVICE_COMMANDS.has(value as DeviceCommand)) throw new Error('设备命令不支持')
+  return value as DeviceCommand
+}
+
+export function validateDeviceCommandParam(value: unknown): string | undefined {
+  if (value === undefined) return undefined
+  if (typeof value !== 'string' || value.length > MAX_DEVICE_PARAM_CHARS) throw new Error('设备命令参数无效')
+  return value
+}
+
+export function validateDeviceCommandResult(value: unknown): DeviceCommandResult {
+  const result = asRecord(value, '设备命令结果')
+  if (typeof result.ok !== 'boolean' || typeof result.text !== 'string' || typeof result.truncated !== 'boolean') {
+    throw new Error('设备命令结果格式无效')
+  }
+  if (typeof result.exitCode !== 'number' || !Number.isInteger(result.exitCode) || result.exitCode < -1 || result.exitCode > 255) {
+    throw new Error('设备命令退出码无效')
+  }
+  const errorCode = result.errorCode === undefined
+    ? undefined
+    : optionalIdentifier(result.errorCode, '设备命令错误码', ERROR_CODE_PATTERN, MAX_ERROR_CODE_LENGTH)
+  return {
+    ok: result.ok,
+    exitCode: result.exitCode,
+    text: result.text,
+    truncated: result.truncated,
+    ...(errorCode === undefined ? {} : { errorCode }),
+  }
+}
+
+/**
+ * 校验一份无障碍包名列表：只接受原生层已经约束的标准格式，重复项直接拒绝（条目数量不设上限）。
+ *
+ * 去重与否刻意**不在这里悄悄修正**：重复项说明原生回了一份读不懂的状态，
+ * 静默去重会让「白名单里有两条一样的东西」这种缺陷永远查不出来。
+ */
+function accessibilityPackages(value: unknown, label: string): string[] {
+  if (!Array.isArray(value)) throw new Error(`${label}格式无效`)
+  const packages = value.map((item, index) => {
+    if (typeof item !== 'string' || item.length < 3 || item.length > 160 ||
+        !/^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*){1,12}$/u.test(item)) {
+      throw new Error(`无障碍白名单第 ${index + 1} 项无效`)
+    }
+    return item
+  })
+  if (new Set(packages).size !== packages.length) throw new Error(`${label}包含重复项`)
+  return packages
+}
+
+/**
+ * 校验无障碍服务状态。
+ *
+ * 四个必填字段都必须存在：`alwaysAllowedPackages` 或 `passwordConfigured` 缺失时若补成默认值，
+ * 界面会把「读不到状态」显示成「没有自动项 / 没设密码」，用户照着点下去只会不断失败。
+ * `passwordConfigured` 只是布尔——**本函数不接触、也不返回任何密码内容**。
+ *
+ * `automationRuntime` / `serviceStatus` 是两个**后加**的字段，旧版壳不送：缺省分别取 `off` 与 `off`
+ * （fail-closed：读不到就显示「总开关关着、服务没连上」，绝不显示成一个可能正在跑的状态），
+ * 但一旦送了就必须是枚举内的取值，别的字符串一律拒绝——界面文案是照着枚举写的。
+ */
+export function validateAccessibilityAutomationState(value: unknown): AccessibilityAutomationState {
+  const state = asRecord(value, '无障碍自动化状态')
+  if (typeof state.enabled !== 'boolean') throw new Error('无障碍自动化状态格式无效')
+  return {
+    enabled: state.enabled,
+    allowedPackages: accessibilityPackages(state.allowedPackages, '无障碍白名单'),
+    // 兼容旧版壳：缺省仍开启限制，其他非布尔值拒绝。
+    whitelistEnabled: state.whitelistEnabled === undefined ? true : requiredBoolean(state.whitelistEnabled, '无障碍白名单开关'),
+    alwaysAllowedPackages: accessibilityPackages(state.alwaysAllowedPackages, '无障碍自动白名单'),
+    passwordConfigured: requiredBoolean(state.passwordConfigured, '无障碍验证密码状态'),
+    automationRuntime: state.automationRuntime === undefined
+      ? 'off'
+      : accessibilityEnumeration(state.automationRuntime, '自动化总开关', ACCESSIBILITY_AUTOMATION_RUNTIMES),
+    serviceStatus: state.serviceStatus === undefined
+      ? 'off'
+      : accessibilityEnumeration(state.serviceStatus, '无障碍服务状态', ACCESSIBILITY_SERVICE_STATUSES),
+  }
+}
+
+/** 取值必须落在给定枚举里；用于三态/四态这类界面文案写死的受控取值。 */
+function accessibilityEnumeration<T extends string>(value: unknown, label: string, allowed: readonly T[]): T {
+  if (typeof value !== 'string' || !(allowed as readonly string[]).includes(value)) {
+    throw new Error(`${label}取值无效`)
+  }
+  return value as T
+}
+
+/**
+ * 校验总开关的动作名：只接受四个受控动作，其余一律拒绝。
+ *
+ * **不认识就必须拒绝**：这里若退化成「认不出来就当成 start」，一个拼错的参数就能把自动化打开，
+ * 与「AI 只能关不能开」的口径也自相矛盾（设备桥没有开启路径，这条是应用内界面专用的）。
+ */
+export function assertAccessibilityAutomationAction(value: unknown): AccessibilityAutomationAction {
+  return accessibilityEnumeration(value, '自动化操作', ACCESSIBILITY_AUTOMATION_ACTIONS)
+}
+
+/** 校验一个包名；用与白名单完全相同的格式，避免出现只在这一条路径上生效的第二套规则。 */
+export function assertAccessibilityPackageName(value: unknown): string {
+  const [name] = accessibilityPackages([value], '无障碍运行记录包名')
+  return name
+}
+
+/**
+ * 校验规则标识：与原生 `MobileRuntimePlugin` 的 `AUTOMATION_RULE_ID` 和
+ * `AutomationRule.validated()` 同一套格式（1~64 位字母、数字、点、下划线、连字符）。
+ *
+ * 这里先卡一道不是为了省一次桥调用，而是**不让任意字符串过桥**：规则标识会被原生回显在错误文案里。
+ */
+export function assertAccessibilityRuleId(value: unknown): string {
+  if (typeof value !== 'string' || !/^[A-Za-z0-9._-]{1,64}$/.test(value)) {
+    throw new Error('自动化规则标识无效')
+  }
+  return value
+}
+
+/** 校验一个布尔入参：桥接的布尔字段只能是真的布尔，`"true"` 这种字符串一律拒收。 */
+export function assertBooleanFlag(value: unknown, label: string): boolean {
+  return requiredBoolean(value, label)
+}
+
+/**
+ * 规则的写入方式：只接受 `create` / `update`。
+ *
+ * 不做「省略即 create」这种兜底：模式写错时最坏的结果是**悄悄覆盖**一条已有规则，
+ * 而这件事在界面看起来只是「列表里多了一条」，用户没有任何机会发现。
+ */
+export function assertAccessibilityRuleWriteMode(value: unknown): AccessibilityAutomationRuleWriteMode {
+  if (value !== 'create' && value !== 'update') throw new Error('规则的写入方式必须是 create 或 update')
+  return value
+}
+
+/**
+ * 校验待写入的规则内容——只做**结构**校验，不复刻原生的内容规则。
+ *
+ * 判定权在原生（`AutomationRule.fromJson` 逐字段校验、遇未知字段整体拒绝）。前端这层管的是
+ * 「明显不合法的东西不过桥」：整条规则漏掉、id 格式不对、数字越界、动作缺必填参数……
+ * 这些原样递过去，用户只会看到一句没有下一步的「规则内容不合法」。
+ *
+ * 刻意**不在这里**校验的东西：选择器 id 是不是合法的视图 id 写法、正则能不能编译、
+ * 动作类型里有没有多余字段。这些一旦在这边重写一遍，就会和 Kotlin 那套慢慢走偏，
+ * 而它们才是真正的判定标准。
+ */
+export function assertAccessibilityAutomationRuleInput(
+  value: unknown,
+  packageName: string,
+): AccessibilityAutomationRuleInput {
+  const rule = asRecord(value, '自动化规则内容')
+  const id = assertAccessibilityRuleId(rule.id)
+  const owner = assertAccessibilityPackageName(rule.packageName)
+  // 包名不一致时若照写不误，就会发生「在 A 的界面上写坏 B 的规则」——这条必须过桥前拦住。
+  if (owner !== packageName) throw new Error('规则里的包名与请求的包名不一致')
+  if (!Array.isArray(rule.selectors) || rule.selectors.length === 0) throw new Error('自动化规则至少要有一个选择器')
+  if (rule.selectors.length > AUTOMATION_RULE_LIMITS.maxSelectors) {
+    throw new Error(`自动化规则最多 ${AUTOMATION_RULE_LIMITS.maxSelectors} 个选择器`)
+  }
+  const action = asRecord(rule.action, '自动化规则动作')
+  const type = accessibilityEnumeration(action.type, '自动化动作类型', ACCESSIBILITY_AUTOMATION_ACTION_KINDS)
+  return {
+    id,
+    packageName: owner,
+    enabled: requiredBoolean(rule.enabled, '自动化规则启用状态'),
+    allowActivities: accessibilityPatterns(rule.allowActivities, '自动化规则 Activity 白名单'),
+    denyActivities: accessibilityPatterns(rule.denyActivities, '自动化规则 Activity 黑名单'),
+    matchDelayMs: accessibilityBound(rule.matchDelayMs, '自动化规则匹配延迟', AUTOMATION_RULE_LIMITS.matchDelayMs),
+    maxActions: accessibilityBound(rule.maxActions, '自动化规则动作上限', AUTOMATION_RULE_LIMITS.maxActions),
+    actionCoolDownMs: accessibilityBound(
+      rule.actionCoolDownMs,
+      '自动化规则冷却时间',
+      AUTOMATION_RULE_LIMITS.actionCoolDownMs,
+    ),
+    resetOn: accessibilityEnumeration(rule.resetOn, '自动化规则重置时机', ACCESSIBILITY_AUTOMATION_RESET_ON_VALUES),
+    selectors: rule.selectors.map((item, index) => accessibilitySelectorInput(item, index)),
+    action: { type, ...accessibilityActionParams(type, action) },
+  }
+}
+
+/**
+ * 校验「一条规则的全文」这条读回路径的返回值。
+ *
+ * 复用写入侧的 `assertAccessibilityAutomationRuleInput` 是刻意的：读回来的 JSON 与要写进去的
+ * JSON 在原生侧是同一套键（`AutomationRule.toRuleJson()`），两边形状一致，才不会出现
+ * 「读回来的东西填不进表单」。包名与规则标识都要和请求对上——对不上说明桥回错了包，
+ * 拿它预填等于把 B 的内容写进 A。
+ */
+export function validateAccessibilityAutomationRuleDetail(
+  value: unknown,
+  packageName: string,
+  ruleId: string,
+): AccessibilityAutomationRuleDetail {
+  const detail = asRecord(value, '自动化规则全文')
+  const owner = assertAccessibilityPackageName(detail.packageName)
+  if (owner !== packageName) throw new Error('规则全文里的包名与请求的包名不一致')
+  if (assertAccessibilityRuleId(detail.ruleId) !== ruleId) throw new Error('规则全文里的规则标识与请求的不一致')
+  return {
+    packageName: owner,
+    ruleId,
+    allowed: requiredBoolean(detail.allowed, '规则所属应用是否在自动化白名单内'),
+    rule: assertAccessibilityAutomationRuleInput(detail.rule, packageName),
+  }
+}
+
+/**
+ * 校验「写某个应用的自动化参数」这份入参，返回可直接上桥的载荷。
+ *
+ * 四个字段全给：缺一个就报错，**不拿默认值补**。「我只想改暂停」的调用方应该先读一次再整条写回，
+ * 静默补默认值会把用户配好的数字顺手冲掉。区间与原生 `AutomationRuleLimits` 同源。
+ */
+export function assertAccessibilityAutomationAppConfigInput(value: unknown): AccessibilityAutomationAppConfig {
+  const record = asRecord(value, '每应用自动化参数')
+  return {
+    paused: requiredBoolean(record.paused, '按应用暂停开关'),
+    defaultMaxActions: accessibilityBound(record.defaultMaxActions, '默认动作上限', AUTOMATION_RULE_LIMITS.maxActions),
+    defaultActionCoolDownMs: accessibilityBound(
+      record.defaultActionCoolDownMs,
+      '默认冷却时间',
+      AUTOMATION_RULE_LIMITS.actionCoolDownMs,
+    ),
+    defaultMatchDelayMs: accessibilityBound(record.defaultMatchDelayMs, '默认匹配延迟', AUTOMATION_RULE_LIMITS.matchDelayMs),
+  }
+}
+
+/**
+ * 校验「某个应用的自动化参数」这条读回路径的返回值。
+ *
+ * `corrupt` 是这份读数的**正常形态之一**，不是错误：原生遇到坏数据不抛错、把 `paused` 按 `true`
+ * 返回（fail closed）。这里照收，只把受控码与文案摘出来。刻意**不**回头校验
+ * 「`corrupt` 非空就要求 `paused === true`」：以已暂停返回是原生的判定，前端再套一遍，
+ * 只会在原生改口径时误报一份其实合法的读数。
+ */
+export function validateAccessibilityAutomationAppConfigDetail(
+  value: unknown,
+  packageName: string,
+): AccessibilityAutomationAppConfigDetail {
+  const detail = asRecord(value, '每应用自动化参数')
+  const owner = assertAccessibilityPackageName(detail.packageName)
+  if (owner !== packageName) throw new Error('每应用参数里的包名与请求的包名不一致')
+  return {
+    packageName: owner,
+    allowed: requiredBoolean(detail.allowed, '参数所属应用是否在自动化白名单内'),
+    corrupt: accessibilityConfigCorrupt(detail.corrupt),
+    config: assertAccessibilityAutomationAppConfigInput(detail.config),
+  }
+}
+
+/** 损坏说明：`null`（或缺席）表示这份参数读得出来；给了就必须带受控码与非空文案。 */
+function accessibilityConfigCorrupt(value: unknown): AccessibilityAutomationConfigCorrupt | null {
+  if (value === undefined || value === null) return null
+  const record = asRecord(value, '每应用参数损坏说明')
+  if (typeof record.code !== 'string' || record.code === '') throw new Error('每应用参数损坏码必须是文本')
+  if (typeof record.message !== 'string' || record.message === '') throw new Error('每应用参数损坏说明必须是文本')
+  return { code: record.code, message: record.message }
+}
+
+/** 动作里随类型变化的那些参数：缺必填、越界都在这里挡住，多余字段不带上桥（原生会整体拒收）。 */
+function accessibilityActionParams(
+  type: AccessibilityAutomationActionKind,
+  action: Record<string, unknown>,
+): Omit<AccessibilityAutomationActionInput, 'type'> {
+  switch (type) {
+    case 'swipe':
+      return {
+        durationMs: accessibilityBound(action.durationMs, '滑动时长', AUTOMATION_RULE_LIMITS.swipeDurationMs),
+        direction: accessibilityEnumeration(action.direction, '滑动方向', ACCESSIBILITY_AUTOMATION_SWIPE_DIRECTIONS),
+      }
+    case 'key': {
+      const keyCode = requiredIntegerValue(action.keyCode, '按键键值')
+      // 只认原生那张允许表：放开整段 KeyEvent 会连电源键一起放进来。
+      if (!AUTOMATION_KEY_CODES.some(([, code]) => code === keyCode)) throw new Error('按键键值不在允许的按键表内')
+      return { keyCode }
+    }
+    case 'wait':
+      return { delayMs: accessibilityBound(action.delayMs, '等待时长', AUTOMATION_RULE_LIMITS.waitDelayMs) }
+    case 'launch': {
+      const component = accessibilityOptionalText(action.component, '启动组件')
+      const uri = accessibilityOptionalText(action.uri, '启动链接')
+      if (component === undefined && uri === undefined) throw new Error('启动动作至少要给组件或链接其中之一')
+      if (uri !== undefined && !/^(https?:\/\/|market:\/\/)/.test(uri)) {
+        throw new Error('启动链接只支持 http://、https://、market:// 开头')
+      }
+      return { component, uri }
+    }
+    default:
+      // click / clickCenter / longClick / back 只带类型，多余参数一律不捎上。
+      return {}
+  }
+}
+
+/**
+ * 一个选择器：只保留原生认识的键，空串按「没填」收敛掉。
+ *
+ * 空串必须收敛：原生把空串与「未提供」都当作不限制，但「这项有没有条件」是按有没有值判定的，
+ * 递一个 `text: ''` 过去会让这项看起来有条件、实际什么也没匹配。
+ */
+function accessibilitySelectorInput(value: unknown, index: number): AccessibilityAutomationSelectorInput {
+  const label = `自动化规则第 ${index + 1} 个选择器`
+  const record = asRecord(value, label)
+  const text = (key: string): string | undefined => {
+    const raw = record[key]
+    if (raw === undefined || raw === null) return undefined
+    if (typeof raw !== 'string') throw new Error(`${label}的 ${key} 必须是文本`)
+    if (raw === '') return undefined
+    if (raw.length > AUTOMATION_RULE_LIMITS.maxStringChars) throw new Error(`${label}的 ${key} 过长`)
+    return raw
+  }
+  const flag = (key: string): boolean | undefined => {
+    const raw = record[key]
+    if (raw === undefined || raw === null) return undefined
+    return requiredBoolean(raw, `${label}的 ${key}`)
+  }
+  const size = (key: string): number | undefined => {
+    const raw = record[key]
+    if (raw === undefined || raw === null) return undefined
+    return requiredNonNegativeInteger(raw, `${label}的 ${key}`)
+  }
+  const selector: AccessibilityAutomationSelectorInput = {
+    text: text('text'),
+    textContains: text('textContains'),
+    textStartsWith: text('textStartsWith'),
+    textEndsWith: text('textEndsWith'),
+    id: text('id'),
+    desc: text('desc'),
+    descContains: text('descContains'),
+    className: text('className'),
+    clickable: flag('clickable'),
+    enabled: flag('enabled'),
+    editable: flag('editable'),
+    minWidth: size('minWidth'),
+    minHeight: size('minHeight'),
+  }
+  if (Object.values(selector).every(item => item === undefined)) throw new Error(`${label}至少要有一个条件`)
+  return selector
+}
+
+/** Activity 白/黑名单：一组正则文本；能不能编译交给原生（两边的正则方言不完全一样）。 */
+function accessibilityPatterns(value: unknown, label: string): string[] {
+  if (!Array.isArray(value)) throw new Error(`${label}必须是数组`)
+  return value.map((item, index) => {
+    if (typeof item !== 'string' || item.length === 0) throw new Error(`${label}第 ${index + 1} 项必须是正则文本`)
+    if (item.length > AUTOMATION_RULE_LIMITS.maxStringChars) throw new Error(`${label}第 ${index + 1} 项过长`)
+    return item
+  })
+}
+
+/** 可缺省的短文本：缺失、`null`、空串都收敛成「没填」。 */
+function accessibilityOptionalText(value: unknown, label: string): string | undefined {
+  if (value === undefined || value === null || value === '') return undefined
+  if (typeof value !== 'string') throw new Error(`${label}必须是文本`)
+  if (value.length > AUTOMATION_RULE_LIMITS.maxStringChars) throw new Error(`${label}过长`)
+  return value
+}
+
+/** 有区间的整数入参：区间与原生 `AutomationRuleLimits` 同源，越界在这里就报出来。 */
+function accessibilityBound(value: unknown, label: string, range: { readonly min: number; readonly max: number }): number {
+  const parsed = requiredIntegerValue(value, label)
+  if (parsed < range.min || parsed > range.max) throw new Error(`${label}必须在 ${range.min} 到 ${range.max} 之间`)
+  return parsed
+}
+
+/**
+ * 校验运行记录的读取结果。
+ *
+ * `runs`/`blocked` 里的每一项都要完整：`performed` 或 `count` 缺失时若补默认值，界面会把
+ * 「这条记录读不懂」显示成「没做动作 / 拦了 0 次」，而这个卡片存在的意义就是如实说明原因。
+ * `message` 允许为 null（未登记的受控码），此时界面显示原始 `code`。
+ */
+export function validateAccessibilityAutomationRuns(value: unknown): AccessibilityAutomationRuns {
+  const state = asRecord(value, '自动化运行记录')
+  if (typeof state.connected !== 'boolean') throw new Error('自动化运行记录格式无效')
+  if (!Array.isArray(state.runs) || !Array.isArray(state.blocked)) throw new Error('自动化运行记录格式无效')
+  if (!Number.isSafeInteger(state.limit) || (state.limit as number) < 0) throw new Error('自动化运行记录上限无效')
+  if (!Number.isSafeInteger(state.dropped) || (state.dropped as number) < 0) throw new Error('自动化运行记录丢弃计数无效')
+  return {
+    connected: state.connected,
+    limit: state.limit as number,
+    dropped: state.dropped as number,
+    runs: state.runs.map((item, index) => accessibilityRun(item, index)),
+    blocked: state.blocked.map((item, index) => accessibilityBlocked(item, index)),
+  }
+}
+
+/** 一条运行记录：`atMs` 是相对开机的毫秒数（负数说明这份读数来路不明）。 */
+function accessibilityRun(value: unknown, index: number): AccessibilityAutomationRun {
+  const record = asRecord(value, `自动化运行记录第 ${index + 1} 项`)
+  if (!Number.isSafeInteger(record.atMs) || (record.atMs as number) < 0) {
+    throw new Error(`自动化运行记录第 ${index + 1} 项时间无效`)
+  }
+  return {
+    atMs: record.atMs as number,
+    ruleId: accessibilityCodeText(record.ruleId, `自动化运行记录第 ${index + 1} 项规则`),
+    action: accessibilityCodeText(record.action, `自动化运行记录第 ${index + 1} 项动作`),
+    code: accessibilityCodeText(record.code, `自动化运行记录第 ${index + 1} 项受控码`),
+    message: record.message === null || record.message === undefined
+      ? null
+      : accessibilityCodeText(record.message, `自动化运行记录第 ${index + 1} 项说明`),
+    ok: requiredBoolean(record.ok, `自动化运行记录第 ${index + 1} 项结果`),
+    performed: requiredBoolean(record.performed, `自动化运行记录第 ${index + 1} 项执行状态`),
+    degraded: requiredBoolean(record.degraded, `自动化运行记录第 ${index + 1} 项降级状态`),
+  }
+}
+
+/** 一条拦截原因：次数必须是正整数（0 次的条目没有展示价值，出现即说明原生侧写错了）。 */
+function accessibilityBlocked(value: unknown, index: number): AccessibilityAutomationBlocked {
+  const record = asRecord(value, `自动化拦截原因第 ${index + 1} 项`)
+  if (!Number.isSafeInteger(record.count) || (record.count as number) < 1) {
+    throw new Error(`自动化拦截原因第 ${index + 1} 项次数无效`)
+  }
+  return {
+    code: accessibilityCodeText(record.code, `自动化拦截原因第 ${index + 1} 项受控码`),
+    count: record.count as number,
+    message: record.message === null || record.message === undefined
+      ? null
+      : accessibilityCodeText(record.message, `自动化拦截原因第 ${index + 1} 项说明`),
+  }
+}
+
+/** 记录里的短文本：不接受空串、控制字符或超长内容（界面是卡片列表，容不下自由文本）。 */
+function accessibilityCodeText(value: unknown, label: string): string {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 200 || containsControlCharacter(value)) {
+    throw new Error(`${label}无效`)
+  }
+  return value
+}
+
+/**
+ * 校验某个包的规则读数。
+ *
+ * `corrupt` 非空表示原生侧读不出这份数据**且已经把它清掉**——这是「数据坏了」，不是「没有规则」；
+ * 界面按 `corrupt` 与空数组分别显示，因此这里必须逐字段校验、不许用空数组把它抹平。
+ * 规则条目只带界面要用的字段：这里刻意**不要求**选择器正文（原生侧也不回），免得界面把界面内容搬进 DOM。
+ */
+export function validateAccessibilityAutomationRules(value: unknown): AccessibilityAutomationRules {
+  const state = asRecord(value, '自动化规则')
+  const packageName = accessibilityPackages([state.packageName], '自动化规则包名')[0]
+  if (typeof state.allowed !== 'boolean') throw new Error('自动化规则白名单状态无效')
+  if (!Array.isArray(state.rules)) throw new Error('自动化规则列表无效')
+  const corrupt = state.corrupt === null || state.corrupt === undefined
+    ? null
+    : accessibilityRulesCorrupt(state.corrupt)
+  return {
+    packageName,
+    allowed: state.allowed,
+    corrupt,
+    rules: state.rules.map((item, index) => accessibilityRule(item, index)),
+  }
+}
+
+/** 规则数据损坏的受控说明：码与文案都要有，界面直接显示它们。 */
+function accessibilityRulesCorrupt(value: unknown): AccessibilityAutomationRulesCorrupt {
+  const record = asRecord(value, '自动化规则损坏说明')
+  return {
+    code: accessibilityCodeText(record.code, '自动化规则损坏码'),
+    message: accessibilityCodeText(record.message, '自动化规则损坏说明'),
+  }
+}
+
+/** 一条规则：`id` 必须落在与原生同一套格式里，计数与抑制参数都必须是正整数或零。 */
+function accessibilityRule(value: unknown, index: number): AccessibilityAutomationRule {
+  const record = asRecord(value, `自动化规则第 ${index + 1} 项`)
+  const id = accessibilityCodeText(record.id, `自动化规则第 ${index + 1} 项标识`)
+  if (!/^[A-Za-z0-9._-]{1,64}$/.test(id)) throw new Error(`自动化规则第 ${index + 1} 项标识无效`)
+  return {
+    id,
+    enabled: requiredBoolean(record.enabled, `自动化规则第 ${index + 1} 项启用状态`),
+    actionKind: accessibilityCodeText(record.actionKind, `自动化规则第 ${index + 1} 项动作类型`),
+    selectorCount: accessibilityNonNegative(record.selectorCount, `自动化规则第 ${index + 1} 项选择器数量`),
+    maxActions: accessibilityNonNegative(record.maxActions, `自动化规则第 ${index + 1} 项动作上限`),
+    actionCoolDownMs: accessibilityNonNegative(record.actionCoolDownMs, `自动化规则第 ${index + 1} 项冷却时间`),
+  }
+}
+
+/** 计数类字段：非负安全整数（小数或负数都说明这份读数来路不明）。 */
+const accessibilityNonNegative = (value: unknown, label: string): number =>
+  assertNonNegativeInteger(value, label, '无效')
+
+/**
+ * 校验「白名单验证密码」入参：只在前端拦明显不合法的取值，真正的比对在原生侧。
+ *
+ * 密码**只用于本次过桥**：这里不记录、不缓存、不拼接进任何错误消息，
+ * 错误文案里因此也不会出现用户输入的那串字符。
+ */
+export function validateAccessibilityPasswordInput(value: unknown, label: string): string {
+  if (typeof value !== 'string') throw new Error(`${label}格式无效`)
+  if (value.length < ACCESSIBILITY_PASSWORD_MIN_CHARS || value.length > ACCESSIBILITY_PASSWORD_MAX_CHARS) {
+    throw new Error(`${label}需要 ${ACCESSIBILITY_PASSWORD_MIN_CHARS} 到 ${ACCESSIBILITY_PASSWORD_MAX_CHARS} 个字符`)
+  }
+  if (containsControlCharacter(value)) throw new Error(`${label}包含不可用字符`)
+  // 首尾空白几乎都是粘贴带进来的：原样送过去只会让用户在原生侧反复收到「密码不正确」。
+  if (value.trim() === '') throw new Error(`${label}不能全是空白`)
+  if (value !== value.trim()) throw new Error(`${label}首尾不能有空白`)
+  return value
+}
+
+export function validateDeviceShellAccess(value: unknown): { enabled: boolean } {
+  if (!value || typeof value !== 'object' || typeof (value as Record<string, unknown>).enabled !== 'boolean') {
+    throw new Error('AI Shell 授权状态格式无效')
+  }
+  return { enabled: (value as Record<string, boolean>).enabled }
+}
+
+/**
+ * 校验原生返回的悬浮球状态。
+ *
+ * 三个字段都必须存在且为布尔：字段缺失时抛错，而不是补成 false ——
+ * 否则「读取失败」会被界面显示成「开关关闭」，用户点了没反应也查不出原因。
+ */
+export function validateOverlayBallState(value: unknown): OverlayBallState {
+  const source = asRecord(value, '悬浮球状态')
+  // 失败令牌可选：老版本原生不下发时按无失败处理，不影响界面其余部分。
+  const startError = optionalFailureToken(source.startError)
+  return {
+    enabled: requiredBoolean(source.enabled, '悬浮球开关'),
+    canDrawOverlays: requiredBoolean(source.canDrawOverlays, '悬浮球权限'),
+    serviceActive: requiredBoolean(source.serviceActive, '悬浮球服务状态'),
+    ...(startError === null ? {} : { startError }),
+  }
+}
+
+/**
+ * 校验存储访问状态。
+ *
+ * 四个字段都必须存在：`allFilesSupported` 缺失时若补成 false，界面会把一台
+ * Android 14 设备显示成「系统不支持」，用户再也不会去找那个入口。
+ */
+export function validateStorageAccessState(value: unknown): StorageAccessState {
+  const source = asRecord(value, '存储访问状态')
+  if (!Number.isSafeInteger(source.sdkInt) || (source.sdkInt as number) < 0) {
+    throw new Error('存储访问状态格式无效')
+  }
+  return {
+    mediaGranted: requiredBoolean(source.mediaGranted, '媒体读取权限'),
+    allFilesGranted: requiredBoolean(source.allFilesGranted, '所有文件访问权限'),
+    allFilesSupported: requiredBoolean(source.allFilesSupported, '所有文件访问支持状态'),
+    sdkInt: source.sdkInt as number,
+  }
+}
+
+/** 校验媒体权限申请结果；只认布尔，不做静默转换。 */
+export function validateMediaPermissionResult(value: unknown): MediaPermissionResult {
+  const source = asRecord(value, '媒体权限结果')
+  return { granted: requiredBoolean(source.granted, '媒体权限结果') }
+}
+
+/** 校验「所有文件访问」设置跳转结果。 */
+export function validateAllFilesAccessResult(value: unknown): AllFilesAccessResult {
+  const source = asRecord(value, '所有文件访问结果')
+  return {
+    supported: requiredBoolean(source.supported, '所有文件访问支持状态'),
+    granted: requiredBoolean(source.granted, '所有文件访问权限'),
+  }
+}
+
+/**
+ * 校验投递区可用性档位。
+ *
+ * 只接受四个受控取值：未知取值一律抛错，而不是回落到 `available` ——
+ * 把「读不懂的状态」显示成「可用」会让用户点了按钮才发现不可用。
+ */
+function mailboxAvailability(value: unknown): MailboxAvailability {
+  if (typeof value !== 'string' || !MAILBOX_AVAILABILITIES.has(value as MailboxAvailability)) {
+    throw new Error('投递区可用性格式无效')
+  }
+  return value as MailboxAvailability
+}
+
+function mailboxPath(value: unknown, label: string): string {
+  if (typeof value !== 'string' || value.length === 0 || value.length > MAX_MAILBOX_PATH_LENGTH || !value.startsWith('/')) {
+    throw new Error(`${label}格式无效`)
+  }
+  return value
+}
+
+function mailboxFileName(value: unknown, label: string): string {
+  if (
+    typeof value !== 'string' || value.length === 0 || value.length > MAX_MAILBOX_PATH_LENGTH ||
+    value.startsWith('/') || value.includes('\\') || value.includes('/')
+  ) {
+    throw new Error(`${label}格式无效`)
+  }
+  return value
+}
+
+/**
+ * 校验投递区状态。
+ *
+ * 路径只允许 `/` 开头的用户可见路径与访客挂载点：原生侧只回传这两类路径，
+ * 任何相对路径或带反斜杠的取值都说明载荷不符合契约，按格式无效处理。
+ * `available` 必须与 `availability` 自洽，避免界面出现「可用按钮 + 需要授权文案」的矛盾状态。
+ */
+export function validateMailboxState(value: unknown): MailboxState {
+  const source = asRecord(value, '投递区状态')
+  const availability = mailboxAvailability(source.availability)
+  const available = requiredBoolean(source.available, '投递区可用性')
+  if (available !== (availability === 'available')) {
+    throw new Error('投递区状态自相矛盾')
+  }
+  const level = source.level
+  if (level !== 'T2' && level !== 'T0') throw new Error('投递区权限档位格式无效')
+  if (!Array.isArray(source.inboxTars) || source.inboxTars.length > MAX_MAILBOX_TARS) {
+    throw new Error('投递区 tar 列表格式无效')
+  }
+  return {
+    availability,
+    level,
+    available,
+    supported: requiredBoolean(source.supported, '投递区支持状态'),
+    granted: requiredBoolean(source.granted, '投递区授权状态'),
+    inboxPath: mailboxPath(source.inboxPath, '投递区 inbox 路径'),
+    outboxPath: mailboxPath(source.outboxPath, '投递区 outbox 路径'),
+    guestInboxPath: mailboxPath(source.guestInboxPath, '访客 inbox 路径'),
+    guestOutboxPath: mailboxPath(source.guestOutboxPath, '访客 outbox 路径'),
+    inboxFileCount: byteCount(source.inboxFileCount, '投递区文件数'),
+    inboxTars: source.inboxTars.map(item => {
+      const candidate = asRecord(item, '投递区 tar 条目')
+      return {
+        name: mailboxFileName(candidate.name, '投递区 tar 名称'),
+        bytes: byteCount(candidate.bytes, '投递区 tar 大小'),
+      }
+    }),
+    exportTarName: mailboxFileName(source.exportTarName, '投递区导出归档名'),
+    exportManifestName: mailboxFileName(source.exportManifestName, '投递区导出清单名'),
+    importDirectory: mailboxFileName(source.importDirectory, '投递区导入落点'),
+  }
+}
+
+/** 校验投递区目录浏览快照；路径和条目均只允许固定根下的相对值。 */
+export function validateMailboxDirectoryState(value: unknown): MailboxDirectoryState {
+  const source = asRecord(value, '投递区目录状态')
+  const root = source.root
+  if (root !== 'inbox' && root !== 'outbox') throw new Error('投递区根目录格式无效')
+  if (!Array.isArray(source.entries) || source.entries.length > MAX_MAILBOX_DIRECTORY_ENTRIES) {
+    throw new Error('投递区目录条目格式无效')
+  }
+  const path = source.path === undefined || source.path === null
+    ? undefined
+    : typeof source.path === 'string'
+      ? assertMailboxSubdirectory(source.path)
+      : (() => { throw new Error('投递区目录路径格式无效') })()
+  return {
+    root: root as MailboxRoot,
+    path,
+    entries: source.entries.map(item => {
+      const entry = asRecord(item, '投递区目录条目')
+      const kind = entry.kind
+      if (kind !== 'file' && kind !== 'directory') throw new Error('投递区目录条目类型无效')
+      return {
+        name: mailboxFileName(entry.name, '投递区目录条目名称'),
+        kind,
+        bytes: byteCount(entry.bytes, '投递区目录条目大小'),
+      }
+    }),
+    truncated: requiredBoolean(source.truncated, '投递区目录截断状态'),
+  }
+}
+
+/**
+ * 共享目录的访客路径：严格是 `/mnt/user/<序号>`，序号从 1 起且没有前导零。
+ *
+ * 与原生侧同一套形态规则：`/mnt/user`、`/mnt/user/01`、`/mnt/user/+1`、`/mnt/user/1/`、
+ * `/mnt/user/1/extra` 全都不是合法取值 —— 它们指不到白名单里的任何一条目录。
+ */
+const STORAGE_GUEST_PATH_PATTERN = /^\/mnt\/user\/[1-9]\d*$/
+
+/**
+ * 校验共享目录浏览快照；访客路径与条目都只允许白名单里的受控取值。
+ *
+ * `path` 复用投递区的相对子目录规则（[assertMailboxSubdirectory]）：原生回传根目录时给的是
+ * `null`，这里统一收敛成 `undefined`。条目的线形状与投递区逐字相同（`kind` 只有
+ * `file` / `directory`，没有 `type`），单次上限也复用投递区那个常量。
+ */
+export function validateStorageDirectoryState(value: unknown): StorageDirectoryState {
+  const source = asRecord(value, '共享目录状态')
+  const guestPath = source.guestPath
+  if (typeof guestPath !== 'string' || !STORAGE_GUEST_PATH_PATTERN.test(guestPath)) {
+    throw new Error('共享目录路径格式无效')
+  }
+  if (!Array.isArray(source.entries) || source.entries.length > MAX_MAILBOX_DIRECTORY_ENTRIES) {
+    throw new Error('共享目录条目格式无效')
+  }
+  const path = source.path === undefined || source.path === null
+    ? undefined
+    : typeof source.path === 'string'
+      ? assertMailboxSubdirectory(source.path)
+      : (() => { throw new Error('共享目录子路径格式无效') })()
+  return {
+    guestPath,
+    path,
+    entries: source.entries.map(item => {
+      const entry = asRecord(item, '共享目录条目')
+      const kind = entry.kind
+      if (kind !== 'file' && kind !== 'directory') throw new Error('共享目录条目类型无效')
+      return {
+        name: mailboxFileName(entry.name, '共享目录条目名称'),
+        kind,
+        bytes: byteCount(entry.bytes, '共享目录条目大小'),
+      }
+    }),
+    truncated: requiredBoolean(source.truncated, '共享目录截断状态'),
+  }
+}
+
+/** 校验导入结果；缺 `manifestName` 表示这份归档没有附带 manifest（未逐条校验）。 */
+export function validateMailboxImportResult(value: unknown): MailboxImportResult {
+  const source = asRecord(value, '投递区导入结果')
+  return {
+    entryCount: byteCount(source.entryCount, '投递区导入条目数'),
+    fileCount: byteCount(source.fileCount, '投递区导入文件数'),
+    directoryCount: byteCount(source.directoryCount, '投递区导入目录数'),
+    symlinkCount: byteCount(source.symlinkCount, '投递区导入链接数'),
+    hardlinkCount: byteCount(source.hardlinkCount, '投递区导入硬链接数'),
+    bytes: byteCount(source.bytes, '投递区导入字节数'),
+    tarName: mailboxFileName(source.tarName, '投递区导入归档名'),
+    tarBytes: byteCount(source.tarBytes, '投递区导入归档大小'),
+    verified: requiredBoolean(source.verified, '投递区导入校验状态'),
+    manifestName: source.manifestName === undefined
+      ? undefined
+      : mailboxFileName(source.manifestName, '投递区导入清单名'),
+    ignoredFiles: byteCount(source.ignoredFiles, '投递区忽略文件数'),
+    target: mailboxFileName(source.target, '投递区导入落点'),
+  }
+}
+
+/** 校验导出结果；摘要必须是 64 位小写十六进制。 */
+export function validateMailboxExportResult(value: unknown): MailboxExportResult {
+  const source = asRecord(value, '投递区导出结果')
+  if (typeof source.tarSha256 !== 'string' || !SHA256_PATTERN.test(source.tarSha256)) {
+    throw new Error('投递区导出摘要格式无效')
+  }
+  return {
+    entryCount: byteCount(source.entryCount, '投递区导出条目数'),
+    bytes: byteCount(source.bytes, '投递区导出字节数'),
+    tarName: mailboxFileName(source.tarName, '投递区导出归档名'),
+    tarBytes: byteCount(source.tarBytes, '投递区导出归档大小'),
+    tarSha256: source.tarSha256,
+    manifestName: mailboxFileName(source.manifestName, '投递区导出清单名'),
+    subdirectory: source.subdirectory === undefined
+      ? undefined
+      : typeof source.subdirectory === 'string'
+        ? assertMailboxSubdirectory(source.subdirectory)
+        : (() => { throw new Error('投递区导出起点格式无效') })(),
+    destinationDirectory: source.destinationDirectory === undefined
+      ? undefined
+      : typeof source.destinationDirectory === 'string'
+        ? assertMailboxSubdirectory(source.destinationDirectory)
+        : (() => { throw new Error('投递区导出目标目录格式无效') })(),
+    skippedLinks: byteCount(source.skippedLinks, '投递区跳过链接数'),
+    skippedSpecial: byteCount(source.skippedSpecial, '投递区跳过特殊条目数'),
+  }
+}
+
+/**
+ * 断言导出起点的入参。
+ *
+ * 与原生侧同一套规则：省略或空白表示整个工作区；其余必须是不含 `.` / `..` 分段的相对路径。
+ * 前端先拦一道，避免明显非法的取值跨过桥接。
+ */
+export function assertMailboxSubdirectory(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined
+  const trimmed = value.trim()
+  if (trimmed.length === 0) return undefined
+  if (trimmed.length > MAX_MAILBOX_PATH_LENGTH || trimmed.startsWith('/') || trimmed.includes('\\')) {
+    throw new Error('投递区导出起点格式无效')
+  }
+  const segments = trimmed.split('/')
+  if (segments.some(segment => segment.length === 0 || segment === '.' || segment === '..')) {
+    throw new Error('投递区导出起点格式无效')
+  }
+  return trimmed
+}
+
+/**
+ * 目录白名单条目的可用性档位。
+ *
+ * 只接受四个受控取值：未知取值一律抛错，而不是回落到 `available` ——
+ * 把「读不懂的状态」显示成「可用」会让用户以为访客里真的能看到这个目录。
+ */
+const STORAGE_DIR_AVAILABILITIES = new Set<StorageDirAvailability>([
+  'available',
+  'unavailable',
+  'needsPermission',
+  'unsupported',
+])
+
+/** 与原生侧一致的路径上限（相对共享存储根 240 字符 + `/storage/emulated/0/` 前缀）。 */
+const MAX_STORAGE_DIR_PATH_LENGTH = 20 + 240
+const MAX_STORAGE_DIR_NAME_LENGTH = 64
+
+/**
+ * 白名单路径：必须是 `/storage/emulated/0/` 之下的绝对路径。
+ *
+ * 这条前缀是**契约的一部分**：原生侧只回传共享存储里的用户可见路径（私有路径与 rootfs 路径
+ * 不进桥接载荷），因此任何越出该前缀的取值都说明载荷不符合契约，按格式无效处理。
+ */
+function storageDirPath(value: unknown): string {
+  const label = '存储目录路径'
+  if (
+    typeof value !== 'string' || value.length < 2 || value.length > MAX_STORAGE_DIR_PATH_LENGTH ||
+    !value.startsWith('/storage/emulated/0/') || value.includes('\\') || containsControlCharacter(value)
+  ) {
+    throw new Error(`${label}格式无效`)
+  }
+  const segments = value.slice(1).split('/')
+  if (segments.some(segment => segment.length === 0 || segment === '.' || segment === '..')) {
+    throw new Error(`${label}格式无效`)
+  }
+  return value
+}
+
+/** 断言移除操作的入参；与原生侧同一套规则（前端先拦一道明显非法的取值）。 */
+export function assertStorageDirPath(path: string): string {
+  return storageDirPath(path)
+}
+
+function storageDirAvailability(value: unknown): StorageDirAvailability {
+  if (typeof value !== 'string' || !STORAGE_DIR_AVAILABILITIES.has(value as StorageDirAvailability)) {
+    throw new Error('存储目录可用性格式无效')
+  }
+  return value as StorageDirAvailability
+}
+
+/**
+ * 校验目录白名单状态。
+ *
+ * 除逐条校验外还钉住三组自洽关系：`count === entries.length`、`available === (availability
+ * === 'available')`、`level` 与 `supported`/`granted` 一致。缺一个就会出现
+ * 「按钮可点但原生说不可用」或「文案说 T2 却没有权限」这类自相矛盾的界面状态。
+ */
+export function validateStorageDirsState(value: unknown): StorageDirsState {
+  const source = asRecord(value, '存储目录白名单状态')
+  const supported = requiredBoolean(source.supported, '存储目录支持状态')
+  const granted = requiredBoolean(source.granted, '存储目录授权状态')
+  if (granted && !supported) throw new Error('存储目录白名单状态自相矛盾')
+  const level = source.level
+  if (level !== 'T2' && level !== 'T0') throw new Error('存储目录权限档位格式无效')
+  if (level !== (supported && granted ? 'T2' : 'T0')) throw new Error('存储目录白名单状态自相矛盾')
+  if (source.maxDirectories !== MAX_STORAGE_DIRECTORIES) throw new Error('存储目录上限格式无效')
+  if (!Array.isArray(source.entries) || source.entries.length > MAX_STORAGE_DIRECTORIES) {
+    throw new Error('存储目录条目格式无效')
+  }
+  if (source.count !== source.entries.length) throw new Error('存储目录白名单状态自相矛盾')
+  const slots = new Set<number>()
+  const entries: StorageDirEntry[] = source.entries.map(item => {
+    const entry = asRecord(item, '存储目录条目')
+    // 删除条目后允许槽位留下空洞，但必须保持唯一并与挂载点一致。
+    if (typeof entry.index !== 'number' || !Number.isInteger(entry.index) || entry.index < 1 ||
+      entry.index > MAX_STORAGE_DIRECTORIES || slots.has(entry.index)) throw new Error('存储目录序号格式无效')
+    slots.add(entry.index)
+    const availability = storageDirAvailability(entry.availability)
+    const available = requiredBoolean(entry.available, '存储目录可用性')
+    if (available !== (availability === 'available')) throw new Error('存储目录条目自相矛盾')
+    // 逐条的权限档由可用性唯一决定：不一致说明载荷不符合契约。
+    const entryLevel: 'T2' | 'T0' = availability === 'available' ? 'T2' : 'T0'
+    if (entry.level !== entryLevel) throw new Error('存储目录权限档位格式无效')
+    if (
+      typeof entry.displayName !== 'string' || entry.displayName.length === 0 ||
+      entry.displayName.length > MAX_STORAGE_DIR_NAME_LENGTH || entry.displayName.includes('/') ||
+      containsControlCharacter(entry.displayName)
+    ) {
+      throw new Error('存储目录名称格式无效')
+    }
+    if (entry.guestPath !== `/mnt/user/${entry.index}`) throw new Error('存储目录挂载点格式无效')
+    let reasonCode: string | undefined
+    if (entry.reasonCode !== undefined) {
+      if (
+        typeof entry.reasonCode !== 'string' || entry.reasonCode.length > MAX_ERROR_CODE_LENGTH ||
+        !ERROR_CODE_PATTERN.test(entry.reasonCode) || availability === 'available'
+      ) {
+        throw new Error('存储目录错误码格式无效')
+      }
+      reasonCode = entry.reasonCode
+    }
+    return {
+      index: entry.index,
+      path: storageDirPath(entry.path),
+      displayName: entry.displayName,
+      guestPath: entry.guestPath,
+      availability,
+      level: entryLevel,
+      available,
+      reasonCode,
+    }
+  })
+  const active = requiredBoolean(source.active, '存储目录生效状态')
+  if (active !== entries.some(entry => entry.available)) throw new Error('存储目录白名单状态自相矛盾')
+  return {
+    entries,
+    maxDirectories: MAX_STORAGE_DIRECTORIES,
+    count: entries.length,
+    supported,
+    granted,
+    level,
+    active,
+  }
+}
+
+/** 原生侧单次最多列出的运行时可用版本数；超出即视为载荷不符合契约。 */
+const MAX_RUNTIME_RELEASES = 40
+/** 运行时版本清单地址的长度上限；与原生侧保持一致。 */
+const MAX_RELEASE_MANIFEST_URL_LENGTH = 1024
+/** Android versionCode 的受控上限；超出说明这份载荷不是本应用该有的版本代码。 */
+const MAX_APP_VERSION_CODE = 2_100_000_000
+/** 单个应用更新包的体积上限（4 GiB = 4294967296 字节）。 */
+const MAX_APP_UPDATE_BYTES = 4 * 1024 * 1024 * 1024
+/** 更新说明的字符上限；超出直接报错，不截断——截断会改变用户读到的更新内容。 */
+const MAX_APP_UPDATE_NOTES_LENGTH = 4000
+
+/**
+ * 校验运行时可用版本列表。
+ *
+ * `manifestUrl` 与 `manifestSha256` 要么都有、要么都没有：只有一个说明原生侧回了一份
+ * 半截载荷，宁可报错也不能让界面把它当成「可安装」，更不能替它补另一半。
+ */
+export function validateRuntimeReleaseList(value: unknown): RuntimeReleaseList {
+  const list = asRecord(value, '运行时可用版本状态')
+  const source = list.entries
+  if (!Array.isArray(source) || source.length > MAX_RUNTIME_RELEASES) {
+    throw new Error('运行时可用版本列表格式无效')
+  }
+
+  const entries: RuntimeReleaseEntry[] = source.map(item => {
+    const entry = asRecord(item, '运行时可用版本条目')
+    const version = requiredIdentifier(entry.version, '运行时可用版本号')
+    if (entry.notes !== undefined && (typeof entry.notes !== 'string' || entry.notes.length > MAX_APP_UPDATE_NOTES_LENGTH)) {
+      throw new Error('运行时更新说明格式无效')
+    }
+    const notes = entry.notes === undefined ? {} : { notes: entry.notes }
+    const dshVersion = optionalIdentifier(entry.dshVersion, '运行时内置 dsh 版本')
+    const hasManifestUrl = entry.manifestUrl !== undefined
+    const hasManifestSha256 = entry.manifestSha256 !== undefined
+    if (hasManifestUrl !== hasManifestSha256) {
+      throw new Error('运行时版本清单地址与 SHA-256 必须同时出现或同时缺失')
+    }
+    if (!hasManifestUrl) {
+      return { version, ...notes, ...(dshVersion === undefined ? {} : { dshVersion }) }
+    }
+
+    const manifestUrl = entry.manifestUrl
+    if (
+      typeof manifestUrl !== 'string' || manifestUrl.length > MAX_RELEASE_MANIFEST_URL_LENGTH ||
+      !manifestUrl.startsWith('https://')
+    ) {
+      throw new Error('运行时版本清单地址格式无效')
+    }
+    const manifestSha256 = entry.manifestSha256
+    if (typeof manifestSha256 !== 'string' || !SHA256_PATTERN.test(manifestSha256)) {
+      throw new Error('运行时版本清单 SHA-256 必须是 64 位小写十六进制')
+    }
+    return { version, manifestUrl, manifestSha256, ...notes, ...(dshVersion === undefined ? {} : { dshVersion }) }
+  })
+
+  return { entries }
+}
+
+function appVersionCode(value: unknown): number {
+  if (!Number.isSafeInteger(value) || (value as number) < 0 || (value as number) > MAX_APP_VERSION_CODE) {
+    throw new Error('已安装应用版本代码格式无效')
+  }
+  return value as number
+}
+
+function appUpdateBytes(value: unknown): number {
+  if (!Number.isSafeInteger(value) || (value as number) <= 0 || (value as number) > MAX_APP_UPDATE_BYTES) {
+    throw new Error('应用更新包大小格式无效')
+  }
+  return value as number
+}
+
+/**
+ * 校验应用自身的更新状态。
+ *
+ * `installAllowed` 缺失或非布尔一律报错：把未知当成 false 会让已授权的用户白跑一趟
+ * 系统设置页，当成 true 则会让界面承诺一次必然失败的安装。
+ */
+export function validateAppUpdateState(value: unknown): AppUpdateState {
+  const state = asRecord(value, '应用更新状态')
+  const installedVersion = requiredIdentifier(state.installedVersion, '已安装应用版本号')
+  const installedVersionCode = appVersionCode(state.installedVersionCode)
+  if (typeof state.installAllowed !== 'boolean') throw new Error('应用更新安装权限状态无效')
+  if (state.channel !== 'stable' && state.channel !== 'beta') throw new Error('应用更新频道状态无效')
+  const channel: AppUpdateChannel = state.channel
+  const cache: Pick<AppUpdateState, 'cached' | 'checkedAt'> = {}
+  if (state.cached !== undefined || state.checkedAt !== undefined) {
+    if (typeof state.cached !== 'boolean' || !Number.isSafeInteger(state.checkedAt) ||
+      (state.checkedAt as number) <= 0 || (state.checkedAt as number) > 8_640_000_000_000_000) {
+      throw new Error('应用更新缓存状态无效')
+    }
+    cache.cached = state.cached
+    cache.checkedAt = state.checkedAt as number
+  }
+
+  if (state.available === undefined) {
+    return { installedVersion, installedVersionCode, channel, installAllowed: state.installAllowed, ...cache }
+  }
+
+  const release = asRecord(state.available, '可用应用更新')
+  const version = requiredIdentifier(release.version, '应用更新版本号')
+  const bytes = appUpdateBytes(release.bytes)
+  if (typeof release.sha256 !== 'string' || !SHA256_PATTERN.test(release.sha256)) {
+    throw new Error('应用更新包 SHA-256 必须是 64 位小写十六进制')
+  }
+  if (typeof release.notes !== 'string') throw new Error('应用更新说明格式无效')
+  if (release.notes.length > MAX_APP_UPDATE_NOTES_LENGTH) throw new Error('应用更新说明长度无效')
+
+  return {
+    installedVersion,
+    installedVersionCode,
+    channel,
+    installAllowed: state.installAllowed,
+    available: { version, bytes, sha256: release.sha256, notes: release.notes },
+    ...cache,
+  }
+}
+
+/**
+ * 会话标识形态：**与原生侧 `SessionCatalogPayload` 同一条规则**——拒绝控制字符、斜杠、反斜杠与
+ * 空白，长度 1..200，且不以 `.` 开头。
+ *
+ * 两层必须一致：这里放松会让带路径的 id 进到界面，这里收紧会让真实会话整块读取失败。
+ * 用「危险字符」而不是窄字符集白名单，是因为会话 id 由 dsh 生成，形态可能变化。
+ *
+ * 按码点扫描而不是写正则：`[\u0000-\u001F]` 这样的字符组会触发 `no-control-regex`，
+ * 本仓库没有豁免先例，而扫描与文件内 `containsControlCharacter` 是同一套写法。
+ */
+function isCatalogSessionId(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length === 0 || value.length > MAX_SESSION_ID_CHARS) return false
+  if (value.startsWith('.')) return false
+  return !Array.from(value).some(character => {
+    const code = character.charCodeAt(0)
+    return code <= 31 || code === 127 || character === '/' || character === '\\' || /\s/.test(character)
+  })
+}
+/** 会话标识长度上限：与原生侧 `SessionCatalogPayload.MAX_IDENTIFIER_CHARS` 同值。 */
+const MAX_SESSION_ID_CHARS = 200
+/** 会话条数上限：访客脚本与原生侧都按 50 截断，超出的载荷视为不可信。 */
+const MAX_RUNTIME_SESSIONS = 50
+/** 标题长度上限（UTF-16 字符数，与原生侧 `MAX_TITLE_CHARS` 同口径）：宿主侧标题最长 80 字节，200 字符只是防御性天花板。 */
+const MAX_SESSION_TITLE_CHARS = 200
+/** 更新时间上限（毫秒，2100-01-01）：明显越界的取值视为不可信。 */
+const MAX_SESSION_UPDATED_AT = 4_102_444_800_000
+/** 受控的读取失败原因：多一个少一个都要在这里显式登记，界面才能给出对应说明。 */
+const SESSION_LIST_REASONS = new Set<RuntimeSessionListReason>([
+  'RUNTIME_NOT_INSTALLED',
+  'SESSION_CATALOG_TIMEOUT',
+  'SESSION_CATALOG_FAILED',
+])
+
+/** 会话快照份数的防御性上限：原生当前上限是 3，但上限本身会变，校验不该把 4 当非法。 */
+const MAX_RUNTIME_SESSION_SNAPSHOTS = 32
+/** 会话快照占用空间的上限（512 MiB）；与原生侧保持一致。 */
+const MAX_RUNTIME_SESSION_SNAPSHOT_BYTES = 512 * 1024 * 1024
+/**
+ * 快照标识：`snap-<毫秒时间戳>-<序号>`。
+ *
+ * **故意宽松**：不写死序号位数（原生现在是 8 位十六进制）。原生以后改格式不该把界面打死，
+ * 这条只用来挡住「明显不是标识」的值（空串、带路径、带斜杠）。
+ */
+const RUNTIME_SESSION_SNAPSHOT_ID_PATTERN = /^snap-[0-9]{10,16}-[0-9a-zA-Z]{1,16}$/
+
+/** 快照标识的宽松校验：只看形态，不查它是否真的存在（那是原生侧的事）。 */
+function requiredSnapshotId(value: unknown): string {
+  if (typeof value !== 'string' || !RUNTIME_SESSION_SNAPSHOT_ID_PATTERN.test(value)) {
+    throw new Error('运行时会话快照标识格式无效')
+  }
+  return value
+}
+
+/** 正整数且不超过 [maximum]；用于「上限」这类有防御性天花板的字段。 */
+function boundedPositiveInteger(value: unknown, maximum: number, message: string): number {
+  if (!Number.isSafeInteger(value) || (value as number) <= 0 || (value as number) > maximum) {
+    throw new Error(message)
+  }
+  return value as number
+}
+
+/** `evictedIds` 是契约之外的附加字段：存在时必须是快照标识数组，否则这份载荷不可信。 */
+function snapshotIdList(value: unknown): string[] {
+  if (!Array.isArray(value)) throw new Error('运行时自动快照淘汰列表格式无效')
+  return value.map(item => requiredSnapshotId(item))
+}
+
+/**
+ * 校验会话快照总览。
+ *
+ * 未知键一律忽略：原生侧以后加字段不该让整块界面失败（`evictedIds` 就是这么加进来的）。
+ * `snapshots` 的长度上限用载荷自己给的 `maxSnapshots`，而不是写死原生今天那个 3——
+ * 上限会变，界面跟着载荷走。
+ */
+export function validateRuntimeSessionSnapshotState(value: unknown): RuntimeSessionSnapshotState {
+  const state = asRecord(value, '运行时会话快照状态')
+  const maxSnapshots = boundedPositiveInteger(state.maxSnapshots, MAX_RUNTIME_SESSION_SNAPSHOTS, '会话快照份数上限无效')
+  const maxBytes = boundedPositiveInteger(state.maxBytes, MAX_RUNTIME_SESSION_SNAPSHOT_BYTES, '会话快照空间上限无效')
+  const totalBytes = state.totalBytes
+  if (!Number.isSafeInteger(totalBytes) || (totalBytes as number) < 0 || (totalBytes as number) > maxBytes) {
+    throw new Error('会话快照已用空间无效')
+  }
+
+  const source = state.snapshots
+  if (!Array.isArray(source) || source.length > maxSnapshots) throw new Error('运行时会话快照列表格式无效')
+
+  const snapshots: RuntimeSessionSnapshot[] = source.map(item => {
+    const entry = asRecord(item, '运行时会话快照条目')
+    const id = requiredSnapshotId(entry.id)
+    const createdAt = entry.createdAt
+    if (typeof createdAt !== 'string' || !Number.isFinite(Date.parse(createdAt))) {
+      throw new Error('运行时会话快照创建时间格式无效')
+    }
+    const bytes = boundedPositiveInteger(entry.bytes, maxBytes, '运行时会话快照大小格式无效')
+    const fileCount = byteCount(entry.fileCount, '运行时会话快照文件数格式无效')
+    const runtimeVersion = optionalIdentifier(entry.runtimeVersion, '运行时会话快照运行时版本')
+    const dshVersion = optionalIdentifier(entry.dshVersion, '运行时会话快照内置 dsh 版本')
+    return {
+      id,
+      createdAt,
+      bytes,
+      fileCount,
+      ...(runtimeVersion === undefined ? {} : { runtimeVersion }),
+      ...(dshVersion === undefined ? {} : { dshVersion }),
+    }
+  })
+
+  return { maxSnapshots, maxBytes, totalBytes: totalBytes as number, snapshots }
+}
+
+/** 校验快照恢复结果：两个计数都是非负整数，内嵌的总览走上面同一套校验。 */
+export function validateRuntimeSessionSnapshotRestoreResult(value: unknown): RuntimeSessionSnapshotRestoreResult {
+  const result = asRecord(value, '运行时会话快照恢复结果')
+  return {
+    restoredFileCount: byteCount(result.restoredFileCount, '运行时会话快照恢复文件数格式无效'),
+    skippedFileCount: byteCount(result.skippedFileCount, '运行时会话快照跳过文件数格式无效'),
+    state: validateRuntimeSessionSnapshotState(result.state),
+  }
+}
+
+/**
+ * 校验会话列表读取结果。
+ *
+ * 两态判别只看 `status`，未知键一律忽略（原生侧以后加字段不该让整块界面失败）。
+ * 每条**只取** `id` / `title` / `updatedAt` 三个字段：正文、路径、`cwd` 之类即便混进载荷也到不了
+ * 界面——这里的返回体是与界面之间的最后一个约定点。
+ *
+ * 校验器只负责拒绝「形状不符」的载荷，不负责过滤：一条不合规的会话（含路径、含控制字符）
+ * 会让整块读取失败，而不是被悄悄丢掉——静默少一条会话同样是编造事实。
+ */
+export function validateRuntimeSessionListResult(value: unknown): RuntimeSessionListResult {
+  const result = asRecord(value, '会话列表')
+  if (result.status === 'unavailable') {
+    const reason = result.reason
+    if (typeof reason !== 'string' || !SESSION_LIST_REASONS.has(reason as RuntimeSessionListReason)) {
+      throw new Error('会话列表读取失败原因无效')
+    }
+    return { status: 'unavailable', reason: reason as RuntimeSessionListReason }
+  }
+  if (result.status !== 'ready') throw new Error('会话列表状态无效')
+
+  const source = result.sessions
+  if (!Array.isArray(source) || source.length > MAX_RUNTIME_SESSIONS) throw new Error('会话列表格式无效')
+
+  const sessions: RuntimeSessionSummary[] = source.map(item => {
+    const entry = asRecord(item, '会话条目')
+    const id = entry.id
+    if (!isCatalogSessionId(id)) throw new Error('会话标识格式无效')
+    const title = entry.title
+    if (
+      typeof title !== 'string' ||
+      title.length > MAX_SESSION_TITLE_CHARS ||
+      containsControlCharacter(title)
+    ) {
+      throw new Error('会话标题格式无效')
+    }
+    const updatedAt = entry.updatedAt
+    if (!Number.isSafeInteger(updatedAt) || (updatedAt as number) < 0 || (updatedAt as number) > MAX_SESSION_UPDATED_AT) {
+      throw new Error('会话更新时间格式无效')
+    }
+    return { id, title, updatedAt: updatedAt as number }
+  })
+
+  return { status: 'ready', sessions, truncated: requiredBoolean(result.truncated, '会话列表截断标记') }
+}
+
+/**
+ * 校验运行时安装结果。
+ *
+ * `undefined` / `null` / `{}` 都合法，一律归一化成 `{}`：安装本来就可以没有自动快照这个键
+ * （旧版原生桥接的 `install` 什么都不返回），界面不该因为少了一个可选结论就报错。
+ */
+export function validateRuntimeInstallResult(value: unknown): RuntimeInstallResult {
+  if (value === undefined || value === null) return {}
+  const result = asRecord(value, '运行时安装结果')
+  if (result.autoSnapshot === undefined) return {}
+
+  const outcome = asRecord(result.autoSnapshot, '运行时自动快照结论')
+  const status = outcome.status
+  if (status !== 'created' && status !== 'skipped' && status !== 'failed') {
+    throw new Error('运行时自动快照结论状态无效')
+  }
+  const evictedIds = outcome.evictedIds === undefined ? undefined : snapshotIdList(outcome.evictedIds)
+
+  if (status === 'created') {
+    if (outcome.snapshotId === undefined) throw new Error('运行时自动快照结论缺少快照标识')
+    return {
+      autoSnapshot: {
+        status,
+        snapshotId: requiredSnapshotId(outcome.snapshotId),
+        ...(evictedIds === undefined ? {} : { evictedIds }),
+      },
+    }
+  }
+
+  // skipped / failed：错误码必须存在（受控枚举由原生侧保证），给用户看的说明去空白后不能为空。
+  if (typeof outcome.code !== 'string' || outcome.code === '') throw new Error('运行时自动快照结论缺少错误码')
+  if (typeof outcome.message !== 'string' || outcome.message.trim() === '') {
+    throw new Error('运行时自动快照结论缺少说明')
+  }
+  return {
+    autoSnapshot: {
+      status,
+      code: outcome.code,
+      message: outcome.message,
+      ...(evictedIds === undefined ? {} : { evictedIds }),
+    },
+  }
+}
+
+/**
+ * 目标应用副屏：档位 / 自动跟随 / 方向的受控枚举。
+ *
+ * 用 `Set` 查询而不是逐项 `!==` 串联：档位有 10 档，写成一串比较既容易漏项，
+ * 也没法在别处复用同一份口径（界面与校验共用 `types.ts` 里的那三个数组）。
+ */
+const VIRTUAL_SCREEN_PREVIEW_MODE_SET = new Set<string>(VIRTUAL_SCREEN_PREVIEW_MODES)
+const VIRTUAL_SCREEN_AUTO_FOLLOW_SET = new Set<string>(VIRTUAL_SCREEN_AUTO_FOLLOW_VALUES)
+const VIRTUAL_SCREEN_ORIENTATION_SET = new Set<string>(VIRTUAL_SCREEN_ORIENTATION_VALUES)
+
+/** 副屏包名与无障碍白名单同一条规则：至少一个点、以字母开头，避免把畸形字符串送进原生。 */
+const PACKAGE_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*){1,12}$/u
+
+function virtualScreenPreviewMode(value: unknown): VirtualScreenPreviewMode {
+  if (typeof value !== 'string' || !VIRTUAL_SCREEN_PREVIEW_MODE_SET.has(value)) throw new Error('副屏取帧档位格式无效')
+  return value as VirtualScreenPreviewMode
+}
+
+/**
+ * 校验状态里的档位：原生写状态时用的是标签形式（`limited-fps` / `realtime-60fps`）。
+ *
+ * 认不出时回落 `limited`，与原生 `VirtualScreenPolicy.frameModeOf` 同一口径——
+ * 状态是**读数**，为一个看不懂的档位整条读失败、让界面显示「读不到状态」，对用户更没用。
+ */
+function virtualScreenStatePreviewMode(value: unknown): VirtualScreenPreviewMode {
+  if (typeof value !== 'string') throw new Error('副屏状态格式无效')
+  return normalizeVirtualScreenPreviewMode(value) ?? 'limited'
+}
+
+function virtualScreenAutoFollow(value: unknown): VirtualScreenAutoFollow {
+  if (typeof value !== 'string' || !VIRTUAL_SCREEN_AUTO_FOLLOW_SET.has(value)) throw new Error('副屏自动跟随策略格式无效')
+  return value as VirtualScreenAutoFollow
+}
+
+function virtualScreenOrientation(value: unknown): VirtualScreenOrientation {
+  if (typeof value !== 'string' || !VIRTUAL_SCREEN_ORIENTATION_SET.has(value)) throw new Error('副屏方向格式无效')
+  return value as VirtualScreenOrientation
+}
+
+/** 非负有限数：帧率与刷新率是浮点读数，0 表示未采样（界面显示「未知」）。 */
+function requiredNonNegativeNumber(value: unknown, label: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) throw new Error(`${label}格式无效`)
+  return value
+}
+
+/** 非负安全整数：宽高与 DPI 未就绪时是 0（界面显示「未知」），负数一律拒绝。 */
+const requiredNonNegativeInteger = assertNonNegativeInteger
+
+/**
+ * 可负的安全整数：`displayId` 未就绪时原生给的是 -1。
+ *
+ * 与宽高、DPI 分开两条规则，正是因为 -1 在这里是**合法读数**：
+ * 若一并要求非负，副屏没启动时整条状态读取都会失败，界面就永远只能显示「读不到状态」。
+ */
+function requiredIntegerValue(value: unknown, label: string): number {
+  if (!Number.isSafeInteger(value)) throw new Error(`${label}格式无效`)
+  return value as number
+}
+
+/**
+ * 允许「没有值」的短文本。
+ *
+ * 副屏状态里「取不到」既可能是空串（会话标识），也可能是 JSON 的 `null`
+ * （本轮前台应用、Activity、目标包名：原生侧刻意写 null 而不是编一个包名）：
+ * 两种都收敛成空串交给界面显示「未知」，**不补默认值、也不当成读取失败**。
+ */
+function optionalStateText(value: unknown, label: string, maximumLength = 200): string {
+  if (value === null || value === undefined) return ''
+  if (typeof value !== 'string' || value.length > maximumLength || containsControlCharacter(value)) {
+    throw new Error(`${label}格式无效`)
+  }
+  return value
+}
+
+/**
+ * 读取路径的悬浮窗宽度：**这一项可以缺**，出现时必须是有限的安全整数且非负。
+ *
+ * 与宽高、DPI 的 `requiredNonNegativeInteger` 分开一条，正因为它是后加的字段：
+ * 旧壳不发它，缺失（或 `null`）必须当成「跟随屏幕最大」，也就是 0，而不是读取失败——
+ * 否则一台还没升级壳的设备会连档位、方向一起读不出来。反过来，出现负数或小数
+ * 说明桥那头写坏了：宁可整条读失败，也别把 -1 画成「-1 像素」。
+ */
+function optionalOverlayWidth(value: unknown): number {
+  if (value === undefined || value === null) return 0
+  if (!Number.isSafeInteger(value) || (value as number) < 0) throw new Error('悬浮窗宽度需要是非负整数')
+  return value as number
+}
+
+/**
+ * 这一项到底传没传。
+ *
+ * 原生侧（与 `docs/副屏设置桥.md` 的约定）把 `undefined` 与 `null` 都当作「这一项不改」：
+ * 前端必须原样放过，别把 `null` 当成非法值拦下来，也别拿默认值补上去。
+ */
+function present(value: unknown): boolean {
+  return value !== undefined && value !== null
+}
+
+/**
+ * 写入路径的宽高：**0 与负数表示「清掉自定义尺寸」**，正数越界按原生 `coerceIn` 夹取。
+ *
+ * 与读取路径（`requiredNonNegativeInteger`）刻意不同：原生侧 0 的语义是「没有自定义过」，
+ * 界面靠它把尺寸重置回自适应或方向预设；要是像越界那样一律夹成 200，用户就再也回不到预设规格了。
+ * 类型错误仍然直接拒绝——静默把 `"800"` 当数字会让写错入参的人看不出问题。
+ */
+function virtualScreenEdge(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error('副屏宽高格式无效')
+  if (value <= 0) return 0
+  return Math.min(Math.max(Math.round(value), VIRTUAL_SCREEN_MIN_EDGE), VIRTUAL_SCREEN_MAX_EDGE)
+}
+
+/** 写入路径的 DPI：规则同 `virtualScreenEdge`（0 与负数清掉自定义尺寸，正数夹进区间）。 */
+function virtualScreenDensity(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error('副屏像素密度格式无效')
+  if (value <= 0) return 0
+  return Math.min(Math.max(Math.round(value), VIRTUAL_SCREEN_MIN_DPI), VIRTUAL_SCREEN_MAX_DPI)
+}
+
+/**
+ * 写入路径的悬浮窗宽度：**0 与负数表示「清掉自定义宽度」**（回到跟随屏幕最大），正数原样交给原生。
+ *
+ * 与 `virtualScreenEdge` 的关键区别是**前端不夹上限**：原生侧会把正数夹到 120..4096、
+ * 再按屏幕尺寸夹一次，界面在这儿提前夹一遍只会造出第二个真相——界面显示 4096、
+ * 原生实际生效另一个值时，用户读到的数就不是真在用的数。类型错误仍然直接拒绝：
+ * 静默把 `"800"` 当数字会让写错入参的人看不出问题。
+ */
+function virtualScreenOverlayWidth(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error('悬浮窗宽度格式无效')
+  if (value <= 0) return 0
+  return Math.round(value)
+}
+
+/**
+ * 校验原生返回的副屏设置。
+ *
+ * 七个字段一个都不能少：缺字段时若补默认值，界面会把「读不到设置」显示成
+ * 「档位 60 FPS、方向自动」，用户改完保存才发现原生根本没读到——这里必须抛错。
+ *
+ * 宽高与 DPI 这三项**允许 0**：原生侧用 0 表示「用户没有自定义尺寸」，
+ * 这时生效规格由规格层按自适应开关与屏幕方向算出来。三者的区间校验留在
+ * `assertVirtualScreenSettingsUpdate`（写入路径）——把 0 也要求成 200..4096，
+ * 一台没自定义过尺寸的设备会永远读不出设置。
+ *
+ * 悬浮窗宽度（`overlayWidthPx`）是唯一**可以缺**的字段：缺失与 `null` 都收敛成 0
+ * （跟随屏幕默认最大），这样旧壳与既有夹具都不用改；出现时仍必须是有限整数且非负。
+ */
+export function validateVirtualScreenSettings(value: unknown): VirtualScreenSettings {
+  const source = asRecord(value, '副屏设置')
+  return {
+    previewMode: virtualScreenPreviewMode(source.previewMode),
+    autoFollow: virtualScreenAutoFollow(source.autoFollow),
+    orientation: virtualScreenOrientation(source.orientation),
+    adaptive: requiredBoolean(source.adaptive, '副屏自适应开关'),
+    widthPx: requiredNonNegativeInteger(source.widthPx, '副屏宽度'),
+    heightPx: requiredNonNegativeInteger(source.heightPx, '副屏高度'),
+    densityDpi: requiredNonNegativeInteger(source.densityDpi, '副屏像素密度'),
+    overlayWidthPx: optionalOverlayWidth(source.overlayWidthPx),
+  }
+}
+
+/**
+ * 校验原生返回的副屏状态。
+ *
+ * 二十个字段都必须存在（`active` 为假时其余字段照样要在，只是取值为空/0/-1）：
+ * 与悬浮球、存储访问那两条同一理由——字段缺失时抛错，而不是补成「未运行」，
+ * 否则「读不到状态」会被界面显示成「副屏没在跑」，用户以为停掉了、其实还在跑。
+ */
+export function validateVirtualScreenState(value: unknown): VirtualScreenState {
+  const source = asRecord(value, '副屏状态')
+  const state: VirtualScreenState = {
+    active: requiredBoolean(source.active, '副屏运行状态'),
+    sessionId: optionalStateText(source.sessionId, '副屏会话标识', 160),
+    displayId: requiredIntegerValue(source.displayId, '副屏显示标识'),
+    previewMode: virtualScreenStatePreviewMode(source.previewMode),
+    autoFollow: virtualScreenAutoFollow(source.autoFollow),
+    orientation: virtualScreenOrientation(source.orientation),
+    adaptive: requiredBoolean(source.adaptive, '副屏自适应开关'),
+    widthPx: requiredNonNegativeInteger(source.widthPx, '副屏宽度'),
+    heightPx: requiredNonNegativeInteger(source.heightPx, '副屏高度'),
+    densityDpi: requiredNonNegativeInteger(source.densityDpi, '副屏像素密度'),
+    targetPackage: optionalStateText(source.targetPackage, '副屏目标应用', 160),
+    frameFps: requiredNonNegativeNumber(source.frameFps, '副屏采集帧率'),
+    displayRefreshRate: requiredNonNegativeNumber(source.displayRefreshRate, '副屏实际刷新率'),
+    frameAtElapsedMs: requiredNonNegativeInteger(source.frameAtElapsedMs, '副屏最近帧时刻'),
+    virtualForegroundPackage: optionalStateText(source.virtualForegroundPackage, '副屏前台应用', 160),
+    virtualForegroundActivity: optionalStateText(source.virtualForegroundActivity, '副屏前台页面', 200),
+    // 性能读数放在最后校验：缺字段时先报身份字段（displayId、尺寸这些「到底跑没跑」的判断依据），
+    // 再报诊断读数。顺序不能反——`状态缺必填字段时抛错，而不是补成未运行` 那条用例钉着先报 displayId。
+    targetFps: requiredNonNegativeNumber(source.targetFps, '副屏目标帧率'),
+    frameAgeMs: requiredNonNegativeInteger(source.frameAgeMs, '副屏画面年龄'),
+    inputFrameDelayLastMs: requiredNonNegativeInteger(source.inputFrameDelayLastMs, '副屏输入后首帧间隔'),
+    inputFrameDelayAverageMs: requiredNonNegativeInteger(source.inputFrameDelayAverageMs, '副屏平均输入后首帧间隔'),
+    inputFrameDelaySamples: requiredNonNegativeInteger(source.inputFrameDelaySamples, '副屏输入后首帧间隔样本数'),
+  }
+  // 没有样本却带着耗时：这份读数自相矛盾。宁可整体拒绝，也不要在界面上显示一个来路不明的毫秒数——
+  // 「0 毫秒」与「尚未测到」必须分得开，而区分它们的唯一依据就是这个样本数。
+  if (state.inputFrameDelaySamples === 0 && (state.inputFrameDelayLastMs !== 0 || state.inputFrameDelayAverageMs !== 0)) {
+    throw new Error('副屏输入后首帧间隔读数自相矛盾：没有样本却带着间隔')
+  }
+  return state
+}
+
+/**
+ * 校验「保存副屏设置」的入参：只在前端拦明显不合法的取值，落盘与否在原生侧。
+ *
+ * 只处理**出现过的**字段——没传的字段必须原样缺席，不能补成某个默认值再发过去：
+ * 那等于用界面的默认值覆盖用户在别处（悬浮窗快捷入口）刚改过的设置。
+ * 宽高与 DPI 允许 0：0 是原生侧「清掉自定义尺寸」的合法取值（页面拿它做重置），不算越界。
+ * 悬浮窗宽度同理：0 与负数都清掉自定义宽度，正数**不在前端夹上限**（见 `virtualScreenOverlayWidth`）。
+ */
+export function assertVirtualScreenSettingsUpdate(value: unknown): VirtualScreenSettingsUpdate {
+  const source = asRecord(value, '副屏设置更新')
+  const update: VirtualScreenSettingsUpdate = {}
+  if (present(source.previewMode)) update.previewMode = virtualScreenPreviewMode(source.previewMode)
+  if (present(source.autoFollow)) update.autoFollow = virtualScreenAutoFollow(source.autoFollow)
+  if (present(source.orientation)) update.orientation = virtualScreenOrientation(source.orientation)
+  if (present(source.adaptive)) update.adaptive = requiredBoolean(source.adaptive, '副屏自适应开关')
+  if (present(source.widthPx)) update.widthPx = virtualScreenEdge(source.widthPx)
+  if (present(source.heightPx)) update.heightPx = virtualScreenEdge(source.heightPx)
+  if (present(source.densityDpi)) update.densityDpi = virtualScreenDensity(source.densityDpi)
+  if (present(source.overlayWidthPx)) update.overlayWidthPx = virtualScreenOverlayWidth(source.overlayWidthPx)
+  return update
+}
+
+/** 校验「启动副屏」的入参：包名必填且必须是标准包名，其余可选字段与保存设置同一套规则。 */
+export function assertVirtualScreenStartRequest(value: unknown): VirtualScreenStartRequest {
+  const source = asRecord(value, '启动副屏参数')
+  const packageName = source.packageName
+  if (typeof packageName !== 'string' || packageName.length < 3 || packageName.length > 160 || !PACKAGE_NAME_PATTERN.test(packageName)) {
+    throw new Error('目标应用包名格式无效')
+  }
+  const request: VirtualScreenStartRequest = { packageName }
+  if (present(source.adaptive)) request.adaptive = requiredBoolean(source.adaptive, '副屏自适应开关')
+  if (present(source.orientation)) request.orientation = virtualScreenOrientation(source.orientation)
+  if (present(source.widthPx)) request.widthPx = virtualScreenEdge(source.widthPx)
+  if (present(source.heightPx)) request.heightPx = virtualScreenEdge(source.heightPx)
+  if (present(source.densityDpi)) request.densityDpi = virtualScreenDensity(source.densityDpi)
+  return request
+}
+
+/**
+ * 设备能力的五项标识与四种状态：与原生 `DeviceCapabilityPolicy` 逐字一致（**含顺序**）。
+ *
+ * 顺序固定是有意的：原生按这个顺序过桥，这里按同一个顺序核对 —— 谁改了顺序都会当场失败，
+ * 而不是让界面把「副屏」那一行画成「截图」，或者让 AI 拿到一份错位的能力表。
+ */
+const DEVICE_CAPABILITY_IDS: DeviceCapabilityId[] = [
+  'shizuku',
+  'kernelsu_root',
+  'accessibility',
+  'virtual_screen',
+  'screenshot',
+  'chinese_input',
+]
+
+const DEVICE_CAPABILITY_STATES = new Set<DeviceCapabilityState>([
+  'ready',
+  'needs_action',
+  'blocked',
+  'unsupported',
+  'degraded',
+])
+
+/** 原因码：原生侧定的大写枚举（`SHIZUKU_NOT_RUNNING`），与审计闸门码同一个形状。 */
+const DEVICE_CAPABILITY_REASON_PATTERN = /^[A-Z][A-Z0-9_]{0,63}$/u
+
+/** 动作码：小写 snake（`connect_shizuku`）。替代码复用上面的大写形状（`NO_DEVICE_SHELL`）。 */
+const DEVICE_CAPABILITY_ACTION_PATTERN = /^[a-z][a-z0-9_]{0,63}$/u
+
+/** 可空的码：`null` 与缺字段都算「没有」，有值就必须合形状。 */
+function deviceCapabilityCode(value: unknown, pattern: RegExp, label: string): string | null {
+  if (value === null || value === undefined) return null
+  if (typeof value !== 'string' || !pattern.test(value)) throw new Error(`${label}格式无效`)
+  return value
+}
+
+/**
+ * 能力清单：五项、固定顺序、逐项四件套（状态 / 原因 / 动作 / 替代方式）。
+ *
+ * 两处交叉校验是刻意的：`ready` 却带着待办动作、或没就绪却报 `READY`，都说明原生侧的语义变了；
+ * 这时整份拒掉，而不是让界面按字段渲染出两句互相矛盾的话（「现在就能用」+「去安装 Shizuku」）。
+ * 缺一项、多一项、顺序不对同样整份拒掉：半份能力清单会让 AI 基于错误的现状下判断，
+ * 而它接下来要照着这份清单**动手**。
+ */
+export function validateDeviceCapabilityReport(value: unknown): DeviceCapabilityReport {
+  const report = asRecord(value, '设备能力清单')
+  const atMs = report.atMs
+  if (typeof atMs !== 'number' || !Number.isSafeInteger(atMs) || atMs <= 0) {
+    throw new Error('设备能力取样时刻格式无效')
+  }
+  const sdkInt = report.sdkInt
+  if (typeof sdkInt !== 'number' || !Number.isSafeInteger(sdkInt) || sdkInt < 1 || sdkInt > 999) {
+    throw new Error('设备 API 级别格式无效')
+  }
+  const list = report.capabilities
+  if (!Array.isArray(list) || list.length !== DEVICE_CAPABILITY_IDS.length) {
+    throw new Error('设备能力列表格式无效')
+  }
+  const capabilities = list.map((raw, index) => {
+    const entry = asRecord(raw, `设备能力 ${index + 1}`)
+    const id = DEVICE_CAPABILITY_IDS[index]
+    if (entry.id !== id) throw new Error(`设备能力 ${index + 1} 的标识格式无效`)
+    const state = entry.state
+    if (typeof state !== 'string' || !DEVICE_CAPABILITY_STATES.has(state as DeviceCapabilityState)) {
+      throw new Error(`设备能力 ${id} 的状态格式无效`)
+    }
+    const reason = entry.reason
+    if (typeof reason !== 'string' || !DEVICE_CAPABILITY_REASON_PATTERN.test(reason)) {
+      throw new Error(`设备能力 ${id} 的原因格式无效`)
+    }
+    const action = deviceCapabilityCode(entry.action, DEVICE_CAPABILITY_ACTION_PATTERN, `设备能力 ${id} 的动作`)
+    const alternative = deviceCapabilityCode(entry.alternative, DEVICE_CAPABILITY_REASON_PATTERN, `设备能力 ${id} 的替代方式`)
+    if (state === 'ready') {
+      if (action !== null || alternative !== null) throw new Error(`设备能力 ${id} 已就绪却带着待办动作`)
+    } else if (state === 'degraded') {
+      // 「降级」是能用但少一层保护：用户没有可点的一步，所以不许带动作；
+      // 也不许报就绪原因。替代方式可有可无（降级本身仍在干活，谈不上替换）。
+      if (action !== null) throw new Error(`设备能力 ${id} 降级却带着待办动作`)
+      if (reason === 'READY') throw new Error(`设备能力 ${id} 降级却报了就绪原因`)
+    } else if (reason === 'READY') {
+      throw new Error(`设备能力 ${id} 没就绪却报了就绪原因`)
+    }
+    return { id, state: state as DeviceCapabilityState, reason, action, alternative }
+  })
+  return { atMs, sdkInt, capabilities }
+}
+
+/** 与原生 `KernelSuProbe` 的三态逐字一致。 */
+const ROOT_ENGINE_KERNEL_SU_STATUSES = new Set<RootEngineStatus['kernelSuStatus']>(['ready', 'needs_action', 'unsupported'])
+
+/** 降级原因码：与原生 `RootSecurityWrapper.DEGRADATION_CODES` 同一形状（大写下划线）。 */
+const ROOT_ENGINE_DEGRADATION_PATTERN = /^[A-Z][A-Z0-9_]{0,63}$/u
+
+/**
+ * 根通道状态。
+ *
+ * `usable` 不是独立事实，而是合成结论（`enabled && kernelSuStatus === 'ready'`），因此这里
+ * **交叉校验**它：原生侧若给出互相矛盾的组合，整份拒掉。界面会照着 `enabled` 画开关、
+ * 照着 `usable` 决定「能不能用」的说明，两者打架时用户看到的是「开关开着却说不能用」而没有解释。
+ * 同理，`degraded` 与 `degradations` 必须一致：降级一定有原因码，有原因码就是降级。
+ */
+export function validateRootEngineStatus(value: unknown): RootEngineStatus {
+  const record = asRecord(value, '根通道状态')
+  const enabled = assertBooleanFlag(record.enabled, '根通道开关')
+  const usable = assertBooleanFlag(record.usable, '根通道可用性')
+  const kernelSuStatus = record.kernelSuStatus
+  if (typeof kernelSuStatus !== 'string' || !ROOT_ENGINE_KERNEL_SU_STATUSES.has(kernelSuStatus as RootEngineStatus['kernelSuStatus'])) {
+    throw new Error('根通道的 KernelSU 状态格式无效')
+  }
+  const reason = record.reason
+  if (typeof reason !== 'string' || !DEVICE_CAPABILITY_REASON_PATTERN.test(reason)) {
+    throw new Error('根通道的原因格式无效')
+  }
+  const degraded = assertBooleanFlag(record.degraded, '根通道降级标记')
+  const rawDegradations = record.degradations
+  if (!Array.isArray(rawDegradations)) throw new Error('根通道的降级原因格式无效')
+  const degradations = rawDegradations.map((item) => {
+    if (typeof item !== 'string' || !ROOT_ENGINE_DEGRADATION_PATTERN.test(item)) {
+      throw new Error('根通道的降级原因格式无效')
+    }
+    return item
+  })
+  const suVersion = record.suVersion
+  if (suVersion !== null && suVersion !== undefined && typeof suVersion !== 'string') {
+    throw new Error('根通道的 su 版本格式无效')
+  }
+  if (usable !== (enabled && kernelSuStatus === 'ready')) {
+    throw new Error('根通道的可用性与开关状态不一致')
+  }
+  if (!enabled && degraded) throw new Error('根通道未开启却报了降级')
+  if (degraded !== (degradations.length > 0)) throw new Error('根通道的降级标记与降级原因不一致')
+  return {
+    enabled,
+    usable,
+    kernelSuStatus: kernelSuStatus as RootEngineStatus['kernelSuStatus'],
+    reason,
+    degraded,
+    degradations,
+    suVersion: suVersion ?? null,
+  }
+}
+
+/** 任务标识与步骤标识同一把尺子（与原生 `AutomationTaskPlan.isTaskId` 一致）。 */const AUTOMATION_TASK_ID_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/u
+
+/** 与原生 `AutomationTaskStepStatus` 逐字一致。 */
+const AUTOMATION_TASK_STEP_STATUSES = new Set<AutomationTaskStepStatus>(['pending', 'ok', 'failed', 'unknown', 'skipped'])
+
+/** 与原生 `AutomationTaskStatus` 逐字一致。 */
+const AUTOMATION_TASK_STATUSES = new Set<AutomationTaskStatus>(['planned', 'running', 'done', 'failed', 'blocked', 'cancelled'])
+
+/** 台账只认这五个动作（与原生 `AutomationTaskActions` 一致）。 */
+const AUTOMATION_TASK_ACTIONS = new Set(['click', 'setText', 'scroll', 'back', 'wait'])
+
+/** 可空的受控码：`null` 与缺字段都算「没有」，有值就必须是受控大写形状。 */
+function automationTaskCode(value: unknown, label: string): string | null {
+  if (value === null || value === undefined) return null
+  if (typeof value !== 'string' || !ERROR_CODE_PATTERN.test(value)) throw new Error(`${label}格式无效`)
+  return value
+}
+
+const automationTaskCount = assertNonNegativeInteger
+
+/**
+ * 任务台账读数：`connected` + 当前任务（没有任务是 `null`）。
+ *
+ * 三条交叉校验是刻意的。①`connected === false` 时 `task` 必须是 `null`：服务没连上就不可能读到台账，
+ * 原生侧也是这么拼的，两者不一致说明语义变了，整份拒掉而不是渲染一份自相矛盾的读数。
+ * ②`settledSteps + pendingSteps` 必须等于 `steps.length`——这两个计数是原生按同一份步骤算出来的，
+ * 对不上说明这是一份半截快照，而界面正要用它回答「AI 现在做到哪一步了」。
+ * ③动作与状态必须是受控取值：界面只翻词条、不认识的值会渲染成空白行，等于把「不知道」画成「没有」。
+ */
+export function validateAutomationTaskState(value: unknown): AutomationTaskState {
+  const record = asRecord(value, '任务台账读数')
+  const connected = record.connected
+  if (typeof connected !== 'boolean') throw new Error('任务台账连接状态格式无效')
+  const raw = record.task
+  if (raw === null || raw === undefined) return { connected, task: null }
+  if (!connected) throw new Error('任务台账读数自相矛盾：没连上却带着任务')
+  const task = asRecord(raw, '任务台账')
+  const taskId = task.taskId
+  if (typeof taskId !== 'string' || !AUTOMATION_TASK_ID_PATTERN.test(taskId)) throw new Error('任务标识格式无效')
+  const status = task.status
+  if (typeof status !== 'string' || !AUTOMATION_TASK_STATUSES.has(status as AutomationTaskStatus)) {
+    throw new Error('任务状态格式无效')
+  }
+  const packageName = task.packageName
+  if (typeof packageName !== 'string' || !PACKAGE_NAME_PATTERN.test(packageName)) throw new Error('任务目标包名格式无效')
+  const nextStep = task.nextStep
+  if (nextStep !== null && nextStep !== undefined
+    && (typeof nextStep !== 'string' || !AUTOMATION_TASK_ID_PATTERN.test(nextStep))) {
+    throw new Error('任务下一步标识格式无效')
+  }
+  const settledSteps = automationTaskCount(task.settledSteps, '任务已收口步数')
+  const pendingSteps = automationTaskCount(task.pendingSteps, '任务待执行步数')
+  const lastCode = automationTaskCode(task.lastCode, '任务受控码')
+  const lastMessage = task.lastMessage
+  if (lastMessage !== null && lastMessage !== undefined && typeof lastMessage !== 'string') {
+    throw new Error('任务说明格式无效')
+  }
+  const list = task.steps
+  if (!Array.isArray(list)) throw new Error('任务步骤列表格式无效')
+  const steps = list.map((item, index) => {
+    const step = asRecord(item, `任务第 ${index + 1} 步`)
+    const id = step.id
+    if (typeof id !== 'string' || !AUTOMATION_TASK_ID_PATTERN.test(id)) {
+      throw new Error(`任务第 ${index + 1} 步的标识格式无效`)
+    }
+    const action = step.action
+    if (typeof action !== 'string' || !AUTOMATION_TASK_ACTIONS.has(action)) {
+      throw new Error(`任务第 ${index + 1} 步的动作不是受控取值`)
+    }
+    const stepStatus = step.status
+    if (typeof stepStatus !== 'string' || !AUTOMATION_TASK_STEP_STATUSES.has(stepStatus as AutomationTaskStepStatus)) {
+      throw new Error(`任务第 ${index + 1} 步的状态格式无效`)
+    }
+    return {
+      id,
+      action,
+      status: stepStatus as AutomationTaskStepStatus,
+      attempts: automationTaskCount(step.attempts, `任务第 ${index + 1} 步的已试次数`),
+      code: automationTaskCode(step.code, `任务第 ${index + 1} 步的受控码`),
+    }
+  })
+  if (settledSteps + pendingSteps !== steps.length) throw new Error('任务台账的步数与状态对不上')
+  return {
+    connected,
+    task: {
+      taskId,
+      status: status as AutomationTaskStatus,
+      packageName,
+      nextStep: nextStep ?? null,
+      settledSteps,
+      pendingSteps,
+      lastCode,
+      lastMessage: lastMessage ?? null,
+      steps,
+    },
+  }
+}
+
+/**
+ * 校验模型连通性检测结果。
+ *
+ * 保证 ok、status（0..599）、latencyMs（非负）与 message（非空有界串）都符合受控结构。
+ */
+export function validateModelConnectivityResult(value: unknown): ModelConnectivityResult {
+  const result = asRecord(value, '模型连通性检测结果')
+  const ok = requiredBoolean(result.ok, '模型连通性状态')
+  const status = typeof result.status === 'number' && Number.isFinite(result.status) && result.status >= 0 && result.status <= 599
+    ? Math.floor(result.status)
+    : (() => { throw new Error('模型连通性状态码无效') })()
+  const latencyMs = typeof result.latencyMs === 'number' && Number.isFinite(result.latencyMs) && result.latencyMs >= 0
+    ? Math.floor(result.latencyMs)
+    : (() => { throw new Error('模型连通性延迟无效') })()
+  const message = typeof result.message === 'string' && result.message.length <= 200
+    ? result.message
+    : (() => { throw new Error('模型连通性提示无效') })()
+  return { ok, status, latencyMs, message }
+}

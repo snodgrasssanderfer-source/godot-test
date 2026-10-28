@@ -1,0 +1,69 @@
+Scope: all 2 workspace projects
+? Verifying lockfile against supply-chain policies (452 entries)...
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +381
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+   ╭──────────────────────────────────────────╮
+   │                                          │
+   │   Update available! 11.19.0 → 12.15.0.   │
+   │   Changelog: https://pnpm.io/v/12.15.0   │
+   │     To update, run: pnpm self-update     │
+   │                                          │
+   ╰──────────────────────────────────────────╯
+
+Progress: resolved 381, reused 0, downloaded 0, added 0
+Packages are hard linked from the content-addressable store to the virtual store.
+  Content-addressable store is at: <TOOLS_ROOT>/pnpm-store/v11
+  Virtual store is at:             node_modules/.pnpm
+Progress: resolved 381, reused 0, downloaded 1, added 1
+Progress: resolved 381, reused 0, downloaded 11, added 8
+Progress: resolved 381, reused 0, downloaded 27, added 14
+Progress: resolved 381, reused 0, downloaded 68, added 68
+Progress: resolved 381, reused 0, downloaded 91, added 91
+Progress: resolved 381, reused 0, downloaded 109, added 109
+Progress: resolved 381, reused 0, downloaded 128, added 128
+Progress: resolved 381, reused 0, downloaded 167, added 167
+Progress: resolved 381, reused 0, downloaded 186, added 186
+Progress: resolved 381, reused 0, downloaded 211, added 211
+Progress: resolved 381, reused 0, downloaded 252, added 252
+Progress: resolved 381, reused 0, downloaded 270, added 270
+Progress: resolved 381, reused 0, downloaded 314, added 314
+Progress: resolved 381, reused 0, downloaded 351, added 351
+Progress: resolved 381, reused 0, downloaded 381, added 381, done
+✓ Lockfile passes supply-chain policies (452 entries in 17.4s)
+.../esbuild@0.21.5/node_modules/esbuild postinstall$ node install.js
+.../esbuild@0.24.2/node_modules/esbuild postinstall$ node install.js
+.../esbuild@0.21.5/node_modules/esbuild postinstall: Done
+.../esbuild@0.24.2/node_modules/esbuild postinstall: Done
+
+dependencies:
++ @capacitor/android 7.6.9
++ @capacitor/core 7.6.9
++ @xterm/addon-fit 0.10.0
++ @xterm/xterm 5.5.0
++ lucide-react 0.468.0
++ react 18.3.1
++ react-dom 18.3.1
+
+devDependencies:
++ @capacitor/cli 7.6.9
++ @eslint/js 9.17.0
++ @testing-library/jest-dom 6.6.3
++ @testing-library/react 16.1.0
++ @types/node 22.10.5
++ @types/react 18.3.18
++ @types/react-dom 18.3.5
++ @vitejs/plugin-react 4.3.4
++ eslint 9.17.0
++ eslint-plugin-react-hooks 5.1.0
++ eslint-plugin-react-refresh 0.4.16
++ globals 15.14.0
++ jsdom 25.0.1
++ typescript 5.7.3
++ typescript-eslint 8.19.1
++ vite 6.0.7
++ vitest 2.1.8
+
+Done in 18.3s using pnpm v11.19.0

@@ -1,0 +1,328 @@
+package io.deepseekharness.mobile.runtime
+
+import android.content.Context
+import io.deepseekharness.mobile.DeviceBridgeServer
+import io.deepseekharness.mobile.shizuku.DeviceCommandRunner
+import java.security.SecureRandom
+import java.util.Base64
+import java.util.concurrent.CopyOnWriteArraySet
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
+
+/**
+ * 与运行时同生命周期的进程级资源（当前为设备桥）。
+ *
+ * 由 [RuntimeHost] 统一持有与拆除：这类资源既不能随 Activity 重建而重复创建，
+ * 也不能在 Activity 销毁时被提前拆掉。
+ */
+interface RuntimeScopedResource {
+    /** 幂等拆除；重复调用不抛异常。 */
+    fun stop()
+}
+
+/**
+ * 进程级运行时持有者。
+ *
+ * 背景：`MobileRuntimePlugin.handleOnDestroy()` 会在 Activity 销毁时执行（划掉最近任务
+ * 也会触发），而 PRoot→node 的 Harness 子进程不会随插件一起退出。若插件在销毁时直接
+ * shutdown，后台保持就完全失去意义，还会把 Harness 留在无法管理的状态。因此
+ * [MobileRuntimeController] 的实际持有者迁移到本对象，由「插件订阅者」与「前台服务」
+ * 共同决定何时真正释放运行时。
+ *
+ * 设备桥与设备命令同样是进程级资源。保活生效时 Harness 进程仍在运行：Activity 重建
+ * 既不能重建桥（`RuntimeSupervisor.configureDeviceBridge` 会以 `RUNTIME_BUSY` 拒绝
+ * 重复配置），也不能拆桥（guest 仍在用它）。因此这里与运行时同生命周期地持有它们。
+ *
+ * 释放规则：
+ *  - 插件销毁（WebView 侧消失）：仅移除订阅者；前台服务仍在负责、或还有其他订阅者
+ *    （新实例已经接管）时保留运行时与设备桥。
+ *  - 前台服务销毁：仅在没有任何插件订阅者时释放运行时与设备桥。
+ *  - 两者都不再持有：调用 [MobileRuntimeController.shutdown]，语义与旧的插件销毁路径一致。
+ *
+ * 不变量：[controller] 要么指向可用的运行时，要么为 null；后台收尾开始前先摘除
+ * 引用再清理，任何清理步骤抛错都不得留下「已关闭但仍被登记」的控制器——那样的句柄会让
+ * 之后每一次启动都只得到 `RUNTIME_CLOSED`，界面无论重试多少次都无法恢复。收尾一旦开始，
+ * 在旧控制器完全关闭前禁止创建新实例；否则两个控制器会同时操作同一份 currentRoot、
+ * pid 文件与固定 Harness 端口，旧 shutdown 可能杀掉新进程。
+ *
+ * 线程模型：归属变更在 [lock] 内完成；可能阻塞的关停在单线程后台执行。关停开始前会
+ * 先把控制器从可获取状态摘除；收尾开始后 acquire 立即以受控错误返回，避免旧实例误杀
+ * 新实例或提前拆桥。调用方可在旧收尾完成后重试，且不会阻塞主线程等待进程退出。
+ */
+object RuntimeHost {
+    private val lock = ReentrantLock()
+    private val teardownExecutor: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "dsh-runtime-teardown").apply { isDaemon = true }
+    }
+    private var applicationContext: Context? = null
+    private var controller: MobileRuntimeController? = null
+    private var teardownPending = false
+    private var teardownStarted = false
+    /** Monotonically invalidates a stale, not-yet-started teardown. */
+    private var teardownGeneration = 0L
+    private var foregroundServiceActive = false
+    private val sinks = CopyOnWriteArraySet<RuntimeEventSink>()
+
+    /**
+     * 设备桥实例。桥由 app 包构造并配置，本对象只负责「整个进程只创建一次」
+     * 与「运行时释放时一并拆除」这两件事。
+     */
+    private var deviceBridge: RuntimeScopedResource? = null
+    @Volatile private var deviceCommands: DeviceCommandRunner? = null
+
+    /**
+     * 订阅变更仍由生命周期锁串行；事件只读写时复制的快照，不能反向等待关停持有的锁。
+     * 单个订阅者抛错不得影响运行时或其他订阅者。
+     */
+    private val fanOut = object : RuntimeEventSink {
+        override fun onProgress(snapshot: RuntimeStateSnapshot) {
+            dispatch { sink -> sink.onProgress(snapshot) }
+        }
+
+        override fun onTerminalOutput(sessionId: String, dataBase64: String, suppressPublicOutput: Boolean) {
+            dispatch { sink -> sink.onTerminalOutput(sessionId, dataBase64, suppressPublicOutput) }
+        }
+
+        override fun onTerminalExit(sessionId: String, exitCode: Int) {
+            dispatch { sink -> sink.onTerminalExit(sessionId, exitCode) }
+        }
+    }
+
+    private fun dispatch(action: (RuntimeEventSink) -> Unit) {
+        sinks.forEach { sink ->
+            try {
+                action(sink)
+            } catch (_: Throwable) {
+                // 订阅者是 WebView 桥接层：其异常不得中断运行时状态机。
+            }
+        }
+    }
+
+    /**
+     * 插件侧获取共享运行时，并登记事件订阅者。
+     * 已存在（例如前台服务在插件销毁期间保留下来）时复用同一实例与同一套会话。
+     */
+    fun acquire(context: Context, sink: RuntimeEventSink): MobileRuntimeController = lock.withLock {
+        if (teardownPending) {
+            // 只有后台任务尚未摘除控制器时才能取消收尾并复用旧实例。收尾一旦开始，
+            // 旧 controller.shutdown() 会操作同一份 currentRoot、pid 文件、端口与全局
+            // Harness 授权；这里必须非阻塞拒绝，不能并行创建新 controller。
+            if (teardownStarted) {
+                throw RuntimeFailure("RUNTIME_CLOSING", "本机运行时正在关闭，请稍后重试")
+            } else {
+                teardownPending = false
+            }
+        }
+        sinks.add(sink)
+        controller ?: createLocked(context)
+    }
+
+    /**
+     * 插件（WebView 侧）销毁：移除订阅者，并在「没有前台服务负责、且没有其他订阅者」时释放运行时。
+     *
+     * `sinks.remove(sink)` 之后才读取剩余订阅者：新插件实例已经接管运行时（划掉最近任务后
+     * 立刻重进应用）时，旧实例的收尾不得关掉新实例正在使用的控制器。返回值仅用于测试断言。
+     */
+    fun detachPluginSink(sink: RuntimeEventSink): Boolean {
+        return lock.withLock {
+            sinks.remove(sink)
+            if (
+                HarnessKeepAlivePolicy.shouldReleaseRuntimeOnPluginDetach(
+                    foregroundServiceActive = foregroundServiceActive,
+                    hasOtherSubscribers = sinks.isNotEmpty(),
+                )
+            ) {
+                scheduleControllerTeardownLocked()
+            } else {
+                false
+            }
+        }
+    }
+
+    /** 前台服务进入前台：此后插件销毁不再释放运行时。 */
+    fun attachForegroundService() = lock.withLock {
+        foregroundServiceActive = true
+    }
+
+    /** 前台服务销毁：仅在插件已不再订阅时释放运行时。 */
+    fun detachForegroundService(): Boolean {
+        return lock.withLock {
+            foregroundServiceActive = false
+            if (sinks.isEmpty()) scheduleControllerTeardownLocked() else false
+        }
+    }
+
+    /** 前台服务是否正在负责运行时（供状态快照与插件生命周期判断使用）。 */
+    fun isForegroundServiceActive(): Boolean = lock.withLock { foregroundServiceActive }
+
+    /** 当前共享运行时；从未创建或已释放时为 null。 */
+    fun controllerOrNull(): MobileRuntimeController? = lock.withLock { controller }
+
+    /**
+     * 取得进程级设备桥，或按 [create] 构建一次。
+     *
+     * [create] 必须完成「启动桥 + `controller.configureDeviceBridge(...)`」，
+     * 且只在真正创建时执行：Harness 已经在跑时重复配置会被 supervisor 拒绝，
+     * 而旧实现正是在 Activity 重建时重复配置才导致插件注册失败。
+     */
+    fun acquireDeviceBridge(create: () -> RuntimeScopedResource): RuntimeScopedResource = lock.withLock {
+        deviceBridge ?: create().also { deviceBridge = it }
+    }
+
+    /**
+     * 幂等初始化设备桥，供插件加载与系统启动恢复共用。
+     *
+     * 必须先在 RuntimeHost 锁内登记桥，再由控制器配置运行时，保证恢复服务在
+     * startHarness 前完成端口与令牌注入；桥不可用时抛出受控异常，由调用方降级，
+     * 不阻止 Harness 本身启动。
+     */
+    fun ensureDeviceBridge(controller: MobileRuntimeController): RuntimeScopedResource = lock.withLock {
+        if (this.controller !== controller) {
+            throw RuntimeFailure("RUNTIME_CLOSED", "本机运行时正在关闭")
+        }
+        deviceBridge ?: run {
+            val tokenBytes = ByteArray(32).also(SecureRandom()::nextBytes)
+            val token = Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes)
+            tokenBytes.fill(0)
+            val bridge = DeviceBridgeServer(
+                shizuku = controller.terminals.shizuku,
+                runner = deviceCommands(),
+                token = token,
+                shellEnabled = { applicationContext?.let(io.deepseekharness.mobile.shizuku.DeviceShellAccess::enabled) == true },
+            )
+            try {
+                bridge.start()
+                controller.configureDeviceBridge(io.deepseekharness.mobile.runtime.DeviceBridgeAccess(bridge.localPort, token))
+                deviceBridge = bridge
+                bridge
+            } catch (error: Throwable) {
+                bridge.stop()
+                throw error
+            }
+        }
+    }
+
+    /**
+     * 由系统恢复入口调用的带身份与启动代次校验的启动包装。
+     *
+     * 代次在本对象锁内读取；服务销毁时先递增代次，再摘除控制器。这样恢复线程即使
+     * 已通过一次身份检查，也会在真正启动前因代次变化而取消，不会拉起孤儿 Harness。
+     */
+    fun startHarness(controller: MobileRuntimeController): RuntimeStateSnapshot {
+        val epoch = lock.withLock {
+            if (this.controller !== controller) {
+                throw RuntimeFailure("RUNTIME_CLOSED", "本机运行时正在关闭")
+            }
+            controller.currentStartEpoch()
+        }
+        return controller.startHarness(epoch)
+    }
+
+    /** 设备桥实例；未创建时为 null（调用方自行决定是否降级）。 */
+    fun deviceBridgeOrNull(): RuntimeScopedResource? = lock.withLock { deviceBridge }
+
+    /**
+     * 进程级设备命令执行器。
+     *
+     * 写入目标在调用时解析，因此运行时被释放并以新实例重建后依然指向当前运行时。
+     */
+    fun deviceCommands(): DeviceCommandRunner = lock.withLock {
+        deviceCommands ?: DeviceCommandRunner { sessionId, dataBase64 ->
+            val current = controller
+                ?: throw RuntimeFailure("RUNTIME_CLOSED", "本机运行时正在关闭")
+            current.writeTerminal(sessionId, dataBase64)
+        }.also { deviceCommands = it }
+    }
+
+    /** 事件回调只读已发布的执行器，不能为读取句柄反向申请生命周期锁。 */
+    fun deviceCommandsOrNull(): DeviceCommandRunner? = deviceCommands
+
+    /** 结束本插件实例发起中的设备命令（插件销毁时调用；不拆除进程级资源）。 */
+    fun cancelDeviceCommands() {
+        deviceCommandsOrNull()?.cancelAll()
+    }
+
+    /** 进程级释放：仅供测试与完整拆除使用。 */
+    fun shutdown() {
+        lock.withLock {
+            sinks.clear()
+            foregroundServiceActive = false
+            scheduleControllerTeardownLocked()
+        }
+    }
+
+    private fun createLocked(context: Context): MobileRuntimeController {
+        val application = context.applicationContext
+        applicationContext = application
+        return MobileRuntimeController(application, fanOut).also { controller = it }
+    }
+
+    /**
+     * 将关停排入后台；生命周期回调不能在 Host 锁内等待 Binder、进程或 PTY 退出。
+     *
+     * 先摘除 [controller] 引用再清理：任何清理步骤抛错都不能把「已关闭但仍被登记」的控制器
+     * 留给下一次 [acquire]（真机上出现过这种状态：设备桥仍是 `reused`，而随后每一次
+     * `startHarness` 都只返回 `RUNTIME_CLOSED`，且保持 24 秒不可恢复）。
+     */
+    private fun scheduleControllerTeardownLocked(): Boolean {
+        if (controller == null || teardownPending) return false
+        teardownPending = true
+        val generation = ++teardownGeneration
+        teardownExecutor.execute {
+            // 给 Activity 重建留出一个短暂的接管窗口；若新插件已 acquire，
+            // teardownController 会看到 pending 已取消并保留原控制器。
+            try {
+                Thread.sleep(150)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+            }
+            teardownController(generation)
+        }
+        return true
+    }
+
+    private fun teardownController(generation: Long) {
+        var current: MobileRuntimeController? = null
+        var bridge: RuntimeScopedResource? = null
+        lock.withLock {
+            if (generation != teardownGeneration || !teardownPending || sinks.isNotEmpty() || foregroundServiceActive) {
+                if (generation == teardownGeneration) {
+                    teardownPending = false
+                    teardownStarted = false
+                }
+                return
+            }
+            teardownStarted = true
+            current = controller ?: run {
+                teardownPending = false
+                teardownStarted = false
+                return
+            }
+            controller = null
+            HarnessOutputTailSource.clear()
+            deviceCommands?.cancelAll()
+            bridge = deviceBridge
+            deviceBridge = null
+            deviceCommands = null
+        }
+        try {
+            current?.shutdown()
+        } catch (_: Throwable) {
+            // 关停是尽力而为；仍必须释放桥并允许下次重新 acquire。
+        } finally {
+            try {
+                bridge?.stop()
+            } catch (_: Throwable) {
+                // 进程级资源拆除失败不阻断运行时释放。
+            }
+            lock.withLock {
+                if (generation == teardownGeneration) {
+                    teardownPending = false
+                    teardownStarted = false
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 通知栏小图标（单色剪影）：状态栏图标必须是不透明的单色图形，彩色应用图标在那里只会显示成一个白块，所以这里保留终端提示符形状，不跟随悬浮球换成应用图标。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M5.6,7.4l4.2,4.6 -4.2,4.6 1.8,1.6 5.4,-6.2 -5.4,-6.2zM12.8,15.4h6.2v2.2h-6.2z" />
+</vector>

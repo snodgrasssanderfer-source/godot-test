@@ -1,0 +1,34 @@
+<resources>
+    <color name="harness_toolbar_background">#F3F5F8</color>
+    <color name="harness_toolbar_foreground">#18212A</color>
+    <color name="harness_page_background">#FFFFFF</color>
+    <color name="harness_search_surface">#FFFFFF</color>
+    <color name="harness_search_border">#DCE2E9</color>
+    <color name="harness_search_focus">#315FCF</color>
+    <color name="harness_search_muted">#667181</color>
+    <color name="harness_search_action">#EDF1F5</color>
+
+    <!--
+      窗口装饰（状态栏/导航栏）的默认底色。
+
+      这里只负责**首帧之前**那一下：真正跟随用户主题的是 AppThemePreference.apply()
+      （Web 侧改主题时通过 setAppTheme 通知原生，回到前台时也会重算）。
+      静态值按系统深色模式给（本目录=浅色、values-night=深色），
+      这样「浅色主题 + 深色系统」在应用启动的那一瞬间不会先闪一下深色。
+    -->
+    <color name="app_window_decoration">#F3F5F8</color>
+
+    <!-- Native overlay surfaces resolve the saved theme before showing. -->
+    <color name="overlay_panel_background">#F3F5F8</color>
+    <color name="overlay_panel_foreground">#18212A</color>
+    <!-- 浮层里的次要文字（详情/说明）。取值与 Web 侧同名 CSS 变量 muted 一致，深浅两套成对定义。 -->
+    <color name="overlay_panel_muted_foreground">#667181</color>
+    <color name="overlay_panel_action_pressed">#E3EAF0</color>
+    <color name="overlay_secondary_background">#E8EFFF</color>
+    <color name="overlay_secondary_background_disabled">#DCE4E1</color>
+    <color name="overlay_secondary_foreground">#315FCF</color>
+    <color name="overlay_resize_background">#B84F8A72</color>
+    <color name="overlay_ball_background">#111315</color>
+    <color name="overlay_ball_pressed">#263C33</color>
+    <color name="overlay_ball_stroke">#3A594D</color>
+</resources>

@@ -1,0 +1,35 @@
+[
+  {
+    "apk_path": "lib/arm64-v8a/libdsh_proot.so",
+    "compression_method": 8,
+    "zip_compressed_bytes": 113125,
+    "zip_compressed_payload_sha256": "6d58c010bfd4be94995b0b77b4648b06494cede400e78164fdfaa6b5e57401f0",
+    "file_bytes": 257424,
+    "file_sha256": "07ef0b01a1506a364c9db3e5fe6ac9a530974371f9838bc7a5c6abb5097b4c78",
+    "extracted_copy_sha256": "07ef0b01a1506a364c9db3e5fe6ac9a530974371f9838bc7a5c6abb5097b4c78",
+    "extracted_copy_identical": true,
+    "crc_verified_by_zipfile_read": true
+  },
+  {
+    "apk_path": "lib/arm64-v8a/libdsh_proot_loader.so",
+    "compression_method": 8,
+    "zip_compressed_bytes": 962,
+    "zip_compressed_payload_sha256": "2a05fc99bd972612169b5464aa63093a821ebf07ae4747f39b1eaedb3ffc2018",
+    "file_bytes": 1632,
+    "file_sha256": "f149774236db1e69b36cc1e4ed3866c7094db2eee52da0d4956aa63a9bb26929",
+    "extracted_copy_sha256": "f149774236db1e69b36cc1e4ed3866c7094db2eee52da0d4956aa63a9bb26929",
+    "extracted_copy_identical": true,
+    "crc_verified_by_zipfile_read": true
+  },
+  {
+    "apk_path": "lib/arm64-v8a/libdsh_pty.so",
+    "compression_method": 8,
+    "zip_compressed_bytes": 4128,
+    "zip_compressed_payload_sha256": "5c028496234040392d3d0bf1d32b03fefd2a3e009bbe48b369c62eed88cebffc",
+    "file_bytes": 10664,
+    "file_sha256": "ac797efed92eb519361065daa573a09414810a7af0e6225cc26fbe6efcc89944",
+    "extracted_copy_sha256": "ac797efed92eb519361065daa573a09414810a7af0e6225cc26fbe6efcc89944",
+    "extracted_copy_identical": true,
+    "crc_verified_by_zipfile_read": true
+  }
+]

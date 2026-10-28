@@ -1,0 +1,76 @@
+[
+  {
+    "name": "gemini-4-argon-model",
+    "url": "https://ai.google.dev/gemini-api/docs/models/gemini-4-argon",
+    "bytes": 107956,
+    "sha256": "009b265d1838d7fa9d72e39abeb46f335452f281bffcb06aa201dd8cbb989526",
+    "saved_as": "gemini-4-argon-model.html",
+    "retrieved_date_utc": "2026-10-28"
+  },
+  {
+    "name": "gemini-3.8-flash-model",
+    "url": "https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash",
+    "bytes": 107396,
+    "sha256": "e9b2e1d4d48384058c64459e7f257e1b725f0669d8cfb51111207fd10c4f86b4",
+    "saved_as": "gemini-3.8-flash-model.html",
+    "retrieved_date_utc": "2026-10-28"
+  },
+  {
+    "name": "gemini-4-argon-guide",
+    "url": "https://ai.google.dev/gemini-api/docs/latest-model",
+    "bytes": 156838,
+    "sha256": "6b718d9b779ac11a61b353ecbb9d7793b67f2ddec0926ea401cb870c7dac4b53",
+    "saved_as": "gemini-4-argon-guide.html",
+    "retrieved_date_utc": "2026-10-28"
+  },
+  {
+    "name": "gemini-3.8-guide",
+    "url": "https://ai.google.dev/gemini-api/docs/whats-new-gemini-3.8",
+    "bytes": 165185,
+    "sha256": "8e92a589935b4632efbfa264c1811b036673c94d397179d7594f1495966228cd",
+    "saved_as": "gemini-3.8-guide.html",
+    "retrieved_date_utc": "2026-10-28"
+  },
+  {
+    "name": "gemini-thinking",
+    "url": "https://ai.google.dev/gemini-api/docs/thinking",
+    "bytes": 288435,
+    "sha256": "05e9c7e5266c322300e0388abc8d137e8280c0622e5eca52ce3320b00aa53d04",
+    "saved_as": "gemini-thinking.html",
+    "retrieved_date_utc": "2026-10-28"
+  },
+  {
+    "name": "gemini-changelog",
+    "url": "https://ai.google.dev/gemini-api/docs/changelog",
+    "bytes": 176687,
+    "sha256": "8a72705a4305caba29fcd71799dca9501328d7efea022825b70b7fec3ac8dad0",
+    "saved_as": "gemini-changelog.html",
+    "retrieved_date_utc": "2026-10-28"
+  },
+  {
+    "name": "apikey-fan-cli-doc",
+    "url": "https://apikey.fan/docs/gemini",
+    "bytes": 73174,
+    "sha256": "cf1fd10caf218abd46beb868570b6da0f66e5ef1f40286334bb2f1dad765f661",
+    "saved_as": "apikey-fan-cli-doc.html",
+    "retrieved_date_utc": "2026-10-28"
+  },
+  {
+    "name": "gemini-4-argon-generate-content",
+    "url": "https://ai.google.dev/gemini-api/docs/generate-content/latest-model",
+    "retrieved_date_utc": "2026-10-28",
+    "final_url": "https://ai.google.dev/gemini-api/docs/generate-content/latest-model",
+    "bytes": 124226,
+    "sha256": "a714ddcad4728baaeea2c7f178982adeab76972c612f0b8a3fb997f19fd2be3c",
+    "saved_as": "gemini-4-argon-generate-content.html"
+  },
+  {
+    "name": "gemini-generate-content-thinking",
+    "url": "https://ai.google.dev/gemini-api/docs/generate-content/thinking",
+    "retrieved_date_utc": "2026-10-28",
+    "final_url": "https://ai.google.dev/gemini-api/docs/generate-content/thinking",
+    "bytes": 228687,
+    "sha256": "163ecfdf7b57ae18606131ce44ab04ce036c98ba7f8e2d8f64e4b0bcead587fd",
+    "saved_as": "gemini-generate-content-thinking.html"
+  }
+]

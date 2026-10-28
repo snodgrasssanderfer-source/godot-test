@@ -1,0 +1,119 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :app
+Unable to initialize metrics, ensure <USER_HOME>/.android is writable, details: <USER_HOME>/.android/analytics.settings (No such file or directory)
+WARNING: The option setting 'android.overridePathCheck=true' is experimental.
+The current default is 'false'.
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please use android.ndkVersion or android.ndkPath in build.gradle to specify the NDK to use. https://developer.android.com/r/studio-ui/ndk-dir
+
+> Configure project :capacitor-android
+Build was configured to prefer settings repositories over project repositories but repository 'Google' was added by build file '../node_modules/.pnpm/@capacitor+android@7.6.9_@capacitor+core@7.6.9/node_modules/@capacitor/android/capacitor/build.gradle'
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by build file '../node_modules/.pnpm/@capacitor+android@7.6.9_@capacitor+core@7.6.9/node_modules/@capacitor/android/capacitor/build.gradle'
+Checking the license for package Android SDK Platform-Tools in <TOOLS_ROOT>/android-sdk/licenses
+Warning: License for package Android SDK Platform-Tools not accepted.
+WARNING: platform-tools package is not installed. Please accept the installation licence to continue
+
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateLegalAssets UP-TO-DATE
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:compileDebugAidl UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :capacitor-android:preBuild UP-TO-DATE
+> Task :capacitor-android:preDebugBuild UP-TO-DATE
+> Task :capacitor-android:writeDebugAarMetadata UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :capacitor-android:generateDebugResValues UP-TO-DATE
+> Task :capacitor-android:generateDebugResources UP-TO-DATE
+> Task :capacitor-android:packageDebugResources UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :capacitor-android:extractDeepLinksDebug UP-TO-DATE
+> Task :capacitor-android:processDebugManifest UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :capacitor-android:compileDebugLibraryResources UP-TO-DATE
+> Task :capacitor-android:parseDebugLocalResources UP-TO-DATE
+> Task :capacitor-android:generateDebugRFile UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :capacitor-android:javaPreCompileDebug UP-TO-DATE
+> Task :capacitor-android:compileDebugJavaWithJavac UP-TO-DATE
+> Task :capacitor-android:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :app:compileDebugKotlin
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/MobileRuntimePlugin.kt:1884:32 'fun getRealMetrics(p0: DisplayMetrics!): Unit' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/OverlayBallService.kt:734:56 'static field SOFT_INPUT_ADJUST_RESIZE: Int' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/accessibility/DeepSeekAccessibilityService.kt:501:18 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/accessibility/DeepSeekAccessibilityService.kt:542:69 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/accessibility/DeepSeekAccessibilityService.kt:544:22 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/accessibility/DeepSeekAccessibilityService.kt:588:69 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/accessibility/DeepSeekAccessibilityService.kt:590:22 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/accessibility/DeepSeekAccessibilityService.kt:650:36 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/accessibility/DeepSeekAccessibilityService.kt:681:98 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/accessibility/DeepSeekAccessibilityService.kt:682:46 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/accessibility/DeepSeekAccessibilityService.kt:683:23 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/accessibility/DeepSeekAccessibilityService.kt:783:18 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/accessibility/DeepSeekAccessibilityService.kt:866:44 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/accessibility/DeepSeekAccessibilityService.kt:869:19 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeTerminalPluginBackup.kt:34:23 Non-public primary constructor is exposed via the generated 'copy()' method of the 'data' class.
+
+The generated 'copy()' will change its visibility in future releases.
+
+To suppress the warning do one of the following:
+- Annotate the data class with the '@ConsistentCopyVisibility' annotation.
+- Use the '-Xconsistent-data-class-copy-visibility' compiler flag.
+- Annotate the data class with the '@ExposedCopyVisibility' annotation 
+  (Discouraged, but can be used to keep binary compatibility).
+
+To learn more, see the documentation of the '@ConsistentCopyVisibility' and '@ExposedCopyVisibility' annotations.
+
+This will become an error in Kotlin 2.1.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/shizuku/DeviceCommandRunner.kt:79:22 'static enum entry TAP: DeviceCommand = object : DeviceCommand' is deprecated. 交互点击已统一由 DeepSeekAccessibilityService 接管.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/shizuku/DeviceCommandRunner.kt:80:28 'static enum entry INPUT_TEXT: DeviceCommand = object : DeviceCommand' is deprecated. 交互输入已统一由 DeepSeekAccessibilityService 接管.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/shizuku/DeviceCommandRunner.kt:436:23 'static enum entry TAP: DeviceCommand = object : DeviceCommand' is deprecated. 交互点击已统一由 DeepSeekAccessibilityService 接管.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/shizuku/DeviceCommandRunner.kt:436:42 'static enum entry INPUT_TEXT: DeviceCommand = object : DeviceCommand' is deprecated. 交互输入已统一由 DeepSeekAccessibilityService 接管.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenService.kt:227:35 'fun getRealMetrics(p0: DisplayMetrics!): Unit' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenService.kt:268:54 'fun getRealMetrics(p0: DisplayMetrics!): Unit' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenTree.kt:212:95 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenTree.kt:213:64 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenTree.kt:214:20 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenTree.kt:380:44 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenTree.kt:383:19 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenTree.kt:517:32 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenTree.kt:549:37 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+w: file://<PROJECT_ROOT>/android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenTree.kt:614:18 'fun recycle(): Unit' is deprecated. Deprecated in Java.
+
+BUILD SUCCESSFUL in 1m 31s
+29 actionable tasks: 1 executed, 28 up-to-date

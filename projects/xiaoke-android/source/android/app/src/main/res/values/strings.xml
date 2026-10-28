@@ -1,0 +1,156 @@
+<resources>
+    <string name="app_name">DeepSeek Harness</string>
+    <string name="harness_title">Harness 对话</string>
+    <string name="harness_back_to_app">返回应用</string>
+    <string name="harness_open_management">打开管理设置</string>
+    <string name="harness_workspace_files">工作区文件</string>
+    <string name="harness_workspace_empty">工作区暂无可操作文件</string>
+    <string name="harness_file_open">第三方打开</string>
+    <string name="harness_file_share">分享</string>
+    <string name="harness_file_delete">删除</string>
+    <string name="harness_file_delete_confirm">确定删除“%1$s”吗？此操作无法撤销。</string>
+    <string name="harness_file_deleted">文件已删除</string>
+    <string name="harness_file_action_failed">文件操作失败</string>
+    <string name="harness_session_failed">无法建立本机 Harness 会话</string>
+    <string name="harness_page_failed">Harness 页面暂时无法打开，请在设置中重试</string>
+    <string name="shizuku_missing">请先安装并启动 Shizuku</string>
+    <string name="accessibility_service_label">Harness 无障碍自动化</string>
+    <string name="accessibility_service_description">读取已授权应用的当前界面节点，并按用户发起的请求执行受限点击、输入和滚动；不会处理密码、验证码、支付、权限或锁屏页面。</string>
+    <!-- 后台保持前台服务通知：文案固定，不含 URL、凭据、终端内容或任何用户数据。 -->
+    <string name="keep_alive_channel_name">后台运行</string>
+    <string name="keep_alive_channel_description">保持本机 Harness 运行时在后台继续运行</string>
+    <string name="keep_alive_notification_title">Harness 正在后台运行</string>
+    <string name="keep_alive_notification_text">点按返回应用管理本机运行时</string>
+    <!-- 诊断日志导出：分享面板文案固定，不含文件路径或日志内容。 -->
+    <string name="diagnostic_share_title">导出诊断日志</string>
+    <string name="diagnostic_share_subject">DeepSeek Harness 诊断日志</string>
+    <!-- 悬浮球。文案固定，不含 URL、端口、凭据或会话内容。 -->
+    <!-- 球本身的读屏名称：名词性短语，不复用下面那句状态语形式的通知标题。 -->
+    <string name="overlay_ball_content_description">悬浮球</string>
+    <string name="overlay_conversation_title">Harness AI 对话</string>
+    <string name="overlay_conversation_expand">全屏</string>
+    <string name="overlay_conversation_close">关闭</string>
+    <string name="overlay_conversation_unavailable">对话尚未启动，点按返回应用开启 Harness</string>
+    <string name="overlay_ball_channel_name">悬浮球</string>
+    <string name="overlay_ball_channel_description">在其他应用上层显示悬浮球，点按打开快捷菜单（对话 / 副屏）</string>
+    <string name="overlay_ball_notification_title">悬浮球已开启</string>
+    <string name="overlay_ball_notification_text">点按打开快捷菜单，可进入对话或副屏</string>
+    <string name="overlay_ball_menu_return">回到应用</string>
+    <string name="overlay_ball_menu_hide">隐藏悬浮球</string>
+    <!--
+      二级悬浮球：短按主球展开，每个按钮一个动作（长按主球＝直接打开对话）。contentDescription
+      与可见文字分开写，是为了让 TalkBack 在按钮上没有文字时（或文字被截断时）仍然说明这个
+      按钮会做什么。
+    -->
+    <string name="overlay_ball_secondary_conversation_description">打开 Harness AI 对话小窗</string>
+    <string name="overlay_ball_secondary_virtual_screen_description">打开目标应用副屏悬浮窗</string>
+    <string name="overlay_ball_secondary_virtual_screen_unavailable_toast">副屏尚未运行，请先在 Harness 里打开「目标应用副屏」</string>
+    <string name="overlay_ball_secondary_return">回到应用</string>
+    <string name="overlay_ball_secondary_return_description">回到应用，打开 Harness 对话界面</string>
+    <string name="overlay_ball_secondary_hide">隐藏悬浮球</string>
+    <string name="overlay_ball_secondary_hide_description">隐藏悬浮球并关闭悬浮球服务</string>
+    <string name="overlay_ball_secondary_accessibility_on">关闭无障碍</string>
+    <string name="overlay_ball_secondary_accessibility_on_description">关闭 Harness 无障碍服务（当前已开启）</string>
+    <string name="overlay_ball_secondary_accessibility_off">无障碍未开启</string>
+    <string name="overlay_ball_secondary_accessibility_off_description">Harness 无障碍服务当前未开启，无需关闭</string>
+    <string name="overlay_ball_secondary_accessibility_disabled_toast">无障碍服务当前未开启，无需关闭</string>
+    <string name="overlay_ball_secondary_accessibility_closed_toast">已关闭无障碍服务</string>
+
+    <!-- 副屏预览档位：副屏页面与副屏悬浮窗共用同一组标签。 -->
+    <string name="virtual_screen_mode_limited">省电</string>
+    <string name="virtual_screen_mode_15fps">15 FPS</string>
+    <string name="virtual_screen_mode_30fps">30 FPS</string>
+    <string name="virtual_screen_mode_60fps">60 FPS</string>
+    <string name="virtual_screen_mode_120fps">120 FPS</string>
+    <string name="virtual_screen_mode_185fps">185 FPS</string>
+    <string name="virtual_screen_mode_90fps">90 FPS</string>
+    <string name="virtual_screen_mode_144fps">144 FPS</string>
+    <string name="virtual_screen_mode_165fps">165 FPS</string>
+    <string name="virtual_screen_mode_240fps">240 FPS</string>
+
+
+    <!--
+      副屏选择页的标题与方向文案。两处 dp 数字都由 VirtualScreenSpec 的两个预设现算（%1$d/%2$d），
+      不再把「800 × 363 dp」这类值写死在文案里，避免与真正建会话用的像素尺寸各写一份、互相漂移。
+    -->
+    <string name="virtual_screen_title">目标应用副屏</string>
+    <string name="virtual_screen_back">返回</string>
+    <string name="virtual_screen_search">搜索应用名称或包名</string>
+    <string name="virtual_screen_clear_search">清空查找词</string>
+    <string name="virtual_screen_shell_required">请先在设置中开启 AI Shell 并连接 Shizuku</string>
+    <string name="virtual_screen_android_required">副屏操作需要 Android 10 或更高版本</string>
+    <string name="virtual_screen_creating">正在创建目标应用副屏，请稍候…</string>
+    <string name="virtual_screen_start_failed">无法启动副屏服务，请回到前台重试</string>
+    <string name="virtual_screen_app_back">应用返回</string>
+    <string name="virtual_screen_floating">小窗</string>
+    <string name="virtual_screen_stop">结束副屏</string>
+    <string name="virtual_screen_overlay_required">请先启动副屏，并在设置中授予悬浮窗权限</string>
+    <string name="virtual_screen_back_failed">无法返回，请确认目标应用仍在副屏</string>
+    <string name="virtual_screen_mode_failed">帧率未生效，请确认副屏仍在运行</string>
+    <string name="virtual_screen_select_hint">选择要交给 AI 操作的目标应用。设备兼容性需要实测。</string>
+    <string name="virtual_screen_collapse">收起</string>
+    <string name="virtual_screen_end">结束</string>
+    <string name="virtual_screen_resize">拖动调整副屏画面大小</string>
+    <string name="virtual_screen_control_description">%1$s副屏预览</string>
+    <string name="virtual_screen_notification_title">目标应用副屏运行中</string>
+    <string name="virtual_screen_notification_text">点按回到副屏页面</string>
+    <string name="virtual_screen_foreground_failed">无法启动副屏前台服务，请回到应用重试</string>
+    <string name="virtual_screen_start_error">副屏启动失败，请检查 AI Shell 和 Shizuku 状态</string>
+    <string name="virtual_screen_session_lost">副屏会话已失效，请重新启动</string>
+    <string name="virtual_screen_refresh_retry">副屏状态刷新失败，正在重试</string>
+    <string name="virtual_screen_refresh_failed">副屏状态持续刷新失败，请重新打开此页面</string>
+    <string name="virtual_screen_preview_gone">等待副屏画面；锁屏、断连或应用离开副屏时暂停显示</string>
+    <string name="virtual_screen_budget_saturated"> · 预览跟不上档位：最近 %1$d 拍里 %2$d 拍超预算（最慢 %3$d 毫秒）</string>
+    <string name="virtual_screen_budget_degraded"> · 预览跟不上档位：最近 %1$d 拍里 %2$d 拍超预算</string>
+    <string name="virtual_screen_touch_failed">触摸未执行，请确认副屏仍在运行</string>
+    <string name="virtual_screen_action_failed">操作未执行，请确认副屏仍在运行</string>
+    <string name="virtual_screen_waiting_unreadable">等待副屏画面（未读到新帧）</string>
+    <string name="virtual_screen_waiting_blank">等待副屏画面（当前帧接近纯色）</string>
+    <string name="virtual_screen_rate_unknown">帧率待测</string>
+    <string name="virtual_screen_frame_unchanged">%1$s · 画面暂无变化</string>
+    <string name="virtual_screen_frame_blank">%1$s · 当前帧接近纯色</string>
+    <string name="virtual_screen_frame_unreadable">未读到新帧</string>
+    <string name="virtual_screen_touch_stream">触摸直传</string>
+    <string name="virtual_screen_touch_discrete">点击或滑动操作</string>
+    <string name="virtual_screen_preview_status">副屏预览 · %1$s · %2$s · 档位 %3$s</string>
+    <string name="virtual_screen_picture_description">目标应用副屏画面，支持点击和滑动</string>
+    <string name="virtual_screen_orientation_landscape">使用横屏副屏（%1$d × %2$d dp）</string>
+    <string name="virtual_screen_orientation_hint">默认竖屏 %1$d × %2$d dp。启动后可在页面或小窗操作，AI 使用副屏专用工具。画面按需发送至当前模型服务；请勿打开包含隐私信息的页面。</string>
+
+    <!--
+      任务通知（登记册 §5.5）。与保活通知分开一个通道：保活必须常驻静默，
+      任务通知的价值在于离开应用后仍能得知，两者的用户预期相反。
+      文案刻意**不说**「正在运行中」这类无法证实的话，只陈述已经发生的事。
+    -->
+    <string name="task_notification_channel_name">运行状态提醒</string>
+    <string name="task_notification_channel_description">本机 Harness 停止、启动失败或设备服务连接失败时提醒你</string>
+    <string name="task_notification_stopped_title">Harness 已停止</string>
+    <string name="task_notification_stopped_text">本机运行环境已自行退出，点按回到应用查看</string>
+    <string name="task_notification_failed_title">Harness 未能启动</string>
+    <string name="task_notification_failed_text">运行环境在启动阶段退出，点按回到应用查看原因</string>
+    <string name="task_notification_installed_title">运行环境已安装完成</string>
+    <string name="task_notification_installed_text">点按回到应用并打开 Harness</string>
+    <string name="task_notification_updated_title">运行环境已更新</string>
+    <string name="task_notification_updated_text">原有数据已保留，点按回到应用继续使用</string>
+    <string name="shizuku_reconnect_failed_title">Shizuku 未连接</string>
+    <string name="shizuku_reconnect_failed_text">设备已授权但自动连接失败，点按回到应用重试</string>
+    <!-- 带条目数的两条：条目数是操作返回的确定值，不是进度百分比。 -->
+    <string name="task_notification_exported_title">工作区已导出</string>
+    <string name="task_notification_exported_text">已把 %1$d 项写入投递区 outbox</string>
+    <string name="task_notification_imported_title">已导入到工作区</string>
+    <string name="task_notification_imported_text">已从投递区导入 %1$d 项</string>
+    <!--
+      「任务完成」：由访客内 dsh 的 turn/end 经设备桥转达，原生侧只发固定文案。
+      带合并计数：连续的几轮会合并成一条，%1$d 是本次合并的条数（至少 1）。
+    -->
+    <string name="task_notification_turn_completed_title">任务已完成</string>
+    <string name="task_notification_turn_completed_text">已完成 %1$d 项任务，点按回到对话界面</string>
+
+    <!-- 对话小窗的缩放手柄：拖动它改变小窗大小，右下角内缩 4dp。 -->
+    <string name="overlay_conversation_resize_description">拖动调整对话小窗大小</string>
+
+    <!-- 副屏悬浮小窗：档位行下面那行状态文字。还没有任何画面时如实说「等待」，不假称有画面。 -->
+    <string name="virtual_screen_overlay_status_waiting">等待副屏画面</string>
+    <!-- 切档成功后立刻显示这一条，下一次取帧会用真实读数覆盖它；%1$s 是档位名。 -->
+    <string name="virtual_screen_overlay_mode_switched">已切到 %1$s，等待新的帧率读数</string>
+</resources>

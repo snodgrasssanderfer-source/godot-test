@@ -1,0 +1,4292 @@
+[
+  {
+    "path": ".agents/rules/git-workflow.md",
+    "bytes": 1677,
+    "sha256": "1a012df8335beca6db2ded12a47e84cceea95fb9dee045dc94d153f53f6bb80e",
+    "executable": false
+  },
+  {
+    "path": ".env.example",
+    "bytes": 861,
+    "sha256": "93bd13fa29a4a97c5d483dc8fc059c8342f1552b7e3f771437c2e9fb84a22326",
+    "executable": false
+  },
+  {
+    "path": ".gitattributes",
+    "bytes": 839,
+    "sha256": "a4ab754df2516b026d0f5a19c7e16c91b02f96effb6b390944365dc0eb42184a",
+    "executable": false
+  },
+  {
+    "path": ".github/pull_request_template.md",
+    "bytes": 831,
+    "sha256": "a6d9faacc04f8d844c21af20281afa900253dd0849aa90f732575b771cd7be34",
+    "executable": false
+  },
+  {
+    "path": ".github/workflows/android-build.yml",
+    "bytes": 48827,
+    "sha256": "08513c9aca580575a892efdb5448f72ff90dbb917682cde5bad1c7f0596cc129",
+    "executable": false
+  },
+  {
+    "path": ".gitignore",
+    "bytes": 2306,
+    "sha256": "92a4f7300d22bbdd4662223ff46f42d00f697c04e7d696e2300013ed22ed8e41",
+    "executable": false
+  },
+  {
+    "path": ".gitleaks.toml",
+    "bytes": 136,
+    "sha256": "3a8d2170bf8b80a5d9d6f72604a5ab7b999de97405ca2ed1cbc817338bb8685f",
+    "executable": false
+  },
+  {
+    "path": ".gitmessage",
+    "bytes": 918,
+    "sha256": "cb508cf99c2a4e83457ddb8c207b1fc67fb5020fd25c243c73e54f7ae05e3a46",
+    "executable": false
+  },
+  {
+    "path": ".gitmodules",
+    "bytes": 158,
+    "sha256": "873a8dc924e186c822f9ae9ab34d95b97362c02e83d168928375f27fd7a58c2d",
+    "executable": false
+  },
+  {
+    "path": ".nvmrc",
+    "bytes": 8,
+    "sha256": "3151949a8b43e7df5385b69fbaeb5652bbdc7f7924e4278d550348f42b103f13",
+    "executable": false
+  },
+  {
+    "path": ".trae/documents/应用更新测试版频道.md",
+    "bytes": 12066,
+    "sha256": "7216860bc4783d7d9cd8ad331f6966f79b10a1f24e74934a2296fbe61751c4c9",
+    "executable": false
+  },
+  {
+    "path": ".wrapper-bootstrap/build.gradle",
+    "bytes": 99,
+    "sha256": "6035ff316f9ad1fe5a03192c45ce844330f21e6cf529b1b87edc56da7fa8c21f",
+    "executable": false
+  },
+  {
+    "path": ".wrapper-bootstrap/settings.gradle",
+    "bytes": 39,
+    "sha256": "ecc6c89e74ed139e773423140f840a8244f30b510bf7e7652f3705331af7998c",
+    "executable": false
+  },
+  {
+    "path": "DEVELOPMENT.md",
+    "bytes": 1386,
+    "sha256": "9c3a520d2b591dcbf85d0597c90d606e4983e2695663db9313ee6c3365d50380",
+    "executable": false
+  },
+  {
+    "path": "LICENSE",
+    "bytes": 1093,
+    "sha256": "8e6373339f75a6b1995d4bd41a266099ad5bcb1829295cbd4a88ea287cdd3017",
+    "executable": false
+  },
+  {
+    "path": "README.en.md",
+    "bytes": 19251,
+    "sha256": "eb67977342b825841dd9509873d8f3c34c12f4b18c2024dad141f644e8997fe1",
+    "executable": false
+  },
+  {
+    "path": "README.ja.md",
+    "bytes": 26930,
+    "sha256": "f2029bd99e03a05c3348ba9a438338ea44baae22c0dbd5bc815fea6e57e8c3a5",
+    "executable": false
+  },
+  {
+    "path": "README.ko.md",
+    "bytes": 22963,
+    "sha256": "dcafe3a8129e8ea0acc209efd14bacd69b73fdc0d33c6daa751d24c088adecf8",
+    "executable": false
+  },
+  {
+    "path": "README.md",
+    "bytes": 17975,
+    "sha256": "2b55beac54d33227ebcbede745e9a49fd5cf1544ff34c7b9cdf8c4d16e34e053",
+    "executable": false
+  },
+  {
+    "path": "README.zh-TW.md",
+    "bytes": 18324,
+    "sha256": "e4642e00d8ba250bc9f7e7098c5eb6f73dd7832ec4a966db807da9ed55f3ce0b",
+    "executable": false
+  },
+  {
+    "path": "THIRD_PARTY_NOTICES.md",
+    "bytes": 6777,
+    "sha256": "3670e203a8e9960c53843a146438e5909bf3ef6011ad0bc89e17285edf6e6f21",
+    "executable": false
+  },
+  {
+    "path": "android/.gitignore",
+    "bytes": 373,
+    "sha256": "0613ce20856747acb32427a9e30042a3f8e0b8a18bdf63e659778307d7de159b",
+    "executable": false
+  },
+  {
+    "path": "android/README.md",
+    "bytes": 6944,
+    "sha256": "52b60d8ba17dedf494a43c3e2b1838f913fcb36bc54b67cdd5f5c8d2202d578a",
+    "executable": false
+  },
+  {
+    "path": "android/app/build.gradle",
+    "bytes": 9906,
+    "sha256": "eae988b8897a469a30df7a0db9f28ebcaea92f28c57f8095ae3be2325a353f53",
+    "executable": false
+  },
+  {
+    "path": "android/app/proguard-rules.pro",
+    "bytes": 425,
+    "sha256": "a5093717caab53376c91fffc00fa7e63e383cc0eb71088b97b1345a4611edde5",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/androidTest/AndroidManifest.xml",
+    "bytes": 533,
+    "sha256": "f750b269c547dd7f6898c608b4c8066f4b58d9a45dcc1819b504e221b510b6e1",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/androidTest/java/io/deepseekharness/mobile/HarnessRestartTest.kt",
+    "bytes": 7687,
+    "sha256": "87fb6053bee80c5f1ae2f8ca9d47b79072a50169eb05ea57942a71440f48417c",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/androidTest/java/io/deepseekharness/mobile/NativeAppearanceTest.java",
+    "bytes": 5758,
+    "sha256": "262df80bc54707cef4f482cfda620d0979b74c0b27a7d9cc8cb9635f793dd71f",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/androidTest/java/io/deepseekharness/mobile/runtime/BundledRuntimeAssetTest.kt",
+    "bytes": 1604,
+    "sha256": "a0ebd7b22f7a3b91698b9eb4c0eb1c73e82993a0b359a5ddfa02a50655c00b96",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/androidTest/java/io/deepseekharness/mobile/runtime/RuntimeTerminalPluginBackupInstrumentedTest.kt",
+    "bytes": 3352,
+    "sha256": "70e786c5c220a15221e3a97fe3d83aea10c54561ba72259a73123fc4d3207796",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/androidTest/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenPageTest.java",
+    "bytes": 5192,
+    "sha256": "de5d016b74505300917e978055d18b3e4163bf1bfc20791713593025ac6fae66",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/androidTest/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenProbeActivity.java",
+    "bytes": 1227,
+    "sha256": "e6c00e46cd4072cdeee3db48a05bcee33b362785cb1edb49c7b716445c466183",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/androidTest/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenSnapshotTest.java",
+    "bytes": 4975,
+    "sha256": "407c3746ec2eaefd30d9e86d96d0a5b141a4734965660b1400bae4f76ecb9413",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/AndroidManifest.xml",
+    "bytes": 13528,
+    "sha256": "79edccfae15341a5156e904b7278d3e025ca41ae4225817508b4ea1250fa8b7a",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/aidl/io/deepseekharness/mobile/shizuku/IDeviceShellCallback.aidl",
+    "bytes": 188,
+    "sha256": "a91abd2ddc6e6184e50785cbc90f385f27e5fbbb26b929b3cf576b727c2692d6",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/aidl/io/deepseekharness/mobile/shizuku/IDeviceShellService.aidl",
+    "bytes": 1061,
+    "sha256": "cc1fe9a430c1f71aa28ccc6c71570d5715de979ea3bf21ca766b0c372bf3fd5b",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/aidl/io/deepseekharness/mobile/shizuku/VirtualScreenFrameHandle.aidl",
+    "bytes": 80,
+    "sha256": "2f3d1ba2537e0fc93a97e098ba369dbeb2bb1b3053c48172825e71376835e164",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/assets/legal/ubuntu-packages/README.md",
+    "bytes": 3290,
+    "sha256": "1e5582664968a1841b47bb95487d7f9729591bab4e9acb51b34b1878478a03e0",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/assets/support/plugin-manager.cjs",
+    "bytes": 109336,
+    "sha256": "dd7c9b2b4d89860c67ce8bbca32a522905252de48d7eb2d831977e029111be04",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/assets/support/runtime-self-check.cjs",
+    "bytes": 38496,
+    "sha256": "aea700515471f3d3abd7df79d1d0f973a8d46b7c2139e44a09a62569b511532c",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/assets/support/sandbox-runner.sh",
+    "bytes": 7274,
+    "sha256": "9ba6f61e63803b487144dc7ce7cd3af522127925c0201ab72852b8652f978d71",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/assets/support/session-catalog.cjs",
+    "bytes": 23155,
+    "sha256": "a01bd31d7da1e9d611893f5c7451128e95dd21d885eb2593ee26799214608fe6",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/cpp/CMakeLists.txt",
+    "bytes": 842,
+    "sha256": "cf180af19ce3f39e1942518d859ceb8dc69025177cc3737be6b1cd9e7f0f2400",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/cpp/pty_bridge.c",
+    "bytes": 9895,
+    "sha256": "41872e36605b191f58fa95b9bd020f9a3deba8f73300b01cf30b949764a4546c",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/AppAuthenticationState.kt",
+    "bytes": 2405,
+    "sha256": "cdf91182cb6581d4df52c4dd9249f3c711234d438cd47b346e8c559b29112434",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/AppForeground.kt",
+    "bytes": 1827,
+    "sha256": "b09d3c9a25c4fe96140df1d5ee09c94ea22bc71ba1859aa56aef8e3e5311c390",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/AppLanguage.kt",
+    "bytes": 1228,
+    "sha256": "773bdc1cdb5d28d7b1069584a881d5d26eb45a43169e546c53798a0d46afc3a6",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/AppTextScale.kt",
+    "bytes": 2214,
+    "sha256": "aef270c5178fd91192d5114cde58fa068ebab9d50b4ab923e2e40bec0ae77c10",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/AppThemePreference.kt",
+    "bytes": 6127,
+    "sha256": "c617b00b7f6415c5f05c213d7cbeca7c898b20050c4d41b84fee6591d9c43263",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/AppUpdateFileProvider.kt",
+    "bytes": 708,
+    "sha256": "f9a1a0503bac11a9251384dba85dde62486d006f0d5885ed5b0f44bf133d633a",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/AppWindowInsets.kt",
+    "bytes": 1533,
+    "sha256": "28387b1a31fb4aba6347e0e2bd967eeee6b2595e588e5f953967f2216d07cc81",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/BootRecoveryReceiver.kt",
+    "bytes": 2403,
+    "sha256": "4335792522140e3fbce04e05a9e6f0773b399f66b78ed761a36a38356fe6271c",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/BridgePayloads.kt",
+    "bytes": 9896,
+    "sha256": "d2cf49d7d78a23df7dcd1dae0cf8fa0fc19eb4e07f81cce3e4ea1cb0d8797191",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/DeviceBridgeServer.kt",
+    "bytes": 25455,
+    "sha256": "4e81252baf19fe7e2f146fc3a392ac43de861fb7feee1f639a62dcfc3df5faee",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/ForegroundServices.kt",
+    "bytes": 3425,
+    "sha256": "be85cb438b05061bc0902387795572e221affd90e1c150213b7af2c7324a1227",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/HarnessActivity.kt",
+    "bytes": 22951,
+    "sha256": "5d92f3a166c4c792b6bd3806b1f61e659b09f5d0da0c6671a677e3f6544a95ff",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/HarnessKeepAliveService.kt",
+    "bytes": 20195,
+    "sha256": "0ee99e2041f4ea1c63e387cc702d2c8654dcefbb60c49768f01cc0b250feebf6",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/HarnessOpenRequests.kt",
+    "bytes": 2481,
+    "sha256": "6389e9dfb0cb2d722865878bf4776498fe58ee87b924b578c4981c0bb8112128",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/HarnessPageCache.kt",
+    "bytes": 1653,
+    "sha256": "ab29cbfd351fb6ed903e52f13e2f5093232ad65ea09101458628b651d5343b0b",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/HarnessPageSession.kt",
+    "bytes": 6858,
+    "sha256": "99d523a9186f5398b095e3169085b402748591f2d9254e66c9334b044021d6ba",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/HarnessPluginResources.kt",
+    "bytes": 825,
+    "sha256": "80eeb5c883d3d535b9c0bc6064c4f7957f5f3c8fe5796c1ea14f7a2283e1db93",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/KeepAliveEntryActivity.kt",
+    "bytes": 2357,
+    "sha256": "1a84ce67e8c1e51994851ac37a722ce930c5b17013253a168179b86b59bbaf22",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/MainActivity.kt",
+    "bytes": 18606,
+    "sha256": "e6197da9658bb61fc51035cc9126de11091ddca701b255853ad564633185ee21",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/MobileRuntimePlugin.kt",
+    "bytes": 192027,
+    "sha256": "cb647f29a82c08638d2b5cc832c1c1488ac74b92d1c841db998e89c3af7ac869",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/OverlayBallService.kt",
+    "bytes": 81267,
+    "sha256": "c2998e541650810c1dadc18a44a5513249ed519eb16f1260c34b919d3f8e0299",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/OverlayFileChooserActivity.kt",
+    "bytes": 4509,
+    "sha256": "75f8044d2d199eb92aabb1af9fe00ab8517d9e2c9c04a6e7706e47c5c80955c2",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/RuntimeResiduePayload.kt",
+    "bytes": 4695,
+    "sha256": "55316f9a0fbbc825390f29874e42bd7cd07a041e8c2598ebba30bf5cd8075078",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/SessionCatalog.kt",
+    "bytes": 11871,
+    "sha256": "2db8abb32753dfac5bf11ac9796254539901690c7ec893089851ed15a293ba14",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/accessibility/AccessibilityAppConfigStore.kt",
+    "bytes": 10891,
+    "sha256": "0a8ff7f94e2ee0521c037f0244bbf3041ee730e8f8b7cb7acf1d732a29b9f82c",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/accessibility/AccessibilityAutomationPolicy.kt",
+    "bytes": 6485,
+    "sha256": "66242802858bb0cb9606c465908cb876bd2e7746e6662fd7a3b1207c1a24dcd2",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/accessibility/AccessibilityAutomationStore.kt",
+    "bytes": 7743,
+    "sha256": "c3fcf00c9e2bc90e9f3ca8f588b6425ce76f6fa8f833b785f2aec43778a8b90c",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/accessibility/AccessibilityPasswordPolicy.kt",
+    "bytes": 3954,
+    "sha256": "66e97a1d586621a25531aa22293ca0ecce9ab6050e863fa4aa34c4035b59baf2",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/accessibility/AccessibilityPasswordStore.kt",
+    "bytes": 13420,
+    "sha256": "6c1c407e726568fcf724f4ee84c7b4e798930baf71de2825abe7b58019c1ada2",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/accessibility/ApplicationSearch.kt",
+    "bytes": 14723,
+    "sha256": "970e78e03f08371da77fe902d56c2caacc94e147c03e9db9587dc5e7aaccede6",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/accessibility/AutomationControl.kt",
+    "bytes": 7518,
+    "sha256": "2d9121a29401c7b5f717c3426afaec9fccea04a31e895b4f9f5135ec3e5ea015",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/accessibility/AutomationRule.kt",
+    "bytes": 29613,
+    "sha256": "5f2e1b0c8eeb6f80ebac220dd9a9e900c140e2ec58c3d9fd1f44a167dfcedb1e",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/accessibility/AutomationRuleEditor.kt",
+    "bytes": 7566,
+    "sha256": "8b420a519dabaa38e9915de372053dcd5d70a9a1c7cc26bcc295268ad036c8be",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/accessibility/AutomationRuleExecutor.kt",
+    "bytes": 53233,
+    "sha256": "4747e8d5c1b8fd09e92236a43c1a8e2616333769dd36cb49a710f0baca6d06d4",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/accessibility/AutomationRuleMatcher.kt",
+    "bytes": 29898,
+    "sha256": "eba916a1094105d73124188292305a4c14192f6662950e5444bc41e7d97350c1",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/accessibility/AutomationRuleStore.kt",
+    "bytes": 25403,
+    "sha256": "c545dcc45a86e281db582c082ef20a9be3e950eea489c48b8f90aad2b2880b0e",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/accessibility/AutomationRunLog.kt",
+    "bytes": 8101,
+    "sha256": "7554092d7dbef9c409492f7498eca610f227e0b6812766abdf827e5610c360b0",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/accessibility/AutomationSkipMessages.kt",
+    "bytes": 6004,
+    "sha256": "1672692e6d616fd95a1caaed2c2e04dfdfabe36b140b2bcdb505d2ecad392523",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/accessibility/AutomationTaskLedger.kt",
+    "bytes": 32223,
+    "sha256": "dec05242340aa43227d972440356aee8cc854e090c2f653e5a07e2044f690ee4",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/accessibility/AutomationTaskWire.kt",
+    "bytes": 13101,
+    "sha256": "067f55e0a68a49d3cb699529a3635b3533227ab0fe942185db9677e986e4b7b4",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/accessibility/AutomationWindowDigest.kt",
+    "bytes": 1977,
+    "sha256": "6199dc4a80441a441e8b74f4bae04008ed12223ccb1b7c15a43601584856662d",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/accessibility/DeepSeekAccessibilityService.kt",
+    "bytes": 96198,
+    "sha256": "2beaac2586adc66d2d59e93198aa48c8a53c6c94a94da091efa2a223bab5f3d2",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/accessibility/InstalledApplications.kt",
+    "bytes": 2031,
+    "sha256": "b34371fa6f34df9ae40ad06a394bba02f7d428dc12be1eea234e8e76309b7cb4",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/capability/DeviceCapability.kt",
+    "bytes": 13322,
+    "sha256": "84035aa842b9ad125653d8bae05eb7b4e2e550e8486708c7b1587f2e4f8b97da",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/companion/BilibiliReader.kt",
+    "bytes": 4746,
+    "sha256": "c9c8a44d3e1cc0774c9251765d409d05ac375977ed2ac628103e4c50e4559516",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/companion/CompanionDevice.kt",
+    "bytes": 11162,
+    "sha256": "318231f4c5dcb43213e14bade06f994be84c1e29de48b90e2c224d6aa6a52bb9",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/companion/CompanionEngine.kt",
+    "bytes": 12679,
+    "sha256": "e703e26ce3834d4c21e6c6b8f1027b970edb1374c2a3248be8e2f93580e2cf88",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/companion/CompanionPlugin.kt",
+    "bytes": 14298,
+    "sha256": "8890de48fd702a0a173cc6b158ef06bbe4acfb0378955c181a568093acc12b9c",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/companion/CompanionPolicy.kt",
+    "bytes": 4908,
+    "sha256": "fbf4d82edf1b03d1e66eaf6133f3471358cb1ba837262f0a6c58683ab8379fec",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/companion/CompanionSecrets.kt",
+    "bytes": 4601,
+    "sha256": "32285e2fb7bb1be765869c682d78e0f4d3f5343aa2e8263e35b08d6defac9151",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/companion/CompanionService.kt",
+    "bytes": 3219,
+    "sha256": "3ddeb68ceee9db1d828ac8facde7efeba8dae0f80ea960e0f4f5f4a942654b78",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/companion/CompanionStore.kt",
+    "bytes": 10379,
+    "sha256": "a986ea6d16a0f337e575cad9a86ea5c1888097b893ec7e4057cf5069c64f1a7c",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/companion/GeminiClient.kt",
+    "bytes": 9099,
+    "sha256": "34588d17fa76084379cec9b0083955172865e50562e5640c9d04776476e5e47a",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/companion/QqNotificationBridge.kt",
+    "bytes": 7824,
+    "sha256": "8828d448de781f96930704f1602ae88ae44fd75fc871505666556c93a8cde47c",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/companion/ReplyLikelihood.kt",
+    "bytes": 1897,
+    "sha256": "6df509485137e4da42ab43f4156ea97d38c64d70d5ea1186117979e84a19046b",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/overlay/OverlayBallPolicy.kt",
+    "bytes": 7893,
+    "sha256": "ae4d32bb5898b2ab2a2a60ff063b6826cab32e2171cfbddffaf2888a42765cf8",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/overlay/OverlayBallPreferences.kt",
+    "bytes": 2854,
+    "sha256": "81846989f8c18359a0ffcdf88e336cc49bc3595c6e63d327d4e3b563befe4cd2",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/overlay/OverlayBallSecondaryPolicy.kt",
+    "bytes": 15914,
+    "sha256": "24fb9b9e94dac4e3f70bcf8dec4f5863cd7dee0e686da2890f4de5e6b70c39b2",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/AppReleaseCatalog.kt",
+    "bytes": 13114,
+    "sha256": "d9708da3593a850e83f9e8877fd4c242aea5079585ec63203c37a308c7e9449f",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/AppUpdateCache.kt",
+    "bytes": 7497,
+    "sha256": "384281fea7883583484c4e898374b0923f1138055b44dd421c4c7af311bf722a",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/AppUpdateInstall.kt",
+    "bytes": 5719,
+    "sha256": "02365ab710e08a38f68d8f5078151a0468316036810d6a4f5e93f1894c2808fe",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/AppUpdateProgressThrottle.kt",
+    "bytes": 1698,
+    "sha256": "e02ac9a6b21a533d2477a552433b689598669455cad13dde1e8272c6060f1110",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/ArchivePathPolicy.kt",
+    "bytes": 3517,
+    "sha256": "7988fdffe2719e0b1eda1d3361d34b68a40c148b5f765139dc783bb8062696c4",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/BestEffortCleanup.kt",
+    "bytes": 646,
+    "sha256": "2e139471e96931908c10c4e78604b62638c4abea9b8bdffd897650ea5fce4da4",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/GitHubReleases.kt",
+    "bytes": 5021,
+    "sha256": "79f40e2b167bcc40c0e5cea7a6e1d8062ee43fd21d103b55854d1fef579bd0ae",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/HarnessCredentialStatus.kt",
+    "bytes": 4766,
+    "sha256": "e114725df8f0a00955be69a102fa6d4fb070e1b48182df3edcb55cecce382499",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/HarnessCredentialsDocument.kt",
+    "bytes": 13644,
+    "sha256": "2c4dd66895362a0c81ca4b0a2520dc6c032768cf7f4ef75af2e21a37937af2c1",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/HarnessKeepAlivePolicy.kt",
+    "bytes": 3797,
+    "sha256": "56f61b2a3aa88786b220c0aa807b0876ae04aa81b9940420afe0f23f48536292",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/HarnessLocaleSettings.kt",
+    "bytes": 3619,
+    "sha256": "98154be0036a53e49d1627ddf83ddcd32be043df5caf277384740db2921646e0",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/HarnessOutputTail.kt",
+    "bytes": 5104,
+    "sha256": "9fb41eac68c73ef099d94e8415def1396bc538f586f05da38dc5e2dc588b0483",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/HarnessStartFailurePolicy.kt",
+    "bytes": 2686,
+    "sha256": "19ed8429c9cc4102b5643d14b1f259136815faa247e90fbe4ce28e514954b266",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/HarnessWebAuth.kt",
+    "bytes": 2436,
+    "sha256": "ad4b7d71115af7b094c0ff939be313ced60e25f5a814e7b874689f78d038c922",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/MobileRuntimeController.kt",
+    "bytes": 36564,
+    "sha256": "03d528fd934fcd3527e1ff32b737054ae8485203509fb64187e595b634de9ea3",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/ModelConnectivityProbe.kt",
+    "bytes": 9503,
+    "sha256": "91509425eea74846fa9a65a5d1e813a386c78f5b5c0c0819527443ccdd84daee",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/NativePty.kt",
+    "bytes": 614,
+    "sha256": "da7bc66975cc24587080604a90b8a2c8cf8c989f4ba155f2b54a848546a5b0cb",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/OptionalBindProvider.kt",
+    "bytes": 3821,
+    "sha256": "8833298f84059c42e982d31c6d4633b4b06bc16120627cdef8aecf1170454856",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/PluginInstallLock.kt",
+    "bytes": 9797,
+    "sha256": "b6e5dfa58830f468261b9f3d8d50abd45a05098877d8d9622850fcaa9c19aa12",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/PluginMigrationPolicy.kt",
+    "bytes": 4354,
+    "sha256": "ea226cffe212ee2c629bf1329ddd9285d171c22e43b567546f99d74505496c28",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/PluginMigrationState.kt",
+    "bytes": 4901,
+    "sha256": "d3cd4833fa2aade4d0d03ce78ba5322f591b8acc3378779a9d3b33c866ef7023",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/PluginRepairPolicy.kt",
+    "bytes": 2895,
+    "sha256": "b20034eb2f557fb0b8939a1dc3ab78f344131e2c612d25b177d2d5b4fc64e978",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RootfsIntegrity.kt",
+    "bytes": 5152,
+    "sha256": "db3d967861a7502f32dd09b2d7546f28cabc5043d9e207d903d0f9ade16a197c",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeCommand.kt",
+    "bytes": 11886,
+    "sha256": "2e1b888a576a89b66181c06a250ca640d14f8b3458e2ad05abd7b3c810d9272a",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeCredentialCipher.kt",
+    "bytes": 5125,
+    "sha256": "fea95df99d7d2cde8bcb56329612fbd41f5c350cf6eaa7c4c56d354bb4298ca3",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeDataCleanup.kt",
+    "bytes": 12370,
+    "sha256": "7dd712046d79fb209c2fcc004ff7db628accb2d0577c08adaa560df79d4987c3",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeDirectoryBrowser.kt",
+    "bytes": 10901,
+    "sha256": "31f3b08d995baa7e0f65cb2df95db77628d5cc907cd3ece6cc8f39f1055efd47",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeDns.kt",
+    "bytes": 3785,
+    "sha256": "43a0ca45668ea0a8c96954087edb655ed543a58e4bb416203bd5ae7a0cf34af4",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeEventSink.kt",
+    "bytes": 2835,
+    "sha256": "26bffc6541440fa55c85fa8293dd4579d9a059df23d78dcef5723558ad90dacc",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeFailure.kt",
+    "bytes": 660,
+    "sha256": "07504044c797994c3e835cc7fbfca3029ca1027c6dea4e8364ae2c40b8633c85",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeFiles.kt",
+    "bytes": 11103,
+    "sha256": "262f5d9a65355a4b20e2c3ad866db718851804aa84425f54bbe1e6ca6be74855",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeGuestExecutables.kt",
+    "bytes": 12213,
+    "sha256": "3ffb106f0ea4e873d9ee04618c832684dd8d9236e4e47e28d752a1e8b9242b56",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeHost.kt",
+    "bytes": 14813,
+    "sha256": "e3290437ab05cb6a6e905da8d4222ca22914f3b818efb68486b0e6385aba3e2b",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeHttp.kt",
+    "bytes": 20651,
+    "sha256": "19b1db8ba8f9cc86fef8d2e314871c5793ad415c5084bcda1274f44290d6476e",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeInstaller.kt",
+    "bytes": 54264,
+    "sha256": "9149f4018bc8903cd7a13cc61beaf9b47f4d97eb605bd51b526ff79ad77fbc93",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeLaunchResolver.kt",
+    "bytes": 28771,
+    "sha256": "ab074da2e528b7711fabf793cb31d095608ba28a682c165c423e84fa9d9c84e1",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeLauncherFiles.kt",
+    "bytes": 3579,
+    "sha256": "8f90e1d17b3504a90485e2b12927f278d289759923431366791e8f7df14f3883",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeLauncherPolicy.kt",
+    "bytes": 6130,
+    "sha256": "99d35d8bad05ea030c1404619536c91a3bf2627fb76a001fb78299d4df204921",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeLibrary.kt",
+    "bytes": 18012,
+    "sha256": "c4426fef9bc841a7b228a8c3f9766b1eae2581f6dfce0ac5710254ee4eec2117",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeMailbox.kt",
+    "bytes": 33759,
+    "sha256": "d257e58ecebbf104bc7e42a48adc43c62d84c834788a389193db0cdc05ddb777",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeMailboxArchive.kt",
+    "bytes": 51249,
+    "sha256": "1af6db05731702d4584d438c388c9f86510527a6c0292c4778664c5fccfa7627",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeMailboxPolicy.kt",
+    "bytes": 17372,
+    "sha256": "138dfcf63e279628ab7e74f0e447d850915791eeb983793efd404f2def4350a2",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeModels.kt",
+    "bytes": 26949,
+    "sha256": "fe531468efcdfe8c2f7ebe095787970a3c26661bc198bbc4ce913b76435055e1",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimePluginManager.kt",
+    "bytes": 34628,
+    "sha256": "7512ea3909caecab72d6eb77af2e77c24069b01fd0b4cfc4bcd98852d3807cd2",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimePreservePolicy.kt",
+    "bytes": 10320,
+    "sha256": "8b7c1f2b176dc751e496f59733e1f177e2bcb739fd376c8c6b0805dba574c0b3",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeReleaseCatalog.kt",
+    "bytes": 4284,
+    "sha256": "a43daf5a87fddcf81bdcf4d718d8267d179d72045effbb51aa032a899a4dbb2f",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeResidueInventory.kt",
+    "bytes": 8911,
+    "sha256": "8be0b34a549886ba776742d42fefda14f577d99ab8c5ed63d6b3a3abe2cd9395",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeResidueSweeper.kt",
+    "bytes": 10237,
+    "sha256": "760f3696917e97ae43cd06981e030692cf39578e5166f365674644b5d5933532",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeRetireTokens.kt",
+    "bytes": 3696,
+    "sha256": "06becc1b083f73f401e13810b94f08e852dbc5b1247c22f88eb37d45c2f5bb99",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeSandboxRunner.kt",
+    "bytes": 8298,
+    "sha256": "cefb8ec4b8f49e1f5e2557c87fc5de35315baeadc1083f02181ddd567ddfc794",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeSecrets.kt",
+    "bytes": 8269,
+    "sha256": "12e935bba1282c5ac909cd42d2f0845ee7b90c4fb708f402864de6d9faa6ac8d",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeSelfCheck.kt",
+    "bytes": 17018,
+    "sha256": "0130896fb609dc476baf74d81cc7c812ad8ec37005de90b7d1fdc27ea2e9a6f0",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeSelfCheckPolicy.kt",
+    "bytes": 10767,
+    "sha256": "359732a1ffdeb772440887e40f22fc7f3bd259d2a4e24a1337fb384bea9e93be",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeSessionSnapshots.kt",
+    "bytes": 31772,
+    "sha256": "7bc47d174086bc6a02d6ae2c4d465f1e1957e174dd9b7132fb41816e6f068f29",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeSharedInbox.kt",
+    "bytes": 11771,
+    "sha256": "6c13266f95829eb6d20031950df3b03bc68f68e4dc4d2594b8efe443a9d4e1e1",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeStatus.kt",
+    "bytes": 6031,
+    "sha256": "f3dde30fa8302454fd56a797a57861367937bd13c0cef9b7f23565173b8c54be",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeStorageDirPreferences.kt",
+    "bytes": 5519,
+    "sha256": "292ae7832499e9feeb5151f52866e74911bba0f3dd5f4a65dbbf0895f174b8a9",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeStorageDirs.kt",
+    "bytes": 40750,
+    "sha256": "147af1654408ae84ed06c5f099bbcf55fc37bc65610cb9cfa63b4dc659348d16",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeStorageSpace.kt",
+    "bytes": 797,
+    "sha256": "5c0ca479678aa6bf4c22696501d57a7e1044734821939dcf3f442a279097bffb",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeStore.kt",
+    "bytes": 78903,
+    "sha256": "0eb813d6fa962bc5747fef98872093e1c7427964a7a33cf1682053522a0c2dc1",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeSupervisor.kt",
+    "bytes": 43018,
+    "sha256": "c0078418b7ebe91f536accc68591b06a631fa21575db5b6168e528a94f07598d",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeTerminalPluginBackup.kt",
+    "bytes": 22787,
+    "sha256": "08ebf78677f780c7b0caa7ec86dcc555ea6de6e80e62114379f6973583cb6e7c",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeUpdatePolicy.kt",
+    "bytes": 3552,
+    "sha256": "54418ce4c54db6e7bd51815d628889c7902a46b20b766e87fbe9427e74e293ba",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeVersions.kt",
+    "bytes": 7651,
+    "sha256": "1232f03de1f2fd6153e2b7f8d2ab1022ff4a31d04833f7500234360c0b8a10ef",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeWorkspaceFiles.kt",
+    "bytes": 7365,
+    "sha256": "76badec8cf48b54490bbf5b6b48d54f81f43da988712bf526eabb0044b267802",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/SafeRootfsExtractor.kt",
+    "bytes": 25393,
+    "sha256": "31787d316c8b5ce5cebd28e3374d877ee315f333f68f601a5979037f373442c7",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/SelfCheckHostFacts.kt",
+    "bytes": 6217,
+    "sha256": "75d2c2054a24495e03bfcd5cb0c13913106e56b5ea03e608f66597ad2ffd089c",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/SharedFileImportBatch.kt",
+    "bytes": 1364,
+    "sha256": "3ffa9bcdb9f2f68577a27de4cc87803eb6631db252e980e8f7c6bec87f74c373",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/TaskNotification.kt",
+    "bytes": 23350,
+    "sha256": "e3901e8e6d8ab46e7187ddc0025b3a69029d8557ab4d7edd821476015cbbc464",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/TaskNotificationPolicy.kt",
+    "bytes": 4137,
+    "sha256": "5ec49de1004380e2b284347e696bcd9b019c625dbb82d24f927143684a7de736",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/TerminalCoordinator.kt",
+    "bytes": 3570,
+    "sha256": "8391baceba375b2d12049a04cb740731fbdb4606d3bc996814671472e81815f9",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/TerminalInputWriter.kt",
+    "bytes": 910,
+    "sha256": "60238eefb1553df2de972c298c2f4e64d3f75e2390996af909dfb9d1a3b30b14",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/TurnCompletionNotificationPolicy.kt",
+    "bytes": 6600,
+    "sha256": "7db4f447415be5a13cccb39f6748783294e21bc257d66c8fc320389ac5b49c7b",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/TurnCompletionPolicy.kt",
+    "bytes": 5529,
+    "sha256": "77d2ae9bd8501168e4bc2f4543d1a0960b9129dba1257479dac4de85275d1d86",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/UbuntuTerminalManager.kt",
+    "bytes": 7053,
+    "sha256": "ebc0716ff4ec4e56b8a58e10712fa822a9831fc7b1ff67971e75104c50f547b3",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/audit/AuditPolicy.kt",
+    "bytes": 7455,
+    "sha256": "2327b161676b1fe813a28e0eb36eef81b4e188093838f3df4a5b05f113548051",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/audit/PrivateAuditLog.kt",
+    "bytes": 4994,
+    "sha256": "9b97f96d729505818ef9886a29d2841b8bcce552aa4cbb67be8d03a088f65426",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/diagnostics/DiagnosticDevice.kt",
+    "bytes": 4759,
+    "sha256": "d56bd095e1f25952b23e10db9e21b20d08627685c06f93bb08dd56b0cddad285",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/diagnostics/DiagnosticLog.kt",
+    "bytes": 16645,
+    "sha256": "4af844cc8c3ba1e68eaafdc6ea3080cd1d38f4d4e0a24c7a96141923fe18a8e0",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/diagnostics/DiagnosticPolicy.kt",
+    "bytes": 18620,
+    "sha256": "17b35d90710a0a42eb48101fa23cc49b564b748cfbe2866e88efd4475296f3c1",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/runtime/diagnostics/TransferFields.kt",
+    "bytes": 4031,
+    "sha256": "8b7601a35dfda464c7d02f04a4eddef92c31c2c4579f46cba29a1f780a0129b6",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/shizuku/DeviceCommandProtocol.kt",
+    "bytes": 8413,
+    "sha256": "daea8595f1394faf71b23d9a2eaa74624d4310182ec898613d84138f9472b28e",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/shizuku/DeviceCommandRunner.kt",
+    "bytes": 39621,
+    "sha256": "92500c811bdf8ee049e1a7d4c8e1bbc730c76a2a98117b903e8b5fc2b1f5a6f1",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/shizuku/DeviceFilePolicy.kt",
+    "bytes": 4984,
+    "sha256": "5ec5607da8ecd5ed5113fa9a4171ce70874c7ee122187a41e9d64cf2bc007f62",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/shizuku/DeviceShellAccess.kt",
+    "bytes": 673,
+    "sha256": "a26d73c6b95859933e29ed5754200bd63b66b644af2c8cd1fbd32142238601b7",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/shizuku/DeviceShellUserService.kt",
+    "bytes": 9783,
+    "sha256": "a032df7efa38b37c152b6e95a7196a2482734a2d0d6374d2ad23f4d9509df54a",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/shizuku/KernelSuProbe.kt",
+    "bytes": 11301,
+    "sha256": "6f212a74815d684c7510f14ec7e3b69cd7d206b0d42378b186d65664991747e3",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/shizuku/RootCommandGuard.kt",
+    "bytes": 7138,
+    "sha256": "96d16b0cbf4c865ef66d172c957c222bc46f042aee7a03dd031a944928148d5f",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/shizuku/RootCommandRunner.kt",
+    "bytes": 8208,
+    "sha256": "d74e21e69432ba65ba8c14811ef536baf899f4376ffe1d573adfde4228a3bf03",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/shizuku/RootEngineAccess.kt",
+    "bytes": 4202,
+    "sha256": "e35fb34facb450c7fa9235be481793d09842a7c75d95b656e4f1448020437088",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/shizuku/RootSandboxProbe.kt",
+    "bytes": 4987,
+    "sha256": "e334f7d9895f3158207e02301a57e16aae20ddc97ea2d6a722d4a64d657a1ac0",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/shizuku/RootSecurityWrapper.kt",
+    "bytes": 10449,
+    "sha256": "fd825ac0ad698c558ac899b17c42ad046117669b310197e98a3cf3c03a36da2e",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/shizuku/ShizukuAutoConnect.kt",
+    "bytes": 1853,
+    "sha256": "de95d5e6931c1084bd868f5cb5a5ac9994797453f5c8bb4d6f12525eaeb6b2bf",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/shizuku/ShizukuAutoReconnectPolicy.kt",
+    "bytes": 521,
+    "sha256": "d2bf3c63c710786ed0655fb0d2a649fe12ce617f215d917fd1ecb66ce7bb52e2",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/shizuku/ShizukuBindDispatcher.kt",
+    "bytes": 2082,
+    "sha256": "ed60b3245dfa7d989998aa99da49310e1e38e11290d39fdfbe42acea76f36ace",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/shizuku/ShizukuRuntime.kt",
+    "bytes": 40792,
+    "sha256": "9a7c959af939a9e836f85306d87897c07438e6071a75e3250a8ee3cc79f1ad62",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/shizuku/ShizukuStateCache.kt",
+    "bytes": 5558,
+    "sha256": "3e4849e7e448df2cf196cd63fa1bb6d10ca5c0014c7067907d77014cdae62194",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/shizuku/ShizukuStopGate.kt",
+    "bytes": 2493,
+    "sha256": "60481883848c768f2f42c68ee07993f8140ec94e616f0604a2440c9ccd662630",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/shizuku/VirtualScreenFrameHandle.kt",
+    "bytes": 792,
+    "sha256": "59fb9c358a12e96780a32df123093cbdc3a2523ff9403d53f4be1a87f4bc72fa",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/ShellVirtualScreen.kt",
+    "bytes": 79402,
+    "sha256": "186dcad6ed7d0e15682c86a5ca23afc2d8dc87eaf93bdd1227bbe9a1272182e5",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenActivity.kt",
+    "bytes": 24815,
+    "sha256": "951587fd6d697b67acdb5cb77b40575549334d63dd8c3e2704b6dedf49648ea1",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenCommands.kt",
+    "bytes": 1868,
+    "sha256": "11ea93fbd836a1c97911fb5a6fad3a391b4dc5fb08de39831140f97fba8fb538",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenFrame.kt",
+    "bytes": 9901,
+    "sha256": "b0160f1be70932e7acfd852b87bfa134f790627af85eae0a4aa0742e8232a0b2",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenImeText.kt",
+    "bytes": 3145,
+    "sha256": "b30f0887c068f1df7f149df8d76a769138eb6db43c4adf113cd68cbf20ea16a7",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenInjector.kt",
+    "bytes": 21397,
+    "sha256": "8b56d7a27047be06ac7c410b0ccb7ef5e32695cd644d6461324e227fa8240074",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenMotionPlan.kt",
+    "bytes": 8715,
+    "sha256": "d7c9cc44f944d0041752ce24061b7542213adc2e918d8deb3e2923f75b00b3db",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenOverlayMachine.kt",
+    "bytes": 17115,
+    "sha256": "e67efee9d06fafee37f4a3dc2b15a34226a2a2ccd178b21d057955eab89f8126",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenPerformance.kt",
+    "bytes": 4224,
+    "sha256": "4b8bcefb48784096eb9d976dbe1de23d9f47d9d2d4d0693b03b5938f3843fdc4",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenPolicy.kt",
+    "bytes": 75403,
+    "sha256": "bbfe72239aaa0c1206b001ffaefbbbaf0b5c46ce963306730f22b788d7bd461f",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenPreferences.kt",
+    "bytes": 19265,
+    "sha256": "64075e19d1d2276ecc8ebece7f30a17503929bec23a1f36fca2695625f805661",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenPreviewBudget.kt",
+    "bytes": 7730,
+    "sha256": "fd28497068003516513efc6e36b08991449b50338ce7d9fdb57f99c32f389a8d",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenPreviewCore.kt",
+    "bytes": 7922,
+    "sha256": "11682c2b6c91500c7ef641b8e940de362b79976f7bc56e6628151c7d4c772c36",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenPreviewLifecycle.kt",
+    "bytes": 751,
+    "sha256": "b1310306699039e379ea91574da6d5a163ae3efaea72156ad825b1d05cd72b6c",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenPreviewPump.kt",
+    "bytes": 4086,
+    "sha256": "851119bf8a3e210e0bb45cb224ab254f3799b991194d3366b7a224ea3fd18e07",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenPreviewTouchFlow.kt",
+    "bytes": 16030,
+    "sha256": "2125ec0ddbd4f593eb78bd9e4fc0315192a88d30def06b7a6ec33a38f06faada",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenService.kt",
+    "bytes": 68762,
+    "sha256": "ccba0a457dea6e34fc67c19f5a2be7b26457c6b0f5d1a1fcbb7245e573f6268e",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenShellPolicy.kt",
+    "bytes": 7850,
+    "sha256": "00ec08277e6493cc55cb1f02627965b9fbf0c203d6ce0d24929111a9fcc028fc",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenSizing.kt",
+    "bytes": 27263,
+    "sha256": "bf3c6dd43a3db7b4cb5383504931381bb2e3e20b92c1d44b0f4c182592d9d3cb",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenTextPolicy.kt",
+    "bytes": 18723,
+    "sha256": "62884709f0b5279b8469b512836191865e8b42a6d296144fd3aa72c09620ee45",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenTree.kt",
+    "bytes": 33397,
+    "sha256": "fce3b65603f70f9e0690b890c48091f83b2307313356b1466142442d45b9817b",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/drawable-nodpi/overlay_ball_mark.png",
+    "bytes": 119576,
+    "sha256": "457d1b5c403dfb5884f10512badf528a9b3c9cafb2ce0e97394e8861d1dc5683",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/drawable/bg_overlay_action.xml",
+    "bytes": 626,
+    "sha256": "0ae1631072ca645d9eabf71cf0807db4fdbd5dcf9525b74eaf98fa89e1669c7e",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/drawable/bg_overlay_ball.xml",
+    "bytes": 699,
+    "sha256": "9d0156815f41f4c7ed29471bd52d5419038e4192b67e33f9f8ae4b8a724403ef",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/drawable/bg_overlay_secondary_action.xml",
+    "bytes": 533,
+    "sha256": "98854a8022c4eda1ec8061f03dec0c6be4d4b841c4ed4ff3e20418191192838e",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/drawable/ic_arrow_back.xml",
+    "bytes": 436,
+    "sha256": "4dfc81c256d75067d8c43f2dda10811a033351badbbfef27ab0eb952c7ec1e55",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/drawable/ic_folder.xml",
+    "bytes": 607,
+    "sha256": "d23d9a426579305a9cb9585793a4373f9604459e86b332bd5b5d60b9a356e6e2",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/drawable/ic_keep_alive.xml",
+    "bytes": 596,
+    "sha256": "214cb45242ae3eb5553933f910568b133e415173acf4596a1e50df0e426f900f",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/drawable/ic_overlay_ball.xml",
+    "bytes": 636,
+    "sha256": "c13b9009aac7eccc88f20a187d9112a8ebf2c29e75a5a014530b31a57dc1d06f",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/drawable/ic_settings.xml",
+    "bytes": 491,
+    "sha256": "ff19ddcb7d102d119bee118334ef70cca4547ecfce3d567a7ad7ed17327bb221",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/layout/activity_harness.xml",
+    "bytes": 480,
+    "sha256": "3584899b8f4831c7e79f26c923279b962b21b52adc87bbc66cd205c33b200c8e",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/layout/view_overlay_ball.xml",
+    "bytes": 1951,
+    "sha256": "76af386c414babf068c98172f3cbf437448f842d2633e4b90c51282649462275",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml",
+    "bytes": 2267,
+    "sha256": "cfe2d438d52a0730562857ad54bf07674f55ed2b95118a569d2ee88360a41506",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/mipmap-hdpi/ic_launcher.png",
+    "bytes": 13279,
+    "sha256": "f42ea83bfc6bccb646aba2c8aea5515df0c6bd57f77dde8ca76d106ee64121d4",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/mipmap-hdpi/ic_launcher_background.png",
+    "bytes": 232,
+    "sha256": "03dfdab20fe9370b2e10c44ba17f2642a2bdd2f6f61bda94f9807f8dc1cdf97a",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png",
+    "bytes": 26166,
+    "sha256": "822e6c0de6dac883e301edabe42c8ab49b3a31f34fe78395f9569ae49029fd2c",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png",
+    "bytes": 14006,
+    "sha256": "96958c4f22590b50113c4793e5fc802ad9c1bd3ece1e05b47ea662c98b5e6d5b",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/mipmap-mdpi/ic_launcher.png",
+    "bytes": 6359,
+    "sha256": "30b9694268d09db168d4f5f1b2ae51f219b1f8e86c23db9c4878173f18ff911f",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/mipmap-mdpi/ic_launcher_background.png",
+    "bytes": 175,
+    "sha256": "a18c736bda78401725e2530c765285067dacef4e9322d1eec0af89f242c1fc0e",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png",
+    "bytes": 12433,
+    "sha256": "27d2db300d79c1fec4a17f678e33cc58cf9971fdf52896807e3fb84a146d40d8",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png",
+    "bytes": 6626,
+    "sha256": "2ba787c399a746cb78f0be50bdb2618df639c7161aab8f5c50fcbf2bf6d33646",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/mipmap-xhdpi/ic_launcher.png",
+    "bytes": 22471,
+    "sha256": "1d21af2574b52563be3ec78a7f5935b1d0c047290131ce80fcdf2c85d8648784",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/mipmap-xhdpi/ic_launcher_background.png",
+    "bytes": 311,
+    "sha256": "3382826ba197e5872973ab36181c977a702188a69c33e32a84783cb4fb60b4e0",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png",
+    "bytes": 44390,
+    "sha256": "89be498ee3004a9aa69c1a9bcd074a79a88202e487e88fa960fa54c8e0de758b",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png",
+    "bytes": 23842,
+    "sha256": "9f2618c58b12dd17065b42df44590793dcca90f274c9a49fefebe30a4ee31907",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png",
+    "bytes": 47288,
+    "sha256": "04b46bf118364917d025a3a3b95d9883af830f9bf5439991ecaa98824c4d43d7",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_background.png",
+    "bytes": 537,
+    "sha256": "d54c64c6590d4d2d8ac8869d2d7cc45c5dd31eac5f4b4c3526325a3075219879",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png",
+    "bytes": 93350,
+    "sha256": "874e6dcd1eaef465cb8a3e6764c41420a26d33c937a20d3b071c173898415fc3",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png",
+    "bytes": 49690,
+    "sha256": "f5653688f30ff1883715a4ecd27a37b385d55fccff4daaf5cc9845a2dd7acf0d",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png",
+    "bytes": 79175,
+    "sha256": "60a4a47ef111ce81661b760bac2a564dec90959580ac3613269b86e2c7f8a1f3",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_background.png",
+    "bytes": 853,
+    "sha256": "bb4b899d0da10949823e12f21fe0ad5f106e3a96115f2ec8f17c8bb4c3e5a9a5",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png",
+    "bytes": 159276,
+    "sha256": "b7b391e49f7f1730b125f88b673ab32400b9e97bf14a32b57da47c58f325135d",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png",
+    "bytes": 83979,
+    "sha256": "a8fc2016a371551e302dd335a672b7aece084da4654a3a52b219e67d09b12c66",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/values-en/strings.xml",
+    "bytes": 12581,
+    "sha256": "181684cfd09d42cc80e34666df3ae2369c6b85a4a085be89c0664d60504900b5",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/values-night/colors.xml",
+    "bytes": 1585,
+    "sha256": "d24c811f01fe6a2615022f6b66fe4257e8adaf4bd716ca901f6a098c8a4c3a92",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/values/colors.xml",
+    "bytes": 1902,
+    "sha256": "9c4f0940d4092969b500d69cfa143cbb0a72a487b6c2c2c3808178f9c8569514",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/values/strings.xml",
+    "bytes": 13202,
+    "sha256": "00324a283860273480d6f35a41239eb87e5c23c41cfbf37ca8adb1d90ff36c0e",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/values/styles.xml",
+    "bytes": 1990,
+    "sha256": "24e55c960e503c468cf5661264a8b6e486f26519546cabb6758323662b980cb9",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/xml/accessibility_service_config.xml",
+    "bytes": 578,
+    "sha256": "b77f0ef660c756106271538748e87a634904e29cc2ce51b38c0daf0a7db25c71",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/xml/app_update_paths.xml",
+    "bytes": 347,
+    "sha256": "7644ecee9139e0f1456ec53130981873bf9c5dcdc3288a3f811623fd37b83a4d",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/xml/data_extraction_rules.xml",
+    "bytes": 521,
+    "sha256": "cd90b543b2c74d68eca83215bf985ae06210cdb39cca39b14d6c12915ace4b86",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/xml/file_paths.xml",
+    "bytes": 322,
+    "sha256": "c8dadddc3f6613b9a8cc3d88d7cce30e1fad3c6843a966f7ec12cf2ea83a4b64",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/main/res/xml/network_security_config.xml",
+    "bytes": 342,
+    "sha256": "9187f485f22fde712aea8de5243664710440a9ee08e9f1b172978eef96a15001",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/AppAuthenticationStateTest.kt",
+    "bytes": 3813,
+    "sha256": "a8bbf8b8481e9228ac0f985eb786a5a4ef30f9657bd161cfd90714ad423c8a23",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/AppForegroundTest.kt",
+    "bytes": 2384,
+    "sha256": "508fd7da0f53fdb82563470c8f702328de2990ca2bbbb8ebde232e96a1def62f",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/AppTextScaleTest.kt",
+    "bytes": 2338,
+    "sha256": "32d9a572afd1630ad89422dc8bb228eeebad0da1014bd50260746ab1d70f4c91",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/AppThemePreferenceTest.kt",
+    "bytes": 1972,
+    "sha256": "3975b859e7277aa0b8da08bb05a0377f7617de196092ab2b5fabfb66c1c19a13",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/HarnessOpenRequestsTest.kt",
+    "bytes": 5545,
+    "sha256": "7d7182e5cef87e92d85cf39fbff514a1f085b4e6ca4683d283a564b439105325",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/HarnessPageCacheTest.kt",
+    "bytes": 6941,
+    "sha256": "e9fca63306077dc7cebcbea4772aaa55b9671085c6298e5263a90acfab893ec6",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/HarnessPageSessionTest.kt",
+    "bytes": 7854,
+    "sha256": "d2dce3a54bfb4b152eae02c1f2f21490bb8ce484bee70d8688ac61e543c14063",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/HarnessPluginResourcesTest.kt",
+    "bytes": 1473,
+    "sha256": "65e19d296b667942778859cde9a4ce07802be9263aca7f7729401cbd659e35e0",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/MobileRuntimeSettingsInputTest.kt",
+    "bytes": 3111,
+    "sha256": "4b427d1d95376d51b99b2693b4254e5aae57d5b88ac84a0a19f5840505ea916c",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/OverlayFileChooserPolicyTest.kt",
+    "bytes": 622,
+    "sha256": "51cb347157ad7ae04ebf4603adf845a5e7ac77fbb24b6b6463eb29a821a3502b",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/RuntimeResiduePayloadTest.kt",
+    "bytes": 7221,
+    "sha256": "b1fd3d7648deed10e9c402e1670aa4c2374d46e5881988da32d5ee25a7d11d31",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/SessionCatalogTest.kt",
+    "bytes": 10484,
+    "sha256": "e7a8925d0a67b75acb7e8c734e80b59e6312b6d568551eb10acb7fad326bc91b",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/TerminalOutputDispatchTest.kt",
+    "bytes": 1415,
+    "sha256": "c2e4fd2b585272355a676213a9ef10faf80228b26d9e00d98849ec8e254be967",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/accessibility/AccessibilityAppConfigStoreTest.kt",
+    "bytes": 8568,
+    "sha256": "3b6b077dca8c141ac9ffb8e2ea1c831245fc9847a7ac0866043c61cb3822ff93",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/accessibility/AccessibilityAutomationPolicyTest.kt",
+    "bytes": 8604,
+    "sha256": "2791e66d51e26a4f79fdbaceb296f8703bd3d6292aeb6a7a49833e4a4881adff",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/accessibility/AccessibilityPasswordPolicyTest.kt",
+    "bytes": 5117,
+    "sha256": "c11af35f1a4441500e30b70d49bce9df917fdfc6a54b96de4d5d672e34f6eec4",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/accessibility/AccessibilityPasswordStoreTest.kt",
+    "bytes": 11884,
+    "sha256": "e4b56f41cc2930a765a8c7992248e406354225cab6c59c5c19b695d4a7de46c1",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/accessibility/ApplicationSearchTest.kt",
+    "bytes": 16795,
+    "sha256": "c82180112522742c8c261f720a3a0a19d9ef3cb8c4959e41f3cff2251587d59f",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/accessibility/AutomationControlTest.kt",
+    "bytes": 9477,
+    "sha256": "27d232dc4097fd13c8966da5499ddc05320a9c0a83370a6aae646b9d940ed198",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/accessibility/AutomationRuleEditorTest.kt",
+    "bytes": 14468,
+    "sha256": "b7a806723cfd3bfccb1be6e040a8c32d9fcd0f079538da5e80efe278a869430d",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/accessibility/AutomationRuleExecutorTest.kt",
+    "bytes": 32967,
+    "sha256": "740e8784ab4efdb9c472da88ccda1b285cd3384e0da0ffe848ec8fd528fd5f94",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/accessibility/AutomationRuleGateTest.kt",
+    "bytes": 21008,
+    "sha256": "cbed853b28e9a427a50f8ab5b34bede16ada766654dc7f704042ea327dc1ffb1",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/accessibility/AutomationRuleMatcherTest.kt",
+    "bytes": 37160,
+    "sha256": "d0e3ce851341d80f76942f77834f6f568a2c59fc863e844574dc20a376429357",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/accessibility/AutomationRuleStoreTest.kt",
+    "bytes": 21531,
+    "sha256": "f26b7b5176a19cbf96f9f190d1791ac8fe8b026b5a11c95e7a811edc6c82841f",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/accessibility/AutomationRuleTest.kt",
+    "bytes": 21929,
+    "sha256": "eadca03d7d8d330ce5a2579464b0ef54869e43a20994cd4c8f45ece38145470e",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/accessibility/AutomationRunLogTest.kt",
+    "bytes": 10895,
+    "sha256": "288a0a11bc0ce1db540f90b8ad8553be83b49ee294a11c85f97a7584f644318e",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/accessibility/AutomationSkipMessagesTest.kt",
+    "bytes": 4900,
+    "sha256": "da474457576a7ff533d50942917404321f8f07e197cfcfc2d443e348ba33d351",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/accessibility/AutomationTaskLedgerTest.kt",
+    "bytes": 19030,
+    "sha256": "ca8f3266d0f4ebad247e68e9b8b114b02c1f9187cc7be4be5da1ce24991812d1",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/accessibility/AutomationTaskWireTest.kt",
+    "bytes": 11864,
+    "sha256": "7a8878dcdd52c2ca51a7156217db27e9152dc92e70f3e45f45ebe83720222f63",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/accessibility/AutomationWindowDigestTest.kt",
+    "bytes": 2386,
+    "sha256": "19b7e1086940571190108d7f9022648aa11b2822dabf8c733842cb3b46f77384",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/capability/DeviceCapabilityPolicyTest.kt",
+    "bytes": 11702,
+    "sha256": "c48aecfd6144d4f34bb4627d44d35ef2f7adfe9a0b95d82947d9ab056577a8ba",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/overlay/OverlayBallPolicyTest.kt",
+    "bytes": 10060,
+    "sha256": "a06773356927aff8343419db23348b1f6f05b143c81210a858b2da8373e8d731",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/overlay/OverlayBallPreferencesTest.kt",
+    "bytes": 2876,
+    "sha256": "7bcc91113e52038f2b2f3da21b42b56b8ee479ca02fecf9f304a8bf4536529a3",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/overlay/OverlayBallSecondaryPolicyTest.kt",
+    "bytes": 7970,
+    "sha256": "5529082e789ee15770531e83e7aabdf419c98b1388080301c27cd55e3975f7fc",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/overlay/OverlayConversationSizePolicyTest.kt",
+    "bytes": 9417,
+    "sha256": "4b9bca19c05d6a5be142f3b32ae3ed764a87d35d403c7e5b406506e469924660",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/AppReleaseCatalogTest.kt",
+    "bytes": 18427,
+    "sha256": "6a8622e0f28c4190ac40ea574fc68a896d3e05224df1a5c4c66840d5498466d0",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/AppUpdateCacheTest.kt",
+    "bytes": 14298,
+    "sha256": "f4eb9c8157150ea01a2f159f76275617be2fb97f8f28b938f90ff83d45dc5bd4",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/AppUpdateProgressThrottleTest.kt",
+    "bytes": 1946,
+    "sha256": "58d68b3c8f1cb4fb47a0244cfd7dce00c2e92bdf1bd882ab9054b4ad45914d43",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/ArchiveEntryClassificationTest.kt",
+    "bytes": 5445,
+    "sha256": "cd8b4bfab054fb555107cbf3b000508850c4daee4a77162e0be87dc1a6f1af0a",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/ArchivePathPolicyTest.kt",
+    "bytes": 2340,
+    "sha256": "4f7e08aee210a4a6ba15bd4fbe38ca91d36eae7852b9f5abe3505ab89fe597c2",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/BestEffortCleanupTest.kt",
+    "bytes": 814,
+    "sha256": "6d717bfd89f21b4bef400a58a634f1e3de92828d19a09321f7c0fcc62fdd011b",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/GitHubReleasesTest.kt",
+    "bytes": 5467,
+    "sha256": "cf2adf7360364eb5a64499928f70b897628bd6c8783efb93ee3d0f17a67b8f45",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/HarnessCredentialStatusTest.kt",
+    "bytes": 2378,
+    "sha256": "dd611837948c94e13571a66408de9cdb1d441e4a411f7f842a8b407b3b8069ad",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/HarnessCredentialsDocumentTest.kt",
+    "bytes": 6793,
+    "sha256": "ecfb75727071cfa36a77853e0e455bcb8ca580ebfe24c4920b8fd9f4b3eca6da",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/HarnessKeepAlivePolicyTest.kt",
+    "bytes": 7473,
+    "sha256": "426e0ff60e138d5f9980a4d383bdcdeb9650857172fafe1648c53fa1146e27c5",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/HarnessLocaleSettingsTest.kt",
+    "bytes": 1508,
+    "sha256": "b730002c2360a04c66e8f9efa15d463ab6f36cfe3e02e35b9464528fce30041a",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/HarnessOutputTailTest.kt",
+    "bytes": 5639,
+    "sha256": "b8e6c5fbd6b2e17e5961093e871de29eb3e410edf431769f66efe3b107ae8fec",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/HarnessResidualTest.kt",
+    "bytes": 2777,
+    "sha256": "416e6264b485d759ed5704456de42578460beec7a55d68e2c39b23a712c96c30",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/HarnessStartFailurePolicyTest.kt",
+    "bytes": 3911,
+    "sha256": "e263366b1d8ca1e3d9f56479f2576dc8c6d9eb76a391c33a9bac2da042525ff1",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/HarnessWebAuthTest.kt",
+    "bytes": 2782,
+    "sha256": "2b897cb16c06ad0470314d59e38c63ab58675c2f481eccb9892266b249f163e7",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/ModelConnectivityProbeTest.kt",
+    "bytes": 7247,
+    "sha256": "ff9f5b18a9aef226705bb8a05f27506e003fc2102edec8bebdd70916e38372f4",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/PluginInstallLockTest.kt",
+    "bytes": 11647,
+    "sha256": "29616e84ccd7cd360472e148725ff5770fbc217974297db9ee31d7fd935cddbe",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/PluginMigrationPolicyTest.kt",
+    "bytes": 3693,
+    "sha256": "4de628b367ca05c529e42168da3b6ec509d9fca5e11136e29395230d60237a96",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/PluginMigrationStateTest.kt",
+    "bytes": 5685,
+    "sha256": "983e9c862c4911d771778497a70e5c67a26446636fcb0f97263072d124b8470d",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/PluginRepairPolicyTest.kt",
+    "bytes": 5960,
+    "sha256": "dcc816103d380d657d9ab1e409aa93b9e2301b96a35305613f212bbd8fa7c828",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/PluginSourcePolicyTest.kt",
+    "bytes": 3966,
+    "sha256": "06ba3656a3657f403c3a8e9496f4e9df7033f368f5b0584d213f82209aa29186",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RootfsIntegrityTest.kt",
+    "bytes": 4646,
+    "sha256": "0680f380cfc7fa541b7aaea3709eff441e0ffc6dea3d45e6e58bc6e14ab70362",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeCommandSecretTest.kt",
+    "bytes": 8135,
+    "sha256": "dbb04ad6a2a717660e93079ece6bf1e7fe14df0f9a2a91c645a9e5ac11b76995",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeCredentialEnvelopeTest.kt",
+    "bytes": 1051,
+    "sha256": "9f8e8af253ec846d4c053758b7fb8248841eed596b3d100e883cc9cbd2a61d59",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeDataCleanupTest.kt",
+    "bytes": 18996,
+    "sha256": "c4f328c188e056da4cfd3a635a13b82f797e6d013e303a1b5973ba651f42ec7b",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeDiagnosticsTest.kt",
+    "bytes": 4057,
+    "sha256": "798741e69e2865bee7b7dd8216ea4de12b4c2a706576238729d21b61bc9eeb0e",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeDirectoryBrowserTest.kt",
+    "bytes": 12535,
+    "sha256": "5d0e660b9b45b0c0895b9e45c135899a2e7542f8cbe1958d0e6c149b19eede94",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeDnsTest.kt",
+    "bytes": 1170,
+    "sha256": "57b73d0ebe515b34897df62e83d028831f8a4c63812c9137a69c7db2347d4c44",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeFilesTest.kt",
+    "bytes": 9176,
+    "sha256": "113f1cd7ef36a0438d9b7711f4827841ed4d12d12cab2010f7936dcedfe9cffe",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeGuestExecutablesTest.kt",
+    "bytes": 8760,
+    "sha256": "4c6b6581cd6c6937ca4f760378778e964721ca0c73c0cd99b85a746ceb2ed313",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeHarnessExitRegressionTest.kt",
+    "bytes": 3105,
+    "sha256": "e090a9e76e94e85505a10d6f3a5f6666f9ded50430bb98b36b4e02dac8af96a9",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeHostConcurrencyTest.kt",
+    "bytes": 8323,
+    "sha256": "b0e83adb2be34c8c2e0ba5dc3b1c659fa3df7953321e547a7a59b9bf3c325cb7",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeHttpTest.kt",
+    "bytes": 8792,
+    "sha256": "3b3bedae410e7be505c6829313132a3c548261f5bb1b635b0802cc4ffa15ab9a",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeInstallerResetResidueTest.kt",
+    "bytes": 3950,
+    "sha256": "497a77f2945114aaa3def984b8c8eb8d56fafba3a34cc78da069bbade87d5736",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeLaunchProfilePolicyTest.kt",
+    "bytes": 4264,
+    "sha256": "a01e42fa17b938d00ce3ce1822607109acf7f0780914c62cb5903f4ea77bbcf6",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeLauncherFilesTest.kt",
+    "bytes": 3554,
+    "sha256": "3013bf8e9a884d66bd6790867016c8247a55c828493a64eb93fc144963d1e06b",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeLauncherPolicyTest.kt",
+    "bytes": 7932,
+    "sha256": "bb1784332af3434757bfcfb8848eb00ff9b0e3c1ca408bc9242138818dc26f0c",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeLibraryPolicyTest.kt",
+    "bytes": 7425,
+    "sha256": "d8a3efaf77f3d70297c6e4e14471b27d1a08378933791dceddaaad7242460d2a",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeMailboxArchiveTest.kt",
+    "bytes": 36150,
+    "sha256": "aa1a5b5cb19eafb5cbc385cd3809551552f7e30039fcbf11186d2ae773f17b8c",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeMailboxPolicyTest.kt",
+    "bytes": 6712,
+    "sha256": "9ea07d4d7f0361575ed62bf70e700159a5d63bd42ee86e0f08274a6b316f7db2",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeModelProvidersTest.kt",
+    "bytes": 4012,
+    "sha256": "3e48e2b986c758da49605cc5e5a064dc9280063342e707b78f4a5df2a1e91b45",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimePreservePolicyTest.kt",
+    "bytes": 15959,
+    "sha256": "655185553bd45d4208208508afcddc3105bec90bac1aa1a8d478f9c96d2d360b",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeResidueInventoryTest.kt",
+    "bytes": 7780,
+    "sha256": "334d7966d98d46d8bacd53f9f51f85f3e118ce7f729a437651f71af2632fa242",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeResidueSweeperTest.kt",
+    "bytes": 10981,
+    "sha256": "a8a4851bb23adac455c363c1e99bc1b12499b2410d7007a90adedd81ca9339e7",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeRetireTokensTest.kt",
+    "bytes": 3534,
+    "sha256": "db42d4be9a89db576dfcfce849b1d8f553ccbe686b50f63ed2a666af1d5dceb9",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeSandboxRunnerTest.kt",
+    "bytes": 6833,
+    "sha256": "1bce5642ddbb0816a3988b107d883c9eb42e5867d7846df6221b445786bef236",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeSecretPolicyTest.kt",
+    "bytes": 4846,
+    "sha256": "4cae5c5d77e273b4027192a05e249bd59ba9741228f654165bd99e3055f355fa",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeSelfCheckPolicyTest.kt",
+    "bytes": 18274,
+    "sha256": "eefc011a83691be8962723fb36f3aa9456778a924f2471f0e8eeac488945421d",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeSessionSnapshotsTest.kt",
+    "bytes": 25022,
+    "sha256": "377dd345439df733f73ec7fc925f78d6d7b4e5d03351081755465276b77b5170",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeSharedInboxTest.kt",
+    "bytes": 11925,
+    "sha256": "a00a6bc9b4994a7310c20055da6212184eb07351499c5266c2f790369bb0c4a7",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeStartCancellationTest.kt",
+    "bytes": 2341,
+    "sha256": "001d1cd772160f4551e5bc20b5ab7bc662a809bb2e1554662ac2267bb9447530",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeStorageDirPreferencesTest.kt",
+    "bytes": 4786,
+    "sha256": "bcd5d138727c68eeac7fecbbc56f07553cbe8b2546eccdbce845530916410140",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeStorageDirectoryTest.kt",
+    "bytes": 9557,
+    "sha256": "3a7c02f71376f9335949f355da54c9b47e051b1c31af79917f98764317458155",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeStorageDirsPolicyTest.kt",
+    "bytes": 12112,
+    "sha256": "78c27ec611f6d9b83b96f582a4f5313649cc2d2dae533822d7b961d0f0a5d740",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeStorageDirsTest.kt",
+    "bytes": 13710,
+    "sha256": "a8332e7f092595c6f3b04c2e410a20f027e63d5c2c19adb5cc10cbbd478d3534",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeTerminalPluginBackupTest.kt",
+    "bytes": 2649,
+    "sha256": "3512d007b89b18bb918d47cd04bedd36edb8c605c9bc6be076c3a01e5bd82dcc",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeUpdatePolicyTest.kt",
+    "bytes": 2064,
+    "sha256": "2a327bfa7b599a32cd88182951c2666f299656a103a89519e6f2e4c5a245c946",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeValidationTest.kt",
+    "bytes": 6357,
+    "sha256": "7714503188bf43e5f0f2f5227b15271d50197faca1c9b004d9946601a093e1dc",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeVersionPolicyTest.kt",
+    "bytes": 5723,
+    "sha256": "033e4895fa5d9f551e51d9bfa3310af3752c4c919890cb13adcfcad56e9d8b57",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/RuntimeWorkspaceFilesTest.kt",
+    "bytes": 6053,
+    "sha256": "0b5881490c1a4c79920f91157ca5464a251713d5a9c115037c5ee83a721cb975",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/SelfCheckHostFactsTest.kt",
+    "bytes": 7325,
+    "sha256": "04e8edcd36d642adf1d0888d557fe6fcd415de7ecb37e8006926847cbfae99c7",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/SharedFileImportBatchTest.kt",
+    "bytes": 3085,
+    "sha256": "ff96769b67114c0f24fe26de3f2214176646c4b9a6ce6fd3d025cc8183389315",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/TaskNotificationPolicyTest.kt",
+    "bytes": 2374,
+    "sha256": "89e62458aa56fc58964388d75ec98ea5fad582fcf007c8216c5ec8a980b622cf",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/TerminalInputWriterTest.kt",
+    "bytes": 2497,
+    "sha256": "e9dab74100a1e33fe07d4d560bc10f5aebdbb68bad73a51939a4922a5ebb1781",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/TurnCompletionPolicyTest.kt",
+    "bytes": 8628,
+    "sha256": "8216965150a7d546ae073ae9172526e2c3deed03aa2a1d668c6057e6dc7cb8f4",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/VerifiedArchiveInputStreamTest.kt",
+    "bytes": 3913,
+    "sha256": "d3372995d9a1dbdf983f95d0798bb30c3d14705a604f9ea2420f44b9f69c381f",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/audit/AuditPolicyTest.kt",
+    "bytes": 4203,
+    "sha256": "7aa76bdac8ea81b1dd58d13ab763aff8a75358980a22fd3321a57be7f4237eea",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/diagnostics/DiagnosticDeviceTest.kt",
+    "bytes": 4700,
+    "sha256": "d0693f0093232e891cb1300f70e15bb5b8bbf9a22845e97b723a789daa66760f",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/diagnostics/DiagnosticPolicyTest.kt",
+    "bytes": 18641,
+    "sha256": "db5fcfdf44af8e6e1515ec28499db7d85961d74e77040274ce5a954ac2a8b53d",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/runtime/diagnostics/TransferFieldsTest.kt",
+    "bytes": 6264,
+    "sha256": "621024a081034acd7bc6bd4eac8c206d97cfbef6351a3d103b3845eedb255f93",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/shizuku/DeviceCommandProtocolTest.kt",
+    "bytes": 11664,
+    "sha256": "04fdb271c6aed5449161b3042de45a66803ec4d483ae3f5bb0fa45d9a7f3e885",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/shizuku/DeviceCommandRunnerTest.kt",
+    "bytes": 20440,
+    "sha256": "8bd847694f40b22e67f46d11965e551ce025178b713025c3b9729f45d6da9399",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/shizuku/DeviceFileCommandRunnerTest.kt",
+    "bytes": 1764,
+    "sha256": "08e7a59bf10845eef419a36ceb503be9bdbeb04a455c0701c980ec0e6d0757ce",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/shizuku/DeviceFilePolicyTest.kt",
+    "bytes": 2535,
+    "sha256": "3faf055b4b023ae30b55d2bbfeec22d3af921bcb31de3d5da96979122492a3a6",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/shizuku/RootSecurityTest.kt",
+    "bytes": 30841,
+    "sha256": "d188ea0dde4e683708dc0e53b97d0955720484c86c14ae18e83e7f62f3176212",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/shizuku/ShizukuAutoConnectTest.kt",
+    "bytes": 4469,
+    "sha256": "ddacb65d19d03ac32ec0e33eaeea6c1b17b823d465d31148adaa9e9f48b0fef8",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/shizuku/ShizukuAutoReconnectPolicyTest.kt",
+    "bytes": 932,
+    "sha256": "586ab5bf550b28b21cf73a8fd91592289d3c03cca3d4e5766e7aaaba3eee8382",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/shizuku/ShizukuBindDispatcherTest.kt",
+    "bytes": 2001,
+    "sha256": "be5d320a93fbeff82cf51fdc2accd947ce6181b32457e51356d0399e7a6624b1",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/shizuku/ShizukuStateCacheTest.kt",
+    "bytes": 16100,
+    "sha256": "f98db2af54727bdb744d6f8543d97838998b80b0427faf891dff088218ae4d90",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/shizuku/ShizukuStopGateTest.kt",
+    "bytes": 4727,
+    "sha256": "e85c583a2fa84785db29aad8aa1fcece50bba781ef62c26be5541b30d194b850",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenAutoFollowTest.kt",
+    "bytes": 8824,
+    "sha256": "0ba7ec32bf534725eeea1b1e0fbb37cf264b062785724250479da3716f04b74a",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenBridgeTest.kt",
+    "bytes": 14670,
+    "sha256": "8f823d15d0a87c65f44bd090a9df5ee2e6b8b67d8dd418a3ceb8358ee2dddec1",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenChromeTest.kt",
+    "bytes": 2186,
+    "sha256": "a4a02a14af3c1c356ae18e1ede5158ff563a52d3ada6633d5d48aa6a6760ed57",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenClipboardTextTest.kt",
+    "bytes": 6887,
+    "sha256": "d09711b88c3297e20c694675ef4728ce7e78d69227d083fa5bb1a482e4da5f07",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenDragTest.kt",
+    "bytes": 6118,
+    "sha256": "482fb9b8a4d1d3de8983195a714122a21aeae8bb4663feedcfcea176830479ce",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenErrorCodeTest.kt",
+    "bytes": 2694,
+    "sha256": "20d262a6fe00712a02521c767213a10632e2f9243ef1db2c3280817a0897be01",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenFrameFailureTest.kt",
+    "bytes": 5150,
+    "sha256": "3287f9d9288e221152e7ad21142d2cb0f988e73ccf889e2c4840fe8898ea7af5",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenFramePolicyTest.kt",
+    "bytes": 10923,
+    "sha256": "36007f3f6676ef0cf9866f4f61e2ea635ed43104afcea962ef299ccfaa06396b",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenGestureTest.kt",
+    "bytes": 7555,
+    "sha256": "e7c75f3496be11f645b56fb0116d8e7d1efa24141ecbba9c85f134dd7aa07921",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenHeadlessSimulator.kt",
+    "bytes": 47232,
+    "sha256": "05acbe76f97ae8d5d1d9e4140bfafa4561e11296802ff6392a964b9cbb531efc",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenHeadlessSimulatorTest.kt",
+    "bytes": 27421,
+    "sha256": "919c239116d788dbfeaaee9e44d661bea3f0efd8e853151a3ddd4520e7bbaf61",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenImeTextTest.kt",
+    "bytes": 3963,
+    "sha256": "26e613910246bcaa2eac64f160a8d92fbdc727af2031d52e42ac19b75e1de672",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenLaunchTest.kt",
+    "bytes": 17462,
+    "sha256": "43125e200392d6cb749e26f9de4131770b8ba4c4285309d91f3107a023da97f7",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenLifecycleTest.kt",
+    "bytes": 5629,
+    "sha256": "7183b019f57a62b897a2dd52ee653b03406fb80b9add0dbef8f956f2a44e736c",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenMotionPlanTest.kt",
+    "bytes": 9684,
+    "sha256": "22952d5fb7ac385c795cad3c3c20aad18cdc72bb7a0e249605852b733cfbf62f",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenOverlayMachineTest.kt",
+    "bytes": 11965,
+    "sha256": "45f404ee68b6d0f49c00c0ab23bf430b9a7b53e3001a0ff4603e751d7065a644",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenOverlayResizeTest.kt",
+    "bytes": 9098,
+    "sha256": "392db32dd4068df928e32f84830e6e684e209b05ad860639d159db1aca368c6a",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenPerformanceTest.kt",
+    "bytes": 3635,
+    "sha256": "17958cb839b946c890c51ad911152e8b3dbb16b2984ef69755aba007c950d5d7",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenPolicyTest.kt",
+    "bytes": 18118,
+    "sha256": "90a0f9cf4816491f3039404324754cb98d8e8d54b0b89e85a3c364ebbd4e9a5c",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenPreviewBudgetTest.kt",
+    "bytes": 9922,
+    "sha256": "ed1f7b58346d9af08cb1b9388d8bc5132d90dde55e0bc66b4175cf6edf860eaa",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenPreviewCoreTest.kt",
+    "bytes": 12978,
+    "sha256": "0a269ba74bbf9786f7ba247eadef7bf509ae488183251ade46967b1e2bc32c59",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenPreviewLifecycleTest.kt",
+    "bytes": 4542,
+    "sha256": "27bf1cfed6d424d4814aece16213d6b2445fc338dff4e0b1dd10cf0cac9aad66",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenPreviewPumpTest.kt",
+    "bytes": 6637,
+    "sha256": "d83fa46de1d8b5ad9ea944526fbbd81e919b809da0983c000ed0fc27083daf81",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenPreviewTest.kt",
+    "bytes": 10364,
+    "sha256": "0a75e26dcb538bcf2abdf80e15d28c8234ecea31996af62d7e265253de96871a",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenPreviewTouchFlowTest.kt",
+    "bytes": 14286,
+    "sha256": "cb3e82e11e50fd41e5165411428c0ca5d2ed6cce5f5b8f707d757772f8c28a27",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenShellPolicyTest.kt",
+    "bytes": 7514,
+    "sha256": "77c2946f26c3a76fd8b98bbc63a951789a9b8ff366ea2c2274948c4e5c252640",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenSizingTest.kt",
+    "bytes": 25176,
+    "sha256": "1dc0a08531eb03a5b7174960e96354a1b9250bfe0be791ee3ceab80f9e2d9a84",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenStartTest.kt",
+    "bytes": 9875,
+    "sha256": "b710511b7228c4a524be0e3f89032e15d2c4004ef6d6eef200ddac84ae70cf33",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenTargetRequestTest.kt",
+    "bytes": 8501,
+    "sha256": "990c4d3ab7b677e5acb83c85a102657d16360b082a179938ff88bc7ed803da6b",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenTargetSwitchTest.kt",
+    "bytes": 6934,
+    "sha256": "887eb38bc8cba825c99ed594e4f971d45d81455cea77af32819c2a44b72eacc7",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenTextPolicyTest.kt",
+    "bytes": 23336,
+    "sha256": "9905322ac457f44f605f7507d255531612a410e6a0d40d0f75167b2fd2ab81df",
+    "executable": false
+  },
+  {
+    "path": "android/app/src/test/java/io/deepseekharness/mobile/virtualscreen/VirtualScreenTreeTest.kt",
+    "bytes": 9074,
+    "sha256": "7b86180dad7dd07cd9bcdb6ed37bf6b6797aadbe5cb68c3e240bd564ec3416bf",
+    "executable": false
+  },
+  {
+    "path": "android/build.gradle",
+    "bytes": 494,
+    "sha256": "34c33e9ae158b4dc01c69aebc2a731202a2bca12e1f0dc1dd90bb3b457865ca1",
+    "executable": false
+  },
+  {
+    "path": "android/gradle.properties",
+    "bytes": 167,
+    "sha256": "ea869dd5e3db9da83dec37e5b11a5856dc6f011e9ca3478f5c0b43b300ffcf80",
+    "executable": false
+  },
+  {
+    "path": "android/gradle/wrapper/gradle-wrapper.properties",
+    "bytes": 340,
+    "sha256": "1b9cd6961ee86eea17b2f912bddb22030492db23fc6dff07da6c30eccaaab0c4",
+    "executable": false
+  },
+  {
+    "path": "android/gradlew",
+    "bytes": 372,
+    "sha256": "82a7d29baef23cf5d6d8c4f73ba389460c8d36765250c47a06dc41f792e49ce5",
+    "executable": true
+  },
+  {
+    "path": "android/gradlew.bat",
+    "bytes": 443,
+    "sha256": "099b86ec117d4e3da56b67a29b00065f86e89d6cb037348c1093b573b1844609",
+    "executable": false
+  },
+  {
+    "path": "android/keystore.properties.example",
+    "bytes": 378,
+    "sha256": "e55087583087d4ef58a2f693791e6e0fb196962a98f2a25b2f6cac4ccd890ebc",
+    "executable": false
+  },
+  {
+    "path": "android/settings.gradle",
+    "bytes": 1356,
+    "sha256": "b375ba488482bdf74dbda6b55633f6527be30dee706b31c9e6accc47865da3cd",
+    "executable": false
+  },
+  {
+    "path": "capacitor.config.ts",
+    "bytes": 412,
+    "sha256": "5a6f03756264f4f5cec528d6a7b86462e0063683428d100f4ebd49030c72bc63",
+    "executable": false
+  },
+  {
+    "path": "docs/AI自动化参数设计.md",
+    "bytes": 110446,
+    "sha256": "19c4b1ec2d57e18ff47e030be0e95906127bbcf6ede881bbdc01004b65a5329e",
+    "executable": false
+  },
+  {
+    "path": "docs/ARCHITECTURE.md",
+    "bytes": 25454,
+    "sha256": "a6ffc796fe0999b5f131f30a39c32af26d062bd1f69cf182876ffe2eba98659d",
+    "executable": false
+  },
+  {
+    "path": "docs/KernelSU高级通道与安全分区防护.md",
+    "bytes": 43441,
+    "sha256": "38f4daebc2584519c53791946e2b343d664fc0ab79f5d929f052415b57954391",
+    "executable": false
+  },
+  {
+    "path": "docs/RELEASE_CHECKLIST.md",
+    "bytes": 27049,
+    "sha256": "5bc999ebb55b89cbb7df02ef2d96720d2822d3ab46bed7a625a878caea8b1822",
+    "executable": false
+  },
+  {
+    "path": "docs/community-pins.json",
+    "bytes": 999,
+    "sha256": "f6699b11b7e999340f8c0c337f0459cc05cb2d3e50a5c7d41610fb3e91adddac",
+    "executable": false
+  },
+  {
+    "path": "docs/images/app-icon-512.png",
+    "bytes": 456198,
+    "sha256": "7c44419e48099c3029faa759145e4a5530eb2f59ea69f6c1b36830fe568c23dc",
+    "executable": false
+  },
+  {
+    "path": "docs/images/star-download-history.svg",
+    "bytes": 8201,
+    "sha256": "e4347b12edb382cdc5f93c3fe19575d6ec4d9bebd6570c9d87164c8aafe81977",
+    "executable": false
+  },
+  {
+    "path": "docs/mobile-acceptance-checklist.md",
+    "bytes": 62233,
+    "sha256": "c00d7a4c5e513d72875d030fc163fcadb04dc1d29d56a50672003272e05af537",
+    "executable": false
+  },
+  {
+    "path": "docs/mobile-plugin-compat.md",
+    "bytes": 7731,
+    "sha256": "2c9fc3393fafb0b48eb00cf527bca8af45a46457d48f3af531f44bb6ba3d7b20",
+    "executable": false
+  },
+  {
+    "path": "docs/runtime-manifest.example.json",
+    "bytes": 669,
+    "sha256": "69c4d20cf5dd9054f8fb29fdbaa5d56da354641d046d14d38a39250035c1e4ea",
+    "executable": false
+  },
+  {
+    "path": "docs/上游问题-dsh-0.1.5-rc.2.md",
+    "bytes": 5961,
+    "sha256": "7776a38e2ceb5c8acd6a3eaf66cd53dfca474b6ace01f43452e371022c966ba7",
+    "executable": false
+  },
+  {
+    "path": "docs/任务通知.md",
+    "bytes": 24779,
+    "sha256": "ff15d3dc169c3ae2c24cfa69ff77a8c8b9a74e28f5f00b0fd0c7c4c0858b90f6",
+    "executable": false
+  },
+  {
+    "path": "docs/前台自动化时延与可行性评估.md",
+    "bytes": 43992,
+    "sha256": "d45d3bf394d1f2a016e4e8856edb5accd5b37d9acb61d563dfbf8a2a5c438ccc",
+    "executable": false
+  },
+  {
+    "path": "docs/副屏设置桥.md",
+    "bytes": 13247,
+    "sha256": "35f0c27ed12e1fffefdd8af31c129616f9e0b9ebac0042d65cb15712ec19e2b1",
+    "executable": false
+  },
+  {
+    "path": "docs/发布说明-0.2.0.md",
+    "bytes": 6533,
+    "sha256": "02448e5bcc65d0ce8d254c0b765001d3cd8a449e4f186b3c5f54e7231957998c",
+    "executable": false
+  },
+  {
+    "path": "docs/发布说明-0.2.10.md",
+    "bytes": 12712,
+    "sha256": "ae162df23fd2d1b22f9ba1a4948ce0267b09c59e3df7ef6c142cf54c6fc743bc",
+    "executable": false
+  },
+  {
+    "path": "docs/发布说明-0.2.11.md",
+    "bytes": 4681,
+    "sha256": "62071e0f0f3a9f420d30025b72c361a3fa2a7932ff8e8ac44603f475ec43089f",
+    "executable": false
+  },
+  {
+    "path": "docs/发布说明-0.2.12.md",
+    "bytes": 9701,
+    "sha256": "93a1709ac41c3d5b6d14002645930bbbef12abf6a8fba6bab8b5ed93a2239dfe",
+    "executable": false
+  },
+  {
+    "path": "docs/发布说明-0.2.13.md",
+    "bytes": 6579,
+    "sha256": "0b66fb141431a159de69df20ab177c31bff9bbc3e8fb68529b78073bde8f5dc5",
+    "executable": false
+  },
+  {
+    "path": "docs/发布说明-0.2.14.md",
+    "bytes": 5114,
+    "sha256": "cc5942312cf757a530a837d759d86f781838e5dde4816242f0b3d6dca83a3f2f",
+    "executable": false
+  },
+  {
+    "path": "docs/发布说明-0.2.2.md",
+    "bytes": 9654,
+    "sha256": "c8c25b506fa094177a1500011e33a9666ed583fe3f5c2c2aa07ecf6adf9e70fe",
+    "executable": false
+  },
+  {
+    "path": "docs/发布说明-0.2.3.md",
+    "bytes": 4371,
+    "sha256": "4a70de984d9e7c4c9b1c37d8bdb41a2c38b72d36ac29e57f9ddb4a5a26e9bc9f",
+    "executable": false
+  },
+  {
+    "path": "docs/发布说明-0.2.4.md",
+    "bytes": 21712,
+    "sha256": "045a71c558b054108e892018d67ba7b07abd629f7acff50526cdce175c78fb84",
+    "executable": false
+  },
+  {
+    "path": "docs/发布说明-0.2.5.md",
+    "bytes": 4899,
+    "sha256": "9629130c56a32ed3ab014bae1a831833bf8c4494c08f2d7d4e48e39aeab65b81",
+    "executable": false
+  },
+  {
+    "path": "docs/发布说明-0.2.6.md",
+    "bytes": 3416,
+    "sha256": "c56002c4e431e954c4bfe309ac0a86a4ac1d77ec29d3af8e461280120bd9889b",
+    "executable": false
+  },
+  {
+    "path": "docs/发布说明-0.2.7.md",
+    "bytes": 6944,
+    "sha256": "dfb31331f94cccf5496fb4447ef721e52c3bb50a7bc6f880f7e6814fc9797c07",
+    "executable": false
+  },
+  {
+    "path": "docs/发布说明-0.2.8.md",
+    "bytes": 4834,
+    "sha256": "4913fe7133ba69028d6778e25cef6282bbafbd262021edad47e1902a911b74dd",
+    "executable": false
+  },
+  {
+    "path": "docs/发布说明-0.2.9.md",
+    "bytes": 8814,
+    "sha256": "c87e7d6664c3802af1a004435d314bfd3a9accbab4a5ac0c510dd8f4dcbbb489",
+    "executable": false
+  },
+  {
+    "path": "docs/发布说明-0.3.0.md",
+    "bytes": 731,
+    "sha256": "40cbf850774a1df0f19aade90c277c7ca9d83069dfca7bd05f1defd2c800b9aa",
+    "executable": false
+  },
+  {
+    "path": "docs/后台保持与恢复.md",
+    "bytes": 13776,
+    "sha256": "815475a7a1cebaaa0914fb897e7e60f04adfd639ad46a7d8b133103989bd5743",
+    "executable": false
+  },
+  {
+    "path": "docs/后台应用操作与窗口形态评估.md",
+    "bytes": 47847,
+    "sha256": "662c7c72002e9a24bfe6b547ab99fce11437cf6500ff6b890e305c29dd87fb71",
+    "executable": false
+  },
+  {
+    "path": "docs/壳页会话列表接线调研.md",
+    "bytes": 12089,
+    "sha256": "0e99ead2463ab36b5c112fe5bc85b61ac4f2728b949c84667ad4d542a2cda7bc",
+    "executable": false
+  },
+  {
+    "path": "docs/存储权限与导入落点.md",
+    "bytes": 19773,
+    "sha256": "676a428a8c547143369ff3e99f94cbc416aebd1e9fef7762886190268afc6fdc",
+    "executable": false
+  },
+  {
+    "path": "docs/官方dsh移动端核对-0.2.1.md",
+    "bytes": 3045,
+    "sha256": "fa008eb2f4c3f121601e7291d231e4fad80169ea433a5c66ef2f4bdea5f13ebc",
+    "executable": false
+  },
+  {
+    "path": "docs/小克安卓助手_需求计划与真实进度_2026-10-28.txt",
+    "bytes": 17750,
+    "sha256": "f5bfc3d899130abfa031e35bcf07897c64d53162f47914c1de70b307258d4ed4",
+    "executable": false
+  },
+  {
+    "path": "docs/应用自动化能力.md",
+    "bytes": 16114,
+    "sha256": "d54b3224c1a6ad06842f4792fbf09f3956fbd0ccda3e055d0411e2c25b26ef5c",
+    "executable": false
+  },
+  {
+    "path": "docs/悬浮球与内容分享.md",
+    "bytes": 26482,
+    "sha256": "13b6985e680d3bae9cbd4ad900a37ca7efa6b55c3621b6a57c5bf2d2fb3c5413",
+    "executable": false
+  },
+  {
+    "path": "docs/投递区.md",
+    "bytes": 10554,
+    "sha256": "61abaaed1d156c40e2e534e92a3fb6ec78cd669aa9bbe793231d7fda7c18d44d",
+    "executable": false
+  },
+  {
+    "path": "docs/插件安装与运行时单例.md",
+    "bytes": 22111,
+    "sha256": "1271ede33c643147bfc4561ec7bf12840bc6538cc8e85a0cf556017600665efe",
+    "executable": false
+  },
+  {
+    "path": "docs/插件管理.md",
+    "bytes": 21818,
+    "sha256": "26ba3a6ee7401cc9618183bfffcc51ab4fe4878df2f733779c7f4e277dd15376",
+    "executable": false
+  },
+  {
+    "path": "docs/更新推送规范.md",
+    "bytes": 3305,
+    "sha256": "83ab256bdbe16b7f7f6e6f91508c84716a7af1c552cfd6f36dabbe31028a6f95",
+    "executable": false
+  },
+  {
+    "path": "docs/模拟器实测-运行时启动与前端问题清单.md",
+    "bytes": 16811,
+    "sha256": "69ca6a2b8ed15a3a1bee1a0f69bee6d798f51d22c8285b53833d1585336bacfd",
+    "executable": false
+  },
+  {
+    "path": "docs/目标应用副屏.md",
+    "bytes": 69938,
+    "sha256": "591379e7a3988fe5968e8a6264f7c37381a8160a689bed6a3ba649d7715dee42",
+    "executable": false
+  },
+  {
+    "path": "docs/真机缺陷与改进清单.md",
+    "bytes": 91243,
+    "sha256": "4b7a30334deb585958741c3303c300d1431b32544cfaa9f9aad22c8b81d11ca3",
+    "executable": false
+  },
+  {
+    "path": "docs/社区复用选型.md",
+    "bytes": 4196,
+    "sha256": "297d329873c73c46549c760235fa0d2b81a2a554cbe9f576e3ab8d6c0957c48d",
+    "executable": false
+  },
+  {
+    "path": "docs/终端面板握手缓冲与首屏分块.md",
+    "bytes": 17484,
+    "sha256": "42cb95a2c645573b38daf210171085200057ee4df89ac01f85f1004c7fe57239",
+    "executable": false
+  },
+  {
+    "path": "docs/设备工具与PTY协议.md",
+    "bytes": 19281,
+    "sha256": "9b3fe19230b74e2a9f5dd7e6c30408b9013d34474cadbc532fef7b347b6008d8",
+    "executable": false
+  },
+  {
+    "path": "docs/设备桥信任边界.md",
+    "bytes": 11437,
+    "sha256": "dbce8996a1549df0302cee6eac56bb87e2e0a6141f96765f0e3a23b74d137377",
+    "executable": false
+  },
+  {
+    "path": "docs/诊断日志.md",
+    "bytes": 32027,
+    "sha256": "450a5679fdb78f32cea9a1598aa7ec6970d2a8a1cf4fcfb63ce7314f6c809d6f",
+    "executable": false
+  },
+  {
+    "path": "docs/运行时更新与数据保留.md",
+    "bytes": 22123,
+    "sha256": "da929e46122d6a8df23a4fd86d6c88f146e36890f897c3542f28208a08e84ff6",
+    "executable": false
+  },
+  {
+    "path": "docs/运行时沙箱自检说明.md",
+    "bytes": 13162,
+    "sha256": "41a5b09e58f25d5079134395a016686e7c9ec580b6ff9505bb7055d2828ca38c",
+    "executable": false
+  },
+  {
+    "path": "docs/运行时补丁与dsh写入回退.md",
+    "bytes": 21432,
+    "sha256": "0319745d6d0907ad8bc0b489ecb260802474bc0bf3455a153436cbfbfa91be41",
+    "executable": false
+  },
+  {
+    "path": "docs/项目状态.md",
+    "bytes": 273560,
+    "sha256": "570cfa5ace68de22cbac7110edf91d5ac9415451847d38df142b0cf726ba73cd",
+    "executable": false
+  },
+  {
+    "path": "eslint.config.js",
+    "bytes": 1999,
+    "sha256": "a039dbc0334c1c87bde18e551b39928f4485cb47f6de085ff3971af336056869",
+    "executable": false
+  },
+  {
+    "path": "harness-web.pin",
+    "bytes": 500,
+    "sha256": "49716002f4d977a18e46b91c174b8d6fef5e85303b8a49d9cefdd40927c2675e",
+    "executable": false
+  },
+  {
+    "path": "harness-web/.gitignore",
+    "bytes": 57,
+    "sha256": "0889158bcccce1a5725e4e2201bcecff112bd47516089f27203324f056e3addd",
+    "executable": false
+  },
+  {
+    "path": "harness-web/LICENSE",
+    "bytes": 1066,
+    "sha256": "c899207c53e16c59f9faac4e8f246d0a83755964fff3051289c302ed5b5afb4d",
+    "executable": false
+  },
+  {
+    "path": "harness-web/README.md",
+    "bytes": 7123,
+    "sha256": "a8fea955a87e757bcf2b90d0a47ae2bc32c4abbcf321e988275167828ce2881d",
+    "executable": false
+  },
+  {
+    "path": "harness-web/README.zh-CN.md",
+    "bytes": 6572,
+    "sha256": "88cee381ca6c1556703cd5059faab37845a778c73c4f76c1917513ff8a2df300",
+    "executable": false
+  },
+  {
+    "path": "harness-web/android.css",
+    "bytes": 13642,
+    "sha256": "78d148cf7f38e7791cb0d8734e9dca81ce22f198b946d85f0ddae1678f64b85b",
+    "executable": false
+  },
+  {
+    "path": "harness-web/package.json",
+    "bytes": 770,
+    "sha256": "fae95beb1d5e0e201bc1dd8d80e78b96218a9dd70656d4e62c704c180e3c1325",
+    "executable": false
+  },
+  {
+    "path": "harness-web/scripts/anchor-contract.mjs",
+    "bytes": 3758,
+    "sha256": "bdbe28696207ebb12097470fd4d82bf5f051d6f082b7f138e8d1166ec677ad48",
+    "executable": false
+  },
+  {
+    "path": "harness-web/scripts/anchor-contract.test.mjs",
+    "bytes": 3197,
+    "sha256": "208184048d9e842209b11f3be18d254b8c224d9f3b51bd36ce3cb3c69df611e2",
+    "executable": false
+  },
+  {
+    "path": "harness-web/scripts/build-official-frontend.mjs",
+    "bytes": 3782,
+    "sha256": "bb2a77794bac7c74ea7010ce0080d40981c2c66efe1b403accb0714d8b4c503c",
+    "executable": false
+  },
+  {
+    "path": "harness-web/scripts/build-official-frontend.test.mjs",
+    "bytes": 5492,
+    "sha256": "15ad0149f862d8febfdd6417df06bc4daacc67dffc83c0862451b053f377509b",
+    "executable": false
+  },
+  {
+    "path": "harness-web/scripts/check-runtime-anchors.mjs",
+    "bytes": 1827,
+    "sha256": "250096709bd2bffb46456bd440a58127ebd2abf2bf623aaa0134456ec6e4ae29",
+    "executable": false
+  },
+  {
+    "path": "index.html",
+    "bytes": 19982,
+    "sha256": "57b317c0fd70fc63ae72d9bf28543ed5976bb849a39b0d5f08e0188f026a5651",
+    "executable": false
+  },
+  {
+    "path": "legal/licenses/gnu-GPL-3.0.txt",
+    "bytes": 35149,
+    "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+    "executable": false
+  },
+  {
+    "path": "legal/licenses/gnu-LGPL-3.0.txt",
+    "bytes": 7637,
+    "sha256": "9ccf26cfe845e0eb8bb58053e47366e7ab6b697ae010f7650978d4b71b7d1fc1",
+    "executable": false
+  },
+  {
+    "path": "legal/licenses/operit-terminal-core-LGPL-3.0.txt",
+    "bytes": 10086,
+    "sha256": "ec6e36db2faaaf8eb41db2013d41a77de9b5252ce354c5bed4cbe161205b0d58",
+    "executable": false
+  },
+  {
+    "path": "legal/licenses/operit2-AGPL-3.0.txt",
+    "bytes": 34523,
+    "sha256": "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0",
+    "executable": false
+  },
+  {
+    "path": "legal/licenses/proot-GPL-2.0.txt",
+    "bytes": 19106,
+    "sha256": "0ffa6454acbe7e410ac6f0007df83b9b3161fe55484c1f4b87487c0f2d228a6d",
+    "executable": false
+  },
+  {
+    "path": "package.json",
+    "bytes": 2407,
+    "sha256": "6615b8956be96dd102422042397351c3ab66f86086da213fb98560469b76d004",
+    "executable": false
+  },
+  {
+    "path": "pnpm-lock.yaml",
+    "bytes": 132709,
+    "sha256": "6495386586b9801edfa81b5c60b891352d95f3b55de7e0affc99fd6633ec6812",
+    "executable": false
+  },
+  {
+    "path": "pnpm-workspace.yaml",
+    "bytes": 130,
+    "sha256": "510837c2a189db5e15e28d773e69d8a0abac2538d2ef39a285800acee06a41a7",
+    "executable": false
+  },
+  {
+    "path": "scripts/android/VirtualScreenDeviceProbe.java",
+    "bytes": 5347,
+    "sha256": "7672f9ba87cd320c0cc6174c0d45aa633375b131054115f7a834cac422daf242",
+    "executable": false
+  },
+  {
+    "path": "scripts/app-update-contract.test.mjs",
+    "bytes": 2534,
+    "sha256": "5728a8c1ebc4f89ad4fbaa810c0433d3d7d2565a20b8087e647fcb7786208022",
+    "executable": false
+  },
+  {
+    "path": "scripts/bootstrap-wrapper.mjs",
+    "bytes": 1979,
+    "sha256": "8fe3da65b1f990fb8693a96d9f5a4bd571ddff1fcd5d69df8b54618bf2b4f5fe",
+    "executable": false
+  },
+  {
+    "path": "scripts/build-embedded-runtime.py",
+    "bytes": 54321,
+    "sha256": "f40ec8c7049681a7eb7215f5a9b55f7e3e9f1a755f6a9841e20e101011f09ca7",
+    "executable": false
+  },
+  {
+    "path": "scripts/build-embedded-runtime.selfcheck.py",
+    "bytes": 38212,
+    "sha256": "7b1349c616042976f9addfb821ac440a983a6481adf5fce5aa3190b682d1df1b",
+    "executable": false
+  },
+  {
+    "path": "scripts/check-android-resources.py",
+    "bytes": 13163,
+    "sha256": "78c1aa441037c7350e6c3aba2387c0d0a3233ed1172e5c6e8db87639e73e2114",
+    "executable": false
+  },
+  {
+    "path": "scripts/check-android-resources.test.mjs",
+    "bytes": 8451,
+    "sha256": "73ee8dae151f152681e67e9cd98ad2de33892fd4b7a9325bfc01f2bfc73be156",
+    "executable": false
+  },
+  {
+    "path": "scripts/check-mobile-layout-cdp.mjs",
+    "bytes": 29694,
+    "sha256": "97944db87c07c0ad4fb64a06ca9bb3268e783b89f34f5f2de8c09e9bca7d06ad",
+    "executable": false
+  },
+  {
+    "path": "scripts/check-mobile-layout.py",
+    "bytes": 6428,
+    "sha256": "79638fffaf1c6c1e76ba43a4f25536d902e7bc75c607700229de4d5e3a16ad6e",
+    "executable": false
+  },
+  {
+    "path": "scripts/check-runtime-dedupe.mjs",
+    "bytes": 7482,
+    "sha256": "759b0a0741e87513ae027b8f61316b553e02365897815ec7221122464004c2f2",
+    "executable": false
+  },
+  {
+    "path": "scripts/ci-gitleaks-range-scan.sh",
+    "bytes": 3571,
+    "sha256": "1fd44cd9bec934b5f4e47522213dfbccf479d880bdf2368b44db6bfe53e5e608",
+    "executable": false
+  },
+  {
+    "path": "scripts/create-corresponding-source-manifest.py",
+    "bytes": 1252,
+    "sha256": "984e9a7ad354683915ef4fb81fe3d8fd058445c922da8a0efc118213f1071fff",
+    "executable": false
+  },
+  {
+    "path": "scripts/doctor.mjs",
+    "bytes": 4666,
+    "sha256": "575f090cd17ee209eb813f879a986dfb0313c0d1aa68f6f54265aef8ec3ebbf1",
+    "executable": false
+  },
+  {
+    "path": "scripts/fixtures/runtime-manifest.v0.2.3-mobile-323.json",
+    "bytes": 1057,
+    "sha256": "e36c76c859269a7fe3e8d213036cb214de826d1827caaa91721f4be042a8f680",
+    "executable": false
+  },
+  {
+    "path": "scripts/gate-check.mjs",
+    "bytes": 3554,
+    "sha256": "89e481da65c01f26c3f43343378706abd1a1527f3930f0ee1bbea659ec0df0e4",
+    "executable": false
+  },
+  {
+    "path": "scripts/legal-notices.py",
+    "bytes": 11307,
+    "sha256": "001101bd0e44ffb8f7e6daf7e5dc3a2f127b6f98ffb1f65abc2dc32717332f1a",
+    "executable": false
+  },
+  {
+    "path": "scripts/mobile-auth-preload.cjs",
+    "bytes": 7305,
+    "sha256": "6dd5e170ab6471e8029969786c5821083855a276d6fb02f34cd8ae1af7128985",
+    "executable": false
+  },
+  {
+    "path": "scripts/mobile-auth-preload.test.mjs",
+    "bytes": 12586,
+    "sha256": "6ef0d1332d443df8aa06fa7f07e0761e790ff1f1f173ecc78e432df1e6020100",
+    "executable": false
+  },
+  {
+    "path": "scripts/mobile-compat-contract.test.mjs",
+    "bytes": 64580,
+    "sha256": "cf5414e0c611372f0653e12c4e115d9cfa42f657b7738cfa1169edc871d238aa",
+    "executable": false
+  },
+  {
+    "path": "scripts/mobile-device-tools.test.mjs",
+    "bytes": 33004,
+    "sha256": "26eb7329c8275eb9a719e3e5c1dca596e09a6db5d556ebed42f7c159285e0dab",
+    "executable": false
+  },
+  {
+    "path": "scripts/mobile-file-publication.selfcheck.py",
+    "bytes": 11937,
+    "sha256": "584624c38d5f1c77c2e612c5d8f1b9c0ac020c134832a0e12855268e1a8bf573",
+    "executable": false
+  },
+  {
+    "path": "scripts/mobile-file-publication.test.mjs",
+    "bytes": 574,
+    "sha256": "e2309fa1739b553c40b916422c8c61171307dbe2f8bca682c26348903cd11ba8",
+    "executable": false
+  },
+  {
+    "path": "scripts/mobile-layout-contract.test.mjs",
+    "bytes": 7707,
+    "sha256": "9bff8343a85635807d9a940f042f87b1bbf98ccee50fc5f23eb1e8b15e710abe",
+    "executable": false
+  },
+  {
+    "path": "scripts/mobile-profile.example.json",
+    "bytes": 256,
+    "sha256": "a131d8d9bbf3b0ff37ba898307401bee654a58481626e19d931af0721611dad7",
+    "executable": false
+  },
+  {
+    "path": "scripts/mobile-session-publish.py",
+    "bytes": 9998,
+    "sha256": "2494bbae8b2f809df1ad12d8815feea9931c2bfcaaf72e33ec3ef218c6563b91",
+    "executable": false
+  },
+  {
+    "path": "scripts/mobile-turn-signal.test.mjs",
+    "bytes": 10269,
+    "sha256": "e13fd685cc62d78cc090fa89e1926ae45a20ce0fc5781009c93a0b0baf2abdad",
+    "executable": false
+  },
+  {
+    "path": "scripts/native-bridge-parity.test.mjs",
+    "bytes": 12012,
+    "sha256": "e3570eeba4edee89030a5b257ac9340152f0c28c2dd08bd2c79ec64c87e73884",
+    "executable": false
+  },
+  {
+    "path": "scripts/plugin-manager.test.mjs",
+    "bytes": 79554,
+    "sha256": "5c6b6acab7e0938d0f90bd5e49ccf1a69f0ff01041cd3bc1086b140cfa1275f7",
+    "executable": false
+  },
+  {
+    "path": "scripts/prepare-runner.mjs",
+    "bytes": 9320,
+    "sha256": "cb612330a9217317e1639f7b96828d6a13c09bbf2117de66c2b095e836ec1786",
+    "executable": false
+  },
+  {
+    "path": "scripts/prepare-runner.test.mjs",
+    "bytes": 1949,
+    "sha256": "9242899edfdf23c9434b2240f970366c82a75cc7b15362d351ec4fcacec1c627",
+    "executable": false
+  },
+  {
+    "path": "scripts/production-dependency-policy.test.mjs",
+    "bytes": 1384,
+    "sha256": "03b9ea1095f429769ce657d4661fdf9b55cb432a97f5075aee1d6ae8367b1800",
+    "executable": false
+  },
+  {
+    "path": "scripts/proot-loader-info.py",
+    "bytes": 622,
+    "sha256": "26c2114a94c2bed30a98088a4901d8f96bacd7dea703ef0fa0eeff8322fd1612",
+    "executable": false
+  },
+  {
+    "path": "scripts/rebuild-rootfs-frontend.py",
+    "bytes": 25031,
+    "sha256": "b407962a9d55ab573a7d2cd84583a3db5bbb617ae1047b41ef77f29d0a779731",
+    "executable": false
+  },
+  {
+    "path": "scripts/release-lifecycle.test.mjs",
+    "bytes": 8758,
+    "sha256": "7f438f0112283b7805ea70e36f95b14e4df47ed20d12d268b94bb3f448cae84c",
+    "executable": false
+  },
+  {
+    "path": "scripts/release-manifest.py",
+    "bytes": 5107,
+    "sha256": "80594e7ea19b7ed70b2c0b02868d0a9ef06d275d9e9bcde981ab75bfd3fd78bf",
+    "executable": false
+  },
+  {
+    "path": "scripts/release-manifest.test.mjs",
+    "bytes": 6187,
+    "sha256": "4aa1810a4e76f554846c88f14250858f30e3cc16569e148fb6107fdfd4ffe670",
+    "executable": false
+  },
+  {
+    "path": "scripts/review-regressions.test.mjs",
+    "bytes": 8398,
+    "sha256": "14d6e1b6337273002dad088d820c28bec28b9609c77e47597cb54660883c1fb8",
+    "executable": false
+  },
+  {
+    "path": "scripts/run-gradle.mjs",
+    "bytes": 1074,
+    "sha256": "36f13c103b9afaa3b18115c6353b8d8dc4d4b852abbaf11f0cac1c7fc2d8caad",
+    "executable": false
+  },
+  {
+    "path": "scripts/runtime-executables.test.mjs",
+    "bytes": 6648,
+    "sha256": "d36cc5504a3b206b9c49a77bff0cdc9b9ca337939e18e190a2f8da1a1a6223b2",
+    "executable": false
+  },
+  {
+    "path": "scripts/runtime-link-fallback.test.mjs",
+    "bytes": 34051,
+    "sha256": "147ad48ef8bd6572f1bde33c86d4c0cc9a96e3505058a1f2326a8040a641bc0b",
+    "executable": false
+  },
+  {
+    "path": "scripts/runtime-profile/package.json",
+    "bytes": 490,
+    "sha256": "33c28be54e7701de0941475df0107bbb8a06329744931ae919ff899c6f9305d6",
+    "executable": false
+  },
+  {
+    "path": "scripts/runtime-profile/patches/@deepseek-ai__dsh-attachment-local@0.2.1-rc.1.patch",
+    "bytes": 7456,
+    "sha256": "39262e797b79e7b9a5b724faddff9633f1b33574fd736a52e1cd7dec69a0466f",
+    "executable": false
+  },
+  {
+    "path": "scripts/runtime-profile/patches/@deepseek-ai__dsh-fs-local@0.2.1-rc.1.patch",
+    "bytes": 3058,
+    "sha256": "897a649e418327fbac9f5bbb2a539b26ba17a061e46748405a706f690db888a7",
+    "executable": false
+  },
+  {
+    "path": "scripts/runtime-profile/patches/@deepseek-ai__dsh-host-frontend-static@0.2.1-rc.1.patch",
+    "bytes": 2577,
+    "sha256": "74516a470517c38b894f8de22a83c721c989f731ee13862ea176632db6d022ce",
+    "executable": false
+  },
+  {
+    "path": "scripts/runtime-profile/patches/@earendil-works__pi-ai@1.1.0.patch",
+    "bytes": 1977,
+    "sha256": "81619f6b6c8d385bdd338543ecd86e4f0939f585618725d1a101e911ba9bef8d",
+    "executable": false
+  },
+  {
+    "path": "scripts/runtime-profile/plugins/dsh-mobile-shizuku/cordis.patch.yml",
+    "bytes": 92,
+    "sha256": "b957987bbf6edaaca0ec6323b30c2acf987c9a40331359c4190d524a6426e8e2",
+    "executable": false
+  },
+  {
+    "path": "scripts/runtime-profile/plugins/dsh-mobile-shizuku/lib/index.js",
+    "bytes": 80332,
+    "sha256": "97e0763114edf4c6c51e5c259796a947e4cab41f94fcd0eb29d31929791c3a82",
+    "executable": false
+  },
+  {
+    "path": "scripts/runtime-profile/plugins/dsh-mobile-shizuku/lib/turn-signal.js",
+    "bytes": 6027,
+    "sha256": "29a08d83da74df3c1de8d5c996447297b72671a4b9e2eb64f9f6f2b2d8036a44",
+    "executable": false
+  },
+  {
+    "path": "scripts/runtime-profile/plugins/dsh-mobile-shizuku/package.json",
+    "bytes": 761,
+    "sha256": "5d3c1f7714ba966a693deff48b749ea38c09e619f90dbbe72dced0692aa2f692",
+    "executable": false
+  },
+  {
+    "path": "scripts/runtime-profile/pnpm-lock.yaml",
+    "bytes": 632727,
+    "sha256": "204af58ec2ebffcf0c86ac0dcf48c474efc5f99ef7d93f9c595fdd0cd2f13f06",
+    "executable": false
+  },
+  {
+    "path": "scripts/runtime-profile/pnpm-workspace.yaml",
+    "bytes": 18480,
+    "sha256": "e30e32b1fbbea53ed5246923c057772a6ebc92a4409dba3d0ef214dcee9dfd01",
+    "executable": false
+  },
+  {
+    "path": "scripts/runtime-self-check.test.mjs",
+    "bytes": 13290,
+    "sha256": "43d3d4fde5cb7a94a4c5009a828e874d8fea913e0ec3159c7058093cb3489a5d",
+    "executable": false
+  },
+  {
+    "path": "scripts/runtime-transfer-evidence.test.mjs",
+    "bytes": 1490,
+    "sha256": "67decdc6a137e03b3882973bd41f9d97c2402be16e4b35f0f7b2fe59a7f68024",
+    "executable": false
+  },
+  {
+    "path": "scripts/schemas/mobile-profile.schema.json",
+    "bytes": 3260,
+    "sha256": "c0f68ffcaf5ef1df1db8a59ee26df933729424bb87670793d17b6208e6db5ed9",
+    "executable": false
+  },
+  {
+    "path": "scripts/schemas/plugin-package.schema.json",
+    "bytes": 4339,
+    "sha256": "a35507c7d1c1df90568b9df0505d505a6fb94e4bd6ca9e58105f39dd917f5636",
+    "executable": false
+  },
+  {
+    "path": "scripts/schemas/release-manifest.schema.json",
+    "bytes": 2665,
+    "sha256": "fbfa996cbd95d29a4b3fe3276b19d8615ad67b5a8d319f083305b915a53ce213",
+    "executable": false
+  },
+  {
+    "path": "scripts/schemas/runtime-manifest.schema.json",
+    "bytes": 7678,
+    "sha256": "a9accbc0cbe504ff48c34294b10b41ee3d983766d94d5cefa52a03b7f8f63b20",
+    "executable": false
+  },
+  {
+    "path": "scripts/session-catalog.test.mjs",
+    "bytes": 19103,
+    "sha256": "2ba576a1165a9173fa9622214856514e429653f20637525e2c302d6cb162b585",
+    "executable": false
+  },
+  {
+    "path": "scripts/session-format-migration.test.mjs",
+    "bytes": 13910,
+    "sha256": "01a80a0e693c1e7c8a74cdad48e9543953e123dec529f5685e3ff08624201551",
+    "executable": false
+  },
+  {
+    "path": "scripts/stage-network-tools.sh",
+    "bytes": 16351,
+    "sha256": "3e201c8b5cab54d26f87671425d1ca375801ea05a81bfb79165d4339f2266b51",
+    "executable": false
+  },
+  {
+    "path": "scripts/star-download-chart.mjs",
+    "bytes": 10306,
+    "sha256": "b4d1aa48adb4339c0d19298ddaf387bfd4a26e11988d4eccb3a4ca6d2e3b7250",
+    "executable": false
+  },
+  {
+    "path": "scripts/ubuntu-git-source.test.mjs",
+    "bytes": 6936,
+    "sha256": "a68b49f22502e7ce6c052c5ad7eff60465dac2f6190a685f6deec37d54f6bd41",
+    "executable": false
+  },
+  {
+    "path": "scripts/validate-manifests.mjs",
+    "bytes": 14203,
+    "sha256": "92f4543705808140f2a8eae2ba3967062dd15b4e27e416a55a800c37214c8f85",
+    "executable": false
+  },
+  {
+    "path": "scripts/validate-manifests.test.mjs",
+    "bytes": 21044,
+    "sha256": "5ec86ace94ee90f358de85558033dd824fcb2f83a07b28e85474d756373329a3",
+    "executable": false
+  },
+  {
+    "path": "scripts/verify-apk-signature.py",
+    "bytes": 5157,
+    "sha256": "e7923568b037e34cfb215e23f580881f99db399b21c0485fa591d9cba698ba8b",
+    "executable": false
+  },
+  {
+    "path": "scripts/verify-bundle.py",
+    "bytes": 36551,
+    "sha256": "1510f61bed7f48356be71a7ff2732b7f54e4318c677f335b510a4f48ef8705db",
+    "executable": false
+  },
+  {
+    "path": "scripts/verify-corresponding-source.py",
+    "bytes": 4705,
+    "sha256": "fa56e260007747ccdd00f6c9968cccb4f8da3c7ed6d69dc7d1d0a5ad74e59499",
+    "executable": false
+  },
+  {
+    "path": "scripts/verify-corresponding-source.test.mjs",
+    "bytes": 2373,
+    "sha256": "257009464232739859e0f9d274f81e336cc52f65bcaa5a72f7c7eec60fcf4d5f",
+    "executable": false
+  },
+  {
+    "path": "scripts/verify-release-assets.py",
+    "bytes": 5576,
+    "sha256": "4d59a509d4a221cfc9b94e10f8833da6d3260219aab99545ed2eead530b352cb",
+    "executable": false
+  },
+  {
+    "path": "scripts/verify-release-assets.test.mjs",
+    "bytes": 6544,
+    "sha256": "2fe3e38965d8a5fdcfc0aa624c1c7f0d4f09f7bfe21ed499b596d1d06e43a975",
+    "executable": false
+  },
+  {
+    "path": "scripts/virtual-screen-page.test.mjs",
+    "bytes": 1895,
+    "sha256": "f1892746d46f2fb3de7070ce65024e9780164377b4abe6aa2a1955f3b00aa7be",
+    "executable": false
+  },
+  {
+    "path": "scripts/virtual-screen-preview-budget.test.mjs",
+    "bytes": 6490,
+    "sha256": "330473dbbc3169e8b16db4440979bac959b5f0f228e4882aec87734665d61454",
+    "executable": false
+  },
+  {
+    "path": "scripts/virtual-screen-preview-contract.test.mjs",
+    "bytes": 5066,
+    "sha256": "bcb02cfcf6ac75ba34401fc84f9c24066f05c0d0a4ff8bc7d46f927a0c4768cc",
+    "executable": false
+  },
+  {
+    "path": "specs/crash-permission-audit/checklist.md",
+    "bytes": 1670,
+    "sha256": "f7d7812fdd08d55159f73118a33845c48af41a5999c58011b0aa458d5b69b0d8",
+    "executable": false
+  },
+  {
+    "path": "specs/crash-permission-audit/spec.md",
+    "bytes": 10394,
+    "sha256": "841dfc4c6154d79c023ee1c478a2d53168035cf936e0bc03c75f1e8f78bc78fa",
+    "executable": false
+  },
+  {
+    "path": "specs/crash-permission-audit/tasks.md",
+    "bytes": 1511,
+    "sha256": "1e52befd70bbf117685a1b66c87a79bcccd62feaa0926138fd70adb06c8cf90f",
+    "executable": false
+  },
+  {
+    "path": "specs/versions-page-mobile-layout/spec.md",
+    "bytes": 7271,
+    "sha256": "191d309cf7cf691958ffa478cc231ba59fdba2a3f0eceaad0719b29e180f94e6",
+    "executable": false
+  },
+  {
+    "path": "specs/versions-page-mobile-layout/tasks.md",
+    "bytes": 2765,
+    "sha256": "b6158c8d7c21ded97b538eb9925af9a3710bc4a96af73ad50bbbf45eab6a3f50",
+    "executable": false
+  },
+  {
+    "path": "src/App.accessibility.test.tsx",
+    "bytes": 51242,
+    "sha256": "bf615a6d9cf43c002d2e4bd6af87498695352d2a450e45014eae5652749bdfde",
+    "executable": false
+  },
+  {
+    "path": "src/App.diagnostics.test.tsx",
+    "bytes": 11931,
+    "sha256": "4ee509ae7f2c6c139da20c8e304e78fd8513624cbcd148875c43533a99ed9b41",
+    "executable": false
+  },
+  {
+    "path": "src/App.files.test.tsx",
+    "bytes": 10756,
+    "sha256": "38b1ea3031b100605b47412a41cc7b0627475b3d1195e1274a6fd01afa2bd828",
+    "executable": false
+  },
+  {
+    "path": "src/App.mailbox.test.tsx",
+    "bytes": 9406,
+    "sha256": "f571fe77321bb369fc61719d5623adb15a42748329880a97dee5bd0829f5ae4a",
+    "executable": false
+  },
+  {
+    "path": "src/App.navigation.test.tsx",
+    "bytes": 17352,
+    "sha256": "6701e6cddfd0ae05097ec091671bf0e124938b20b373122b1fea2de4b7a81521",
+    "executable": false
+  },
+  {
+    "path": "src/App.polling.test.tsx",
+    "bytes": 11452,
+    "sha256": "296fc10d5f092302e81cb686daabed2f0c660c666337344268a8d4c0a752f5c2",
+    "executable": false
+  },
+  {
+    "path": "src/App.residue.test.tsx",
+    "bytes": 2808,
+    "sha256": "3d4e76831a2c66af362b57aa557c205a7f35e7c64a0706d9f765733fcfdb158b",
+    "executable": false
+  },
+  {
+    "path": "src/App.restart.test.tsx",
+    "bytes": 16091,
+    "sha256": "26ad0c23684fa0cb5d5881c599a672f3426e1be64632c29d10b272a8910b8351",
+    "executable": false
+  },
+  {
+    "path": "src/App.runtime.test.tsx",
+    "bytes": 37404,
+    "sha256": "97145687b91d8c8ce54661ef40c1b451511061872460053f0a99dcb785104ec6",
+    "executable": false
+  },
+  {
+    "path": "src/App.runtimeClosed.test.tsx",
+    "bytes": 6585,
+    "sha256": "301f864283895fa635191c0bba823195b4ed45f96a9802c3fb2af32c3c38fb6d",
+    "executable": false
+  },
+  {
+    "path": "src/App.runtimeLibrary.test.tsx",
+    "bytes": 5020,
+    "sha256": "16a67cae02190a0c2fff30f9f337bcc69ab86d8ce1db016b96002c978fb7c7a5",
+    "executable": false
+  },
+  {
+    "path": "src/App.settings.test.tsx",
+    "bytes": 32152,
+    "sha256": "87a21c3fa81f93f45d4beb2333842589bf5548901543223b349883a8567632e7",
+    "executable": false
+  },
+  {
+    "path": "src/App.settingsHome.test.tsx",
+    "bytes": 16346,
+    "sha256": "c1e5545497a5932d3b3a9c8c064acaa8093ed8026dcf6e663b5a9228b7bb2024",
+    "executable": false
+  },
+  {
+    "path": "src/App.shizuku.test.tsx",
+    "bytes": 4547,
+    "sha256": "af412d79a97507cd7d662ee71479d4aad97dae9a68697e56cce68947290f5c99",
+    "executable": false
+  },
+  {
+    "path": "src/App.storage.test.tsx",
+    "bytes": 17363,
+    "sha256": "119cd421d89ec05b06020b8823a5f5acb4aa8b6ad76b6c874bb7002677b49811",
+    "executable": false
+  },
+  {
+    "path": "src/App.test.tsx",
+    "bytes": 19477,
+    "sha256": "28936f81fcbfae70334b89c9fdf695d9e0889437956335a56d49a37549ee6e12",
+    "executable": false
+  },
+  {
+    "path": "src/App.tsx",
+    "bytes": 244789,
+    "sha256": "9a9996e6a664b7e25e1050cc8d2711e7c14e5ac8b6c197caf094f401f4f4c110",
+    "executable": false
+  },
+  {
+    "path": "src/App.updates.test.tsx",
+    "bytes": 10249,
+    "sha256": "1ced16ce1213e54a7cbc6ea267623597f8273d55aca0b74596467df3653d849b",
+    "executable": false
+  },
+  {
+    "path": "src/App.versions.test.tsx",
+    "bytes": 25153,
+    "sha256": "0afa9dc739f4d3641570b3dcafc34562f36b48ef8c729caecd6e01853dfae8d0",
+    "executable": false
+  },
+  {
+    "path": "src/__tests__/appTestHarness.test.ts",
+    "bytes": 1993,
+    "sha256": "7ccf45b1ac0d1534579d3efd8b962ed57e13e9b7549feeabc5f99b0f83bd0df5",
+    "executable": false
+  },
+  {
+    "path": "src/__tests__/appTestHarness.ts",
+    "bytes": 39475,
+    "sha256": "25c770afcea466674e1d13744f4b08b7e967f45c7282899d08104a5235f3cc43",
+    "executable": false
+  },
+  {
+    "path": "src/__tests__/renderCounts.test.tsx",
+    "bytes": 12929,
+    "sha256": "e16910b12117df6a258825357ec30e2696e05e60c3fab3ebe6b34a7b2cbed46a",
+    "executable": false
+  },
+  {
+    "path": "src/__tests__/renderProfile.test.tsx",
+    "bytes": 16644,
+    "sha256": "5b718062d0abd112f9c41c1bc31ad9eb4438fa29ce15af2a571b27be4e0af3ac",
+    "executable": false
+  },
+  {
+    "path": "src/accessibilityDisclaimer.test.ts",
+    "bytes": 3356,
+    "sha256": "9dd7b995e994c1fbf2a327d596fa1afbfaf37364f1039cad87697a4b10904c4a",
+    "executable": false
+  },
+  {
+    "path": "src/accessibilityDisclaimer.ts",
+    "bytes": 1949,
+    "sha256": "1616fca841091528fc70792cfa502e243e6620decc4cb62662d59808360a18e2",
+    "executable": false
+  },
+  {
+    "path": "src/appUpdateReminder.test.tsx",
+    "bytes": 11667,
+    "sha256": "1b68427f057f6f2dd7977aafba3dc942c93c2d7ffd57010524e03058cdccaa12",
+    "executable": false
+  },
+  {
+    "path": "src/appUpdateReminder.ts",
+    "bytes": 4676,
+    "sha256": "517a83b34940e020fde2eabdb57decd801178221f02dfff1b88008be5a270f59",
+    "executable": false
+  },
+  {
+    "path": "src/appearance.ts",
+    "bytes": 6096,
+    "sha256": "65ea191878d3399519aacfb58888167f55b6caf05e125451aca0572760e8908c",
+    "executable": false
+  },
+  {
+    "path": "src/assets.d.ts",
+    "bytes": 264,
+    "sha256": "ad6073cd49e6df701652a9faba079439e115939b45e63817d8cc9905519c35b9",
+    "executable": false
+  },
+  {
+    "path": "src/assets/app-mark.png",
+    "bytes": 119576,
+    "sha256": "457d1b5c403dfb5884f10512badf528a9b3c9cafb2ce0e97394e8861d1dc5683",
+    "executable": false
+  },
+  {
+    "path": "src/companion/CompanionApp.tsx",
+    "bytes": 33420,
+    "sha256": "960fa88ecdf10e41809f550f6ba6c91230b7eea12a5e12a6e6e81465629c7ae4",
+    "executable": false
+  },
+  {
+    "path": "src/companion/bridge.ts",
+    "bytes": 2383,
+    "sha256": "e5c78f1f00cd68928c7cceaa30bc02da79e025157fd471a8d796686f5621104c",
+    "executable": false
+  },
+  {
+    "path": "src/companion/browser.ts",
+    "bytes": 4619,
+    "sha256": "5576bf976cdb084bfa4ffe69ac2724939614d153d8fbb55bb1ba57ee5c7b64e4",
+    "executable": false
+  },
+  {
+    "path": "src/companion/characterCard.ts",
+    "bytes": 3037,
+    "sha256": "238669e0df0218e76e68044b09e2d8c30e3bd58480e6efb27b75c7cc125ee85b",
+    "executable": false
+  },
+  {
+    "path": "src/companion/companion.css",
+    "bytes": 11486,
+    "sha256": "b0ce5024e957ba49ffb128cdef361dc23c58e57b2bc4aefe0a382c5f20f843b2",
+    "executable": false
+  },
+  {
+    "path": "src/components/AppBackground.tsx",
+    "bytes": 2389,
+    "sha256": "4fd3604f18bd1ce18fc8d32a28faa633bdfc5e18f04d54a159ae07a6e7ec36c6",
+    "executable": false
+  },
+  {
+    "path": "src/components/AppErrorBoundary.test.tsx",
+    "bytes": 3110,
+    "sha256": "57f16a3a5a5fbd9031d53ff3bf54358be77a5f878c4e5442a49effd2ef51e570",
+    "executable": false
+  },
+  {
+    "path": "src/components/AppErrorBoundary.tsx",
+    "bytes": 3494,
+    "sha256": "9ee0bc6cd32e1a25dc839eb045985aae7f7133debaf7a24ba47dca849e57ccc3",
+    "executable": false
+  },
+  {
+    "path": "src/components/AppUpdateReminderDialog.test.tsx",
+    "bytes": 2305,
+    "sha256": "401c02e1ed4081fb7a94b7cd33a4645df8207788a68923f93f44bf51a282b94f",
+    "executable": false
+  },
+  {
+    "path": "src/components/AppUpdateReminderDialog.tsx",
+    "bytes": 2088,
+    "sha256": "0aa60a3994752881daa1c362603bcb17c2e0f42dbb82ed345a78e33ec802b2bd",
+    "executable": false
+  },
+  {
+    "path": "src/components/AppearanceSettings.test.tsx",
+    "bytes": 6799,
+    "sha256": "cb79ba60821b5bb28585980f8c137995280943ae7ed653535f36c62b4b475cfc",
+    "executable": false
+  },
+  {
+    "path": "src/components/AppearanceSettings.tsx",
+    "bytes": 8201,
+    "sha256": "8758f8d6f983e58434db91027d7ac7ee6e05d3d3365c89b3c60815fea4bb181c",
+    "executable": false
+  },
+  {
+    "path": "src/components/ApplicationPicker.css",
+    "bytes": 1357,
+    "sha256": "b860761027dd78817496bdfeb8577a96545ac608e72427162316d9e644dd37ee",
+    "executable": false
+  },
+  {
+    "path": "src/components/ApplicationPicker.test.tsx",
+    "bytes": 16547,
+    "sha256": "f3c7957fa53d25bfc0ce9f9df38d44717c4954fe70f044ac53e5218e5bb95a8b",
+    "executable": false
+  },
+  {
+    "path": "src/components/ApplicationPicker.tsx",
+    "bytes": 9608,
+    "sha256": "af79239fbacc6d0523d2fb2133c7a4c274c54847a05c52c98d5a013121a36e98",
+    "executable": false
+  },
+  {
+    "path": "src/components/AutomationAppConfigForm.css",
+    "bytes": 1382,
+    "sha256": "266930d1b5a884273430ae442a898719d5d9a42acc36febaf13f8b51e6f41ce0",
+    "executable": false
+  },
+  {
+    "path": "src/components/AutomationAppConfigForm.test.tsx",
+    "bytes": 11419,
+    "sha256": "bf338ab6892b9dabb0eb57adbcce0ca5c092eafccdb763183e7c89d54e315748",
+    "executable": false
+  },
+  {
+    "path": "src/components/AutomationAppConfigForm.tsx",
+    "bytes": 15396,
+    "sha256": "3f766318048f5c3e2cb7b6c1ed9c456ffb51c407694b6ca12745bd806ba17ac0",
+    "executable": false
+  },
+  {
+    "path": "src/components/AutomationDisclaimer.test.tsx",
+    "bytes": 5716,
+    "sha256": "9341aa9d2bdec00929e2712dd394547739e066f55e921a650bf3f236ea9b3caf",
+    "executable": false
+  },
+  {
+    "path": "src/components/AutomationDisclaimer.tsx",
+    "bytes": 5434,
+    "sha256": "9b7faddd73f44958a18321fb18a58028e920b8b704851068c36d765d0a431a1c",
+    "executable": false
+  },
+  {
+    "path": "src/components/AutomationRuleForm.css",
+    "bytes": 3006,
+    "sha256": "0697930914206d450c43f743819a87a29b78a934b89b28a4422a62e73dff062a",
+    "executable": false
+  },
+  {
+    "path": "src/components/AutomationRuleForm.test.tsx",
+    "bytes": 9614,
+    "sha256": "de204f6efeb038e26bb22fe200c058ff7790ac89e56e26a774cbd690e12b3a80",
+    "executable": false
+  },
+  {
+    "path": "src/components/AutomationRuleForm.tsx",
+    "bytes": 38998,
+    "sha256": "7c83ca843fb3057e1670465d5300e422086e7a0e21d5a64d46227f50e269da62",
+    "executable": false
+  },
+  {
+    "path": "src/components/AutomationTaskCard.test.tsx",
+    "bytes": 8627,
+    "sha256": "d0c035b07030f84ee2fe9c52e2cb41474a9a5ad6e04fb9a60105eb12d4c48601",
+    "executable": false
+  },
+  {
+    "path": "src/components/AutomationTaskCard.tsx",
+    "bytes": 6699,
+    "sha256": "32d7f9617c22de12e75fae76a81b8d266067626566a70088a86ec0cc41eef281",
+    "executable": false
+  },
+  {
+    "path": "src/components/CustomProviders.test.tsx",
+    "bytes": 3154,
+    "sha256": "bd3475df2e42809ee3284bcb98348dfd194c606778dd81fede87b4923e6b5a18",
+    "executable": false
+  },
+  {
+    "path": "src/components/CustomProviders.tsx",
+    "bytes": 8643,
+    "sha256": "789953144df9d5c335eb04d958a2a28e98741126e011c728d92a97f4c3247257",
+    "executable": false
+  },
+  {
+    "path": "src/components/DeviceCapabilityCard.test.tsx",
+    "bytes": 10933,
+    "sha256": "99c9ec7ddf7400d8cb4919203bfb7100bb27ddaabe3842e779d8f58b1390c0ed",
+    "executable": false
+  },
+  {
+    "path": "src/components/DeviceCapabilityCard.tsx",
+    "bytes": 10270,
+    "sha256": "a8141f98735b418d92421ea56cdda80391c0ed20efd858ba322bff5ab13e93d1",
+    "executable": false
+  },
+  {
+    "path": "src/components/DeviceShellSettings.test.tsx",
+    "bytes": 2826,
+    "sha256": "797d512b47378c7cd239e8daf2b7a62404c78c772ac95b97586bb23706dfc447",
+    "executable": false
+  },
+  {
+    "path": "src/components/DeviceShellSettings.tsx",
+    "bytes": 2347,
+    "sha256": "c9e4a274f1e73724c7669436eb051e5dc82435a157340a5707ac1458a06061f7",
+    "executable": false
+  },
+  {
+    "path": "src/components/LanguageSettings.tsx",
+    "bytes": 2324,
+    "sha256": "ec43b3f9312deb3838c7b3deb955bdd3244b50519d5db0b3afd0b4f8ef7711eb",
+    "executable": false
+  },
+  {
+    "path": "src/components/Onboarding.test.tsx",
+    "bytes": 13340,
+    "sha256": "5dbc5b07e401c5d76a9ee76bbb894ed22efd5cef5d1adcd7ccc1e22be06664b4",
+    "executable": false
+  },
+  {
+    "path": "src/components/Onboarding.tsx",
+    "bytes": 16517,
+    "sha256": "48ba96c79b7d0480b6b57304ad3cd16b5d43281b22f0a79f38b55bb26c88ed6f",
+    "executable": false
+  },
+  {
+    "path": "src/components/PluginSettings.css",
+    "bytes": 9236,
+    "sha256": "6bfe0de53229b6b13eb7224cde826521fc2bc53958a52421f7e46e4679440cda",
+    "executable": false
+  },
+  {
+    "path": "src/components/PluginSettings.test.tsx",
+    "bytes": 13421,
+    "sha256": "7deee112fdafb299659076255b6e166c7d228858620fd9efa94f2de16922f375",
+    "executable": false
+  },
+  {
+    "path": "src/components/PluginSettings.tsx",
+    "bytes": 22294,
+    "sha256": "17d15229cfb725781a03b28feca9993abae54240878add4146e46df7bb4ed85d",
+    "executable": false
+  },
+  {
+    "path": "src/components/PluginSettingsMigration.test.tsx",
+    "bytes": 6490,
+    "sha256": "8f047f308bc0fd345fb1929881cf8ebf0817523520ad9031446f9d740b38b9d7",
+    "executable": false
+  },
+  {
+    "path": "src/components/PluginSettingsRepair.test.tsx",
+    "bytes": 7397,
+    "sha256": "482513d390a2e39487186d147550f1d6454fc8153ddc2d40006a7cf075986f2b",
+    "executable": false
+  },
+  {
+    "path": "src/components/ReleaseNotes.css",
+    "bytes": 712,
+    "sha256": "65655804a4e2b6d9a77376343ffb3813893842311295da1e27e31747d36549a5",
+    "executable": false
+  },
+  {
+    "path": "src/components/ReleaseNotes.test.tsx",
+    "bytes": 4678,
+    "sha256": "df11eee33acb7ca08d19a0f4f27623d0dc752e5a0c8a5cba4846503ead75aed1",
+    "executable": false
+  },
+  {
+    "path": "src/components/ReleaseNotes.tsx",
+    "bytes": 1469,
+    "sha256": "b38d50cc035769cd6f699ce05838b88e4a3a6bc9706a6e0e144b32148441ac36",
+    "executable": false
+  },
+  {
+    "path": "src/components/RootEngineCard.test.tsx",
+    "bytes": 5314,
+    "sha256": "c188b6f350c14be5bf9b9e7dc20112722108c09e481df1d05ee47e5f9ab9e61e",
+    "executable": false
+  },
+  {
+    "path": "src/components/RootEngineCard.tsx",
+    "bytes": 10029,
+    "sha256": "0c34ca0a28c520916ba5ca0914375f28c8d06ea774a352d0bbc03652f4beef6b",
+    "executable": false
+  },
+  {
+    "path": "src/components/RuntimeCleanupCard.test.tsx",
+    "bytes": 12476,
+    "sha256": "c2c7f8229e447d0486af2ad3b102fded98fe9350988643cbf09ad0b588b36525",
+    "executable": false
+  },
+  {
+    "path": "src/components/RuntimeCleanupCard.tsx",
+    "bytes": 13742,
+    "sha256": "f5352fb1cb756bd6783038fd9d06d346fa2833452387a3136239af29e13c7619",
+    "executable": false
+  },
+  {
+    "path": "src/components/RuntimeResidueCard.test.tsx",
+    "bytes": 6338,
+    "sha256": "b36de6d72b50bb02e12793e7bc87abee3eee4ed19a45e414b76389b5643defff",
+    "executable": false
+  },
+  {
+    "path": "src/components/RuntimeResidueCard.tsx",
+    "bytes": 6055,
+    "sha256": "18baa040657f0e24bc6b75213505fc130a501f302e6e5d425d31caf82ff65412",
+    "executable": false
+  },
+  {
+    "path": "src/components/SessionManager.css",
+    "bytes": 3975,
+    "sha256": "0dab8ee666866ad7492fad7dca1b8276852002768ab071d1ef9528b009b026e2",
+    "executable": false
+  },
+  {
+    "path": "src/components/SessionManager.test.tsx",
+    "bytes": 11919,
+    "sha256": "da3066e179fc6666d5b5718dc3b25c784a1d255dcdb8553584c2f25b3681529f",
+    "executable": false
+  },
+  {
+    "path": "src/components/SessionManager.tsx",
+    "bytes": 11830,
+    "sha256": "dab4d1dec0d7bbfecb55cabfdc3741f504ee00366a7a71cde618c0a65d2109ea",
+    "executable": false
+  },
+  {
+    "path": "src/components/TerminalPanel.test.tsx",
+    "bytes": 16682,
+    "sha256": "40e152de967018067fd55f84c88582ace7c851fdb0c99a8c3c485a71f1c59a26",
+    "executable": false
+  },
+  {
+    "path": "src/components/TerminalPanel.tsx",
+    "bytes": 20139,
+    "sha256": "4d3d3d5f982a862f83d010dd671722f3faedcb8fd0fbf28f8f94af7bd36e7f3b",
+    "executable": false
+  },
+  {
+    "path": "src/components/VirtualScreenSettings.css",
+    "bytes": 4424,
+    "sha256": "f2ad1c7fd204cf0aa80c75c4e24e85c2bfea36b1e9cbe0faa9dc0541c7a2b002",
+    "executable": false
+  },
+  {
+    "path": "src/components/VirtualScreenSettings.test.tsx",
+    "bytes": 30604,
+    "sha256": "d80e31f36c4faa768fb2dd28caa309e6ae8a7d3e3ce82bd732850151224eebaa",
+    "executable": false
+  },
+  {
+    "path": "src/components/VirtualScreenSettings.tsx",
+    "bytes": 44499,
+    "sha256": "1197d897847a754b595190743f5fedf85d5909af11def0ca1b9d7e33a06dace6",
+    "executable": false
+  },
+  {
+    "path": "src/components/applicationSearchQuery.test.ts",
+    "bytes": 3236,
+    "sha256": "20ebc2e759d72fef008ff3d1f96fd1895c7ae58a4da3fa0c44157208503703ca",
+    "executable": false
+  },
+  {
+    "path": "src/components/applicationSearchQuery.ts",
+    "bytes": 3571,
+    "sha256": "22e851c0c9880fc42172021e1869b0ae0c539f94eca71b069181d8a24cebee0d",
+    "executable": false
+  },
+  {
+    "path": "src/downloadTelemetry.test.ts",
+    "bytes": 5900,
+    "sha256": "e2fe4c3f2088c8417f7574a96dbd878613f96305512b670376326de60b3661f1",
+    "executable": false
+  },
+  {
+    "path": "src/downloadTelemetry.ts",
+    "bytes": 6838,
+    "sha256": "d62301e26f8173a186d0bd534c372a707dff1c3e5f46ae57b69c0665971033b3",
+    "executable": false
+  },
+  {
+    "path": "src/i18n.keys.test.ts",
+    "bytes": 2547,
+    "sha256": "e846d37a2b53826f4dc27630456caa8db2c76c9ea075f6bc7a95ceafa013ea6c",
+    "executable": false
+  },
+  {
+    "path": "src/i18n.test.ts",
+    "bytes": 1162,
+    "sha256": "a6aa5832e529f7d8800d7e0306805795b977de2f21212b6424eaa236d1412103",
+    "executable": false
+  },
+  {
+    "path": "src/i18n.ts",
+    "bytes": 1664,
+    "sha256": "dc5efd3206a67ca0d9cae891105baf7b058bf0ce2177bbac2dc66b332644d155",
+    "executable": false
+  },
+  {
+    "path": "src/keyboardInset.test.ts",
+    "bytes": 2811,
+    "sha256": "7dd27d7097241c96b216a11b38540a3f717255404c0c38195545bddc465328ce",
+    "executable": false
+  },
+  {
+    "path": "src/keyboardInset.ts",
+    "bytes": 3241,
+    "sha256": "f4a1ac8dab7d3ede149b2812660213640bbabf2b50a512f4d93f16fcb47a6e6c",
+    "executable": false
+  },
+  {
+    "path": "src/locales/en.ts",
+    "bytes": 186555,
+    "sha256": "4c8c899c7f7002db8b178d4e75f28f48efb6e4452744786663e143aac8381159",
+    "executable": false
+  },
+  {
+    "path": "src/logInsights.test.ts",
+    "bytes": 4340,
+    "sha256": "1a733df4151b07fd82f94dd60dd631d03aa18ed109d3faff49c394bc469bd9cb",
+    "executable": false
+  },
+  {
+    "path": "src/logInsights.ts",
+    "bytes": 8150,
+    "sha256": "b68650e22a3e8855770ad938939bc111b7ae09340b668baf8b84eb0066a2efa1",
+    "executable": false
+  },
+  {
+    "path": "src/main.tsx",
+    "bytes": 1164,
+    "sha256": "9291af3d14639aa5e5057250f7244bf9970b73904c7adc39c258d84eb1b4a71e",
+    "executable": false
+  },
+  {
+    "path": "src/modelProviders.ts",
+    "bytes": 1795,
+    "sha256": "5de8c8bbde451263ff92fa9daa509b657a077a6ec39428223f50400c3a8ba1cd",
+    "executable": false
+  },
+  {
+    "path": "src/platform/browser.test.ts",
+    "bytes": 23271,
+    "sha256": "eeb92795894e738ba9a37ab8db04ea063606d1580e3a5e7ad98e3c93e624d7ef",
+    "executable": false
+  },
+  {
+    "path": "src/platform/browser.ts",
+    "bytes": 43277,
+    "sha256": "de54ee508333f8abfcac369f2a9c3c706e8385f8cd901aae3ed649fdbf3eed23",
+    "executable": false
+  },
+  {
+    "path": "src/platform/customProviders.test.ts",
+    "bytes": 2002,
+    "sha256": "43ae100315d84e33c6be2e7675586787a96aef1aaf96fb0e82a4f7a40dd6e7b5",
+    "executable": false
+  },
+  {
+    "path": "src/platform/customProviders.ts",
+    "bytes": 6024,
+    "sha256": "ec99a2bbb5cead3d1f441809cd6545c435a1c5fd8a70b62244deb587effbbdf3",
+    "executable": false
+  },
+  {
+    "path": "src/platform/haptics.test.ts",
+    "bytes": 1772,
+    "sha256": "75eb87ef9eaefd40980632604db3f081189bdfc1d6a3bd1bac942aea1350f0a2",
+    "executable": false
+  },
+  {
+    "path": "src/platform/haptics.ts",
+    "bytes": 878,
+    "sha256": "1fed13723a6e8d09cf9e7ee5e978467e673d02781c974b3c861e72b0f8e7e03a",
+    "executable": false
+  },
+  {
+    "path": "src/platform/installedApplications.ts",
+    "bytes": 1743,
+    "sha256": "14b3b6376d5da085021aedb566299d2d3202251326f96b8aa7526f6d5a324617",
+    "executable": false
+  },
+  {
+    "path": "src/platform/native.ts",
+    "bytes": 37740,
+    "sha256": "c909233b13e14a439d26a2782e90c4a0278afa02318073763d57dfd5384ac95e",
+    "executable": false
+  },
+  {
+    "path": "src/platform/plugins.test.ts",
+    "bytes": 6315,
+    "sha256": "aa1b58addf3c047045b031b89e4abd3c115c1ae00e1316ceb3e1156e1dd5fe37",
+    "executable": false
+  },
+  {
+    "path": "src/platform/plugins.ts",
+    "bytes": 7911,
+    "sha256": "77d7e8381131c06cf4d5b5796febc407769ceb90fadc199ce93947e6b069cc12",
+    "executable": false
+  },
+  {
+    "path": "src/platform/types.ts",
+    "bytes": 95559,
+    "sha256": "6af0dcb7d2b36496da5aed14c3d1114fa40a90f94a9df034a32e7817916d3f19",
+    "executable": false
+  },
+  {
+    "path": "src/platform/validation.test.ts",
+    "bytes": 120003,
+    "sha256": "d2329e698108963a067399359c9cc83530087f1183cb5932631eaaf807c0cc2a",
+    "executable": false
+  },
+  {
+    "path": "src/platform/validation.ts",
+    "bytes": 137977,
+    "sha256": "e90f07573d8d0fcd4c634b9c3a79a27eaae6f007fec2c2f402f11bb231a3a6b7",
+    "executable": false
+  },
+  {
+    "path": "src/runtimeSelfCheck.test.ts",
+    "bytes": 23092,
+    "sha256": "01d2663b9df5323066bb68ad1e0081c685121b0542fa1ab60c98e3d3885ea53e",
+    "executable": false
+  },
+  {
+    "path": "src/runtimeSelfCheck.ts",
+    "bytes": 26014,
+    "sha256": "88a0a6e8ec049c6c95a3e343c4000fbefb639d9371412a4ecf035a2f44d9735a",
+    "executable": false
+  },
+  {
+    "path": "src/screens/AppUpdateSection.tsx",
+    "bytes": 14880,
+    "sha256": "0dc52872dff75eab46bd263194dc0c08601a4fa64905e7944e51525fc41a5fcd",
+    "executable": false
+  },
+  {
+    "path": "src/screens/Dialogs.tsx",
+    "bytes": 10812,
+    "sha256": "f5882980edf2e2a633041a2379a199797a2eff884326dc3cb9892cc906e4f6c0",
+    "executable": false
+  },
+  {
+    "path": "src/screens/FilesScreen.tsx",
+    "bytes": 31735,
+    "sha256": "beb7fbb3920e79e129df241d301759139c1f108cd58d4f5dd18187e3a62ef8dd",
+    "executable": false
+  },
+  {
+    "path": "src/screens/RuntimeSelfCheckPanel.tsx",
+    "bytes": 12833,
+    "sha256": "719bdac80f33396a4f1eb6e66e9e3bcf594c97f83d47eccffdda02d449c1bcb6",
+    "executable": false
+  },
+  {
+    "path": "src/screens/RuntimeSnapshotsSection.tsx",
+    "bytes": 9206,
+    "sha256": "02eba7c6e667f9a28da8427388236a602a4827290e6610fcb69381e43198b31d",
+    "executable": false
+  },
+  {
+    "path": "src/screens/RuntimeVersionsScreen.tsx",
+    "bytes": 29791,
+    "sha256": "22038e4cc147efff6562617274d5ee1a4c67eb8edccd7495020e1e68232f9f2d",
+    "executable": false
+  },
+  {
+    "path": "src/settingsCategories.theme.test.tsx",
+    "bytes": 11790,
+    "sha256": "36b49a6b3d5856644e4d2e443f06dcd2772a471718e3b8b9e7e290642017371b",
+    "executable": false
+  },
+  {
+    "path": "src/shellFont.test.ts",
+    "bytes": 1382,
+    "sha256": "aea0d33bae610597174ad611e6062529b0815948a8b603d3334e839d08c93c8b",
+    "executable": false
+  },
+  {
+    "path": "src/shellFont.ts",
+    "bytes": 1796,
+    "sha256": "585a81ed4d7bdad1cdc8dceb0106247678fa42d7e0084acdce34d810e185c9a8",
+    "executable": false
+  },
+  {
+    "path": "src/styles.css",
+    "bytes": 83676,
+    "sha256": "2cbd7f22c9454bf5aa15ecb4058e29a9961b9ae01b9da423c8d2aa3bbb707578",
+    "executable": false
+  },
+  {
+    "path": "src/test/setup.ts",
+    "bytes": 146,
+    "sha256": "e20f6c79ce7842f29f0dd93957e8230a5cbb3b5f6ee691fef96d4f393b964cb3",
+    "executable": false
+  },
+  {
+    "path": "src/theme.test.ts",
+    "bytes": 15114,
+    "sha256": "f994569e6b243bdd5fda015246f80fd7fa8abef3bc97c5bec12360790aeddfc4",
+    "executable": false
+  },
+  {
+    "path": "src/theme.ts",
+    "bytes": 12109,
+    "sha256": "7ef899a94aa169149c89986df3539a2b07d5156379e75c3886e693e57771af48",
+    "executable": false
+  },
+  {
+    "path": "src/ui/formatTime.ts",
+    "bytes": 650,
+    "sha256": "3c2cc5dc4556fa38991311b9e0876a6c6317a2f37ebd4385a39c38e20f9ba666",
+    "executable": false
+  },
+  {
+    "path": "src/ui/logs.tsx",
+    "bytes": 15066,
+    "sha256": "e53b8bc94a95c81500e3b1f076f8375548d1a986e35404b36adcb6217afa8776",
+    "executable": false
+  },
+  {
+    "path": "src/ui/messages.ts",
+    "bytes": 11085,
+    "sha256": "bf8ecb9c157694a061d99ee9a022e2ac399ec29560d06345b9bb3787d54d0df8",
+    "executable": false
+  },
+  {
+    "path": "src/ui/permissionGuide.ts",
+    "bytes": 2984,
+    "sha256": "a5cdd851032bfb5ebd5cc4e8457f22255293b7b9370c42c091a2f32ac6b87bc2",
+    "executable": false
+  },
+  {
+    "path": "src/ui/phase.tsx",
+    "bytes": 615,
+    "sha256": "fec6767ada229528c84562d9e7c7a9423a937e316bb6e4f5a873d5acab4867a0",
+    "executable": false
+  },
+  {
+    "path": "src/ui/phaseMeta.ts",
+    "bytes": 852,
+    "sha256": "05286578f090afc08a68838e6295d45ebedcf51d7289c0ca26e1d6d3e623cdf5",
+    "executable": false
+  },
+  {
+    "path": "src/ui/storageDir.ts",
+    "bytes": 7228,
+    "sha256": "b383cc82e2aa753a4d65bc3eaf39282c9c44785231d141cfb8aaf262ebbcced3",
+    "executable": false
+  },
+  {
+    "path": "third-party/MaiBot-GPL-3.0.txt",
+    "bytes": 35149,
+    "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+    "executable": false
+  },
+  {
+    "path": "third-party/bilibili-mcp-MIT.txt",
+    "bytes": 1065,
+    "sha256": "f1a9a25a774ca6ca25c4beb26bdfc438f58dcf81b7a728806794516026652ea4",
+    "executable": false
+  },
+  {
+    "path": "third-party/mem0-Apache-2.0.txt",
+    "bytes": 11349,
+    "sha256": "0bbcbe931c353293a2fafce08326181dfeea0e568c566afd4ce8337a70f5e219",
+    "executable": false
+  },
+  {
+    "path": "tsconfig.app.json",
+    "bytes": 569,
+    "sha256": "b6c0c9cd28b18c660933eba6a379be41a72b5d7559c41642a5618e2812e63dd1",
+    "executable": false
+  },
+  {
+    "path": "tsconfig.json",
+    "bytes": 119,
+    "sha256": "770b4140bbb581e2dfd9ea9946ffc9c75a1d86ba7d2db5f77c83e37cbdf9d808",
+    "executable": false
+  },
+  {
+    "path": "tsconfig.node.json",
+    "bytes": 254,
+    "sha256": "0a026a7600c88194e239d82c0258670cd5cc57eb285b5de84a6d25e89c9003ae",
+    "executable": false
+  },
+  {
+    "path": "vite.config.ts",
+    "bytes": 2649,
+    "sha256": "56f3a9f34a2add1de13386ddfa83ed5938918cde0160723b943c4836287b29e6",
+    "executable": false
+  },
+  {
+    "path": "vitest.config.ts",
+    "bytes": 2154,
+    "sha256": "08671e5ffa15aabc55a4e9ffd022403d000b86d4f819fe66a81ce1538050895a",
+    "executable": false
+  }
+]

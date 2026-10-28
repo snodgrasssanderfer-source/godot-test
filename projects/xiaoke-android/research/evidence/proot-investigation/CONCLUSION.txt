@@ -1,0 +1,49 @@
+PRoot runner provenance follow-up (static only; 2026-10-28 UTC)
+
+The discrepant declaration is not a release-manifest.json/runtime-manifest.json field.
+It is THIRD_PARTY_NOTICES.md, "Native runtime provenance", table column
+"SHA-256 of the current release input", row lib/arm64-v8a/libdsh_proot.so.
+Expected in notice: cb40a1ced11cee76569b4008a9e478c87883ce831152be4eb9570763b82e580d
+APK uncompressed ELF: 07ef0b01a1506a364c9db3e5fe6ac9a530974371f9838bc7a5c6abb5097b4c78
+APK deflate payload: 6d58c010bfd4be94995b0b77b4648b06494cede400e78164fdfaa6b5e57401f0
+Uncompressed bytes 257424; compressed bytes 113125; ZIP CRC verified.
+APK member and already extracted file are byte-identical. APK contains one runner
+at this exact path, plus its distinct loader. Loader uncompressed SHA256 matches
+its notice: f149774236db1e69b36cc1e4ed3866c7094db2eee52da0d4956aa63a9bb26929.
+
+The notice in fixed Android source, APK assets/legal/THIRD_PARTY_NOTICES.md and
+release corresponding-source build-and-install-materials are byte-identical,
+SHA256 3670e203a8e9960c53843a146438e5909bf3ef6011ad0bc89e17285edf6e6f21.
+Thus this is not a comparison with a default-branch notice or another ABI.
+Release manifest assets cover APK/rootfs/runtime manifest/corresponding source;
+runtime manifest rootfs.sha256 covers compressed rootfs. SOURCE_MANIFEST assets
+cover the three source archives. None is a per-native-file output manifest.
+All five release checksums still match.
+
+Fixed workflow android-build.yml 200-294 rebuilds Operit2 commit
+dc4c3a9405dc7ed3ef69b2ac9a6ace65374d77cf with NDK r29-beta4, then copies
+liboperit_proot.so -> libdsh_proot.so and liboperit_loader.so -> loader name.
+Operit source archive PAX comment contains that commit. Actual runner embeds
+/home/runner/work/deepseek-harness-android/deepseek-harness-android/operit2/...
+talloc.c paths (preserved separately), consistent with this CI rebuild.
+The build script compiles talloc from an absolute source path and does not set a
+file-prefix mapping; talloc __location__/__FILE__ strings can vary with build path.
+This is a concrete reason distinct builds can hash differently, NOT a proof that
+path differences explain every byte relative to cb40... (that binary was not supplied).
+The Operit build script strips both outputs at lines 503-504; Android build.gradle
+has keepDebugSymbols for the runner. Do not attribute the mismatch to later Gradle
+stripping without comparison data.
+
+Conclusion: identified stale/imported-input declaration versus rebuilt-output
+provenance gap, with corroborating CI path evidence, but exact binary equivalence
+is UNVERIFIED. The notice itself disclaims bit-for-bit rebuilding. No target binary,
+rootfs command, build script or toolchain build was executed by this audit.
+
+Implementation gate: do not silently redistribute the unexplained prebuilt runner.
+After development authorization, rebuild the pinned corresponding source and patch
+using verified official toolchain inputs in an isolated build directory. Record
+source, patch, NDK/compiler, canonical build paths, commands, pre/post-strip and
+APK-extracted output hashes; update release native-output manifest and notices.
+Provide exact corresponding source and license notices. Device validation remains
+separately authorized. A substitute runner requires its own source/license/ABI,
+16KB-page and behavior assessment; it is not an automatic drop-in claim.

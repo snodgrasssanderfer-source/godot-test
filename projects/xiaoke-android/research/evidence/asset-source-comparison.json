@@ -1,0 +1,114 @@
+[
+  {
+    "apk": "lib/arm64-v8a/libdsh_proot.so",
+    "sha256": "07ef0b01a1506a364c9db3e5fe6ac9a530974371f9838bc7a5c6abb5097b4c78",
+    "source": "android/app/src/main/lib/arm64-v8a/libdsh_proot.so",
+    "source_exists": false,
+    "equal": false,
+    "comparison_note": "Generated native binary is intentionally absent from Git; see native-provenance.json."
+  },
+  {
+    "apk": "lib/arm64-v8a/libdsh_proot_loader.so",
+    "sha256": "f149774236db1e69b36cc1e4ed3866c7094db2eee52da0d4956aa63a9bb26929",
+    "source": "android/app/src/main/lib/arm64-v8a/libdsh_proot_loader.so",
+    "source_exists": false,
+    "equal": false,
+    "comparison_note": "Generated native binary is intentionally absent from Git; see native-provenance.json."
+  },
+  {
+    "apk": "lib/arm64-v8a/libdsh_pty.so",
+    "sha256": "ac797efed92eb519361065daa573a09414810a7af0e6225cc26fbe6efcc89944",
+    "source": "android/app/src/main/lib/arm64-v8a/libdsh_pty.so",
+    "source_exists": false,
+    "equal": false,
+    "comparison_note": "Generated native binary is intentionally absent from Git; see native-provenance.json."
+  },
+  {
+    "apk": "assets/native-bridge.js",
+    "sha256": "48b589d954751db7ebad3f5ef6983b523f96bab4c2db0b0f85b8a311b0123a5e",
+    "source": "native-bridge.js",
+    "source_exists": false,
+    "equal": false,
+    "comparison_note": "Generated Capacitor bridge; repository root path was only a search candidate, not an expected source file."
+  },
+  {
+    "apk": "assets/support/plugin-manager.cjs",
+    "sha256": "dd7c9b2b4d89860c67ce8bbca32a522905252de48d7eb2d831977e029111be04",
+    "source": "android/app/src/main/assets/support/plugin-manager.cjs",
+    "source_exists": true,
+    "equal": true
+  },
+  {
+    "apk": "assets/support/runtime-self-check.cjs",
+    "sha256": "aea700515471f3d3abd7df79d1d0f973a8d46b7c2139e44a09a62569b511532c",
+    "source": "android/app/src/main/assets/support/runtime-self-check.cjs",
+    "source_exists": true,
+    "equal": true
+  },
+  {
+    "apk": "assets/support/sandbox-runner.sh",
+    "sha256": "9ba6f61e63803b487144dc7ce7cd3af522127925c0201ab72852b8652f978d71",
+    "source": "android/app/src/main/assets/support/sandbox-runner.sh",
+    "source_exists": true,
+    "equal": true
+  },
+  {
+    "apk": "assets/support/session-catalog.cjs",
+    "sha256": "a01bd31d7da1e9d611893f5c7451128e95dd21d885eb2593ee26799214608fe6",
+    "source": "android/app/src/main/assets/support/session-catalog.cjs",
+    "source_exists": true,
+    "equal": true
+  },
+  {
+    "apk_rootfs": "opt/dsh/plugins/dsh-mobile-shizuku/package.json",
+    "source": "scripts/runtime-profile/plugins/dsh-mobile-shizuku/package.json",
+    "equal": true,
+    "sha256": "5d3c1f7714ba966a693deff48b749ea38c09e619f90dbbe72dced0692aa2f692"
+  },
+  {
+    "apk_rootfs": "opt/dsh/plugins/dsh-mobile-shizuku/cordis.patch.yml",
+    "source": "scripts/runtime-profile/plugins/dsh-mobile-shizuku/cordis.patch.yml",
+    "equal": true,
+    "sha256": "b957987bbf6edaaca0ec6323b30c2acf987c9a40331359c4190d524a6426e8e2"
+  },
+  {
+    "apk_rootfs": "opt/dsh/plugins/dsh-mobile-shizuku/lib/index.js",
+    "source": "scripts/runtime-profile/plugins/dsh-mobile-shizuku/lib/index.js",
+    "equal": true,
+    "sha256": "97e0763114edf4c6c51e5c259796a947e4cab41f94fcd0eb29d31929791c3a82"
+  },
+  {
+    "apk_rootfs": "opt/dsh/plugins/dsh-mobile-shizuku/lib/turn-signal.js",
+    "source": "scripts/runtime-profile/plugins/dsh-mobile-shizuku/lib/turn-signal.js",
+    "equal": true,
+    "sha256": "29a08d83da74df3c1de8d5c996447297b72671a4b9e2eb64f9f6f2b2d8036a44"
+  },
+  {
+    "apk_rootfs": "opt/dsh/plugins/dsh-mobile-shizuku/node_modules/.bin/cordis",
+    "source": "scripts/runtime-profile/plugins/dsh-mobile-shizuku/node_modules/.bin/cordis",
+    "equal": false,
+    "sha256": "326ae2a7bdfd7222123c9885209a9165de8a55a5a7f328813536ac409b2b9d5b"
+  },
+  {
+    "apk": "assets/legal/LICENSE",
+    "source": "LICENSE",
+    "equal": true
+  },
+  {
+    "apk": "assets/legal/THIRD_PARTY_NOTICES.md",
+    "source": "THIRD_PARTY_NOTICES.md",
+    "equal": true
+  },
+  {
+    "apk_rootfs": "usr/local/lib/dsh-mobile-auth.cjs",
+    "source": "scripts/mobile-auth-preload.cjs",
+    "equal": true,
+    "sha256": "6dd5e170ab6471e8029969786c5821083855a276d6fb02f34cd8ae1af7128985"
+  },
+  {
+    "apk_rootfs": "usr/local/lib/dsh-mobile-session-publish.py",
+    "source": "scripts/mobile-session-publish.py",
+    "equal": true,
+    "sha256": "2494bbae8b2f809df1ad12d8815feea9931c2bfcaaf72e33ec3ef218c6563b91"
+  }
+]

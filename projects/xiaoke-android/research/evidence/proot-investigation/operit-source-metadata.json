@@ -1,0 +1,43 @@
+{
+  "archive_sha256": "291ecf2da99cc168099b239e0db74f72a08b2e02285efa80d255eec27581f30e",
+  "pax_headers": {
+    "comment": "dc4c3a9405dc7ed3ef69b2ac9a6ace65374d77cf"
+  },
+  "files": [
+    {
+      "archive_path": "operit2/tools/android-runtime/BUILDING.md",
+      "sha256": "69ba5e0e63b79c08b00ac97b456b9ad992c8b998831194692ebf394e6c06d3d0",
+      "bytes": 3789
+    },
+    {
+      "archive_path": "operit2/tools/android-runtime/README.md",
+      "sha256": "c90844e1c6f4118413933e2bff6e953be224a66d3f3d08f363efc3c7debe41b1",
+      "bytes": 1608
+    },
+    {
+      "archive_path": "operit2/tools/android-runtime/build_alpine_rootfs_wsl.sh",
+      "sha256": "fcfd4e91775288e8fd5702946c51da52cccf85760f3ea3fe1ec2c1d8716bdca1",
+      "bytes": 5828
+    },
+    {
+      "archive_path": "operit2/tools/android-runtime/build_android_tools_wsl.sh",
+      "sha256": "ce2262cc01415c5c631ddf8c36e60de01a8360001d634faf839f7d677177e3e0",
+      "bytes": 19270
+    },
+    {
+      "archive_path": "operit2/tools/android-runtime/fetch_ndk_wsl.sh",
+      "sha256": "2ea4d91c66a29b8026079640bd33a3a742b224661d4d8fa85a81331c5ce53e27",
+      "bytes": 394
+    },
+    {
+      "archive_path": "operit2/tools/android-runtime/fetch_sources.ps1",
+      "sha256": "da06481a3da25797d9f4dc9c6ca3532d4ac41ffba08bf996c42ad1743862b29d",
+      "bytes": 2069
+    },
+    {
+      "archive_path": "operit2/tools/android-runtime/patches/termux-proot-operit-android.patch",
+      "sha256": "f4ade2d2b9ff8e32283224dd869a2e551987e06d8c2c8bed820ba6ef87748f5a",
+      "bytes": 1394
+    }
+  ]
+}

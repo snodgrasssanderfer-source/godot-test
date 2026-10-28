@@ -1,0 +1,20 @@
+[
+  {
+    "path": "source/android/dphmoblie-deepseek-harness-android-e9be0e4/THIRD_PARTY_NOTICES.md",
+    "sha256": "3670e203a8e9960c53843a146438e5909bf3ef6011ad0bc89e17285edf6e6f21",
+    "bytes": 6777,
+    "proot_expected": "cb40a1ced11cee76569b4008a9e478c87883ce831152be4eb9570763b82e580d"
+  },
+  {
+    "path": "evidence/apk-THIRD_PARTY_NOTICES.md",
+    "sha256": "3670e203a8e9960c53843a146438e5909bf3ef6011ad0bc89e17285edf6e6f21",
+    "bytes": 6777,
+    "proot_expected": "cb40a1ced11cee76569b4008a9e478c87883ce831152be4eb9570763b82e580d"
+  },
+  {
+    "path": "source/corresponding/build-and-install-materials/build-and-install-materials/THIRD_PARTY_NOTICES.md",
+    "sha256": "3670e203a8e9960c53843a146438e5909bf3ef6011ad0bc89e17285edf6e6f21",
+    "bytes": 6777,
+    "proot_expected": "cb40a1ced11cee76569b4008a9e478c87883ce831152be4eb9570763b82e580d"
+  }
+]

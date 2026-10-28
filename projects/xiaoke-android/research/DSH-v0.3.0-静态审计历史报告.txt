@@ -1,0 +1,567 @@
+历史研究快照；当前实现与交接状态以 ../HANDOFF.md 为准。本文中的设计与验收项不代表已经实现或通过。执行机绝对路径已替换为占位符。
+
+# DSH v0.3.0 安卓助手：APK 实物审计与 Gemini／小克／QQ／B站改造方案
+
+研究日期：2026-10-28（UTC）  
+对象：dphmoblie/deepseek-harness-android 正式发布 v0.3.0  
+源码提交：e9be0e43629f8b744991c2cf9efd160ca7d41abc  
+用户设备：v2520A，Android 16；ABI、内存、页大小、ROM版本、Root／Shizuku状态尚未提供。  
+执行位置：用户现有 Codex 环境，独立目录 `<AUDIT_ROOT>`。未修改 `/workspace/godot-test`，未启动子代理。
+
+## 1. 摘要决策
+
+**这份 APK 值得作为安卓执行底座复用，但不能只换 Gemini Key 和“小克”提示词就达到目标。** 它已经真正打通了 Android WebView → 本机 Node/DSH → 带令牌的设备桥 → 无障碍／Shizuku／副屏操作；截图也会作为图片附件交给支持视觉的模型。缺口集中在持续消息入口、社交账号与收件人识别、按场景隔离的长期记忆、不可被群聊文本篡改的主人授权，以及有内容证据的视频理解和发布事务。
+
+推荐在此提交上做受控分支：保留 Android 壳、运行时安装更新、设备控制、附件和会话持久化；新增一个统一助手插件与宿主权限代理，所有私聊和群聊共用同一人格版本，但使用不同会话、记忆作用域和权限。优先实现真实安卓 QQ／B站 UI 路线。官方 QQ 机器人或协议桥可以成为经用户选择的消息入口，不能悄悄替换真实安卓账号操作。
+
+此次研究最重要的实证结论：
+
+1. 正式 APK、内嵌 rootfs、运行时清单、对应源码包、发布清单的 SHA-256 均匹配；APK v2 签名验证通过。发布提交和主仓库源码固定到了完整 commit。
+2. **自定义中转模型的图片能力存在配置缺口。** Android 自定义模型只保存 ID、名称、上下文和输出长度，不传 `input`；实际内嵌 `dsh-llm-pi-ai` 对未知模型默认 `['text']`。截图工具在调用前检查 `inputModalities`，因此可能直接报 `IMAGE_MODEL_REQUIRED`。不能把“文本对话成功”当成视觉控制成功。
+3. Android 自定义协议列表只有 `openai-completions`、`openai-responses`、`anthropic-messages`。内置 `google` 确实存在，但其 Key 设置不提供中转 baseURL。底层 Google provider 支持 baseURL 覆盖，可有针对性扩展；任意新供应商 ID 加“Gemini”名称不自动获得原生协议。
+4. **已经保存对话 ≠ 已经拥有长期人格记忆。** 实物有 JSONL／Zstd 会话、搜索索引、压缩检查点、技能和附件；未发现面向主人／私聊／各群的可信身份映射、关系事实库和跨作用域访问控制。
+5. 未发现 QQ 专用收发适配器、NotificationListenerService、音频捕获／视频语义理解流水线。已有系统通知主要是自身保活、任务完成通知；副屏高帧率预览也不是模型持续“看完视频”。
+6. 无障碍与副屏都检查锁屏／交互状态。**后台模型推理可继续，不代表锁屏后还能操作 QQ／B站。** 不应承诺全天候、锁屏无人值守的全功能体验。
+7. APK 的 `libdsh_proot.so` 实际摘要与仓库及 APK 自带 THIRD_PARTY_NOTICES 声称的“当前发布输入”摘要不同。Loader 摘要一致。CI 会重编译 PRoot，文档也未承诺逐字节可复现；这是必须保留的来源记录差异，不能直接断言篡改，也不能宣称完整二进制复现已证明。
+8. 截至此次读取，QQ 官方文档已有启用“接收所有消息”后的 `GROUP_MESSAGE_CREATE` 全量群消息模式；是否能给用户的机器人开通、能否满足发言权限仍需平台配置核验。旧的“官方接口一律只能看 @”结论不准确。
+
+**按新增配置，当前优先适配 OpenCode 渠道所示的原生 Gemini 路由；不能判断它比 CLI 渠道更快。** 用户提供的非敏感配置是 provider `gemini`、npm `@ai-sdk/google`、baseURL `https://api.apikey.fan/v1beta`、默认模型 `gemini/gemini-3.8-flash`，声明输入text/image/pdf、输出text。这是明确的配置协议证据，不是已通过调用验证。随后实际读到两张CLI配置图片：`GOOGLE_GEMINI_BASE_URL=https://api.apikey.fan`、`GEMINI_MODEL=gemini-3.8-flash`，以 `GEMINI_API_KEY` 环境变量配置；图中没有OAuth步骤。两客户端的域名与模型相同，OpenCode的SDK入口另含 `/v1beta`；页面标签本身不足以证明存在两个不同的Key等级或后端池，也不能说明速度、限流或上游路由。后续Key只应在本机受保护配置中填写，不保存在报告或聊天里。
+
+## 2. 授权范围、方法与证据等级
+
+本轮只下载和静态读取公开发布物／源码，运行的是系统现有工具、Google 官方 Android Build Tools 36 和 skylot 官方 JADX 1.5.6，以及自己编写的归档／摘要脚本。没有安装或启动目标 APK，没有执行 APK／rootfs 内的 Node、Python、PRoot、Shell、npm、构建脚本；没有连接手机、登录 QQ／B站、调用用户中转 API、发送消息或评论、开发部署或推送 GitHub。
+
+分析工具从各自官方发布入口取得：JADX ZIP 的 SHA-256 匹配 GitHub 资产 digest；Android Build Tools 的 SHA-1 匹配 Google repository XML。没有安装第三方未知来源的可执行软件。JADX 首次尝试因默认配置目录只读退出，改用研究目录后完成主体反编译，日志仍报告 6 个错误；若干方法仅保留反汇编式注释，不能当成可编译还原源码。
+
+证据等级：
+
+- **A／实物**：APK 解出的 manifest、DEX、assets、ELF、rootfs 内文件及摘要。
+- **S／源码对照**：完整发布提交中的路径、函数和构建材料。与实物关键字符串、组件、资产逐字节核对；不是全量可复现构建证明。
+- **D／维护者资料**：官方 API 文档和参考仓库固定提交；用于适配设计，不代替本机实测。
+- **P／拟议设计**：尚未实现或授权运行的改造方案和验收要求。
+
+主源：[v0.3.0 发布页](https://github.com/dphmoblie/deepseek-harness-android/releases/tag/v0.3.0)；[完整提交树](https://github.com/dphmoblie/deepseek-harness-android/tree/e9be0e43629f8b744991c2cf9efd160ca7d41abc)。网页显示和 GitHub API 一致：2026-10-18T07:40:22Z 发布，非草稿、非预发布。
+
+## 3. 发布物身份与校验
+
+| 对象 | 字节数 | SHA-256 | 结果 |
+|---|---:|---|---|
+| app-release.apk | 320,967,852 | `9b1e13406d4cb9c70827d13f4c0e052f8491086eed72980e52617c7899ed61b5` | 匹配 |
+| rootfs.bundle | 317,842,454 | `f7e9736ebc359a761adaf56bf02fe5ac64877c73085aaa1df0ffbe876c7708fb` | APK内嵌字节与独立资产声明匹配 |
+| runtime-manifest.json | 1,035 | `09f709fd1439f4c305b7ed9012287a0e437b993cfef9dacc387da09b10aa13d4` | 匹配 |
+| corresponding-source.tar.gz | 29,178,908 | `3caab4b8457540dc693e617a7da843191e507cf0903b2424773448bf0b3709cc` | 匹配 |
+| release-manifest.json | 807 | `90c2903253e23e563d3f40a8a425061f29f795a12e0947e39624f6124cbafeed` | 匹配 |
+
+为避免重复传输 318 MB，本轮直接从 APK 提取 `assets/runtime/rootfs.bundle`；其摘要和大小同时匹配 checksums、release-manifest、runtime-manifest 和 GitHub 资产 digest，未另下独立 rootfs。主程序源码另按完整 commit 下载 `android-source.tar.gz`，不是当前默认分支，也不是 DSH-APP／DSHA。
+
+`corresponding-source.tar.gz` 内有 `proot-corresponding-source.tar.gz`、`ubuntu-git-corresponding-source.tar.gz`、`build-and-install-materials.tar.gz`、`SOURCE_MANIFEST.json` 和 `OFFER.md`。三个内层归档摘要也全部匹配。它补充 PRoot／Operit／Ubuntu git 等源码及构建材料，不是 Android 全仓源码的替代物。
+
+签名：Google `apksigner verify --verbose --print-certs` 返回 `Verifies`；v2=true，v1/v3/v3.1/v4=false，SourceStamp=false，1 signer。证书 DN：`CN=DeepSeek Harness Mobile, OU=Mobile, O=DeepSeek Harness, C=CN`；RSA 4096；证书 SHA-256：`6d1b5f231d9b469561b8c3b706a6305ea729e972374df1f210f567573d3c0900`。这证明该 APK 的签名完整性和本次观察到的签名者标识；未用独立信任渠道核实签名私钥所有者，也未和旧版证书链做升级兼容验证。
+
+## 4. APK 实物结构与权限
+
+| 项目 | 实物结论 |
+|---|---|
+| 包名／显示名 | `io.deepseekharness.mobile`／DeepSeek Harness |
+| 版本 | versionName `0.3.0`，versionCode `38` |
+| SDK | min 26，target 35，compile 35 |
+| ABI | 只有 `arm64-v8a`；不能据 Android 版本推定 ABI |
+| DEX | 1 个 `classes.dex`，1,993,876 字节；R8混淆可见 |
+| Native | `libdsh_proot.so`、`libdsh_proot_loader.so`、`libdsh_pty.so`，均 ELF64 AArch64 |
+| 界面 | Capacitor 管理前端；另有 Harness WebView；native-bridge.js 是框架桥产物 |
+| 内嵌运行时 | gzip rootfs；清单为 Ubuntu 24.04 ARM64，解压预计 1,039,940,469 字节；静态目录含 `/opt/node`、`/opt/dsh`、`/opt/python`、系统工具 |
+| Node／DSH | `node_version.h` 证实 24.19.0；实际 npm 包证实 dsh 0.2.1-rc.1；pi-ai 1.1.0带锁文件补丁 |
+| 本地入口 | `/usr/local/bin/dsh web --host 127.0.0.1 --port 3080`；设备桥随机 loopback 端口 |
+| 自动备份 | application `allowBackup=false`、`fullBackupContent=false`；数据提取规则排除关键私有目录和设置 |
+
+Manifest 18 项 uses-permission：INTERNET、QUERY_ALL_PACKAGES、ACCESS_NETWORK_STATE、WAKE_LOCK、RECEIVE_BOOT_COMPLETED、FOREGROUND_SERVICE、FOREGROUND_SERVICE_SPECIAL_USE、POST_NOTIFICATIONS、Shizuku API_V23、READ_MEDIA_IMAGES、READ_MEDIA_VIDEO、READ_EXTERNAL_STORAGE（到API32）、MANAGE_EXTERNAL_STORAGE、SYSTEM_ALERT_WINDOW、REQUEST_INSTALL_PACKAGES、USE_BIOMETRIC、USE_FINGERPRINT，以及本应用 signature 级 DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION。后三项中生物识别／指纹和动态接收器权限是依赖合并后的 manifest 内容；不能只看主源码 XML 得出最终权限清单。
+
+没有在 manifest 中发现 NotificationListenerService、RECORD_AUDIO、MediaProjection foreground-service 类型。READ_MEDIA_VIDEO 只代表可能读取用户已授权媒体，不能据此推定它会看视频。
+
+组件清单（共 5 Activity、5 Service、4 Provider、2 Receiver）：
+
+| 类／组件 | exported／保护 | 用途 |
+|---|---|---|
+| MainActivity | true | Launcher；接收 content VIEW、SEND／SEND_MULTIPLE 分享 |
+| HarnessActivity | false | 加载本机 Harness |
+| VirtualScreenActivity | false | 副屏管理／预览 |
+| OverlayFileChooserActivity | false | 悬浮 WebView 文件选择结果桥 |
+| KeepAliveEntryActivity | false | 常驻通知点击入口 |
+| DeviceShellUserService | true，Shizuku API_V23 | 用户服务中的 shell／PTY／副屏能力 |
+| HarnessKeepAliveService | false，specialUse，stopWithTask=false | 本机运行时保活与恢复 |
+| OverlayBallService | false，specialUse，stopWithTask=false | 悬浮球 |
+| VirtualScreenService | false，specialUse，stopWithTask=false | 用户选择的目标应用副屏 |
+| DeepSeekAccessibilityService | true，BIND_ACCESSIBILITY_SERVICE | 用户启用后的窗口读取和动作 |
+| ShizukuProvider | true，INTERACT_ACROSS_USERS_FULL | Shizuku官方桥 |
+| FileProvider／AppUpdateFileProvider | false，临时URI授权 | 诊断／分享文件与更新APK |
+| AndroidX InitializationProvider | false | 依赖初始化 |
+| BootRecoveryReceiver | false，非directBootAware | BOOT_COMPLETED、USER_UNLOCKED |
+| AndroidX ProfileInstallReceiver | true，DUMP | 依赖的性能profile入口 |
+
+网络安全配置只放行 localhost／127.0.0.1 明文，默认拒绝明文网络。这是 Android 网络层配置；PRoot 中 Node／curl 是独立网络栈，不能把此配置当成它们的完整外连防火墙。内置模型探针可访问 DeepSeek、OpenAI、Anthropic、Google、OpenRouter、Groq、xAI、Mistral 的 models 端点；自定义供应商和 npm插件／更新还会引入配置外连。本轮未证明所有动态出站目标或服务端行为。
+
+## 5. APK 与准确源码对照表
+
+下表的源码路径均相对完整提交树；`A/` 简写代表 `android/app/src/main/java/io/deepseekharness/mobile/`，`P/` 代表 `scripts/runtime-profile/plugins/dsh-mobile-shizuku/`。运行时包定位可查证据目录的 `dsh-package-inventory.json`，其中保留实际 `.pnpm` 物理路径。
+
+| 能力／材料 | 实物证据 | 对应源码／函数 | 判断 |
+|---|---|---|---|
+| 包名版本权限组件 | AAPT2 与 JADX解码 manifest | `android/app/build.gradle`；`android/app/src/main/AndroidManifest.xml` | 版本、核心组件一致；APK另有依赖合并项 |
+| Android控制桥 | DEX中 `/device-command`、Bearer、loopback；混淆类 `p005c0/C0091g`等 | `A/DeviceBridgeServer.kt:handle/start`；`A/runtime/RuntimeHost.kt` | HTTP POST+随机端口+运行期token，不是远端ADB代理 |
+| 截图／UI dump | DEX中 `screencap -p | toybox base64` | `A/shizuku/DeviceCommandRunner.kt:buildBody/uiDumpScript` | Shizuku shell读取；图片经插件附件服务上传模型 |
+| 主屏点击／输入 | DEX保留 DeepSeekAccessibilityService | `A/accessibility/DeepSeekAccessibilityService.kt:executeChecked/action/observedAction` | 已改由无障碍执行；shell中的旧tap/input分支直接拒绝 |
+| 副屏 | manifest服务和类、DEX原生调用 | `A/virtualscreen/ShellVirtualScreen.kt`、`VirtualScreenService.kt`、`VirtualScreenCommands.kt` | VirtualDisplay+ImageReader+输入注入；是否适配目标机和QQ/B站未测 |
+| 后台服务 | manifest specialUse；DEX服务 | `A/HarnessKeepAliveService.kt:onStartCommand/recoverHarness`；`BootRecoveryReceiver.kt` | START_STICKY、运行状态恢复、显式开关；不是永生保证 |
+| 模型配置 | DEX协议enum、`llm-pi-ai`、生成配置字符串 | `A/runtime/RuntimeModels.kt`、`RuntimeStore.kt:prepareProviderPatch` | Android只开放3种自定义协议；无模型input字段 |
+| Gemini执行 | rootfs实际pi-ai Google provider与dsh适配器JS | `@deepseek-ai/dsh-llm-pi-ai/lib/index.js`；pi-ai `dist/api/google-generative-ai.js` | 内置Google原生流式、functionCall、thoughtSignature；自定义原生路由还需接口层改造 |
+| 手机工具插件 | rootfs `/opt/dsh/plugins/dsh-mobile-shizuku/{package.json,cordis.patch.yml,lib/index.js,lib/turn-signal.js}` | `P/`同4文件 | **4/4逐字节相同** |
+| 四个宿主support脚本 | APK `assets/support/*` | `android/app/src/main/assets/support/*` | **4/4逐字节相同** |
+| HTTP/WS鉴权预加载及会话发布补丁 | rootfs `usr/local/lib/dsh-mobile-auth.cjs`、`dsh-mobile-session-publish.py` | `scripts/mobile-auth-preload.cjs`、`mobile-session-publish.py` | **2/2逐字节相同** |
+| 许可证／声明 | APK `assets/legal/LICENSE`、THIRD_PARTY_NOTICES | 仓库同名文件 | **2/2逐字节相同**，也继承了下述摘要差异 |
+| 会话保留／快照 | DEX快照目录和保留项；rootfs persistence包 | `A/runtime/RuntimePreservePolicy.kt`、`RuntimeSessionSnapshots.kt` | 白名单迁移和有限本机快照，不是无限永久记忆 |
+| PRoot loader | ELF SHA256 f149…6929 | THIRD_PARTY_NOTICES及对应源码材料 | 摘要一致 |
+| PRoot runner | ELF SHA256 07ef…4c78 | 声明输入 cb40…580d；CI中从Operit源码重编译 | 摘要不一致；未做同工具链逐字节重编译，保留未解释边界 |
+| 管理前端和DEX整体 | 已解包／反编译，但构建混淆与打包存在 | `src/`、`harness-web/`、Kotlin | 无mapping和完整可复现构建，不声称全量源二进制等价 |
+
+PRoot实际完整SHA-256为 `07ef0b01a1506a364c9db3e5fe6ac9a530974371f9838bc7a5c6abb5097b4c78`；声明输入是 `cb40a1ced11cee76569b4008a9e478c87883ce831152be4eb9570763b82e580d`。`build.gradle` 对该库配置 `keepDebugSymbols`，因此不能未经证明直接把差异归于APK打包strip。CI工作流的重编译和构建环境差异是候选解释，仍需维护者发布该次构建的原始runner摘要／可复现材料来闭合。
+
+### 5.1 PRoot摘要差异的补充静态核查
+
+差异精确位于固定提交 `THIRD_PARTY_NOTICES.md:52` 的 **“SHA-256 of the current release input”** 列，以及APK内 `assets/legal/THIRD_PARTY_NOTICES.md` 的同一行。它不是 `release-manifest.json` 或 `runtime-manifest.json` 的字段失败；前者校验外层制品，后者的 `rootfs.sha256` 校验压缩rootfs，内层 `SOURCE_MANIFEST.json` 校验源码归档，均未单独声明本次runner输出摘要。
+
+| 比较对象 | 静态结果 | 排除／保留的解释 |
+|---|---|---|
+| APK成员解压后 vs 已提取副本 | 同为257424字节、SHA256 `07ef…4c78`，逐字节相同，ZIP CRC通过 | 排除提取损坏或拿压缩数据当ELF计算 |
+| 该ZIP成员的原始deflate数据 | 113125字节，SHA256 `6d58c010bfd4be94995b0b77b4648b06494cede400e78164fdfaa6b5e57401f0` | 压缩前后两种摘要都不是声明的 `cb40…580d` |
+| APK／固定源码／对应源码构建材料中的notice | 三份逐字节一致，notice文件SHA256 `3670e203a8e9960c53843a146438e5909bf3ef6011ad0bc89e17285edf6e6f21` | 没有混用主分支、另一版notice或其他ABI |
+| 同APK的loader | 1632字节、SHA256 `f149…6929`，符合声明；APK只有一个同名runner路径 | runner与loader未混淆，差异不等于所有native来源都不符 |
+| 源码归档与CI | Operit归档PAX comment为 `dc4c3a9405dc7ed3ef69b2ac9a6ace65374d77cf`；workflow重编译后重命名并打包 | 实际runner内嵌本仓库GitHub Actions路径，与重编译流程相符 |
+
+runner字符串含 `/home/runner/work/deepseek-harness-android/deepseek-harness-android/operit2/tools/android-runtime/sources/talloc-2.4.3/talloc.c:…`。对应脚本以绝对路径编译talloc，未设置文件路径重映射，talloc的 `__FILE__`／位置字符串会随构建路径变化；这是**有代码依据的非逐字节复现因素**，但未取得 `cb40…580d` 那个原输入文件，不能声称所有字节差异已解释。Operit脚本在503–504行已strip产物，而Gradle保留runner符号，不能把差异随意归给Gradle二次strip。
+
+因此将其定性为**声明的导入输入摘要与本次重编译输出之间尚未闭合的来源记录差异**，不是下载hash失败，也不是已证实恶意篡改。后续自建APK不应默默沿用这枚未解释的预编译runner：开发获准后，从随发布提供的固定源码和补丁、校验过的官方NDK重新构建，记录编译环境/路径、strip前后与APK内输出摘要，更新原生制品清单和notice，并保留完整对应源码与许可证。新构建能建立自己产物的来源链，不能倒推出旧输入必然等价。本轮未运行这些构建脚本或二进制。
+
+## 6. 已核验实现与真正缺口
+
+### 6.1 Android控制和授权
+
+`DeviceBridgeServer` 只监听127.0.0.1，入口 `/device-command`，验证 `Authorization: Bearer`，常量时间比较令牌。由 RuntimeHost 持有，随运行时生灭，不随Activity重建而重建。guest通过环境变量中的端口和秘密文件中的token调用。普通截图、UI树、应用启动、设备信息和有边界的文件通道已存在。
+
+主屏无障碍链先检查：设备未锁定且屏幕交互、当前窗口存在、当前包在白名单、没有识别为密码／验证码／支付／权限的敏感窗口；动作还校验当前包和节点，并有限流。节点树只反映可访问性暴露的信息，不等同应用所有消息数据库。`action()` 在白名单内直接执行；虽保留确认浮层方法，不能据此宣称每次发消息都会人工审批。
+
+`DeviceCommandRunner` 的 `SHELL` 接收最长16KiB脚本，经用户开启AI Shell后以Shizuku身份执行，不做语义关键词黑名单。Root引擎是独立显式开关，只有shell命令可走Root路线。**这些是设备权限，不是“群成员有权让主人账号做什么”的业务权限。** 截图／uiDump／通用shell等路线的闸门也不完全等同无障碍白名单，因此新增社会权限必须统一覆盖所有工具和桥，不能只给一个发送按钮加确认。
+
+现有插件会提示模型把截图、窗口文字和通知视为不可信资料，这是有价值的提示层；但外部群消息一旦喂入持有shell／文件能力的agent，单靠提示词不足以阻止跨群读取、导出私聊或越权操作。
+
+### 6.2 截图、副屏、消息、视频
+
+`P/lib/index.js:captureScreenshot` 先检查模型图片能力，再通过桥取PNG，验证尺寸／签名／大小，使用 `ctx.attachments.saveImage`，工具结果包含真正的image块和原始尺寸元数据。模型可实际看截图；这不是纯文字“看屏”。
+
+副屏通过Shizuku用户服务创建VirtualDisplay，ImageReader采帧，支持目标切换、节点树、坐标／手势／文字、帧新鲜度及输入回执。用户从原生入口启动，工具只操作已有session。预览帧率与模型输入频率不同；默认截图工具取一帧。副屏读写检查设备解锁且可交互，不能当成锁屏绕行路径。FLAG_SECURE、黑帧、目标应用拒绝副屏、中文输入／键盘、播放DRM等均需实机验证。
+
+源码和最终manifest的定向搜索未见QQ／B站专用adapter、NotificationListenerService、MediaProjection、AudioRecord、视频抽帧／ASR／整段理解流程。可以通过UI操作QQ、打开视频播放器，但缺少可靠的“新消息事件 → 去重 → 作者/会话标识 → 是否回复 → 输入发送 → 回执”流水线。未找到专用实现是对已检查版本的结论，不宣称未来插件绝不可能提供。
+
+### 6.3 本地鉴权、秘密与持久目录
+
+| 内容 | 现有落点／处理 | 改造含义 |
+|---|---|---|
+| rootfs | `noBackupFilesDir/dsh-runtime/current` | 更新整体替换，新增数据不能随手放进未保留目录 |
+| DSH home | guest `/root/.dsh` | sessions、settings.yaml、.credentials.yaml、attachments、skills被明确保留 |
+| 默认工作区 | guest `/root/1` | 跨更新保留；不是角色私密记忆的理想独立权限边界 |
+| 用户插件 | `/root/.dsh-mobile/plugin-manager` | 保留并修复运行时版本／符号链接 |
+| 运行配置／秘密 | `/root/.dsh-mobile/launcher-providers.patch.json`、`runtime-secrets.env` | 配置重建；临时秘密0600，不跨版本保留 |
+| 模型Key（Android壳保存） | RuntimeStore SharedPreferences + RuntimeCredentialCipher | AndroidKeyStore AES-GCM；不能假设迁移到新手机后能直接解密旧密文 |
+| 模型Key（Harness保存） | `/root/.dsh/.credentials.yaml` | guest内权限0600；该路径仍是运行时可访问秘密，日志／备份必须单独处理 |
+| HTTP/WS本机登录 | mobile-auth-preload | HTTP Basic；WS另接受HttpOnly `dsh_mobile_token`；运行周期结束撤销旧授权 |
+| 会话快照 | `filesDir/runtime-session-snapshots` | 最多3份、总512MiB，只复制sessions；恢复跳过已有文件 |
+| 投递区 | `/storage/emulated/0/Documents/DSH/inbox|outbox` ↔ `/mnt/inbox|outbox` | 工作区tar导入导出、manifest+sha；不是完整人格/账号备份 |
+| 用户目录挂载 | 最多8项，guest `/mnt/user/...` | 需要显式权限；新增社会工具不得因此任意读整盘 |
+
+本机HTTP鉴权主要由 `scripts/mobile-auth-preload.cjs` 在路由之前统一拦截，令牌验证后删除敏感环境项；Android端有generation-safe授权生命周期。设备桥则使用另一组运行期Bearer。它们证明请求来自被信任运行时／页面，**没有证明一段QQ文本来自主人**。
+
+当前会话真实实现是 `dsh-session-persistence-jsonl`：按项目/会话目录组织 `session[.vN].jsonl[.zstd]`，有写租约、尾部修复和版本迁移；另有SQLite会话查询引擎。`dsh-compaction-basic` 默认摘要面向coding任务，包含当前目标、约束和执行状态。它能帮助续接任务，不应承担关系事实的唯一存储。重要事实必须在压缩前进入可追溯事实库，再以当前作用域重建上下文。
+
+## 7. v2520A／Android16专项结论
+
+Android16对应API36，高于APK min26，因此**版本号门槛通过**。APK target35不会自动禁止在API36运行，也不代表已针对这台手机验证。仓库有HONOR Android16的PRoot硬链接失败及补丁记录、另一处小米Android16权限请求异常处理；未查到v2520A对应设备验证。发布说明针对本次0.3.0只明确一个4096页大小真机覆盖验证。
+
+实物PRoot和PTY库的ELF LOAD对齐均为0x4000，是16KiB对齐的有利证据；仍不足以保证所有guest ELF、PRoot、系统限制和目标应用在16KiB设备上正常。下一轮经授权取 `Build.SUPPORTED_ABIS`、`getprop ro.product.cpu.abilist`、`getconf PAGE_SIZE`、空闲空间、ROM版本和Shizuku状态；本轮未连设备执行。
+
+Android官方文档说明：Android16上即使前台服务在运行，JobScheduler／WorkManager／DownloadManager的任务仍受配额约束；不能用“有常驻通知”证明后台任务无限运行。target35还受悬浮窗可见性与后台启动前台服务的条件限制。现有specialUse类型应保留用途声明和启动失败回执；不能把dataSync的超时规则简单套成specialUse必然同样超时，也不能把specialUse当免除所有省电限制的通行证。[Android16全部应用变更](https://developer.android.com/about/versions/16/behavior-changes-all)、[前台服务变化](https://developer.android.com/develop/background-work/services/fgs/changes)。
+
+现有keepRuntimeInBackground默认false；前台服务START_STICKY、stopWithTask=false有恢复代码，但强行停止、系统资源回收、厂商省电与Shizuku重启仍可中断。搜索到WAKE_LOCK声明，未在主源码找到实际newWakeLock调用；keepScreenAwake主要是窗口保持亮屏设置，不能由权限声明推断CPU唤醒锁一直持有。
+
+无Root也可能用Android11+无线调试启动Shizuku，但要由用户正常启用调试并配对；通常每次重启后需要再次启动。此结论来自[Shizuku官方手册](https://shizuku.rikka.app/guide/setup/)，不能从v2520A型号推断已获权限。用户拒绝授权、锁屏或Shizuku掉线时，任务进入等待恢复，不绕过锁屏、验证码或系统权限界面。
+
+## 8. Gemini中转适配与Key选择
+
+### 8.1 两条协议路线
+
+| 项目 | OpenAI兼容中转 | Gemini原生中转 |
+|---|---|---|
+| 典型请求 | `/chat/completions`；只有站点明确支持才用Responses | `models/{model}:generateContent`／`streamGenerateContent`；若站点只给Interactions则需另一适配 |
+| 鉴权 | 通常Bearer，但以站点文档为准 | 常见x-goog-api-key或SDK处理；中转可能有自己的鉴权，不能猜 |
+| 工具 | tools/function、tool_calls、tool_call_id、流式参数 | functionDeclarations、functionCall、functionResponse及模型所需签名元数据 |
+| 图片 | content中的image_url/dataURL或站点约定形式 | inlineData／fileData等，需核实代理转发与大小限制 |
+| 视频 | 不能由“OpenAI兼容”推定；常需独立视频工具 | 原生视频／Files上传或其他明确支持入口；也需代理实现 |
+| 现有DSH | Android自定义表单已能存协议/baseURL/model；需补图片声明 | 内置google可用；Android表单没有通用原生自定义协议；底层有可复用Google实现 |
+
+Google官方确有[OpenAI兼容入口](https://ai.google.dev/gemini-api/docs/openai)，但这不证明第三方站点实现相同能力。实际内嵌pi-ai的Google执行路径调用 `client.models.generateContentStream`；其 `createClient` 在设置model.baseUrl后清空自动apiVersion，说明baseURL是否包含 `/v1beta` 必须配置一致。代码保留文本／工具调用的thoughtSignature；后续中转不能丢弃这些供应商元数据。当前[Google thinking文档](https://ai.google.dev/gemini-api/docs/thinking)区分generateContent与Interactions签名位置，适配时必须按站点实际协议处理。
+
+**更新后的首选实施顺序：以用户提供的 `@ai-sdk/google` + `https://api.apikey.fan/v1beta` 为配置基线，优先扩展 Android 的内置 `google` route，而不是把它填进现有 OpenAI Chat 自定义选项。** 在RuntimeStore的provider覆盖中为 `google` 写入该baseURL、明确模型与 `input:['text','image']`，不设当前不受支持的自定义api枚举；复用rootfs已经携带的Google provider。OpenCode的 `gemini/gemini-3.8-flash` 是provider/model配置选择符，拟发到Google协议的模型名应是 `gemini-3.8-flash`，现已被站点公开CLI教程和Google官方模型页交叉支持；仍不能据此证明中转实际映射，不能把整串带斜杠名称当wire model。模型不在内置catalog时，显式填写可靠的contextWindow/maxTokens/input，不能照抄未经证实的超大上限。如果需要多个原生中转别名，才扩展dsh-llm-pi-ai的PROTOCOLS/schema接 `googleGenerativeAIApi`并固定版本补丁。OpenAI兼容路线保留为站点另有正式文档时的备选。
+
+配置中的 `pdf` 不等于当前DSH链已支持PDF：内嵌dsh-llm-pi-ai的MODALITIES只有text/image；PDF需独立附件解析/原生文件工具及授权，视频也未在该配置中声明。配置声称图片支持需用真实图片契约测试验证；本轮没有调用这个域名的API，也没有验证站点模型实际映射或上游身份。CLI截图与[站点公开教程](https://apikey.fan/docs/gemini)均给出 `gemini-3.8-flash`。补充核查发现内嵌Google catalog已收录它及正确thinking档位，可直接继承已有能力；详见第21节。此证据仍不等于成功调用中转。
+
+视频理解可作为同一助手的专用工具，由受保护代理访问支持视频的Gemini入口，返回时间戳证据；不必为了视频将所有聊天对象、权限和记忆再交给另一套总控。若中转没有原生视频支持，走授权媒体的字幕/音频转写+关键帧组合，并明确覆盖范围。
+
+### 8.2 必须补齐的适配项
+
+- Android `CustomProviderModel` 和TS类型增加 `inputModalities`，校验并写入运行时 `models[].input`；只在文档和图像测试通过后标记image。
+- 原生Google route明确protocol、baseURL路径规则、header策略、modelID、是否使用catalog别名；禁止“内置Google探测官方地址，实际请求中转地址”的错误成功提示。
+- `ModelConnectivityProbe` 现在主要GET models；对自定义非Anthropic默认Bearer。改为“模型列表探测／文字生成／工具来回／图片识别”分别显示结果。models成功不等于生成或工具调用成功；没有models端点也不必然不能聊天。
+- 重放并验证tool_call ID、参数片段、并行工具、工具错误、签名元数据、流中断和429；统一有界重试，不重复执行外部写操作。
+- 日志隐藏Key、Cookie、媒体URL签名、私聊正文；模型费用由站点提供的真实计费资料决定，不能用pi-ai静态NO_COST=0声称免费。
+- PRoot环境与AndroidKeystore传递Key的边界需缩紧：聊天插件不应可读取任意Key或创建任意外连；必要时由宿主ModelGateway代理代发。
+
+### 8.3 最小待补资料（不需要密钥值）
+
+已知候选域名/入口 `https://api.apikey.fan/v1beta`、Google AI SDK和模型选择符；CLI图片也已读取，使用同域名根地址、同模型和API Key环境变量；已补查站点公开CLI文档；仍缺完整原生接口契约、脱敏实际请求示例、两客户端使用方式是否对应不同路由/配额/限流的说明，以及目标模型的真实映射及额度；客户端最终请求路径和鉴权header名；流式tools／function calling与图片样例；视频/Files是否可用、单文件和上下文限制、数据保留条款；是否存在会话Cookie、OAuth、CLI登录换票或额外header。
+
+官方Gemini CLI可采用Google登录、Gemini API Key或Vertex AI认证；OpenCode是多provider客户端，provider配置决定协议。这些客户端官方说明并没有定义 `apikey.fan` 的两类渠道，更没有承诺谁更快：[Gemini CLI认证](https://geminicli.com/docs/get-started/authentication/)、[OpenCode providers](https://opencode.ai/docs/providers/)、[AI SDK Google provider](https://ai-sdk.dev/providers/ai-sdk-providers/google-generative-ai)。
+
+针对“哪个响应快”：用户已确认两份说明使用同一密钥，本报告不保存其值。因此当前证据是同一接入凭据的两种客户端配置，不能继续把它们描述成已证实的两个密钥等级或速度渠道。现有CLI图片和OpenCode文字配置已经指向同域名、同模型；区别是一个配置根地址，一个配置带 `/v1beta` 的SDK地址，这与客户端不同的路径拼接方式相容，但未抓取请求，不能证明最终请求完全相同。截图是在“使用API密钥”弹窗里选择Gemini CLI／OpenCode标签，更可能是客户端接入说明，不能仅凭标签认定不同后端渠道。还需核对thinking、上下文、流式选项以及站点是否按客户端/Key做不同路由或配额。未来在用户另行授权测速后，用不含隐私的固定文字/工具/图片样本，两种客户端请求配置交替做至少10组，分别记录首个可见输出TTFT、总完成时间、工具闭环时间、p50/p95、错误/429率、费用；冷/热请求分开，不能拿一个单次最快值下结论。本轮未获API调用授权，不执行测速。
+
+现有两份说明均可作为接入线索；安卓产品应直接实现经确认的Google/Gemini协议，不为接入而额外启动Gemini CLI或OpenCode整套客户端。**现有证据不能判定谁更快，也没有理由仅按客户端标签更换密钥。** 将来由用户在本机输入短期测试Key，验证后再换正式Key；此轮无API调用授权，不做试探请求。
+
+## 9. 推荐复用架构
+
+逻辑上始终是一个“小克”助手，技术上分离输入场景和执行权限：
+
+```
+主人本机私聊 / 已配对主人QQ私聊 / 获准QQ群 / B站任务
+                 ↓ 规范化事件、固定平台ID、来源与去重
+       ConversationRouter + OwnerBinding + ChannelPolicy
+                 ↓
+      统一Persona版本 + 作用域Memory + 当前Task状态
+                 ↓
+        一个DSH agent运行循环 + Gemini适配器
+                 ↓ 结构化工具意图（没有自行颁发的权限）
+       宿主ActionBroker / PolicyGate / 审计 / 串行设备队列
+          ↙                  ↓                    ↘
+   QQ界面适配器       视频证据与理解工具        B站界面适配器
+          ↘           原有设备桥、无障碍、Shizuku、副屏
+```
+
+- 保留：Capacitor管理界面、HarnessActivity、运行时生命周期、PRoot/PTY桥、版本固定与安装校验、会话持久化、附件、截图尺寸映射、设备能力查询、已有敏感窗口／锁屏闸门。
+- 修改：模型配置与能力探针；把主人授权和每场景工具范围引入所有执行入口；增加消息事件接入、发送事务、持久任务；存储升级／备份纳入新数据；服务恢复之后只续安全的待办。
+- 新增：助手人格包、可信身份映射、隔离记忆服务、QQ/B站任务adapter、消息去重与发送outbox、VideoObservation记录、授权UI和可撤销grant、加密备份导入导出。
+- 暂不选择：再同时运行AstrBot总控、MaiBot总控、Mobilerun总控。它们会重复agent循环、会话和权限，增加手机内存／电量／依赖以及错误归因难度。
+- 可选后续：独立官方QQ机器人消息adapter，仍使用同一身份核验、人格和记忆API；若可靠全天候聊天重要性高于“所有消息都由安卓UI收发”，让用户明确选择混合模式。手机操作保留，界面上说明当前通道与可用状态。
+
+信任边界必须比原始PRoot目录更强：PRoot不是内核级安全沙箱；同一Android应用UID下，单把数据库移到宿主目录或拆成两个进程不形成文件访问隔离。保留任意shell的编码进程与社交进程之间若要求强隔离，需Android隔离进程/独立UID服务与受限IPC，先验证PRoot在该设计下能否运行；不能只靠目录和Bearer令牌宣传安全。普通群session不开放terminal、exec、任意读写、session全局搜索、安装插件、任意HTTP/MCP、mobile_device_shell或Root；MemoryBroker/API层先按可信scope过滤，不能把整个主人事实库交给模型自行筛。仅在同一Node进程里以“不要读别的文件”的提示隔离并不充分；如仍保留编码agent的全局执行能力，应与社交agent分开配置和运行权限，敏感存储由宿主服务或隔离UID保管。主体仍是同一角色，不等于所有会话共享一个高权限进程。
+
+## 10. 可执行的改造文件清单
+
+以下均为拟议工作，本轮未改目标项目。新文件名是建议路径，供后续分支采用；必须同步现有测试和桥协议，不能仅改前端。
+
+| 范围 | 保留／修改／新增路径 | 具体工作与完成信号 |
+|---|---|---|
+| 模型配置 | 修改 `src/platform/types.ts`、`customProviders.ts`、`validation.ts`、`src/components/CustomProviders.tsx` | modalities、明确原生Google route、兼容参数和文档提示；保存后无信息丢失 |
+| 原生配置 | 修改 `A/runtime/RuntimeModels.kt`、`RuntimeStore.kt:prepareProviderPatch` | 字段端到端写入；image未知时保持未知／不虚报 |
+| 连通性 | 修改 `A/runtime/ModelConnectivityProbe.kt`、`MobileRuntimePlugin.kt`、`src/platform/native.ts` | 对真实目标做分层探测；未授权时只读配置，不自动耗费API |
+| 运行时适配 | 修改 `scripts/runtime-profile/patches/`及lock/workspace；必要时新增Google协议补丁 | 基于APK同版本适配器；工具签名和图像重放通过；构建rootfs后检查补丁存在 |
+| 统一助手插件 | 新增 `scripts/runtime-profile/plugins/dsh-companion/{package.json,cordis.patch.yml,lib/index.js,lib/conversation-router.js,lib/persona.js}` | 复用tools/systemPrompt/llm/session服务；一个persona多个scope |
+| 身份授权 | 新增 `A/companion/OwnerBindingStore.kt`、`ActionPolicy.kt`、`ActionBroker.kt`、`ActionGrantStore.kt` | 主人在本机配对固定ID；grant由宿主签发；群文本不可生成grant |
+| 桥闸门 | 修改 `A/DeviceBridgeServer.kt`、`A/runtime/RuntimeHost.kt`、`P/lib/index.js` | 对所有动作检查可信principal、scope、target、grant、expiry；不能只信请求体声称的owner |
+| 记忆 | 新增 `A/companion/CompanionMemoryStore.kt`、`MemoryBroker.kt`；插件新增 `lib/memory-client.js` | SQLite事实/事件/关系/任务，索引按scope；持久存储在guest任意执行读不到的位置 |
+| QQ事件 | 新增 `A/companion/QqNotificationListener.kt`、`QqUiAdapter.kt`、`MessageNormalizer.kt`，修改manifest与设置 | 用户单独启用通知访问；只收QQ白名单；通知用于提示，打开会话补齐并确认身份 |
+| QQ回复 | 新增 `ConversationScheduler.kt`、`OutgoingMessageStore.kt` | 群/私聊队列、去重、可取消、发前核对目标、发送后确认；超时不盲重发 |
+| 视频 | 新增 `VideoObservationStore.kt`、`VideoCaptureSession.kt`、插件 `lib/video-understanding.js` | BV/cid+时段+字幕/音频/帧hash+覆盖率+观察事实；模型响应对应证据 |
+| B站操作 | 新增 `BilibiliUiAdapter.kt`、`CommentDraftStore.kt` | 账号、视频、回复父级、草稿hash与grant一致才提交；记录结果不重复发 |
+| 后台恢复 | 修改 `HarnessKeepAliveService.kt`、`BootRecoveryReceiver.kt`，新增 `TaskRecovery.kt` | 恢复待观察任务；外部写处于unknown先核对，锁屏进入等待 |
+| 备份迁移 | 新增 `CompanionBackup.kt`、migration版本；修改RuntimePreservePolicy/cleanup等相关范围 | 新数据升级不丢；加密可迁移备份与删除墓碑；原有会话也可回溯 |
+| 管理界面 | 新增 `src/components/CompanionSettings.tsx`、`MemoryManager.tsx`、`PermissionManager.tsx` | persona预览、事实来源/更正删除、群权限、预算、暂停、待发布队列 |
+| 构建发布 | 修改 `scripts/build-embedded-runtime.py`、profile包清单与release审计步骤 | 输出新APK/源/清单；校验实际runner摘要；清晰自有包名及签名迁移方案 |
+
+不要直接改解包后的APK当长期维护方式。正式开发应从固定源码分支构建，安装前先处理签名：用户无法取得上游签名私钥时，自建版本通常不能覆盖原包；应采用新的applicationId／签名并提供迁移流程，或由上游授权签名。卸载原包会影响私有数据，不能以“先卸载再装”绕过迁移问题。
+
+## 11. 小克人格和长期记忆
+
+### 11.1 人设参考与授权边界
+
+已下载并检查 [deslop的claude-girl示例卡](https://github.com/Charliechen114514/deslop/blob/70e6a9478baaa270f3c5ca3868e58502d32e6e8c/example/personas/claude-girl.md) 与仓库MIT许可证。它提供“小克”身份、称呼、口吻、表情和社交姿态的可修改文本参考；卡中自述是社区非官方设定，列出不止一种视觉形象。因此不能替用户硬定成唯一橘发／黑发形象，也不把卡中未经独立核实的圈内梗和来源叙述当历史事实。
+
+**最新分工：人格、语气和台词由用户安装懒人包、接上Gemini后共同编写；本轮不创作定稿、不预设性格、不把示例卡写死进产品。** 我们负责资料整理与可编辑的人格能力。仓库文本MIT不连带授予卡中插画、表情包、角色商标或他人作品的使用许可；正式视觉待原作者和授权确认。
+
+小型资料索引（“已核验”只覆盖实际读过的示例卡及许可证，不把卡的二手叙述升级为原始出处事实）：
+
+| 资料维度 | 已收集线索 | 来源/证据强度与许可 |
+|---|---|---|
+| 人设格式参考 | deslop示例中的身份、称呼、姿态、表情与来源栏目 | 固定commit示例卡已读；[MIT许可证](https://github.com/Charliechen114514/deslop/blob/70e6a9478baaa270f3c5ca3868e58502d32e6e8c/LICENSE)已核验。只供用户/Gemini取舍，不采用其上层指令排序 |
+| 形象差异 | 卡分别提到橘发礼裙/书籍/向日葵纹饰，与黑发双马尾/黄裙两类二创 | 卡转述表情包站资料；原图、原作者、转载链与使用授权未独立核验。两种都不是本报告认定的唯一形象 |
+| 关系设定分歧 | 同事/朋友的家族版本，与“GPT姐姐和Claude妹妹”连载版本 | 卡提到维基条目、Pixiv连载等出处；均是待查的一手来源线索，不能合并成官方canon，也不预设与主人的关系 |
+| 社区梗 | SVG画图、鹈鹕骑车、电子牛马等；另有封号印象和外号 | 已收集的是卡中的转述，未逐项核验历史/作者。导入资料时标注社区戏称与来源，不当事实或强制口癖 |
+| 官方产品与二创区别 | Claude品牌、社区Claude娘/小克形象、用户自定角色是不同层次 | 本卡明确自称非官方；它不能代表Anthropic或授予第三方图像许可 |
+
+懒人包只提供资料导入/来源标签、人格编辑/与Gemini共创、预览、版本记录与回退；发布到群的身份说明仍保持真实AI助手身份。主人权限、隐私边界与记忆隔离由程序管理，不能被导入卡里的提示语改写。最终角色内容由用户确认，用户以后改人格也不应删掉历史事实和任务。
+
+### 11.2 四层持久结构
+
+| 层 | 建议内容 | 写入与隔离 |
+|---|---|---|
+| 固定人格 | persona_version、identity、values、tone、avatar_license、self_disclosure | 只由主人本机设置修改；保留版本及撤销；不是普通聊天提炼结果 |
+| 关系／语义事实 | entity、关系、偏好、承诺、称呼、重要日期 | 每条有owner/private/group scope、事实来源、置信度、确认状态、有效期；别人说“主人喜欢X”先作为未确认陈述 |
+| 事件记忆 | 原始消息引用、发生时间、群/会话、摘要、视频证据、纠错链 | 追加式事件，敏感原文按保留策略；不同群互不检索，私聊不回流群聊 |
+| 任务状态 | task_id、目标、当前步骤、暂停原因、授权、幂等key、发布结果 | 由执行器落库；模型文本不能把pending改成sent；重启可恢复 |
+
+最小记录字段建议：`memory_id, subject_id, scope_type, scope_id, fact, source_event_ids, created_at, observed_at, valid_from, valid_to, confidence, verification_state, supersedes_id, deleted_at, sensitivity, persona_version`。向量只是检索索引，不能是唯一事实源；普通SQLite+FTS先做准确检索，只有语义召回确有收益才增向量库。
+
+作用域默认：主人私聊可读主人授权的个人记忆；群A只读群A可公开资料和公共人格；群B独立。跨群转述、转发主人私聊需独立授权。相同昵称不是同一人；平台稳定ID、渠道和账号构成身份键。官方机器人的member_openid/user_openid/union字段与个人QQ号是不同标识，不能自动相等。纯UI读取常拿不到可靠ID，应经本机联系人详情／明确配对确认，身份不明时禁止主人命令，不用昵称推断。
+
+压缩流程：原始事件先落盘→提炼候选事实→作用域和来源验证→更新事实版本→生成本轮“人格+可信关系事实+未完成任务+近期消息”。关键承诺和授权从数据库按ID读取，不能让压缩摘要覆盖。模型输出摘要不能提高source trust；引用的群聊命令仍标为群聊资料。
+
+更正／删除：用户可查看“为何记住”；纠正形成supersedes链，过期事实不再检索；删除连同原文引用、FTS/向量、缓存和摘要重建一起处理。备份包含删除墓碑／版本，恢复旧备份不得使已删除事实悄悄复活。确需彻底清除时明确旧离线备份也要删除；不承诺无法控制的远端中转已删除数据。
+
+备份：加密导出人格、事实、关系、事件索引、任务状态、授权历史及所需附件引用；schema_version和逐文件hash；默认不包含Key、QQ/B站Cookie及运行期token。AndroidKeystore绑定设备，跨手机备份应另用用户持有的恢复口令／恢复密钥加密，不直接搬Keystore密文。测试在新安装、空数据库导入后仍保留来源、删除状态和待办；上游的3份本机sessions快照不能取代这项。
+
+## 12. 权限设计：自然聊天与主人控制并存
+
+主人地位不是system prompt里写一句“听XX的话”，而是本机注册的可信身份与能力范围。群主／管理员在平台有管理权，也不因此成为助手主人；群友说“主人授权了”只是消息内容。
+
+| 动作 | 默认主体与范围 | 执行条件 |
+|---|---|---|
+| 普通群聊天 | 已获准群内成员触发 | 使用该群上下文；仅在该群回复，有限频率，可保持沉默 |
+| 主人私聊 | 本机可信会话或已配对主人ID | 可用私人关系记忆；敏感数据不自动回发群 |
+| QQ发送 | 主人已授予指定群／私聊范围 | target固定、内容策略和数量/时段预算；发前核对当前会话 |
+| B站评论 | 主人逐条确认，或明确有界授权 | 绑定账号、BV/cid、评论hash／允许类型、次数、到期时间 |
+| 切账号、关注、删除、购买、转账、安装、改授权 | 不由普通群触发 | 单独本机授权；当前研究不执行 |
+| 验证码、密码、支付、登录风控 | 人工处理 | 暂停，不尝试规避 |
+| shell/Root/读文件/MCP | 私有管理任务按独立grant | 群agent不具备这些通用能力 |
+
+有界授权数据建议包含 `grant_id, principal, channel, account_id, allowed_actions, target_ids, max_count, expires_at, content_constraints, requires_review, revocation_epoch`，由宿主保存与签发。模型只提交意图，不接触签名密钥，也不能通过自报principal更换权限。
+
+所有写操作采用 `draft → authorized → dispatching → confirmed/failed/unknown`。数据库事务先记录幂等key再点击发送；工具超时、APP闪退或网络中断落unknown，下一步查询界面／已发记录核对，不能直接重发。聊天回复可在用户事先给的范围内自动发，不要求每句话弹窗；越界时给主人具体草稿与目标审批。
+
+任务执行队列同一时刻只持有一个设备UI控制权。主人触屏、切app或对话变化立即暂停／重新观察；群聊天到达时不打断正在提交B站评论的最后一步，先排队。模型推理可与UI等待并行，但不同群的动作不得同时抢一个输入框。
+
+## 13. QQ路线：保留真实安卓使用
+
+| 路线 | 能做到什么 | 实际差异／代价 | 建议 |
+|---|---|---|---|
+| 原有DSH无障碍+Shizuku+副屏 | 用安卓QQ界面看会话、输入、发消息、打开媒体 | 消息事件和作者识别需补；依赖解锁、QQ UI版本、窗口可访问性；不能保证全量历史／撤回事件 | **首选真实账号操作路线**，先以获准群和主人私聊实测 |
+| 新增通知监听+UI补全 | 后台发现QQ通知，按会话排队，打开QQ核对完整内容 | 静音群、通知摘要合并、内容隐藏、同名群、漏通知；通知不是可靠完整聊天记录 | 作为触发源，显式标记缺口；不把通知标题当身份真值 |
+| QQ官方机器人 | 规范消息事件、稳定消息ID与bot身份、平台授权范围内发言 | 机器人账号不同于用户QQ；已有全量群消息模式但需开通；权限/配额/群配置另核验 | 用户接受bot入口时优先于非官方协议；安卓动作继续保留 |
+| OneBot/个人号协议桥 | 取决于实现，可提供个人号消息和平台动作 | OneBot是接口规范，具体桥的维护、登录、环境与账号风险另算；常需独立进程或PC QQ环境，不是现成安卓APK插件 | 仅用户明确接受混合路线后再选；不作为默认，不做风控绕过 |
+
+[QQ官方全量群消息事件](https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_message_create.html)目前说明启用“接收所有消息”后投递群内每条消息；[消息收发概述](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/overview.html)要求处理重复消息与发送序列。账户具体可开权限未验证。检索页一度不能由网页工具打开，已在同一执行环境用HTTPS读取官方正文并保存证据，未仅依赖搜索摘要。
+
+自然群聊应实现：是否发言决策（被问、相关话题、正在被讨论、主人许可的主动话题）、冷却、每日预算、多人连续消息合并、对撤回/更正的反应、在上下文不足时问清／沉默。回复语气可自然，首进群和被询问身份时明确AI助手。对群友的角色扮演邀请可以在可授权人格范围内参与，但不能借角色扮演改变权限。
+
+真实账号测试需要用户明确自己的QQ账号、允许进入的群和群管理者同意。消息收集最小化；禁止把未授权私聊或其它群内容送到新群、公共日志或第三方插件。
+
+## 14. B站：真正看内容再评论
+
+**观看验收的对象是模型获得的时序内容证据，不是是否打开了播放页、读了标题或让播放器跑了几分钟。** UI确认当前登录账号和目标BV/cid/分P，开始观察后生成VideoObservation：标题/来源只是元数据；正文证据要包含字幕时间轴、授权音轨/转写、关键帧时间戳，以及模型对画面和声音的联合理解。
+
+优先次序：
+
+1. 真实安卓B站打开目标视频，确认BV、分P、时长和账号；交互通过现有UI桥。播放器登录或验证码交还用户。
+2. 若用户提供文件或平台允许取得媒体，使用原生Gemini视频工具，保存覆盖时段与模型引用的时间戳；若视频是长片，分段且检查漏段和字幕错位。普通B站URL不是Google文档承诺支持的YouTube URL，不直接假设贴链接就能看。
+3. 否则收集用户授权的字幕、音频转写和时间戳关键帧；镜头变化补帧，涉及细节时局部回看。只有字幕时标“读过字幕”，只有抽帧时标“观察抽样画面”，不声称完整听懂。
+4. 如需在安卓捕获播放音频／屏幕，新增规范MediaProjection／AudioPlaybackCapture会话与相应前台服务类型和用户同意。目标App可拒绝音频捕获／受保护画面可为空；失败时不能绕过DRM或擅录其它应用。优先用合法媒体输入，避免把系统级录屏能力当万能方案。
+5. 内容理解产出事实表：`time_range, visual_fact, spoken_fact, evidence_refs, uncertainty`。用视频中间／结尾的细节检验，不向模型提示答案；误识别时补看，不用标题补编。
+6. 评论草稿关联该VideoObservation，主人可审阅内容和证据。批准后才在目标视频的评论框发送；核对当前账号、视频、父评论和最终文本，再记录回执。超过授权额度或内容变化重新批准。
+
+[Google视频理解文档](https://ai.google.dev/gemini-api/docs/video-understanding)支持文件／内联视频等输入方式；第三方中转是否保留这些路径、文件处理状态和大小限制仍未知，不把官方能力移植成本站点承诺。
+
+`iseenope/bilibili-mcp-server`实码提供字幕、视频信息、评论以及调用ffmpeg合并DASH音视频的工具。它不是官方开放API，不是“视频理解模型”；还涉及Cookie/账号凭据。可按MIT许可审查并借鉴独立的只读接口，或在明确授权后作可选媒体辅助。**默认不直接启用其发布工具**：`src/tools/comment.ts:registerCommentTools`调用API后直接返回结果，本身没有本方案的主人grant、审阅和去重事务；必须套ActionBroker。它也不能替代用户要求的安卓B站实际操作。
+
+## 15. 参考项目的选择与许可证
+
+| 项目／固定提交 | 查到的具体实现 | 许可证／使用决策 |
+|---|---|---|
+| AstrBot `abf683071952375ec36baa4cad6b6f3d9c9bb03f` | `astrbot/core/provider/sources/gemini_source.py`的base_url/工具配置；`platform/sources/qqofficial/`含group_message_create；`aiocqhttp/`、`persona_mgr.py`、`agent/mcp_client.py` | 仓库AGPL-3.0；适合作为协议和会话边界参考，可选独立消息网关；不直接拷进MIT项目后仍称全MIT |
+| Mobilerun `11dcdebdec9ea99f172dd7e80af7ba1eadbeb6c8` | `mobilerun/tools/ui/provider.py`的UI状态/截图归一化；Portal/ADB路线；多模型配置 | MIT；作为DSH设备兼容失败时的替代评估，不双套抢控同一屏幕；Portal自身许可证另核 |
+| MaiBot `6bcb2e068cd98793a132cb8cc4ebf3cc00cb8fc3` | 社交聊天、回复规划及 `src/A_memorix`记忆子模块 | 主仓GPL-3.0，子模块另有LICENSE与许可说明；学习行为设计，非默认整合，复用任何代码须逐模块核许可 |
+| bilibili-mcp-server `20eedd09862aea2c160163007f45221c544651b2` | `src/tools/video.ts`、`download.ts`、`comment.ts` | MIT；仅可选辅助，非官方API，账号与发布权限必须外置约束 |
+| deslop `70e6a9478baaa270f3c5ca3868e58502d32e6e8c` | `example/personas/claude-girl.md` | MIT文本示例；不连带授予其引用插画版权 |
+
+主项目MIT；直接依赖还有Apache-2.0、ISC等；PRoot GPL-2.0-or-later、Operit构建材料AGPL-3.0、Ubuntu包各自许可。发布材料已带对应源码，但本轮没有做完整传递依赖法律审查或逐字节重编译。应用源码可修改不等于APK内所有第三方组件都变成MIT。对没有明确许可的素材/代码只做行为和接口分析，不复制。闭源QQ/B站客户端只按用户可见UI与公开接口交互，不搬运其代码。
+
+参考仓库：[AstrBot](https://github.com/AstrBotDevs/AstrBot/tree/abf683071952375ec36baa4cad6b6f3d9c9bb03f)、[Mobilerun](https://github.com/droidrun/mobilerun/tree/11dcdebdec9ea99f172dd7e80af7ba1eadbeb6c8)、[MaiBot](https://github.com/Mai-with-u/MaiBot/tree/6bcb2e068cd98793a132cb8cc4ebf3cc00cb8fc3)、[B站MCP](https://github.com/iseenope/bilibili-mcp-server/tree/20eedd09862aea2c160163007f45221c544651b2)、[deslop](https://github.com/Charliechen114514/deslop/tree/70e6a9478baaa270f3c5ca3868e58502d32e6e8c)。本轮参考项目只解压和读源，未安装运行。
+
+## 16. 实施阶段与真实验收
+
+阶段是交付门槛，不是把最小演示算成整体完成；每阶段通过后再接下一段。当前均为待授权开发/验证。
+
+| 阶段 | 产物 | 依赖／完成条件 |
+|---|---|---|
+| A 基线与迁移 | 独立构建标识、数据备份、设备能力报告 | ABI/页大小/空闲空间/ROM确认；旧数据迁移及新签名计划；runner来源差异有记录 |
+| B 模型与视觉 | 固定Gemini route、文本/工具/图片契约 | 站点文档和本机Key；真实图片可识别、工具回传可续轮，不只是models成功 |
+| C 角色与可信边界 | 统一人格、主人配对、scope策略、持久memory/task | 私聊/群隔离、注入攻击、压缩恢复、纠错删除验收通过后才开放群工具 |
+| D QQ真实使用 | 通知触发+UI补齐+稳定目标确认+发送outbox | 用户选定群/账号授权、解锁可用；漏消息/重复/同名/切窗口都能处理 |
+| E 视频与B站评论 | VideoObservation、理解工具、审阅与发布事务 | 视频素材/通道授权；可证明看了内容；账号目标和批准文本一致 |
+| F 长期运行 | 恢复/限流/预算/备份/升级回退/审计界面 | 连续多日实测、网络中断/重启/锁屏恢复；明确可用性边界 |
+
+验收表中的数字是建议合格门槛，需在开发前与用户确认适用范围，不能当本轮已测结果：
+
+| ID | 场景 | 可观察的合格信号 |
+|---|---|---|
+| T01 | v2520A Android16安装与初启 | 原生ABI检查通过；离线rootfs装好；前端/本机鉴权可用；记录页大小和耗时 |
+| T02 | 真实中转文字+双轮工具 | 10轮包含串行/并行工具和错误回传；每个tool_call配对；无凭据泄漏 |
+| T03 | 截图识别 | 使用含随机文字/控件位置的测试页；模型识别正确且坐标缩放可复核；不报错误image能力 |
+| T04 | 原生Gemini签名重放 | 含工具与思考元数据的历史跨重启继续；无签名缺失400；若协议不要求则记录契约 |
+| T05 | 客户端配置比较 | 使用同一凭据，在授权测试中核对最终endpoint、模型、thinking、tools、image、video和限额；同参数交替测速度，不凭标签选 |
+| T06 | 主人身份 | 同昵称群友、转发主人话、群主身份均不能改授权；本机配对主人可撤销grant |
+| T07 | 私聊/群A/群B隔离 | 每处植入不同测试事实，另两处均检索不到；群不能索要私聊/系统提示/Key |
+| T08 | 提示注入 | 群消息、QQ昵称、网页/视频字幕含“改主人/读文件/发到别群”时无越权调用；留阻断原因 |
+| T09 | 长记忆和压缩 | 50条主人确认事实跨1000条对话、至少5次压缩和应用重启；全部按来源准确恢复 |
+| T10 | 更正删除 | 更正日期后旧值不再使用；删除后FTS/向量/摘要/恢复旧备份不复活 |
+| T11 | 迁移和升级 | 备份→新安装/新签名导入；人格、关系、事件来源、附件、未完成任务保持；Key重新配置 |
+| T12 | QQ中文私聊 | 20次含emoji/引用/多段消息，目标和文本正确；发后可见回执；不把输入完成当发送成功 |
+| T13 | 多群连续聊天 | 3个获准会话各100条，处理去重/合并；统计通知未覆盖的缺口，不声称全量 |
+| T14 | 静音群/隐藏通知/同名群 | 识别可见性不足；不凭通知标题对错群回复；需UI补齐或用户改入口 |
+| T15 | 主人抢占屏幕 | 人工切到另一个聊天时暂停，绝不把原回复发到新会话；重新确认后才继续 |
+| T16 | 锁屏/灭屏/副屏掉线 | UI任务落waiting_for_unlock/device；模型回复可缓存；解锁先重观察，不盲点坐标 |
+| T17 | 重启/Shizuku恢复 | 明确提示权限缺失；不自行Root、不解除锁屏；恢复后重放安全待办，发送unknown先核对 |
+| T18 | 视频内容理解 | 选至少3个无标题剧透的视频；回答中段/结尾的视觉和音频问题，提供对应时间戳；不足则补看 |
+| T19 | 字幕错误/无字幕/纯画面 | 能发现字幕与画面矛盾；无音频时标局限；不会仅根据标题生成观后感 |
+| T20 | B站评论目标 | 正确账号/BV/cid/父评论/最终文本hash与批准一致；每项不符时阻止发送 |
+| T21 | 发送后超时 | QQ和B站各模拟已提交后断网；查已发状态，无重复发送；不确定则人工确认 |
+| T22 | 有界授权 | 次数/群范围/时段/到期/撤销任一越界时禁止，聊天自然语句不能延长grant |
+| T23 | 后台长期运行 | 建议72小时混合场景，记录漏消息率、恢复时间、电量/温度、崩溃和API成本；不以常驻通知代替测量 |
+| T24 | 权限/验证码/风控 | 授权拒绝、验证码、支付页、账号限制出现时停在人工处理；没有规避逻辑 |
+| T25 | 备份损坏/磁盘不足 | hash不符拒绝导入、保留旧数据；存储不足时不删除唯一副本；诊断不含私密正文 |
+
+## 17. 待用户提供的信息与未验证边界
+
+已知：v2520A、Android16；目标是同一Gemini驱动的小克助手，真实安卓QQ/B站使用、群聊和长期记忆。仍需：
+
+1. 中转站完整模型/工具/多模态契约与Argon的可用模型ID、路由/配额说明；公开CLI教程已找到，勿重复要求基础接入说明。已收到并读取OpenCode文字配置与两张CLI图片，勿再要求重复提供；**不要发Key值**。
+2. ABI、页大小、RAM/存储余量、ROM完整版本、是否已安装并授权Shizuku／无障碍；不根据型号推定Root。未来需要实机授权才能测。
+3. QQ使用个人号还是可接受独立官方bot辅助；主人和目标群的可靠标识、群同意范围；静音群和锁屏时是否要求即时聊天。如果要求锁屏全自动操作手机，需先调整可行性预期。
+4. B站账号操作范围、视频来源、评论逐条批准或有界自动发布的预算；没有视频素材/采集授权就不能验收“看完”。
+5. 小克资料采用范围和视觉原作者许可；人格、称呼、语气与台词由用户安装后与Gemini共创，我们不代写。首次开发只需确定编辑/导入/版本管理需求。
+6. 记忆保留期限、哪些数据可发中转、备份目标和加密恢复方式、跨设备需求。
+
+未验证：目标APK真实运行、v2520A上PRoot/副屏/QQ/B站兼容性、任何账号登录与收发、中转API契约/质量/费用/两渠道速度、视频识别效果、全天后台稳定性、完整源二进制可复现、全部传递依赖的漏洞与许可证合规、签名证书独立归属。没有把静态推断写成已成功运行。
+
+图片读取经Library正规materialization流程在用户当前Codex环境完成，两张图片均已实际看过。只记录上述非敏感配置；秘密行未抄写、未传给API、未进入报告/证据包，临时本地图片在读取后删除。
+
+本轮无自动审批拒绝、无待批的目标执行操作；没有因权限阻断而偷偷切换环境。网页工具对部分官方站点的读取超时已由同一环境HTTPS静态下载替代。保留的技术不确定性是反编译错误和runner声明摘要差异，不影响已完成的静态证据与改造路线交付。
+
+## 18. 本地证据与取回清单
+
+完整研究目录：`<AUDIT_ROOT>`。
+
+- `downloads/`：APK、checksums、release/runtime manifest、对应源码与固定提交源码归档；rootfs为APK内提取。
+- `source/android/dphmoblie-deepseek-harness-android-e9be0e4/`：固定提交源码。
+- `source/corresponding/`：对应源码、内层manifest及解出的构建材料。
+- `apk-static/`：native与support脚本；`decompiled/`：JADX解码manifest及Java近似源码；`rootfs-static/`：静态提取运行时文件，未执行。
+- `evidence/checksum-verification.json`、`release-api.json`、`apk-signature.txt`、`apk-badging.txt`、`apk-manifest.txt`：身份校验原始输出。
+- `evidence/apk-zip-list.txt`、`rootfs-tar-list.txt`、`native-provenance.json`、`proot-elf.txt`、`pty-elf.txt`：制品结构与ABI证据。
+- `evidence/asset-source-comparison.json`、`dex-marker-map.json`、`dsh-package-inventory.json`、`jadx.log`：源码对照与局限。
+- `evidence/runtime-code/`：便于复核的内嵌DSH关键包副本，保留其LICENSE；`.pnpm`完整原路径见inventory。
+- `evidence/web/`：QQ全量消息和Gemini兼容文档的官方正文快照；`reference/`：参考仓库固定提交元数据和源码，只读分析。
+- `report/`：本报告的最终文本、HTML及紧凑证据包；旧PDF/DOCX为内部排版稿。紧凑包不含321MB APK和全部rootfs；全量制品仍在研究目录可取回。
+
+本次Library交付以完整TXT、HTML及紧凑证据ZIP为准，不包含未完成最终页面复检的PDF/DOCX。
+
+报告中的“新增路径”“验收用例”都是待实现设计；本轮的完成定义是**实物核验、源码定位、明确差异和可执行方案**，不是已经交付一个可登录发言的助手。
+
+
+## 19. 核心源码直达索引
+
+以下链接固定到发布commit，便于从报告直接复核，而非跳到会变化的主分支：
+
+- [最终权限来源与核心组件](https://github.com/dphmoblie/deepseek-harness-android/blob/e9be0e43629f8b744991c2cf9efd160ca7d41abc/android/app/src/main/AndroidManifest.xml)（最终合并结果另见APK证据）。
+- [CustomProviderApi与模型字段](https://github.com/dphmoblie/deepseek-harness-android/blob/e9be0e43629f8b744991c2cf9efd160ca7d41abc/android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeModels.kt#L44)。
+- [prepareProviderPatch字段写出](https://github.com/dphmoblie/deepseek-harness-android/blob/e9be0e43629f8b744991c2cf9efd160ca7d41abc/android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeStore.kt#L648)。
+- [截图模型能力检查](https://github.com/dphmoblie/deepseek-harness-android/blob/e9be0e43629f8b744991c2cf9efd160ca7d41abc/scripts/runtime-profile/plugins/dsh-mobile-shizuku/lib/index.js#L360)。
+- [设备桥鉴权与命令分派](https://github.com/dphmoblie/deepseek-harness-android/blob/e9be0e43629f8b744991c2cf9efd160ca7d41abc/android/app/src/main/java/io/deepseekharness/mobile/DeviceBridgeServer.kt#L160)。
+- [主屏无障碍实际闸门](https://github.com/dphmoblie/deepseek-harness-android/blob/e9be0e43629f8b744991c2cf9efd160ca7d41abc/android/app/src/main/java/io/deepseekharness/mobile/accessibility/DeepSeekAccessibilityService.kt#L144)。
+- [Shizuku截图及Shell分支](https://github.com/dphmoblie/deepseek-harness-android/blob/e9be0e43629f8b744991c2cf9efd160ca7d41abc/android/app/src/main/java/io/deepseekharness/mobile/shizuku/DeviceCommandRunner.kt#L432)。
+- [数据保留白名单](https://github.com/dphmoblie/deepseek-harness-android/blob/e9be0e43629f8b744991c2cf9efd160ca7d41abc/android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimePreservePolicy.kt)。
+- [本机会话快照范围和限制](https://github.com/dphmoblie/deepseek-harness-android/blob/e9be0e43629f8b744991c2cf9efd160ca7d41abc/android/app/src/main/java/io/deepseekharness/mobile/runtime/RuntimeSessionSnapshots.kt)。
+- [HTTP/WS预加载鉴权](https://github.com/dphmoblie/deepseek-harness-android/blob/e9be0e43629f8b744991c2cf9efd160ca7d41abc/scripts/mobile-auth-preload.cjs#L100)。
+- [PRoot声明摘要与许可证](https://github.com/dphmoblie/deepseek-harness-android/blob/e9be0e43629f8b744991c2cf9efd160ca7d41abc/THIRD_PARTY_NOTICES.md)。
+- [CI实际PRoot构建步骤](https://github.com/dphmoblie/deepseek-harness-android/blob/e9be0e43629f8b744991c2cf9efd160ca7d41abc/.github/workflows/android-build.yml#L251)。
+
+
+## 20. 安卓懒人包的具体实施与APK交付计划
+
+最终目标是可安装、可引导配置、保留原DSH用途的安卓助手懒人包；本报告是该产品的实施依据。本轮未开始开发，下一轮须单独获得开发额度授权。开发授权也不自动包含安装实机、登录平台、使用收费API或发布消息/评论；这些动作在对应验证阶段按用户实际授权执行。
+
+1. **建立可维护的产品分支。** 从本报告固定commit开始，先完成原版构建与基线回归，确定自有applicationId、展示名、versionCode和签名保存方式。保留原DSH编码/终端、会话、运行时管理、文件往来等功能；社交模式采用受限入口。升级与原版并存/迁移设计先落地，不要求先卸载原版。
+2. **先解决两个硬依赖。** 实现原生Google中转配置端到端写入和图片能力声明；落实同UID/通用shell与社交权限之间的实际边界。随后把第10节文件清单按模型、可信授权、记忆、QQ、视频/B站、长期恢复顺序完成，不把几段提示词拼装当成完整助手。
+3. **首次启动向导。** 用户在手机本机输入endpoint/model/key，Key不进APK、rootfs、默认配置、日志或示例；逐项解释并引导无障碍、Shizuku、通知访问、悬浮窗和后台权限，权限拒绝时显示可用功能。配置小克称呼/人格与素材来源、记忆规则/恢复口令；由用户打开QQ/B站完成账号登录，再选择主人配对、允许群/联系人、视频任务和发布预算。向导不得采集密码或自动越过系统授权。
+4. **完整产品页面。** 提供私聊入口、记忆来源/更正删除、账号与会话范围、消息/视频任务队列、发言草稿与授权、暂停/恢复、备份迁移和脱敏诊断。清晰显示在线、等解锁、等Shizuku、等人工登录、待批准和结果未知；不能把后台通知存在显示成全天可用。
+5. **分阶段验证并保留回归。** 先静态构建与本地可控数据测试，再在获准设备/测试账号上执行T01–T25；同时回归原DSH会话、终端、文件、更新/回退和原有设备操作。对未获准的API、账号或发送测试明确记为待测，不能宣称整体通过。用户最终收的是产品，不是只有一个群里回复成功的演示。
+6. **发布可复核的安装包。** 交付ARM64正式签名APK、对应源码归档/固定提交、rootfs及runtime/release manifest、SHA-256清单、签名证书指纹、依赖/许可证清单、安装与迁移说明、实际测试记录和已知限制。对PRoot runner重新记录构建前后摘要，闭合本轮发现的声明差异。安装包不含用户秘密、登录态和私人记忆，首装可离线展开内嵌运行时；模型调用及首次授权仍需用户配置。
+
+开始开发前真正影响架构的选择是：是否保留原版签名以外的新包并存、如何隔离保留的编码/终端能力、QQ纯安卓UI是否接受通知不全和锁屏限制、视频采用哪种获准素材入口。小克精细视觉、部分聊天措辞可后置；可靠身份、记忆隔离、图片能力、发送事务和备份不能后置成“以后再加”。开发轮次的完成信号为上述安装包与证据齐备，并如实列出实机/账号验证状态；当前研究轮次到此交付，不进行开发或安装。
+
+
+## 21. DeepSeek策略逐项核对，以及Gemini 3.8 Flash／4 Argon适配
+
+### 21.1 先给具体结论
+
+**不能只替换baseURL/model，但也不必把所有带DeepSeek名字的模块重写。** 本轮直接检查了APK内rootfs的已安装JS，发现DeepSeek专用适配器、通用agent机制和已有Google适配器三层。下列 `R/包名/lib/index.js` 指证据包 `evidence/runtime-code/包名/lib/index.js`，原始 `.pnpm` 路径见 `model-strategy-package-paths.json` 和 `dsh-package-inventory.json`；`G/` 指实物pi-ai的 `dist/`。这些不是根据仓库名猜出的功能。
+
+- **3.8 Flash已有可复用能力。** `G/providers/data/google.json` 实际包含 `gemini-3.8-flash`：text/image、contextWindow=1048576、maxTokens=65536，reasoning=true，档位仅low/medium/high，off/minimal/xhigh/max明确为null。因此优先保留provider=`google`，覆盖中转baseURL和允许模型，继承这个目录；不要把“新建未知自定义route默认text”误写成“内置3.8完全不支持图片”。目录额度和价格是上游静态数据，不能当成中转额度／收费。
+- **Argon确有具体代码缺口。** `G/providers/data/google.json` 未收录 `gemini-4-argon`；`G/api/google-shared.js:37` 的 `usesGoogleThinkingLevel()` 只匹配Gemini 3、部分latest别名和Gemma 4，未匹配Gemini 4 Argon。若只手工加模型并开启reasoning，`google-generative-ai.js:253` 会落入旧式预算参数分支，而不是明确的thinkingLevel。需补模型profile和格式能力，不能仅靠修改提示词。
+- **没有显式thinking选择也可能不是“上游默认”。** 内置3.8的 `streamSimple()` 在未传reasoning时进入disabled分支，`getDisabledGoogleThinkingConfig()` 再经 `clampThinkingLevel(off)` 落到首个支持档位low。静态推导意味着现实现可能实际发送LOW，而UI没有显示选择；官方默认是medium。应显式保存并展示所选档位，不能把off标成真正关思考。
+- **压缩器是编码任务模板。** 现有英文工程检查点、provider replay状态、thought signature和上下文缓存均不能当人格/关系记忆；人格、事实来源和主人授权继续采用第11–12节独立持久层。
+
+### 21.2 “4a”的正式名称与两模型边界
+
+用户先前的“4o”已更正为“4a”。Google正式名称为 **Gemini 4 Argon**，正式API ID为 `gemini-4-argon`；官方没有在所查模型页把 `4a` 列为API ID。可以把Argon列为第二候选profile，但中转站是否接受此ID／别名尚未验证；不可擅自改成GPT-4o、Gemini 4.0或虚构 `gemini-4a`。
+
+| 能力 | Gemini 3.8 Flash | Gemini 4 Argon | 对此懒人包的含义 |
+|---|---|---|---|
+| 官方状态与ID | 稳定版 `gemini-3.8-flash` | 稳定版 `gemini-4-argon`，2026-10-13 GA | 官方稳定版不等于中转账号已开放；模型mapping与限流要另测 |
+| 输入/输出 | 官方text/image/audio/video/PDF输入、text输出 | 同样支持上述输入、text输出 | 当前DSH pi-ai接缝只声明text/image；视频、音频、PDF仍需专用工具链 |
+| 工具调用 | 官方支持 | 官方支持 | 保留functionCall/Response、调用ID和签名；按中转实际schema测试 |
+| thinking | low / medium / high，默认medium；minimal不支持 | low / medium / high，默认medium | 两profile分别声明，不继承DeepSeek的off/low/high/max；人物口吻不靠thinking档位控制 |
+| 官方容量 | 输入上限1048576、输出65536 | 输入+thinking+输出共享1048576；Generate Content单流65536、非流REST单请求32768 | profile分别记录预算语义；Argon长期续写另设总预算，不能混用Interactions与Generate Content的单次上限 |
+| 缓存 | 官方列为支持 | 仅隐式缓存，不支持显式cachedContents | 缓存是供应商优化，不能存长期关系；不能把cache命中当备份 |
+| 本APK情况 | 已有目录与正确thinking档位；仍缺Android中转入口和实测 | 未收录、thinking格式识别缺失、SDK早于当前Argon示例基线 | 3.8先做稳定基线；Argon补齐后作为可切换profile |
+
+来源：[3.8模型页](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash)、[Argon模型页](https://ai.google.dev/gemini-api/docs/models/gemini-4-argon)、[官方发布记录](https://ai.google.dev/gemini-api/docs/changelog)。当前Google文档同时有Interactions和Generate Content两套，不能混读字段；本APK实际调用 `models.generateContentStream`，故接入细节以[Generate Content thinking](https://ai.google.dev/gemini-api/docs/generate-content/thinking)和[Argon Generate Content迁移页](https://ai.google.dev/gemini-api/docs/generate-content/latest-model)为准。
+
+站点[公开CLI教程](https://apikey.fan/docs/gemini)与用户截图一致：根地址 `https://api.apikey.fan`、模型 `gemini-3.8-flash`、变量 `GEMINI_API_KEY`。公开搜索尚未找到足以确认Argon路由的站点资料。Google官方支持不证明中转原样转发视频、Files、continuation、缓存或所有thinking字段；本轮没有探测API、没有测速。
+
+### 21.3 按真实代码逐项决定保留、修改与验证
+
+| 项目 | 已核验代码／行为 | Gemini适配结论 |
+|---|---|---|
+| provider分支与默认路由 | `R/dsh-base/cordis.patch.yml:90` 默认deepseek-official/deepseek-flash；`R/dsh-llm-deepseek:400` 拒绝改protocol，只接受Messages兼容baseURL；`:1590 serialize` 写Messages请求 | **必须修改配置**为google原生route，不把中转塞进DeepSeek专用adapter。通用LlmRuntime/agent循环**直接复用** |
+| DeepSeek能力与参数 | `R/dsh-llm-deepseek:19–55` 默认1M上下文/256000输出；`:1712` 默认high，`thinking.type`＋`output_config.effort`；`:184 deepSeekImageTokens`为DeepSeek图像计费 | **禁止跨模型照抄**这些默认值、图像token算法和wire字段；Gemini按独立profile。站点额度和usage **实测后决定** |
+| 模型识别和手工模型 | `R/dsh-llm-pi-ai:656 resolveRouteModels` 优先继承同provider/id目录；未知模型无input则默认text；`:585 resolveModelReasoning` 未知模型无reasoning元数据则false | 3.8目录**直接复用**；Android增加modalities/reasoningEfforts及profile校验 **必须修改**。Argon新增明确目录，不能用名字猜能力 |
+| system/developer与角色 | `R/dsh-system-prompt:226` 默认身份是“powered by DeepSeek Harness”，不是“底层一定为DeepSeek”；支持personaPrefix/suffix及scoped section；`R/dsh-llm-pi-ai:1273/1296` 处理system/developer；`G/utils/transcript.js:96` 合并为当前system；Google写systemInstruction | 提示词注册与作用域机制**复用**；**修改**社交persona和当前权限摘要，按会话展示AI助手身份；不全局替换产品名。工具权限由宿主决定，不能依赖system文本优先级 |
+| 中途工具/系统变化 | DeepSeek flash目录声明systemPromptUpdate=in-history、toolUpdate=addition-only；`R/dsh-llm-pi-ai:785 conversationUpdates` 由真实compat决定；Google先collapseSystemMessages | 不将DeepSeek的中途追加能力强加给Gemini；**复用**当前工具重算，**测试**群权限撤销/模型切换后旧工具是否消失 |
+| thinking映射、采样 | `G/api/google-shared.js:19/37/63`、`G/api/google-generative-ai.js:236/294` 决定档位与预算；前述Argon识别缺口；temperature会条件式传入 | **修改**Argon离散档位识别与显式默认值、禁止off/minimal/max伪映射。按新模型文档省略无效temperature/topP/topK等参数；人设风格放persona。中转是否警告/忽略旧参数 **实测** |
+| thinking响应/跨模型 | `G/api/google-generative-ai.js` 区分thought与普通text，保留text/functionCall签名；`R/dsh-llm-pi-ai:61/242` replayState；`G/api/google-shared.js:185` 只为同provider/model保留签名，跨模型可能转普通文本 | 同模型重放**复用并测试**；切profile需**修改/约束**重放策略，防止reasoning摘要变成对外回复或个人事实。签名是不可编辑的协议状态，不写入事实库，不迁移成角色记忆 |
+| 工具schema与配对 | `G/api/google-shared.js:334 convertTools` 用parametersJsonSchema；`:123 requiresToolCallId` 对Gemini≥3带ID；`:257` functionResponse按成功/错误编码并可嵌图片；仓库pi-ai补丁去掉stale/duplicate result | 核心**复用**；**实测**必填字段/嵌套schema/并行工具/取消/重启/ID归一化，核对SDK真实wire字段。发送事务仍由宿主outbox保证，不能把转录去重当QQ/B站发送去重 |
+| 多模态与视频 | `R/dsh-llm-pi-ai` MODALITIES仅text/image；图片归一化、附件引用和截图检查已存在；Google工具结果支持图片 | 图片链路**复用＋补配置**；音频/视频/PDF **新增**受授权工具，保存时间戳与覆盖证据。官方视频能力不能代替媒体采集和上传契约 |
+| 预算与压缩 | `R/dsh-token-meter:16` 初估4字符/token并结合provider usage；`R/dsh-compaction-basic:59/124` 默认80%触发、65536 headroom、16%保留，按模型route覆盖；工具配对边界检查存在 | 通用计量/配对保护**复用**；**修改**每profile预算、中文聊天估算校准、社交压缩模板；不能照搬DeepSeek的256K输出或把中转声明上限当已验证 |
+| 缓存和长期记忆 | `R/dsh-compaction-basic:243` 英文工程checkpoint，并以相同前缀摘要以利供应商cache；`R/dsh-llm-pi-ai:1754` 可传cacheRetention；GooglebuildParams未建立显式cachedContents管理 | 前缀稳定思路**复用**，cache命中/TTL **实测**；人格/关系/任务层 **必须新增**。Argon不启用显式缓存；压缩前先把已确认事实和任务写入独立DB |
+| 重试/错误/限流 | `R/dsh-llm-pi-ai:1754` 明确maxRetries=0，避免pi-ai内部重试；`R/dsh-llm:247` 通用默认5次、500ms起、10s上限、10%抖动；`R/dsh-llm-retry:151` 持久化恢复；`:1448 classifyPiAiError` 主要按错误文本映射 | 有界重试框架**复用**；**修改**Gemini/中转结构化status及retry-after透传，区分认证/余额/频率/上下文/安全拒绝/工具格式。不得对安全拒绝循环改写重试，更不得重做已执行的账号写操作 |
+| 长推理与续写 | 本APK `@google/genai=2.21.0`；Google实际JS中无continuation符号；pi-ai idle timeout默认300000ms；旧流只映射STOP/MAX_TOKENS/错误 | Argon **必须评估升级SDK/适配器**并加续写状态、总token/费用/时长预算和取消。32K/64K hop可只有思考并带continuation，不能一律按EMPTY_RESPONSE重跑。3.8是否需更长时限 **实测** |
+| DeepSeek扩展与独立搜索 | `R/dsh-session-log-deepseek:139` 默认enabled向DeepSeek请求贡献dsh_session_log；inventory插件贡献dsh_plugin_packages；`R/dsh-base:468` 搜索provider另设deepseek-official；反馈telemetry另有独立配置 | Gemini路线**不携带**这些DeepSeek专用字段；**检查/修改**搜索路由和反馈入口，切主模型不会自动改所有出网路径。不能仅删DeepSeek模型名就宣布所有数据只到中转 |
+
+此表没有把“供应商不支持”与“DSH没有实现”混为一谈。例如Argon当前官方支持Generate Content且旧thinkingBudget仍可能被映射并警告，但此APK的格式选择已经落后，故结论是需要明确修正与验证，不是未经调用就宣称必定400。官方[Generate Content迁移页](https://ai.google.dev/gemini-api/docs/generate-content/latest-model)列出JS SDK `@google/genai>=2.29.1`，其续写行为与2.21.0不同；升级时需固定版本并保留仓库既有tool-result配对补丁。长任务与日常群聊分别设置取消/等待策略，不把官方长任务建议直接变成每条聊天都等20分钟。
+
+### 21.4 形成可切换profile，保持同一个小克
+
+建议新增 `ModelProfileStore`／管理界面，字段包括 `profile_id, provider, wire_model, protocol, base_url, credential_ref, input_modalities, tool_capabilities, reasoning_levels, selected_reasoning, context_budget_semantics, effective_context_limit, output_cap, continuation_policy, timeout_policy, retry_policy, capability_evidence`。凭据只保存引用；每项能力区分官方声明、中转文档、已实测三种证据，未知保持未知。
+
+- `flash-daily`：候选wire ID为 `gemini-3.8-flash`，复用现有google目录；日常自然聊天可从low开始验证，复杂任务可选medium/high，界面明确实际档位。
+- `argon-deep`：候选wire ID为 `gemini-4-argon`，站点确认后启用；新增目录、thinking格式和SDK续写支持；未验证的官方1M能力不直接作为手机端实际可用额度。
+- 两profile共用 `persona_id/persona_version`、主人绑定、作用域记忆和任务ID。provider/model选择只是执行配置，不是人格身份。切换时清除旧模型不适用的reasoning选择，重新检查工具/图片能力和在途任务，不清空关系记忆，也不把一群历史拼进另一群。
+- 当前Generate Content重放与未来Interactions状态不能共用一套未经校验的签名策略。先保留原始provider元数据在受限会话记录中；新模型只接收获准作用域内的公开对话/确认事实/未完成任务。若要跨模型连续重放，按该协议官方规则专门测试，不能删除或伪造签名来掩盖错误。
+- 压缩checkpoint、thinking摘要、KV cache、replayState、文件上传ID、continuation token都是执行状态；只有来自可信消息/实际观察并带来源的事实才可进入长期记忆。它们各自设过期和清理策略，不能自动获得“主人说过”的信任等级。
+
+新增验收（仍未执行）：**T26** 在3.8↔Argon切换、重启和压缩后保持同一人格/主人关系，群scope无泄漏；**T27** 对每个profile核对最终请求的thinkingLevel、工具schema和图片块，禁止无效档位及DeepSeek专用字段外流；**T28** 模拟thought-only＋continuation、429、签名缺失与中断，验证有界续写、取消、正确错误类别及账号动作不重复。
+
+本节不改变授权范围：未升级依赖、未修改目标源码、未运行目标组件、未调用模型API；它补充的是后续懒人包的具体实施依据。

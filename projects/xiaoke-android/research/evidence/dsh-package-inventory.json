@@ -1,0 +1,3346 @@
+[
+  {
+    "name": "@deepseek-ai/dsh-lazy-require",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-lazy-require@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-lazy-require",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/util/lazy-require"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-api-terminal-controller",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-api-terminal-controller@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek_5a14ddcd880fc256a97bb7db30851cba/node_modules/@deepseek-ai/dsh-api-terminal-controller",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/api/terminal-controller"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-worktree",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-worktree@0.2.1-rc.1_d4e2a7b45064a6f3f732cf06f3ebe395/node_modules/@deepseek-ai/dsh-experimental-worktree",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/worktree"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-api-account-controller",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-api-account-controller@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-_4238ee299547d9f07e46d3743cba628a/node_modules/@deepseek-ai/dsh-api-account-controller",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/api/account-controller"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-api-job-controller",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-api-job-controller@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-api-job-controller",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/api/job-controller"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-plugin-market-index",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-plugin-market-index@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-plugin-market-index",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/util/plugin-market-index"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-util-code-language",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-util-code-language@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-util-code-language",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/util/code-language"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-layout",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-layout@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-layout",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-layout"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-settings-agent-loop",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-settings-agent-loop@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-settings-agent-loop",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-settings-agent-loop"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-projection-cache",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-projection-cache@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepsee_10d5c13efcaec1f836615110db51083a/node_modules/@deepseek-ai/dsh-session-projection-cache",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session/session-projection-cache"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-agent-loop",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-agent-loop@0.2.1-rc.1_5b3ff47d581eefbbe78423e40aa0ce48/node_modules/@deepseek-ai/dsh-agent-loop",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/core/agent-loop"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-token-meter",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-token-meter@0.2.1-rc.1_754d69f0b5329baa6d17ee8d88cd7d99/node_modules/@deepseek-ai/dsh-token-meter",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/llm/token-meter"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-inspector",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-inspector@0.2.1-rc.1_@deepseek-ai+cordis-plugin-group@1.0_df887940a81ce3c93e56e1058e7a2a57/node_modules/@deepseek-ai/dsh-experimental-inspector",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/inspector"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-goal-round-driver",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-goal-round-driver@0.2.1-rc.1_80ac098143c08ff4d33fdddc7161ecc0/node_modules/@deepseek-ai/dsh-goal-round-driver",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/goal/goal-round-driver"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-modules",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-modules@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-modules",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/modules"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-scope",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-scope@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-scope",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/core/scope"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-subagent",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-subagent@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-subagent",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-subagent"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-spill-policy",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-spill-policy@0.2.1-rc.1_57d1aff6eda9ac57570adf2899174ac6/node_modules/@deepseek-ai/dsh-spill-policy",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/spill/spill-policy"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-compaction-image-offload",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-compaction-image-offload@0.2.1-rc.1_6a06f1cfdb74568a6c0d0a26c3e2f1e7/node_modules/@deepseek-ai/dsh-compaction-image-offload",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/compaction/compaction-image-offload"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-ask-user",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-ask-user@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-ag_8e2d3782551c8d02b6e3f071aa4683a0/node_modules/@deepseek-ai/dsh-tool-ask-user",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/interaction/tool-ask-user"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-spill",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-spill@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-brand@0.2._6a9a2665505727b06d97b6cdd526fc83/node_modules/@deepseek-ai/dsh-spill",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/spill/spill"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-fs-search",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-fs-search@0.2.1-rc.1_e5220f269966318c2b2bd1c571e1da70/node_modules/@deepseek-ai/dsh-tool-fs-search",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/fs/tool-fs-search"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-session",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-session@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-session",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-session"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-api-remotes",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-api-remotes@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-scop_587c83b98da0acc0bf18a304c5a6e5a3/node_modules/@deepseek-ai/dsh-api-remotes",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/api/remotes"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-plugin-market",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-plugin-market@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-plugin-market",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-plugin-market"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-skill-badge",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-skill-badge@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-skil_d01bd01680af880755c065c901e77076/node_modules/@deepseek-ai/dsh-skill-badge",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/skill-badge"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-agent-default-model",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-agent-default-model@0.2.1-rc.1_10b348b38164f4f20beb2388a507445c/node_modules/@deepseek-ai/dsh-agent-default-model",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/core/agent-default-model"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-working-directory",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-working-directory@0.2.1-rc.1_0ec4c2999410a8838072dd59b95b3f14/node_modules/@deepseek-ai/dsh-working-directory",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session/working-directory"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-subagent",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-subagent@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-ag_3193e240aa9318db120b3fd0f4aa1a19/node_modules/@deepseek-ai/dsh-tool-subagent",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/subagent/tool-subagent"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-settings-plugins",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-settings-plugins@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-settings-plugins",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-settings-plugins"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-chunked-list",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-chunked-list@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-chunked-list",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/util/chunked-list"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-sidebar-right",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-sidebar-right@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-sidebar-right",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-sidebar-right"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-present",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-present@0.2.1-rc.1_7285a58fbc5be1d3761e2ed5b7e99079/node_modules/@deepseek-ai/dsh-tool-present",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/deliverables/tool-present"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-query",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-query@0.2.1-rc.1_48746aceacb0974a85ae019e902cb80e/node_modules/@deepseek-ai/dsh-session-query",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session-query/session-query"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-deepseek-account",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-deepseek-account@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh_8a9bf44d54beb0024f4df263648715ec/node_modules/@deepseek-ai/dsh-deepseek-account",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/credentials/deepseek-account"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-terminal",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-terminal@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-ag_85443285ad9c5cfdeaaed75ae3267c35/node_modules/@deepseek-ai/dsh-tool-terminal",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/tool-terminal"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-settings",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-settings@0.2.1-rc.1_cfe3d017cfe86a6f1fe79c9c6fd9cbe6/node_modules/@deepseek-ai/dsh-settings",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/settings/settings"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-secret-mask",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-secret-mask@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-secret-mask",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-secret-mask"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-sandbox-local",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-sandbox-local@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-ll_8383f3ebbd742520d25ffd1713934618/node_modules/@deepseek-ai/dsh-sandbox-local",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/sandbox/sandbox-local"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-agent-team",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-agent-team@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek_295e156d6242d2680ab04c844a14f5ed/node_modules/@deepseek-ai/dsh-experimental-agent-team",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/agent-team"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-ralph",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-ralph@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-agent_ac8578a894c157af84e179de3416fe30/node_modules/@deepseek-ai/dsh-tool-ralph",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/tool-ralph"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-sdk-minimal",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-sdk-minimal@0.2.1-rc.1_1f3d63947d0b5acc047ad6c1715169b0/node_modules/@deepseek-ai/dsh-sdk-minimal",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/bundle/sdk-minimal"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-command-goal",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-command-goal@0.2.1-rc.1_5fefb8e12d19af4f4199852e088ce759/node_modules/@deepseek-ai/dsh-command-goal",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/goal/command-goal"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-bash-sandbox",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-bash-sandbox@0.2.1-rc.1_d0fe6ef1ad376fe70b183c74dfaeee1b/node_modules/@deepseek-ai/dsh-bash-sandbox",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/shell/bash-sandbox"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-otel",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-otel@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-session@0.2_e51ab00724dc1c542c9c8d8bcd71189e/node_modules/@deepseek-ai/dsh-otel",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/telemetry/otel"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-trajectory",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-trajectory@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-trajectory",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-trajectory"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-theme",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-theme@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-theme",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-theme"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-client-ui-voice-input",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-client-ui-voice-input@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-experimental-client-ui-voice-input",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/client-ui-voice-input"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-api-settings-controller",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-api-settings-controller@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek_cc36570ae2bc50d0c06fe38319dedff3/node_modules/@deepseek-ai/dsh-api-settings-controller",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/api/settings-controller"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-workspace",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-workspace@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-workspace",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-workspace"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-web-search-deepseek",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-web-search-deepseek@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+_6f71a752b80b43e9257a1f503d2e1c93/node_modules/@deepseek-ai/dsh-web-search-deepseek",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/web/web-search-deepseek"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-turn-outline",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-turn-outline@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai_7bb63dfcd585b08affb6f5948c39da4b/node_modules/@deepseek-ai/dsh-session-turn-outline",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session/session-turn-outline"
+    }
+  },
+  {
+    "name": "@deepseek-ai/node-addon-system",
+    "version": "0.1.2",
+    "license": "BSD-3-Clause",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+node-addon-system@0.1.2/node_modules/@deepseek-ai/node-addon-system",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-harness/deepseek-harness.git",
+      "directory": "native/system/packages/entry"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-native-command",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-native-command@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-native-command",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/util/native-command"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-stats",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-stats@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-ll_8520ceac2019ed9bc83d38779a221484/node_modules/@deepseek-ai/dsh-session-stats",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session/session-stats"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-plugin-package-inventory-deepseek",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-plugin-package-inventory-deepseek@0.2.1-rc.1_@deepseek-ai+cordis-plugi_6ef9be8ed50f96d8823d0feb775639d5/node_modules/@deepseek-ai/dsh-plugin-package-inventory-deepseek",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/llm/plugin-package-inventory-deepseek"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-projection",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-projection@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+d_041fff563b20674f6b846266dc862b9f/node_modules/@deepseek-ai/dsh-session-projection",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session/session-projection"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-app-boot",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-app-boot@0.2.1-rc.1_@deepseek-ai+cordis-plugin-group@1.0.5_@deepseek-a_44eb335fa955bf0e51a1829b3eedbaf9/node_modules/@deepseek-ai/dsh-app-boot",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/boot/app-boot"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-auto-review",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-auto-review@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepsee_cbb1af170327f32f818ed1fcf4b8f8d3/node_modules/@deepseek-ai/dsh-experimental-auto-review",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/auto-review"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-agent-preset-registry",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-agent-preset-registry@0.2.1-rc.1_ee874cafc4e38fd97780cc0ba1485fa0/node_modules/@deepseek-ai/dsh-agent-preset-registry",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/preset/agent-preset-registry"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-agent-tool-presentation",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-agent-tool-presentation@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek_756051761c7c8ff782bce1b43d0732e6/node_modules/@deepseek-ai/dsh-agent-tool-presentation",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/core/agent-tool-presentation"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-settings-account",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-settings-account@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-settings-account",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-settings-account"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-deepseek-account-platform",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-deepseek-account-platform@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepse_2a1ead19d2b2517206139bb7c4df72e3/node_modules/@deepseek-ai/dsh-deepseek-account-platform",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/credentials/deepseek-account-platform"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-system-prompt",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-system-prompt@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-ll_a1c77d904cb397231052271d8dcad314/node_modules/@deepseek-ai/dsh-system-prompt",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/core/system-prompt"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-acp-app",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-acp-app@0.2.1-rc.1_2a47375a8b8063be054cc1431e76b589/node_modules/@deepseek-ai/dsh-acp-app",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/bundle/acp-app"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-format-v3-to-v4",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-format-v3-to-v4@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-session-format-v3-to-v4",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session/session-format-v3-to-v4"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-product-analytics",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-product-analytics@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-product-analytics",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/product-analytics"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-llm",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-llm@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-llm",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/llm/llm"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-http-proxy",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-http-proxy@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-http-proxy",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/util/http-proxy"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-skill-office",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-skill-office@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-ski_489c03e860491728425081b312d91b92/node_modules/@deepseek-ai/dsh-skill-office",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/skill/skill-office"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-host-frontend-static",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-host-frontend-static@0.2.1-rc.1_patch_hash=74516a470517c38b894f8de22a8_ece87ac62c49bc0125e0d38380d5cbf1/node_modules/@deepseek-ai/dsh-host-frontend-static",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/host/frontend-static"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-subprocess-local",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-subprocess-local@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh_05206c2e253e833e5e582e93122758f6/node_modules/@deepseek-ai/dsh-subprocess-local",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/subprocess/subprocess-local"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-message-feedback",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-message-feedback@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-message-feedback",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-message-feedback"
+    }
+  },
+  {
+    "name": "@deepseek-ai/schemastery",
+    "version": "3.18.5",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+schemastery@3.18.5/node_modules/@deepseek-ai/schemastery",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "vendor/schemastery"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-permission-presets",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-permission-presets@0.2.1-rc.1_4b0904c14ed0fa9409cf478adaaa38d5/node_modules/@deepseek-ai/dsh-permission-presets",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/interaction/permission-presets"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-workflow",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-workflow@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-ag_6de9a5250585cacd9dc244261679817e/node_modules/@deepseek-ai/dsh-tool-workflow",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/workflow/tool-workflow"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh@0.2.1-rc.1_fb445b3bb3d1ae65fb74e54d90a87567/node_modules/@deepseek-ai/dsh",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "apps/cli"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-skill-filesystem",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-skill-filesystem@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh_df19ba3c5401e6e08b8fbea2463575f0/node_modules/@deepseek-ai/dsh-skill-filesystem",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/skill/skill-filesystem"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-terminal-bundle",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-terminal-bundle@0.2.1-rc.1_097d16b31eff744a33f5ca475de88b11/node_modules/@deepseek-ai/dsh-experimental-terminal-bundle",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/terminal-bundle"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-host-directory-picker-auto",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-host-directory-picker-auto@0.2.1-rc.1_@deepseek-ai+cordis-plugin-loade_d7276184f50440344bbdd353d37b14cf/node_modules/@deepseek-ai/dsh-host-directory-picker-auto",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/host/directory-picker-auto"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-title-llm",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-title-llm@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+ds_a445789dc0688270836a799b7c803724/node_modules/@deepseek-ai/dsh-session-title-llm",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session/session-title-llm"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-headless",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-headless@0.2.1-rc.1_@deepseek-ai+cordis-plugin-loader@1.0.6_@deepseek-_86477ea3cc03cd552d978d87800cf89f/node_modules/@deepseek-ai/dsh-headless",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/bundle/headless"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-output-retention",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-output-retention@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-output-retention",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/util/output-retention"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-user-questions",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-user-questions@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-a_022b27e24431539f35c0a2881fe5c4f4/node_modules/@deepseek-ai/dsh-user-questions",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/interaction/user-questions"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-format-v2-to-v3",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-format-v2-to-v3@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-session-format-v2-to-v3",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session/session-format-v2-to-v3"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-input-trigger",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-input-trigger@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-input-trigger",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-input-trigger"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-fs",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-fs@0.2.1-rc.1_09e6140758f80927bebc604948370786/node_modules/@deepseek-ai/dsh-tool-fs",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/fs/tool-fs"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-web-app",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-web-app@0.2.1-rc.1_aa907786856d48a06b3f744aaa3eb8f0/node_modules/@deepseek-ai/dsh-web-app",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/bundle/web-app"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-sandbox",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-sandbox@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-llm@0.2._3b4a7e66f44082da840017d97263f8bc/node_modules/@deepseek-ai/dsh-sandbox",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/sandbox/sandbox"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-cmdline",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-cmdline@0.2.1-rc.1_@deepseek-ai+cordis-plugin-loader@1.0.6_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-cmdline",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/boot/cmdline"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-schedule",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-schedule@0.2.1-rc.1_e48978329baad02a2ba12ed4595b0d30/node_modules/@deepseek-ai/dsh-schedule",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/schedule/schedule"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-jobs",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-jobs@0.2.1-rc.1_f3c66cf002c0accac1e4b3d0e79462d7/node_modules/@deepseek-ai/dsh-jobs",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/jobs/jobs"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-brand-official",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-brand-official@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-brand-official",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-brand-official"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-working-directory",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-working-directory@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-_42b3e1c813834ea0c24dcde633d4e021/node_modules/@deepseek-ai/dsh-tool-working-directory",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session/tool-working-directory"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-base",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-base@0.2.1-rc.1_39d56e50991f32e7fc3d63dc7b16c30b/node_modules/@deepseek-ai/dsh-base",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/bundle/base"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-client-ui-agent-team",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-client-ui-agent-team@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-experimental-client-ui-agent-team",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/client-ui-agent-team"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-workflow",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-workflow@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-agent@0_e55886b94bd1690f2024d177dc3ae6bd/node_modules/@deepseek-ai/dsh-workflow",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/workflow/workflow"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-session-inspector",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-session-inspector@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-experimental-session-inspector",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/session-inspector"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-office-to-pdf",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-office-to-pdf@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-office-to-pdf",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/document/office-to-pdf"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-api-gateway",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-api-gateway@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-api-gateway",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/api/gateway"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-api-speech-to-text",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-api-speech-to-text@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@_416b7df91aab14fc97939c2699e75e60/node_modules/@deepseek-ai/dsh-experimental-api-speech-to-text",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/api-speech-to-text"
+    }
+  },
+  {
+    "name": "@deepseek-ai/cordis",
+    "version": "4.0.5",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+cordis@4.0.5_@deepseek-ai+cordis-plugin-include@1.0.10_@deepseek-ai+cordis-plugin-loader@1.0.6/node_modules/@deepseek-ai/cordis",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "vendor/cordis"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-agent-team-profile",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-agent-team-profile@0.2.1-rc.1_f44711831728b356b95008307141847c/node_modules/@deepseek-ai/dsh-experimental-agent-team-profile",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/agent-team-profile"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-jobs",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-jobs@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-agent@_c2d2b759cbe05e91df16cb2b60fa428d/node_modules/@deepseek-ai/dsh-tool-jobs",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/jobs/tool-jobs"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-terminal-bash",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-terminal-bash@0.2.1-rc.1_7ca5bb38a7420400219e764bab70b5af/node_modules/@deepseek-ai/dsh-terminal-bash",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/terminal/terminal-bash"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-host-webserver",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-host-webserver@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-host-webserver",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/host/webserver"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-session-titles-bundle",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-session-titles-bundle@0.2.1-rc.1_b335f4e68a98c079c4176e296c450d12/node_modules/@deepseek-ai/dsh-experimental-session-titles-bundle",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/session-titles-bundle"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-translator",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-translator@0.2.1-rc.1_@deepseek-ai+cordis-plugin-loader@1_c1e009b2e5abc42adfbb52da1fd9be3d/node_modules/@deepseek-ai/dsh-experimental-translator",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/translator"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-host-directory-picker",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-host-directory-picker@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-host-directory-picker",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/host/directory-picker"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-compaction-tool-result-pruner",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-compaction-tool-result-pruner@0.2.1-rc.1_352197aed4119992deeb723a331abb06/node_modules/@deepseek-ai/dsh-compaction-tool-result-pruner",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/compaction/compaction-tool-result-pruner"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-str-replace-editor",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-str-replace-editor@0.2.1-rc.1_32c88f60403e699b2eaa60bfd83b4ab9/node_modules/@deepseek-ai/dsh-tool-str-replace-editor",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/fs/tool-str-replace-editor"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-settings-shell",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-settings-shell@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-settings-shell",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-settings-shell"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-credentials-local",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-credentials-local@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+ds_0745b56f4f80572fa35b83c08f9c2aab/node_modules/@deepseek-ai/dsh-credentials-local",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/credentials/credentials-local"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-subagent-control",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-subagent-control@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-a_680e66c53018a712e987872364dfaa84/node_modules/@deepseek-ai/dsh-tool-subagent-control",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/subagent/tool-subagent-control"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-sdk-jsonrpc-server",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-sdk-jsonrpc-server@0.2.1-rc.1_f42f5b0076aab11ca2bb8dbd85a0c7f0/node_modules/@deepseek-ai/dsh-sdk-jsonrpc-server",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/sdk/server"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-cordis-host-runner",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-cordis-host-runner@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+d_0dfc221d894a86867ef1db6c1df8f55a/node_modules/@deepseek-ai/dsh-cordis-host-runner",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/extensions/cordis-host-runner"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-sandbox-windows-acl",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-sandbox-windows-acl@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+_8661d4fdb0beabf3cb0d5487d9527266/node_modules/@deepseek-ai/dsh-sandbox-windows-acl",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/sandbox/sandbox-windows-acl"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-shortcuts",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-shortcuts@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-shortcuts",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-shortcuts"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-bash",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-bash@0.2.1-rc.1_57f6b2f33a75862795f936ffbd70e5a7/node_modules/@deepseek-ai/dsh-tool-bash",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/shell/tool-bash"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-pwsh-sandbox",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-pwsh-sandbox@0.2.1-rc.1_ff6b586fa851700ae80e8f2ae1c5615d/node_modules/@deepseek-ai/dsh-pwsh-sandbox",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/shell/pwsh-sandbox"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-plugin-market-bundle",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-plugin-market-bundle@0.2.1-rc.1_@deepseek-ai+cordis-plugi_812bc1c967fe48e638ea61ac7eea5049/node_modules/@deepseek-ai/dsh-experimental-plugin-market-bundle",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/plugin-market-bundle"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-api-remote-access",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-api-remote-access@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-api-remote-access",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/api/remote-access"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-telemetry",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-telemetry@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+ds_45be8f71a5112eba8e06776615738b04/node_modules/@deepseek-ai/dsh-session-telemetry",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session/session-telemetry"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-settings-session-log",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-settings-session-log@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-settings-session-log",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-settings-session-log"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-inspector-profile",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-inspector-profile@0.2.1-rc.1_@deepseek-ai+cordis-plugin-g_4f1dfe2f2cc1998a95dbf4468f150fba/node_modules/@deepseek-ai/dsh-experimental-inspector-profile",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/inspector-profile"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-attachment",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-attachment@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-brand_e7889bcf9ed97f1d4ef6362f396bd073/node_modules/@deepseek-ai/dsh-attachment",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/attachment/attachment"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-workspace-changes",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-workspace-changes@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+ds_64018b0c6e05dbd49de64d3aab20dc51/node_modules/@deepseek-ai/dsh-workspace-changes",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/deliverables/workspace-changes"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-hmr",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-hmr@0.2.1-rc.1_@deepseek-ai+cordis-plugin-include@1.0.10_@deepseek-ai+_7153e22d6555776a94150ae08834e518/node_modules/@deepseek-ai/dsh-hmr",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/boot/hmr"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-locale",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-locale@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-locale",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/locale"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-workspace-dependencies",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-workspace-dependencies@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deep_379ac452884c5147461818b7899b800f/node_modules/@deepseek-ai/dsh-tool-workspace-dependencies",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/skill/tool-workspace-dependencies"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-terminal",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-terminal@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-agent@0_f5bd1d52927022b6e3fab877ce002982/node_modules/@deepseek-ai/dsh-terminal",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/terminal/terminal"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-scope@0._bade9dc2e014dc42b2917c3a59547332/node_modules/@deepseek-ai/dsh-session",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/core/session"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-log-deepseek",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-log-deepseek@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai_0ee4449ed4b94665986b471898c08cca/node_modules/@deepseek-ai/dsh-session-log-deepseek",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session/session-log-deepseek"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-title-first-prompt-llm",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-title-first-prompt-llm@0.2.1-rc.1_b335f4e68a98c079c4176e296c450d12/node_modules/@deepseek-ai/dsh-session-title-first-prompt-llm",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session/session-title-first-prompt-llm"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-util-time",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-util-time@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-util-time",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/util/time"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-host-plugin-inventory",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-host-plugin-inventory@0.2.1-rc.1_@deepseek-ai+cordis-plugin-loader@1.0_6facbe53a4f139a4d47ab62c53d67844/node_modules/@deepseek-ai/dsh-host-plugin-inventory",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/host/plugin-inventory"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-speech-to-text",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-speech-to-text@0.2.1-rc.1_@deepseek-ai+cordis-plugin-load_43076a4b6c97ca9bbc4f1ce4ddd350ce/node_modules/@deepseek-ai/dsh-experimental-speech-to-text",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/speech-to-text"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-jobs-local",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-jobs-local@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-agent_80f10ecd3e0a838556e0a52a422cb6c9/node_modules/@deepseek-ai/dsh-jobs-local",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/jobs/jobs-local"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-reference",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-reference@0.2.1-rc.1_46e749a27c20eba41a8c06d1c1f70997/node_modules/@deepseek-ai/dsh-session-reference",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/context/session-reference"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-cordis",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-cordis@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-cordis",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/extensions/ui-cordis"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-checkpoint-policy",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-checkpoint-policy@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepse_f355f3a963f44049178d820ef1df5dc4/node_modules/@deepseek-ai/dsh-session-checkpoint-policy",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session/session-checkpoint-policy"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-pwsh-local",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-pwsh-local@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-shell_8f4231be73ad4c6bec29819ead0ed774/node_modules/@deepseek-ai/dsh-pwsh-local",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/shell/pwsh-local"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-query-sqlite",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-query-sqlite@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai_4e6ca375c97dccb4aade8e115a4436da/node_modules/@deepseek-ai/dsh-session-query-sqlite",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session-query/session-query-sqlite"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-title",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-title@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-ag_b1c99ddddc404ae2e97befbed03755e3/node_modules/@deepseek-ai/dsh-session-title",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session/session-title"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-llm-retry",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-llm-retry@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-agent@_d77d6692d3759f04be0295eb294892eb/node_modules/@deepseek-ai/dsh-llm-retry",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/llm/llm-retry"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-title-all-prompts-llm",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-title-all-prompts-llm@0.2.1-rc.1_b335f4e68a98c079c4176e296c450d12/node_modules/@deepseek-ai/dsh-session-title-all-prompts-llm",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/session-title-all-prompts-llm"
+    }
+  },
+  {
+    "name": "@deepseek-ai/cosmokit",
+    "version": "1.8.6",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+cosmokit@1.8.6/node_modules/@deepseek-ai/cosmokit",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "vendor/cosmokit"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-time-context",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-time-context@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-age_239d9da358897c8bea2698f0da27c3fa/node_modules/@deepseek-ai/dsh-time-context",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/context/time-context"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-agent-preset",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-agent-preset@0.2.1-rc.1_@deepseek-ai+cordis-plugin-loader@1.0.6_@deeps_94dffbdf41610741e7e4390e268aaac3/node_modules/@deepseek-ai/dsh-agent-preset",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/preset/agent-preset"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-llm-deepseek-account",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-llm-deepseek-account@0.2.1-rc.1_@deepseek-ai+cordis-plugin-loader@1.0._d9938c642ef24f67a862b1db2e367743/node_modules/@deepseek-ai/dsh-llm-deepseek-account",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/llm/llm-deepseek-account"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-typert-registry",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-typert-registry@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-typert-registry",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/typert/registry"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-agent-instructions",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-agent-instructions@0.2.1-rc.1_bda228e02455bb3bcece31d8e80fe067/node_modules/@deepseek-ai/dsh-agent-instructions",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/context/agent-instructions"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-reference",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-reference@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-reference",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-reference"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-format-v0-to-v1",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-format-v0-to-v1@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-session-format-v0-to-v1",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session/session-format-v0-to-v1"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-web",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-web@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-llm@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_/node_modules/@deepseek-ai/dsh-web",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/web/web"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-spill-local",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-spill-local@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-spil_dc8d51900c0f6c9de7ece223f0f1234f/node_modules/@deepseek-ai/dsh-spill-local",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/spill/spill-local"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-atomic-write",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-atomic-write@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-atomic-write",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/util/atomic-write"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-format-v1-to-v2",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-format-v1-to-v2@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-session-format-v1-to-v2",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session/session-format-v1-to-v2"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-user-questions",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-user-questions@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-user-questions",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-user-questions"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-tool-agent-team",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-tool-agent-team@0.2.1-rc.1_a88421cbf30f623b8af8f282a3f4912b/node_modules/@deepseek-ai/dsh-experimental-tool-agent-team",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/tool-agent-team"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-api-workspace-files",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-api-workspace-files@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-api-workspace-files",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/api/workspace-files"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-attachment",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-attachment@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-attachment",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-attachment"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-home-paths",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-home-paths@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-home-paths",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/util/home-paths"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-todo",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-todo@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-agent@_41ef93973b2fa366cbe2d2423d9dc44e/node_modules/@deepseek-ai/dsh-tool-todo",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/todo/tool-todo"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-fs-observation-policy",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-fs-observation-policy@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-a_71f485d7ef20258e6445780f0f65eace/node_modules/@deepseek-ai/dsh-fs-observation-policy",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/fs/fs-observation-policy"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-agent-preset",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-agent-preset@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-agent-preset",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-agent-preset"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-call-timeout-policy",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-call-timeout-policy@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepsee_460ffec6ce3ce1aae3ee3f2985750180/node_modules/@deepseek-ai/dsh-tool-call-timeout-policy",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/guard/timeout-policy"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-hmr",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-hmr@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-hmr",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/hmr"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-commands",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-commands@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-commands",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-commands"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-renderer",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-renderer@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-renderer",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-renderer"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-speech-to-text-sensevoice",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-speech-to-text-sensevoice@0.2.1-rc.1_@deepseek-ai+cordis@_56ad909eaa3858cfedf02ab1658af786/node_modules/@deepseek-ai/dsh-experimental-speech-to-text-sensevoice",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/speech-to-text-sensevoice"
+    }
+  },
+  {
+    "name": "@deepseek-ai/libreoffice-kit-wasm",
+    "version": "0.1.5",
+    "license": "MPL-2.0",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+libreoffice-kit-wasm@0.1.5/node_modules/@deepseek-ai/libreoffice-kit-wasm",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/deepseek-ai/dsh-libreoffice-kit",
+      "directory": "packages/wasm"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-jobs",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-jobs@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-jobs",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-jobs"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-mcp-resources",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-mcp-resources@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-ll_0a0b88689c958bb79680f6d9f8d420d9/node_modules/@deepseek-ai/dsh-mcp-resources",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/mcp/mcp-resources"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-skill",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-skill@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-skill",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-skill"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-util-values",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-util-values@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-util-values",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/util/values"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-file-upload",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-file-upload@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-file-upload",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/file-upload"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-goal",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-goal@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-goal",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-goal"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-util-crypto",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-util-crypto@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-util-crypto",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/util/crypto"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-chat",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-chat@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-chat",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-chat"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-sdk-app",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-sdk-app@0.2.1-rc.1_692aafed7954803e27b6281f69c12f68/node_modules/@deepseek-ai/dsh-sdk-app",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/bundle/sdk-app"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-tool-worktree",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-tool-worktree@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deeps_983eac30137602a5dc602aa9fa3ae393/node_modules/@deepseek-ai/dsh-experimental-tool-worktree",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/tool-worktree"
+    }
+  },
+  {
+    "name": "@deepseek-ai/cordis-plugin-timer",
+    "version": "1.1.7",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+cordis-plugin-timer@1.1.7_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/cordis-plugin-timer",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "vendor/timer"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-conversation",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-conversation@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-conversation",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-conversation"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-plugin-manager",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-plugin-manager@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-plugin-manager",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-plugin-manager"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-web-frontend",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-web-frontend@0.2.1-rc.1/node_modules/@deepseek-ai/dsh-web-frontend",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "apps/web"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-format-catalog",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-format-catalog@0.2.1-rc.1_6a06f1cfdb74568a6c0d0a26c3e2f1e7/node_modules/@deepseek-ai/dsh-session-format-catalog",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session/session-format-catalog"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-subprocess",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-subprocess@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-http-_ed05bcb2e027ab754505de05185089b2/node_modules/@deepseek-ai/dsh-subprocess",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/subprocess/subprocess"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-llm-deepseek-api-key",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-llm-deepseek-api-key@0.2.1-rc.1_@deepseek-ai+cordis-plugin-loader@1.0._f685d90bda5826278aad86b7dff4492a/node_modules/@deepseek-ai/dsh-llm-deepseek-api-key",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/llm/llm-deepseek-api-key"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-goal",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-goal@0.2.1-rc.1_7f6f9427a27842e2312e8277a2b53e9c/node_modules/@deepseek-ai/dsh-tool-goal",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/goal/tool-goal"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-fs-local",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-fs-local@0.2.1-rc.1_patch_hash=897a649e418327fbac9f5bbb2a539b26ba17a06_2830f5131c9bada341eaf0f82fca88cd/node_modules/@deepseek-ai/dsh-fs-local",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/fs/fs-local"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tmux-context",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tmux-context@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-age_91b3bcb81b6e5286f364eb1f65f92bf7/node_modules/@deepseek-ai/dsh-tmux-context",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/context/tmux-context"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-util-workspace-path",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-util-workspace-path@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-util-workspace-path",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/util/workspace-path"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-subagent-spawn-in-process",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-subagent-spawn-in-process@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepse_d8ad892e0554cbea929af093f53e716c/node_modules/@deepseek-ai/dsh-subagent-spawn-in-process",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/subagent/subagent-spawn-in-process"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-launch-environment",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-launch-environment@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-launch-environment",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/util/launch-environment"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-goal",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-goal@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-agent@0.2.1_282d71f37abc1dfa37203a7c3ac8e339/node_modules/@deepseek-ai/dsh-goal",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/goal/goal"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-settings-subagent",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-settings-subagent@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-settings-subagent",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-settings-subagent"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-fs",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-fs@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-brand@0.2.1-r_20172e8cdbf6899295ae3fb6cbff45d6/node_modules/@deepseek-ai/dsh-fs",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/fs/fs"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-mcp-client",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-mcp-client@0.2.1-rc.1_491f2c3c983025c0325a24cfff518007/node_modules/@deepseek-ai/dsh-mcp-client",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/mcp/mcp-client"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-storage-domain",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-storage-domain@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-s_a984f83d821b7a37918b28b199f005b5/node_modules/@deepseek-ai/dsh-storage-domain",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/storage/storage-domain"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-command-compact",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-command-compact@0.2.1-rc.1_73a628b3767f41869a3545b647d99795/node_modules/@deepseek-ai/dsh-command-compact",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/compaction/command-compact"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-credentials",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-credentials@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-credentials",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/credentials/credentials"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-deepseek-llm-api-extensions",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-deepseek-llm-api-extensions@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-deepseek-llm-api-extensions",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/llm/deepseek-llm-api-extensions"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-cordis-client-runner",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-cordis-client-runner@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-cordis-client-runner",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/extensions/cordis-client-runner"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-host-directory-picker-browse",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-host-directory-picker-browse@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-host-directory-picker-browse",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/host/directory-picker-browse"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-persistence-jsonl",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-persistence-jsonl@0.2.1-rc.1_ee0651eacf954daa7730fcc609e7a6e1/node_modules/@deepseek-ai/dsh-session-persistence-jsonl",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session/session-persistence-jsonl"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-commands",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-commands@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-agent@0_54ecf814daa515849a044d05a863f299/node_modules/@deepseek-ai/dsh-commands",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/interaction/commands"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-storage-json",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-storage-json@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-sto_6ae4fadcc9554ef79078a43558dec330/node_modules/@deepseek-ai/dsh-storage-json",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/storage/storage-json"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-skill",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-skill@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-llm@0.2.1-_82fbb479360ea3aa0cd9e6aff8ad9981/node_modules/@deepseek-ai/dsh-skill",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/skill/skill"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-settings-plugin-inventory",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-settings-plugin-inventory@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-settings-plugin-inventory",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-settings-plugin-inventory"
+    }
+  },
+  {
+    "name": "@deepseek-ai/cordis-plugin-include",
+    "version": "1.0.10",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+cordis-plugin-include@1.0.10_@deepseek-ai+cordis-plugin-loader@1.0.6_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/cordis-plugin-include",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "vendor/include"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-approval",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-approval@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-approval",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-approval"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-settings-general",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-settings-general@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-settings-general",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-settings-general"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-llm-pi-ai",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-llm-pi-ai@0.2.1-rc.1_accfda38635bf2bd2f4dde966fb4b260/node_modules/@deepseek-ai/dsh-llm-pi-ai",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/llm/llm-pi-ai"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-directory-picker-native",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-directory-picker-native@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-directory-picker-native",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-directory-picker-native"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-plugin-market",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-plugin-market@0.2.1-rc.1_@deepseek-ai+cordis-plugin-group@1.0.5_@deeps_0349fbac2d746ea6a466c08fa0ab02c8/node_modules/@deepseek-ai/dsh-plugin-market",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/boot/plugin-market"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-schedule",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-schedule@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-ll_bb5b71ce068f55e5a973cb9b0a06cf6a/node_modules/@deepseek-ai/dsh-tool-schedule",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/schedule/tool-schedule"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-config-editor",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-config-editor@0.2.1-rc.1_1ec0c11ddf9d0a566cc312e774b85ae7/node_modules/@deepseek-ai/dsh-config-editor",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/boot/config-editor"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-file-reference-local",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-file-reference-local@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai_7f272d638d3b2fe7bafd0f346dc230c4/node_modules/@deepseek-ai/dsh-file-reference-local",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/context/file-reference-local"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-cordis",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-cordis@0.2.1-rc.1_b9967bd797a09bcbca99fa716405c7c9/node_modules/@deepseek-ai/dsh-tool-cordis",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/extensions/tool-cordis"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-shortcuts",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-shortcuts@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-shortcuts",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/shortcuts"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-package-manifest",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-package-manifest@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-package-manifest",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/util/package-manifest"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-typert-loader",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-typert-loader@0.2.1-rc.1_@deepseek-ai+cordis-plugin-loader@1.0.6_@deep_fcf3bc779a1c351f00c8f617b4f3fd94/node_modules/@deepseek-ai/dsh-typert-loader",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/typert/loader"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-harness-dev-context",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-harness-dev-context@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+_a4d749e0afcd91ca3610fc28981e840c/node_modules/@deepseek-ai/dsh-harness-dev-context",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/context/harness-dev-context"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-agent",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-agent@0.2.1-rc.1_0353620dad4a0e9c9befc32df9332957/node_modules/@deepseek-ai/dsh-agent",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/core/agent"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-compaction-basic",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-compaction-basic@0.2.1-rc.1_74eddd5f167911f2b29d3b0237569324/node_modules/@deepseek-ai/dsh-compaction-basic",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/compaction/compaction-basic"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tools",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tools@0.2.1-rc.1_14ea9b2f1090d1f852482c689f41a9bb/node_modules/@deepseek-ai/dsh-tools",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/core/tools"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-fs-sandbox",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-fs-sandbox@0.2.1-rc.1_1baefd99cd4dd74d45e2f2cf0e281e33/node_modules/@deepseek-ai/dsh-fs-sandbox",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/fs/fs-sandbox"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-telemetry-otel",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-telemetry-otel@0.2.1-rc.1_570e298712dbe63ab58d449abb7c42d5/node_modules/@deepseek-ai/dsh-session-telemetry-otel",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session/session-telemetry-otel"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-settings-models",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-settings-models@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-settings-models",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-settings-models"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-session-query",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-session-query@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+d_801570fda46b400bae28529334f1c981/node_modules/@deepseek-ai/dsh-tool-session-query",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/tool-session-query"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-deliverables",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-deliverables@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-deliverables",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-deliverables"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-pwsh-persistent",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-pwsh-persistent@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai_5c359707f45b33523511310f898d249b/node_modules/@deepseek-ai/dsh-tool-pwsh-persistent",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/shell/tool-pwsh-persistent"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-anonymous-user-id",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-anonymous-user-id@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+ds_d3fd67096352ed8e8c9aabf27d52251c/node_modules/@deepseek-ai/dsh-anonymous-user-id",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/identity/anonymous-user-id"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-repeat-tool-reminder",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-repeat-tool-reminder@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai_0c66c2861c36aacd418edc3ef587dcc3/node_modules/@deepseek-ai/dsh-repeat-tool-reminder",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/guard/repeat-tool-reminder"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-host-product-telemetry-otel",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-host-product-telemetry-otel@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deep_71e6cdfe8c5d30076435980674840966/node_modules/@deepseek-ai/dsh-host-product-telemetry-otel",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/host/product-telemetry-otel"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-command-feedback",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-command-feedback@0.2.1-rc.1_1b9b595bdaa3b970da6f51bafc988dad/node_modules/@deepseek-ai/dsh-command-feedback",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/feedback/command-feedback"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-brand",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-brand@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-brand",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/util/brand"
+    }
+  },
+  {
+    "name": "@deepseek-ai/cordis-plugin-group",
+    "version": "1.0.5",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+cordis-plugin-group@1.0.5_@deepseek-ai+cordis-plugin-loader@1.0.6_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/cordis-plugin-group",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "vendor/group"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-format",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-format@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-session-format",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session/session-format"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-acp",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-acp@0.2.1-rc.1_2d2281ccd9dc399f8315684eb469ef2a/node_modules/@deepseek-ai/dsh-acp",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/acp/acp"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-workflow-ptc",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-workflow-ptc@0.2.1-rc.1_308539a2f5270426a45ca82bec8630de/node_modules/@deepseek-ai/dsh-workflow-ptc",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/workflow/workflow-ptc"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-schedule",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-schedule@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-schedule",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-schedule"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-cot-translation-bundle",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-cot-translation-bundle@0.2.1-rc.1_@deepseek-ai+cordis-plu_166160b94a5bb2e7ec16ea0944d0c8c8/node_modules/@deepseek-ai/dsh-experimental-cot-translation-bundle",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/cot-translation-bundle"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-ptc-runtime",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-ptc-runtime@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-sand_86308a1e362b6860c64aa38f0fa338ac/node_modules/@deepseek-ai/dsh-ptc-runtime",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/ptc-runtime/ptc-runtime"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-subagent-fork-in-process",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-subagent-fork-in-process@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepsee_034800e520e488e02bc1e6fce731b59d/node_modules/@deepseek-ai/dsh-subagent-fork-in-process",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/subagent/subagent-fork-in-process"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-attachment-local",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-attachment-local@0.2.1-rc.1_patch_hash=39262e797b79e7b9a5b724faddff963_5f1580f85f0490c5a74bd72458cf4f00/node_modules/@deepseek-ai/dsh-attachment-local",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/attachment/attachment-local"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-subagent",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-subagent@0.2.1-rc.1_422e9c998a6feef8f6c33f04f8929b4c/node_modules/@deepseek-ai/dsh-subagent",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/subagent/subagent"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-workspace",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-workspace@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-sessio_a0dabfff62cf3050ef482ea04d465572/node_modules/@deepseek-ai/dsh-workspace",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/workspace/workspace"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-log-export",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-log-export@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+d_7386affb5ac2995803637be0090a6b82/node_modules/@deepseek-ai/dsh-session-log-export",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session-query/session-log-export"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-plan",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-plan@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-plan",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-plan"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-host-directory-picker-native",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-host-directory-picker-native@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-host-directory-picker-native",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/host/directory-picker-native"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-ptc-runtime-node",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-ptc-runtime-node@0.2.1-rc.1_b3c8f8de0e4335d4db701d4986e33dae/node_modules/@deepseek-ai/dsh-ptc-runtime-node",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/ptc-runtime/ptc-runtime-node"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-message-feedback",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-message-feedback@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh_997035a857aed033a02290b1bc6bcc91/node_modules/@deepseek-ai/dsh-message-feedback",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/feedback/message-feedback"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-sidebar-browser",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-sidebar-browser@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-sidebar-browser",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-sidebar-browser"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-connection",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-connection@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+ds_266cd8a481696be3c85991bbc790cee5/node_modules/@deepseek-ai/dsh-client-connection",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/connection"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-timeout",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-timeout@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-timeout",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/util/timeout"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-plan-mode",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-plan-mode@0.2.1-rc.1_087a05f6b1b116cfd61f043671bf2397/node_modules/@deepseek-ai/dsh-plan-mode",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/plan/plan-mode"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-api-session-controller",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-api-session-controller@0.2.1-rc.1_ce9553eda625f28aa09069edf9437a03/node_modules/@deepseek-ai/dsh-api-session-controller",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/api/session-controller"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-persona",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-persona@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-system-p_cd952e1d87c320f998c6d6fcf0e6e53c/node_modules/@deepseek-ai/dsh-persona",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/preset/persona"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-host-open-in-app",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-host-open-in-app@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh_1e3d1544e84ee1bd706f28eb37e05502/node_modules/@deepseek-ai/dsh-host-open-in-app",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/host/open-in-app"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-voice-input-bundle",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-voice-input-bundle@0.2.1-rc.1_@deepseek-ai+cordis-plugin-_f2cb471085bde50b7da7170ef6350931/node_modules/@deepseek-ai/dsh-experimental-voice-input-bundle",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/voice-input-bundle"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-api-workspace-controller",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-api-workspace-controller@0.2.1-rc.1_0042cb50664b205915e88624151fd3e4/node_modules/@deepseek-ai/dsh-api-workspace-controller",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/api/workspace-controller"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-sidebar-terminal",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-sidebar-terminal@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-sidebar-terminal",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-sidebar-terminal"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-model-selection",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-model-selection@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-model-selection",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-model-selection"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-skill",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-skill@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-agent_0e2f29f2ae788d65ef559605e3ba7d0d/node_modules/@deepseek-ai/dsh-tool-skill",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/skill/tool-skill"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-settings-web-search",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-settings-web-search@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-settings-web-search",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-settings-web-search"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-session-persistence",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-session-persistence@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+_e5983de5aca4955306b8035e0a8a8d79/node_modules/@deepseek-ai/dsh-session-persistence",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/session/session-persistence"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-user-approval",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-user-approval@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-ag_bcedf701ad0708f0368cd2367a7b545a/node_modules/@deepseek-ai/dsh-user-approval",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/interaction/user-approval"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-sandbox-policy",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-sandbox-policy@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-a_dca70c70b48db528f4726ae952bd2f4b/node_modules/@deepseek-ai/dsh-sandbox-policy",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/sandbox/sandbox-policy"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-bash-persistent",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-bash-persistent@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai_879723f5580d4897545b07469c232827/node_modules/@deepseek-ai/dsh-tool-bash-persistent",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/shell/tool-bash-persistent"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-file-reference",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-file-reference@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-a_adb7acc9060002e8b35e5665c5d5ac66/node_modules/@deepseek-ai/dsh-file-reference",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/context/file-reference"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-resources",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-resources@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-resources",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/resources"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-client-ui-cot-translation",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-client-ui-cot-translation@0.2.1-rc.1_@deepseek-ai+cordis@_8935a7088537c7c719df7a0a031cff3c/node_modules/@deepseek-ai/dsh-experimental-client-ui-cot-translation",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/client-ui-cot-translation"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-web",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-web@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-llm@0.2_0f79650d7805821f4d8dadff14657f9b/node_modules/@deepseek-ai/dsh-tool-web",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/web/tool-web"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-shell",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-shell@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-sandbox@0._73681bcdd4402a145dc7d9b3166837ba/node_modules/@deepseek-ai/dsh-shell",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/shell/shell"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-ralph-bundle",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-ralph-bundle@0.2.1-rc.1_7fbd1805deb9156f6a851a886cf8f11d/node_modules/@deepseek-ai/dsh-experimental-ralph-bundle",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/ralph-bundle"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-deque",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-deque@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-deque",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/util/deque"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-sidebar-files",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-sidebar-files@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-sidebar-files",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-sidebar-files"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-shell-env",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-shell-env@0.2.1-rc.1_6901b44cb070275077a66594c6020247/node_modules/@deepseek-ai/dsh-shell-env",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/shell/shell-env"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-session-search",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-session-search@0.2.1-rc.1_1f3d110e0c708f07d0f26e3f8596ebe2/node_modules/@deepseek-ai/dsh-experimental-session-search",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/session-search"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-tool",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-tool@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-tool",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-tool"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-workflow-run",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-workflow-run@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-workflow-run",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-workflow-run"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-llm-deepseek",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-llm-deepseek@0.2.1-rc.1_0a32014a09ca22c2f6b9634e95a475ae/node_modules/@deepseek-ai/dsh-llm-deepseek",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/llm/llm-deepseek"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-web-fetch-http",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-web-fetch-http@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-h_03efa47d02bf722a45b375f85ad98835/node_modules/@deepseek-ai/dsh-web-fetch-http",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/web/web-fetch-http"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-settings",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-settings@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-settings",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-settings"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-storage",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-storage@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-storage",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/storage/storage"
+    }
+  },
+  {
+    "name": "@deepseek-ai/libreoffice-kit",
+    "version": "0.1.5",
+    "license": "MPL-2.0",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+libreoffice-kit@0.1.5/node_modules/@deepseek-ai/libreoffice-kit",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/deepseek-ai/dsh-libreoffice-kit",
+      "directory": "packages/entry"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-directory-picker-browse",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-directory-picker-browse@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-directory-picker-browse",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-directory-picker-browse"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-permission-presets",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-permission-presets@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-permission-presets",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-permission-presets"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-bash-local",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-bash-local@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-shell_048c8a009f2fda2b8c0de263941ebd0a/node_modules/@deepseek-ai/dsh-bash-local",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/shell/bash-local"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-authorization",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-authorization@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-cr_82c0883282eb69534c0bc047e8b5f303/node_modules/@deepseek-ai/dsh-authorization",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/credentials/authorization"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-open-in-app",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-open-in-app@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-open-in-app",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-open-in-app"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-typert-protocol",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-typert-protocol@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-typert-protocol",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/typert/protocol"
+    }
+  },
+  {
+    "name": "@deepseek-ai/cordis-plugin-loader",
+    "version": "1.0.6",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+cordis-plugin-loader@1.0.6_@deepseek-ai+cordis@4.0.5_node-addon-require-builtin@0.1.9/node_modules/@deepseek-ai/cordis-plugin-loader",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "vendor/loader"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-win32-process",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-win32-process@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-win32-process",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/subprocess/win32-process"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-sdk-protocol",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-sdk-protocol@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-llm_09060541e196c631578df395539c6f45/node_modules/@deepseek-ai/dsh-sdk-protocol",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/sdk/protocol"
+    }
+  },
+  {
+    "name": "@deepseek-ai/node-addon-system-linux-arm64",
+    "version": "0.1.2",
+    "license": "BSD-3-Clause",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+node-addon-system-linux-arm64@0.1.2/node_modules/@deepseek-ai/node-addon-system-linux-arm64",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-harness/deepseek-harness.git",
+      "directory": "native/system/packages/linux-arm64"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-sidebar-documentpreview",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-sidebar-documentpreview@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-sidebar-documentpreview",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-sidebar-documentpreview"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-compaction",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-compaction@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-brand_b779d9bd152bedcc4684b4421ee87a48/node_modules/@deepseek-ai/dsh-compaction",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/compaction/compaction"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-experimental-badge-skill-bundle",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-experimental-badge-skill-bundle@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@_2c6b663f7397f90b62875c5c0c7077ff/node_modules/@deepseek-ai/dsh-experimental-badge-skill-bundle",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/experimental/badge-skill-bundle"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-plugin-manager",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-plugin-manager@0.2.1-rc.1_b1054fea997ea31b14a908962f32956b/node_modules/@deepseek-ai/dsh-plugin-manager",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/boot/plugin-manager"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-tool-pwsh",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tool-pwsh@0.2.1-rc.1_57f6b2f33a75862795f936ffbd70e5a7/node_modules/@deepseek-ai/dsh-tool-pwsh",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/shell/tool-pwsh"
+    }
+  },
+  {
+    "name": "@deepseek-ai/dsh-client-ui-sidebar",
+    "version": "0.2.1-rc.1",
+    "license": "MIT",
+    "path": "opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-client-ui-sidebar@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-client-ui-sidebar",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+      "directory": "packages/client/ui-sidebar"
+    }
+  }
+]

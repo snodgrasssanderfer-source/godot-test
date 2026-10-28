@@ -1,0 +1,369 @@
+/* Android WebView adaptation layered over the official DeepSeek Harness UI. */
+:root {
+  -webkit-tap-highlight-color: transparent;
+  --dsh-safe-top: env(safe-area-inset-top, 0px);
+  --dsh-safe-right: env(safe-area-inset-right, 0px);
+  --dsh-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --dsh-safe-left: env(safe-area-inset-left, 0px);
+}
+
+html,
+body,
+#root {
+  box-sizing: border-box;
+  height: 100%;
+  min-width: 0;
+  width: 100%;
+}
+
+html {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+@supports (height: 100dvh) {
+  html,
+  body,
+  #root {
+    min-height: 100dvh;
+  }
+}
+
+.md-code-block,
+.md-table-wide,
+pre,
+table {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+/* The official renderer supplies the scroll container, but a WebView still
+   needs an explicit touch path for long code and wide result tables. */
+.md-code-block,
+.md-table-wide,
+pre {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dsw-alias-scrollbar-bg-l2, rgb(128 128 128 / 45%)) transparent;
+}
+
+/* The official bundle styles controls through CSS-Modules hash classes
+   (specificity 0,1,0), so bare element selectors below never win. Touch-target
+   and anti-zoom rules therefore carry `!important`, scoped to narrow viewports
+   and coarse pointers only: desktop and tablet keep the official metrics. */
+@media (max-width: 720px) {
+  /* Keep keyboard navigation visible even where an official control only
+     changes its background on focus. */
+  :where(button, [role='button'], [role='tab'], [role='menuitem'], a, input, select, textarea, [contenteditable='true']):focus-visible {
+    outline: 2px solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary, #4c8dff));
+    outline-offset: 2px;
+  }
+
+  body {
+    padding: var(--dsh-safe-top) var(--dsh-safe-right) var(--dsh-safe-bottom) var(--dsh-safe-left);
+  }
+
+  /* Keep the percentage height chain intact: the official shell frame is
+     `height: 100%`, so an `auto` root collapses it and leaves dead space
+     below the transcript (observed on rc.2, 360px viewport). The safe-area
+     padding lives on `body`; its border-box sizing already subtracts that
+     from the root's percentage, so no viewport-unit min-height is needed. */
+  #root {
+    height: 100%;
+    min-height: 0;
+  }
+
+  /* Below 16px the WebView zooms the page on focus and never zooms back. */
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1em) !important;
+    max-width: 100%;
+    line-height: 1.45;
+  }
+
+  /* Do not let a long prompt push the transcript off-screen. The composer
+     keeps its own scroll position while the rest of the shell remains still. */
+  [data-phase] :is(textarea, [contenteditable='true']) {
+    max-height: min(32dvh, 240px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    overflow-wrap: anywhere;
+  }
+
+  [data-phase] :is(textarea, [contenteditable='true']):focus-visible {
+    outline-offset: 1px;
+  }
+
+  /* Do not fabricate larger hit areas with absolutely positioned pseudo
+     elements. Adjacent icon buttons then overlap, and the later one steals
+     the earlier one's taps (especially in confirmation dialogs). The official
+     control bounds remain the only interactive bounds. */
+
+  [role='dialog'],
+  [role='menu'],
+  [data-radix-popper-content-wrapper] {
+    box-sizing: border-box;
+    max-height: calc(100vh - var(--dsh-safe-top) - var(--dsh-safe-bottom) - 16px);
+    max-height: calc(100dvh - var(--dsh-safe-top) - var(--dsh-safe-bottom) - 16px);
+    max-width: calc(100vw - var(--dsh-safe-left) - var(--dsh-safe-right) - 16px);
+    min-width: 0;
+    overscroll-behavior: contain;
+  }
+
+  [role='dialog'] > * {
+    min-width: 0;
+  }
+
+  /* 只给根节点保留 min-width:0。此前的 `#root *` 是 ID 级特异性（1,0,0），会压过
+     官方一切类选择器的 min-width —— 连本文件自己声明的
+     `.md-table-wide > table{min-width:max-content}` 也被它反压，导致官方依赖最小
+     宽度的列/宽表格一并塌缩（真机上表现为文字被挤成逐字换行）。外壳三列的最小宽度
+     改由下方三条列规则各自声明，官方后代的 min-width 语义归还给官方。 */
+  #root {
+    min-width: 0;
+  }
+
+  .md-code-block,
+  pre {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .md-table-wide {
+    border-radius: var(--dsw-radius-sm, 6px);
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 8px;
+  }
+
+  .md-table-wide > table {
+    min-width: max-content;
+  }
+
+  .md-table-wide :is(th, td) {
+    min-width: 88px;
+    padding-inline: 8px;
+  }
+
+  .md-code-block pre {
+    max-width: 100%;
+    margin-inline: 0;
+  }
+
+  /* Width handles drive a pointer-precise drag (pointermove against a captured
+     origin). On a touch screen they cannot be aimed and only misfire, so they
+     leave the hit-testing tree. The collapsed 56px rail stays: it carries the
+     only control that reopens the sidebar.
+     Contract note: dsh 0.1.5-rc.2 renders every handle as [data-side] only;
+     the legacy [data-width-handle] name (alpha generation) is retained so the
+     same rule covers both frontend generations. */
+  [data-width-handle],
+  [data-side='sidebar'],
+  [data-side='rightbar'] {
+    display: none !important;
+  }
+
+  /* The clearance is tuned for desktop reading comfort; the transcript pads
+     clearance + 16px per side on top of it. On a 360px screen that spends 64px
+     on margins. Halving it, and letting the content width follow the column
+     instead of the 680px desktop floor, returns the space to the message body
+     and the input card (measured: card 208px -> 240px). */
+  [data-phase] {
+    --dsh-composer-side-clearance: 8px !important;
+    --dsh-chat-content-width: 100% !important;
+  }
+}
+
+/* Sidebar as an overlay drawer.
+ *
+ * The shell lays out three columns as a grid whose `grid-template-columns` is
+ * written inline by the app, so only `!important` reaches it. Below the app's
+ * own 1024px breakpoint the sidebar auto-collapses to a 56px rail, but a manual
+ * toggle re-expands it into a 280px *track*, which squeezes the centre column
+ * to 80px and the transcript to 16px on a 360px screen (measured).
+ *
+ * The frame carries no stable class name (CSS Modules hashes it), so it is
+ * matched structurally: it is the one element holding both the shell overlay
+ * layer and the right-bar column as direct children.
+ *
+ * Requires `:has()` (Chrome 105+). Where it is missing the whole block drops
+ * and the sidebar stays a track — the current behaviour, never worse.
+ */
+@media (max-width: 720px) {
+  /* 抽屉 frame 的结构匹配改用 :is() 分组，双向兼容。
+   *
+   * 证据（0.1.5-rc.2 的布局插件产物 scripts/runtime-profile/node_modules/.pnpm/
+   * @deepseek-ai+dsh-client-ui-<哈希>/node_modules/@deepseek-ai/dsh-client-ui-layout/lib/client.js）：
+   * frame 的直接子元素里始终有 `data-shell-overlay`（遮罩层容器），展开态另有一个
+   * `data-side="sidebar"` 的拖拽把手；右栏列是 `[data-rightbar-col]`，右栏把手是
+   * `data-side="rightbar"`（两个把手与右栏列同属 frame 的子元素数组）。
+   * 插件页面不是 iframe（插件清单产物里 iframe/srcdoc 计数为 0），与外壳共用同一份
+   * 布局插件、同一套标记，因此这里不为插件另造标记名，只用 :is() 把「同一套标记的
+   * 所有已知世代」都收进来：
+   *   左栏标记 = data-shell-overlay（始终在）或 data-side="sidebar"（展开态把手）
+   *   右栏标记 = data-rightbar-col（列）或 data-side="rightbar"（把手）
+   * 单链写法在「只出现其中一个标记」的渲染路径上会整块静默失效；两侧仍各要求命中
+   * 一个标记，所以不会误伤嵌套容器（同一元素同时直接持有左栏与右栏标记不成立）。
+   */
+  :is(:has(> [data-shell-overlay]), :has(> [data-side='sidebar'])):is(:has(> [data-rightbar-col]), :has(> [data-side='rightbar'])) {
+    grid-template-columns: 56px minmax(0, 1fr) 0px !important;
+  }
+
+  /* Pin each column to its track. Once the sidebar leaves the flow the centre
+     column would otherwise slide up into the 56px rail slot.
+     这里同时承担三列的 min-width:0（原先由 `#root *` 全局代劳）：grid 项默认
+     `min-width: auto`，不给 0 的话 1fr 轨道压不过内容的最小宽度。 */
+  :is(:has(> [data-shell-overlay]), :has(> [data-side='sidebar'])):is(:has(> [data-rightbar-col]), :has(> [data-side='rightbar'])) > :first-child {
+    grid-area: 1 / 1;
+    min-width: 0;
+  }
+
+  :is(:has(> [data-shell-overlay]), :has(> [data-side='sidebar'])):is(:has(> [data-rightbar-col]), :has(> [data-side='rightbar'])) > :first-child + * {
+    grid-area: 1 / 2;
+    min-width: 0;
+  }
+
+  :is(:has(> [data-shell-overlay]), :has(> [data-side='sidebar'])):is(:has(> [data-rightbar-col]), :has(> [data-side='rightbar'])) > [data-rightbar-col] {
+    grid-area: 1 / 3;
+    min-width: 0;
+  }
+
+  /* Expanded (the app drops `data-sidebar-collapsed`): float the column over
+     the transcript instead of displacing it.
+     遮罩不再用 box-shadow 充当（影子不是命中测试的一部分，视觉上像遮罩、行为上
+     什么也没挡，还容易让人以为「有个隐形层在吃点击」）。改成由抽屉自己的 ::after
+     画一层真遮罩：跟随视口、`pointer-events: none` 永不抢点击、`z-index: -1` 落在
+     抽屉内容之下（抽屉整体 z-index: 30，仍盖在正文之上）。本层不使用 JavaScript，
+     所以「点遮罩关闭」依旧不存在，关闭仍走导轨上的 toggle。 */
+  :is(:has(> [data-shell-overlay]), :has(> [data-side='sidebar'])):is(:has(> [data-rightbar-col]), :has(> [data-side='rightbar'])):not([data-sidebar-collapsed]) > :first-child {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 30;
+    width: min(280px, 86vw);
+    overflow: visible;
+  }
+
+  :is(:has(> [data-shell-overlay]), :has(> [data-side='sidebar'])):is(:has(> [data-rightbar-col]), :has(> [data-side='rightbar'])):not([data-sidebar-collapsed]) > :first-child::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: rgb(0 0 0 / 50%);
+    pointer-events: none;
+  }
+}
+
+@media (max-width: 720px) and (max-height: 520px) {
+  [role='dialog'] {
+    max-height: calc(100vh - var(--dsh-safe-top) - var(--dsh-safe-bottom) - 8px);
+    max-height: calc(100dvh - var(--dsh-safe-top) - var(--dsh-safe-bottom) - 8px);
+  }
+}
+
+/* 官方 settings-general 的导航与正文是弹窗的两个直接子列。
+ * 以 navList 后缀定位设置弹窗，避免影响其他插件弹窗；不依赖 CSS 哈希前缀。
+ * 导航横向滚动，正文独立纵向滚动，关闭按钮始终留在可见的标题行。 */
+@media (max-width: 720px), (max-width: 960px) and (max-height: 520px) and (pointer: coarse) {
+  [role='dialog']:has([class*='_navList']) {
+    box-sizing: border-box;
+    width: calc(100vw - var(--dsh-safe-left) - var(--dsh-safe-right) - 16px) !important;
+    max-width: 800px !important;
+    min-width: 0 !important;
+    height: calc(100vh - var(--dsh-safe-top) - var(--dsh-safe-bottom) - 16px) !important;
+    height: calc(100dvh - var(--dsh-safe-top) - var(--dsh-safe-bottom) - 16px) !important;
+    max-height: 800px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    border-radius: 18px;
+    overflow: hidden !important;
+  }
+
+  [role='dialog']:has([class*='_navList']) > :has(> [class*='_navList']) {
+    box-sizing: border-box;
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: 0 0 auto !important;
+    padding: 8px 10px 0 !important;
+    gap: 0 !important;
+    overflow: hidden;
+  }
+
+  /* 保留 aria-labelledby 指向的标题，视觉上为导航让出空间。 */
+  [role='dialog']:has([class*='_navList']) [class*='_navTitle'] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  [role='dialog']:has([class*='_navList']) [class*='_navList'] {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 6px;
+    min-width: 0;
+    width: 100%;
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+
+  [role='dialog']:has([class*='_navList']) [class*='_navCell'] {
+    flex: 0 0 auto !important;
+    height: 44px;
+    white-space: nowrap;
+  }
+
+  [role='dialog']:has([class*='_navList']) > [class*='_content'] {
+    width: 100% !important;
+    min-width: 0;
+    min-height: 0;
+    flex: 1 1 0% !important;
+    overflow: hidden;
+  }
+
+  [role='dialog']:has([class*='_navList']) > [class*='_content'] > [class*='_header'] {
+    height: 44px;
+    flex: 0 0 auto;
+    align-items: center;
+    padding: 6px 12px;
+  }
+
+  [role='dialog']:has([class*='_navList']) > [class*='_content'] > [class*='_options'] {
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 0;
+    flex: 1 1 0%;
+    padding: 0 14px 16px;
+    overflow: auto;
+    overscroll-behavior: contain;
+    overflow-wrap: anywhere;
+  }
+
+  [role='dialog']:has([class*='_navList']) [data-slot='settings.section'],
+  [role='dialog']:has([class*='_navList']) [data-slot='settings.plugins.tab'] {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

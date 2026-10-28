@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "appVersion": "0.3.0",
+  "releaseTag": "v0.3.0",
+  "releaseType": "stable",
+  "commit": "e9be0e43629f8b744991c2cf9efd160ca7d41abc",
+  "assets": [
+    {
+      "name": "app-release.apk",
+      "sha256": "9b1e13406d4cb9c70827d13f4c0e052f8491086eed72980e52617c7899ed61b5",
+      "bytes": 320967852
+    },
+    {
+      "name": "rootfs.bundle",
+      "sha256": "f7e9736ebc359a761adaf56bf02fe5ac64877c73085aaa1df0ffbe876c7708fb",
+      "bytes": 317842454
+    },
+    {
+      "name": "runtime-manifest.json",
+      "sha256": "09f709fd1439f4c305b7ed9012287a0e437b993cfef9dacc387da09b10aa13d4",
+      "bytes": 1035
+    },
+    {
+      "name": "corresponding-source.tar.gz",
+      "sha256": "3caab4b8457540dc693e617a7da843191e507cf0903b2424773448bf0b3709cc",
+      "bytes": 29178908
+    }
+  ]
+}

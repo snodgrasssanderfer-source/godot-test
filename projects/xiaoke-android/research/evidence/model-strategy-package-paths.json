@@ -1,0 +1,57 @@
+[
+  {
+    "package": "dsh-llm-deepseek",
+    "source": "rootfs-static/opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-llm-deepseek@0.2.1-rc.1_0a32014a09ca22c2f6b9634e95a475ae/node_modules/@deepseek-ai/dsh-llm-deepseek",
+    "evidence": "evidence/runtime-code/dsh-llm-deepseek"
+  },
+  {
+    "package": "dsh-deepseek-llm-api-extensions",
+    "source": "rootfs-static/opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-deepseek-llm-api-extensions@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-deepseek-llm-api-extensions",
+    "evidence": "evidence/runtime-code/dsh-deepseek-llm-api-extensions"
+  },
+  {
+    "package": "dsh-system-prompt",
+    "source": "rootfs-static/opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-system-prompt@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-ll_a1c77d904cb397231052271d8dcad314/node_modules/@deepseek-ai/dsh-system-prompt",
+    "evidence": "evidence/runtime-code/dsh-system-prompt"
+  },
+  {
+    "package": "dsh-llm-retry",
+    "source": "rootfs-static/opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-llm-retry@0.2.1-rc.1_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-agent@_d77d6692d3759f04be0295eb294892eb/node_modules/@deepseek-ai/dsh-llm-retry",
+    "evidence": "evidence/runtime-code/dsh-llm-retry"
+  },
+  {
+    "package": "dsh-token-meter",
+    "source": "rootfs-static/opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-token-meter@0.2.1-rc.1_754d69f0b5329baa6d17ee8d88cd7d99/node_modules/@deepseek-ai/dsh-token-meter",
+    "evidence": "evidence/runtime-code/dsh-token-meter"
+  },
+  {
+    "package": "dsh-agent-default-model",
+    "source": "rootfs-static/opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-agent-default-model@0.2.1-rc.1_10b348b38164f4f20beb2388a507445c/node_modules/@deepseek-ai/dsh-agent-default-model",
+    "evidence": "evidence/runtime-code/dsh-agent-default-model"
+  },
+  {
+    "package": "dsh-base",
+    "source": "rootfs-static/opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-base@0.2.1-rc.1_39d56e50991f32e7fc3d63dc7b16c30b/node_modules/@deepseek-ai/dsh-base",
+    "evidence": "evidence/runtime-code/dsh-base"
+  },
+  {
+    "package": "dsh-compaction-tool-result-pruner",
+    "source": "rootfs-static/opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-compaction-tool-result-pruner@0.2.1-rc.1_352197aed4119992deeb723a331abb06/node_modules/@deepseek-ai/dsh-compaction-tool-result-pruner",
+    "evidence": "evidence/runtime-code/dsh-compaction-tool-result-pruner"
+  },
+  {
+    "package": "dsh-compaction-image-offload",
+    "source": "rootfs-static/opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-compaction-image-offload@0.2.1-rc.1_6a06f1cfdb74568a6c0d0a26c3e2f1e7/node_modules/@deepseek-ai/dsh-compaction-image-offload",
+    "evidence": "evidence/runtime-code/dsh-compaction-image-offload"
+  },
+  {
+    "package": "dsh-agent",
+    "source": "rootfs-static/opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-agent@0.2.1-rc.1_0353620dad4a0e9c9befc32df9332957/node_modules/@deepseek-ai/dsh-agent",
+    "evidence": "evidence/runtime-code/dsh-agent"
+  },
+  {
+    "package": "dsh-tools",
+    "source": "rootfs-static/opt/dsh/node_modules/.pnpm/@deepseek-ai+dsh-tools@0.2.1-rc.1_14ea9b2f1090d1f852482c689f41a9bb/node_modules/@deepseek-ai/dsh-tools",
+    "evidence": "evidence/runtime-code/dsh-tools"
+  }
+]

@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 用于用户按应用名称选择自动化白名单，不上传或记录完整应用清单。 -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- 仅用于用户解锁后恢复用户已开启的后台服务与悬浮球；不会静默启动界面。 -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- 后台保持 Harness：前台服务及其通知权限。
+         targetSdk 35 下前台服务必须声明具体类型；本服务不属于媒体、定位、数据同步
+         等既有类型，只用于维持本机运行时进程，因此使用 specialUse 并给出用途说明。
+         POST_NOTIFICATIONS 仅影响 Android 13+ 是否显示通知，服务本身不依赖它。 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- 目标应用副屏预览需要独立的前台服务；通知用于让用户随时结束会话。 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
+
+    <!-- 存储访问。
+         容器内的 PRoot 以应用 UID 运行，"按路径读 /sdcard" 受同一套权限约束：
+           - 相册 / 截图 / 视频：Android 13+ 用 READ_MEDIA_*，12 及以下用 READ_EXTERNAL_STORAGE；
+           - 其余目录（Download、自建壁纸目录等非媒体路径）：需要「所有文件访问」。
+         MANAGE_EXTERNAL_STORAGE 是特殊权限，不会弹运行时对话框，必须引导用户到系统设置页
+         手动开启，因此界面上要显示状态并提供入口，不能静默申请。
+         本应用走 GitHub Release 分发，不经 Play 审核；若将来上架需按 Play 政策重新评估。 -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+
+    <!-- 悬浮球。这是特殊权限，不会弹运行时对话框，必须引导用户到系统设置手动开启，
+         因此界面上要显示状态并提供入口，不能静默申请。
+         用途仅限：在其他应用上层显示一个可拖动的球，点按回到 Harness 对话。 -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- 应用自身更新。Android 不允许应用静默安装，这个权限只是让系统安装器能被调起来；
+         用户仍会在安装界面上看到一次确认，确认与否由用户决定。 -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <queries>
+        <package android:name="moe.shizuku.privileged.api" />
+        <provider android:authorities="moe.shizuku.privileged.api.shizuku" />
+    </queries>
+
+    <application
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:extractNativeLibs="true"
+        android:fullBackupContent="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme"
+        android:usesCleartextTraffic="false">
+
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:enabled="true"
+            android:exported="true"
+            android:multiprocess="false"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+
+        <!-- 仅暴露 cacheDir 中的诊断日志和工作区临时副本，不授予持久权限。
+             分享时通过 FLAG_GRANT_READ_URI_PERMISSION 临时授权给用户选中的应用。 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.diagnostics"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <!-- 应用更新安装包专用：只暴露 cacheDir 下的 app-updates/，与诊断导出的路径文件分开。
+             必须用独立子类（AppUpdateFileProvider）而不是直接复用上面的 android:name，
+             否则同名的两个 provider 会被 PackageManager 去重，这个 authority 在真机上解析不到。
+             同样不授予持久权限：安装时按次授权，系统安装器读完那一次就够了。 -->
+        <provider
+            android:name=".AppUpdateFileProvider"
+            android:authorities="${applicationId}.appupdates"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/app_update_paths" />
+        </provider>
+        <!-- Shizuku Manager 以独立 UID 绑定用户服务；必须允许外部绑定，
+             同时由 Shizuku 官方 API_V23 权限保护，未获 Shizuku 授权的调用方无法访问。 -->
+        <service
+            android:name=".shizuku.DeviceShellUserService"
+            android:exported="true"
+            android:permission="moe.shizuku.manager.permission.API_V23"
+            tools:ignore="Instantiatable">
+            <intent-filter>
+                <action android:name="moe.shizuku.client.BIND_USER_SERVICE" />
+            </intent-filter>
+        </service>
+
+        <service android:name=".companion.CompanionService" android:exported="false" android:foregroundServiceType="specialUse" android:stopWithTask="false">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="用户主动启用的助手任务和已选择QQ会话的处理，可随时暂停" />
+        </service>
+        <service android:name=".companion.QqNotificationBridge" android:exported="true" android:label="小克助手 QQ通知" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter>
+        </service>
+
+        <!-- 后台保持 Harness 的前台服务。
+             stopWithTask="false"：划掉最近任务时不随任务结束；是否继续仍由系统与
+             厂商后台策略决定，本应用不做绝对保活承诺。 -->
+        <service
+            android:name=".HarnessKeepAliveService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:stopWithTask="false"
+            tools:ignore="Instantiatable">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="维持本机 Harness 运行时进程，使用户在锁屏、返回桌面或划掉最近任务后仍能继续本地会话" />
+        </service>
+
+        <!-- 悬浮球前台服务。与后台保持服务刻意分开：两者的启动条件互不相干。
+             停止任务时不移除，由系统策略决定后续行为，不做保活承诺。 -->
+        <service
+            android:name=".OverlayBallService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:stopWithTask="false"
+            tools:ignore="Instantiatable">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="在其他应用上层显示悬浮球，点按返回 Harness 对话" />
+        </service>
+
+        <service
+            android:name=".virtualscreen.VirtualScreenService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:stopWithTask="false"
+            tools:ignore="Instantiatable">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="在独立虚拟屏幕运行并预览用户选择的目标应用" />
+        </service>
+
+        <!-- 需要用户手动在系统设置中开启。只读取白名单应用的当前窗口，不能静默开启，
+             也不声明执行密码、验证码、支付、权限和锁屏操作。 -->
+        <service
+            android:name=".accessibility.DeepSeekAccessibilityService"
+            android:description="@string/accessibility_service_description"
+            android:exported="true"
+            android:label="@string/accessibility_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <!-- 系统启动/用户解锁恢复入口。非导出且不接收外部数据，不启动 Activity。 -->
+        <receiver
+            android:name=".BootRecoveryReceiver"
+            android:directBootAware="false"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.USER_UNLOCKED" />
+            </intent-filter>
+        </receiver>
+
+        <activity
+            android:name=".HarnessActivity"
+            android:exported="false"
+            android:screenOrientation="unspecified"
+            android:theme="@style/AppTheme.Harness"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".virtualscreen.VirtualScreenActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:screenOrientation="unspecified"
+            android:theme="@style/AppTheme.NoActionBar" />
+
+        <!-- Only the Service-owned overlay WebView can launch this SAF result bridge. -->
+        <activity
+            android:name=".OverlayFileChooserActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@style/AppTheme.Transparent" />
+
+        <!-- 常驻通知的点击入口：全透明转发后立即 finish。
+             noHistory + excludeFromRecents：不留在任务栈与最近任务里。
+             保留默认 taskAffinity：任务已存在时它直接叠在 HarnessActivity 之上，
+             finish() 后对话界面原样可见，不需要重建任何 Activity。
+             使用透明转发，避免通知入口重建管理页并销毁正在显示的 HarnessActivity。 -->
+        <activity
+            android:name=".KeepAliveEntryActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:theme="@style/AppTheme.Transparent" />
+
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/AppTheme.NoActionBar"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data
+                    android:mimeType="*/*"
+                    android:scheme="content" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+        </activity>
+
+    </application>
+</manifest>

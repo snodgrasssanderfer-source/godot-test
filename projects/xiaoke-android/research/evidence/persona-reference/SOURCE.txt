@@ -1,0 +1,6 @@
+Reference only, not proposed final persona.
+Repository: https://github.com/Charliechen114514/deslop
+Commit: 70e6a9478baaa270f3c5ca3868e58502d32e6e8c
+Path: example/personas/claude-girl.md
+MIT text license; does not license linked or described third-party artwork. Secondary lore not independently verified.
+User will write persona with Gemini after installing the planned APK.

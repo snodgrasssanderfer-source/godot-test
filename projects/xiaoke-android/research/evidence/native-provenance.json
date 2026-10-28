@@ -1,0 +1,23 @@
+[
+  {
+    "file": "libdsh_proot_loader.so",
+    "bytes": 1632,
+    "sha256": "f149774236db1e69b36cc1e4ed3866c7094db2eee52da0d4956aa63a9bb26929",
+    "elf_class": 2,
+    "e_machine": 183
+  },
+  {
+    "file": "libdsh_proot.so",
+    "bytes": 257424,
+    "sha256": "07ef0b01a1506a364c9db3e5fe6ac9a530974371f9838bc7a5c6abb5097b4c78",
+    "elf_class": 2,
+    "e_machine": 183
+  },
+  {
+    "file": "libdsh_pty.so",
+    "bytes": 10664,
+    "sha256": "ac797efed92eb519361065daa573a09414810a7af0e6225cc26fbe6efcc89944",
+    "elf_class": 2,
+    "e_machine": 183
+  }
+]

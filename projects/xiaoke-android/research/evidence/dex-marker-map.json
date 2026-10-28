@@ -1,0 +1,35 @@
+{
+  "/device-command": [
+    "decompiled/sources/p005c0/C0091g.java"
+  ],
+  "dsh-device-bridge": [
+    "decompiled/sources/p012g0/C0175c1.java"
+  ],
+  "DSH_CUSTOM_PROVIDER_": [
+    "decompiled/sources/p012g0/C0229q.java"
+  ],
+  "llm-pi-ai": [
+    "decompiled/sources/p012g0/C0267z2.java"
+  ],
+  "IMAGE_MODEL_REQUIRED": [],
+  "ACCESSIBILITY_DEVICE_LOCKED": [
+    "decompiled/sources/N0/l.java",
+    "decompiled/sources/p006d0/v0.java",
+    "decompiled/sources/io/deepseekharness/mobile/accessibility/DeepSeekAccessibilityService.java"
+  ],
+  "runtime-session-snapshots": [
+    "decompiled/sources/p012g0/C0202j0.java"
+  ],
+  "launcher-providers.patch.json": [
+    "decompiled/sources/p012g0/C0267z2.java",
+    "decompiled/sources/p012g0/H1.java",
+    "decompiled/sources/p012g0/Q0.java"
+  ],
+  "openai-completions": [
+    "decompiled/sources/p012g0/r.java"
+  ],
+  "screencap -p | toybox base64": [
+    "decompiled/sources/io/deepseekharness/mobile/shizuku/C0283h.java"
+  ],
+  "DSH_MOBILE_AUTH_TOKEN": []
+}

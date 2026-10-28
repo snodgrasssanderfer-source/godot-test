@@ -1,0 +1,16 @@
+{
+  "version": "2.21.0",
+  "package_path": "rootfs-static/opt/dsh/node_modules/.pnpm/@google+genai@2.21.0/node_modules/@google/genai",
+  "continuation_symbol_scan": {
+    "rootfs-static/opt/dsh/node_modules/.pnpm/@google+genai@2.21.0/node_modules/@google/genai/dist/node/index.cjs": {
+      "automaticContinuation": 0,
+      "continuationToken": 0,
+      "continuation_token": 0
+    },
+    "rootfs-static/opt/dsh/node_modules/.pnpm/@google+genai@2.21.0/node_modules/@google/genai/dist/node/index.mjs": {
+      "automaticContinuation": 0,
+      "continuationToken": 0,
+      "continuation_token": 0
+    }
+  }
+}

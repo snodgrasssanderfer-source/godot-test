@@ -1,0 +1,166 @@
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { ArrowLeft, BookOpen, Check, ChevronRight, Download, KeyRound, Loader2, MessageCircle, Pause, Play, Plus, Settings2, Shield, Smartphone, Sparkles, Trash2, Upload, Video, X } from 'lucide-react'
+import { App } from '../App'
+import { command, companion, field, nativeCompanion, ownerScope, profile, type Entry, type Persona, type Settings, type Snapshot } from './bridge'
+import './companion.css'
+import { downloadText, readCharacterCard } from './characterCard'
+
+type Tab = 'chat' | 'models' | 'persona' | 'memory' | 'tasks' | 'device'
+type Run = (action: string, data?: object) => Promise<unknown>
+const labels: Record<Tab, string> = {chat: '对话', models: '模型', persona: '角色', memory: '记忆', tasks: '任务', device: '设备'}
+const states: Record<string, string> = {queued:'排队', running:'处理中', waiting:'等待恢复', draft:'待审草稿', approved:'已授权', sending:'提交中', unknown:'待核对结果', done:'完成', failed:'失败', cancelled:'已取消'}
+
+export function CompanionApp() {
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
+  const [tab, setTab] = useState<Tab>('chat')
+  const [workbench, setWorkbench] = useState(false)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const jobs = useRef(0)
+  const reload = useCallback(async () => { setSnapshot(await companion.state()) }, [])
+  useEffect(() => {
+    void reload().catch(e => setError(String(e)))
+    const timer = window.setInterval(() => { void reload().catch(() => undefined) }, 2500)
+    return () => window.clearInterval(timer)
+  }, [reload])
+  const run: Run = async (action, data = {}) => {
+    jobs.current++; setBusy(true); setError('')
+    try { const value = await command(action, data); await reload(); return value }
+    catch (e) { const message = e instanceof Error ? e.message : String(e); setError(message); throw e }
+    finally { if (--jobs.current === 0) setBusy(false) }
+  }
+  const quietRun: Run = (a,d) => run(a,d).catch(() => undefined)
+  if (workbench) return <><button className="companion-return" onClick={() => setWorkbench(false)}><ArrowLeft size={16}/> 返回助手</button><App /></>
+  if (!snapshot) return <div className="companion-loading"><Loader2 className="spin"/><p>{error || '正在读取本机助手数据…'}</p><button onClick={() => void reload()}>重试</button></div>
+  const pending = snapshot.tasks.filter(t => ['draft','unknown','failed','waiting'].includes(field(t,'state'))).length
+  return <div className="companion-app">
+    <aside className="companion-nav">
+      <div className="companion-brand"><span className="companion-mark">K</span><div><strong>{snapshot.persona.name || '小克'}</strong><small>你的安卓助手</small></div></div>
+      <nav aria-label="助手导航">{(Object.keys(labels) as Tab[]).map(name => <button key={name} className={tab===name?'selected':''} onClick={() => setTab(name)}>{name==='chat'?<MessageCircle/>:name==='models'?<Sparkles/>:name==='persona'?<BookOpen/>:name==='memory'?<Shield/>:name==='tasks'?<Check/>:<Smartphone/>}<span>{labels[name]}</span>{name==='tasks' && pending>0 && <b>{pending}</b>}</button>)}</nav>
+      <button className="workbench-link" onClick={() => setWorkbench(true)}><Settings2 size={18}/> 原 DSH 工作台 <ChevronRight size={16}/></button>
+      <small className="nav-foot">人格与记忆留在本机<br/>由你决定何时连接外界</small>
+    </aside>
+    <main className="companion-main">
+      <header className="companion-top"><div><span className={'status-dot '+(snapshot.settings.networkEnabled?'online':'')}/>{snapshot.settings.paused?'助手已暂停':snapshot.settings.networkEnabled?snapshot.settings.activeModel:'本机模式 · 尚未联网'}</div><button onClick={() => void quietRun('pause',{paused:!snapshot.settings.paused})}>{snapshot.settings.paused?<Play size={16}/>:<Pause size={16}/>} {snapshot.settings.paused?'继续':'暂停'}</button></header>
+      {!nativeCompanion && <div className="preview-note">浏览器界面预览 · 数据仅在本浏览器保存；安卓操作与模型调用不可用</div>}
+      {error && <div className="companion-error" role="alert"><span>{error}</span><button aria-label="关闭错误提示" onClick={() => setError('')}><X size={18}/></button></div>}
+      {busy && <div className="companion-busy" role="status"><Loader2 size={14} className="spin"/> 正在处理；长任务可从顶部暂停</div>}
+      {tab==='chat' && <Chat snapshot={snapshot} run={run} onSetup={() => setTab('models')}/>}
+      {tab==='models' && <Models snapshot={snapshot} run={run}/>}
+      {tab==='persona' && <PersonaEditor value={snapshot.persona} versions={snapshot.personaVersions} run={run}/>}
+      {tab==='memory' && <Memory snapshot={snapshot} run={run}/>}
+      {tab==='tasks' && <Tasks snapshot={snapshot} run={run}/>}
+      {tab==='device' && <Device snapshot={snapshot} run={run}/>}
+    </main>
+  </div>
+}
+
+function Heading({title, text}: {title:string; text:string}) { return <div className="companion-heading"><h1>{title}</h1><p>{text}</p></div> }
+
+function Chat({snapshot,run,onSetup}:{snapshot:Snapshot;run:Run;onSetup:()=>void}) {
+  const [draft,setDraft]=useState(''), [scope,setScope]=useState(ownerScope), [observation,setObservation]=useState('')
+  const messages=snapshot.messages.filter(m=>m.scope===scope).slice(-80)
+  const active=snapshot.tasks.find(t=>field(t,'type')==='chat' && ['queued','running'].includes(field(t,'state')))
+  const end=useRef<HTMLDivElement>(null)
+  useEffect(()=>{end.current?.scrollIntoView({behavior:'smooth',block:'end'})},[messages.length])
+  async function send(e:FormEvent){e.preventDefault();if(!draft.trim())return;try{await run('chat',{text:draft,observationId:observation});setDraft('');setObservation('')}catch{/* shown above */}}
+  return <section className="chat-panel">
+    <Heading title="一起，把事情做好。" text="和主人私聊，或查看已授权会话。每段关系都有自己的记忆范围。"/>
+    {!snapshot.keyConfigured && <button className="setup-banner" onClick={onSetup}><KeyRound/><span><strong>先连接你的 Gemini</strong><small>填写中转地址与本机密钥，选择使用模型</small></span><ChevronRight/></button>}
+    <div className="chat-tools"><label>会话范围<select value={scope} onChange={e=>setScope(e.target.value)}><option value={ownerScope}>主人 · 本机私聊</option>{snapshot.conversations.map(c=><option key={c.id} value={c.scope}>{field(c,'title')} {c.reliable?'':'（待识别）'}</option>)}</select></label><span className="pill">{scope===ownerScope?'主人权限':'独立会话记忆'}</span></div>
+    <div className="message-list">{messages.length===0?<div className="chat-empty"><span className="empty-mark"><MessageCircle size={28}/></span><h2>从一段对话开始</h2><p>你可以先和 Gemini 一起整理角色设定。<br/>角色正文目前留白，随时可在「角色」里修改和保存版本。</p></div>:messages.map(m=><article key={m.id} className={'chat-message '+field(m,'role')}><small>{field(m,'role')==='user'?'你 / 会话消息':snapshot.persona.name}<span>{field(m,'source')}</span></small><div>{field(m,'text')}</div></article>)}<div ref={end}/></div>
+    {active && <div className="task-inline"><Loader2 className="spin" size={16}/>{field(active,'progress')}<button onClick={()=>void run('cancel',{id:active.id}).catch(()=>undefined)}>取消</button></div>}
+    {scope===ownerScope?<form className="chat-compose" onSubmit={e=>void send(e)}><label className="sr-only" htmlFor="companion-message">发给助手的消息</label><textarea id="companion-message" placeholder="说点什么，或安排一个任务…" value={draft} onChange={e=>setDraft(e.target.value)} rows={3} maxLength={12000}/><div><select aria-label="附加观察资料" value={observation} onChange={e=>setObservation(e.target.value)}><option value="">不附加资料</option>{snapshot.observations.map(o=><option key={o.id} value={o.id}>{field(o,'videoId')||field(o,'source')} · {o.analyzed?'已分析':'待分析'}</option>)}</select><button className="primary" type="submit" disabled={!draft.trim()||Boolean(active)}>发送 <ChevronRight size={16}/></button></div></form>:<p className="subtle">这里查看该会话的历史；回复草稿与发送状态在「任务」中管理。</p>}
+  </section>
+}
+
+function Models({snapshot,run}:{snapshot:Snapshot;run:Run}) {
+  const [settings,setSettings]=useState<Settings>(snapshot.settings),[key,setKey]=useState(''),[saved,setSaved]=useState(false)
+  const selected=settings.profiles.find(p=>p.model===settings.activeModel)??settings.profiles[0]
+  function editProfile(change:Partial<typeof selected>){setSaved(false);setSettings(s=>({...s,profiles:s.profiles.map(p=>p===selected?{...p,...change}:p),...(change.model?{activeModel:change.model}:{})}))}
+  async function save(e:FormEvent){e.preventDefault();try{if(key){await run('saveKey',{key});setKey('')}await run('settings',settings);setSaved(true)}catch{/* shown */}}
+  return <section className="content-panel"><Heading title="连接你的模型" text="原生 Google/Gemini 协议。切换模型不会重置人格、会话和长期记忆。"/>
+    <form onSubmit={e=>void save(e)} className="stack">
+      <div className="card"><h2>连接信息</h2><label>API 地址<input required type="url" value={settings.endpoint} onChange={e=>setSettings({...settings,endpoint:e.target.value})}/><small>可填根地址或 /v1beta；使用 HTTPS，不在地址中填写密钥。</small></label><label>本机密钥<input type="password" autoComplete="new-password" value={key} placeholder={snapshot.keyConfigured?'已保存；留空保持现有密钥':'仅在此设备填写新密钥'} onChange={e=>setKey(e.target.value)}/><small>保存在 Android Keystore 保护的存储中，不进入备份或模型提示词。</small></label><label className="check-row"><input type="checkbox" checked={settings.networkEnabled} onChange={e=>setSettings({...settings,networkEnabled:e.target.checked})}/>允许向这个中转站发送会话和主动附加的资料</label></div>
+      <div className="card"><h2>模型配置</h2><div className="model-picks">{settings.profiles.map(p=><button type="button" key={p.id} className={p.model===settings.activeModel?'active':''} onClick={()=>setSettings({...settings,activeModel:p.model})}><Sparkles size={17}/>{p.model}</button>)}</div><div className="form-grid"><label>实际模型 ID<input value={selected.model} onChange={e=>editProfile({model:e.target.value})}/></label><label>思考等级<select value={selected.thinking} onChange={e=>editProfile({thinking:e.target.value as 'low'|'medium'|'high'})}><option value="low">低 · 较快响应</option><option value="medium">中 · 平衡</option><option value="high">高 · 复杂任务</option></select></label><label>本轮输出预算<input type="number" min={1024} max={262144} value={selected.maxOutputTokens} onChange={e=>editProfile({maxOutputTokens:Number(e.target.value)})}/></label><label>上下文预算<input type="number" min={4096} max={262144} value={selected.contextBudget} onChange={e=>editProfile({contextBudget:Number(e.target.value)})}/></label><label>单次超时（秒）<input type="number" min={30} max={1200} value={selected.timeoutSeconds} onChange={e=>editProfile({timeoutSeconds:Number(e.target.value)})}/></label><label>续写段数上限<input type="number" min={1} max={8} value={selected.maxHops} onChange={e=>editProfile({maxHops:Number(e.target.value)})}/></label></div><div className="capability-row">{(['images','video','audio','pdf','tools'] as const).map(k=><label key={k}><input type="checkbox" checked={selected[k]} onChange={e=>editProfile({[k]:e.target.checked})}/>{{images:'图片',video:'视频',audio:'音频',pdf:'PDF',tools:'工具'}[k]}</label>)}</div><p className="subtle">能力勾选是本机配置，不代表已验证中转支持；遇到协议错误会停止并提示。Argon 使用 thinkingLevel 与有界续写。</p><button type="button" className="text-button" onClick={()=>{const p=profile(`custom-model-${settings.profiles.length+1}`);setSettings({...settings,activeModel:p.model,profiles:[...settings.profiles,p]})}}><Plus size={16}/> 添加自定义模型</button></div>
+      <div className="card"><h2>运行预算</h2><label>每日模型轮次上限<input type="number" min={1} max={10000} value={settings.dailyCalls} onChange={e=>setSettings({...settings,dailyCalls:Number(e.target.value)})}/><small>工具回合计入；重试和续写可能产生额外请求。费用以站点账单为准。</small></label></div>
+      <div className="form-actions"><button className="primary" type="submit">保存配置</button>{saved&&<span className="saved"><Check size={16}/> 已保存</span>}<button type="button" className="text-button" onClick={()=>{if(confirm('删除本机保存的模型密钥？'))void run('clearKey').catch(()=>undefined)}}>清除密钥</button></div>
+    </form>
+  </section>
+}
+
+function PersonaEditor({value,versions,run}:{value:Persona;versions:Entry[];run:Run}) {
+  const [name,setName]=useState(value.name),[text,setText]=useState(value.text),[source,setSource]=useState(value.source??'主人编辑'),[note,setNote]=useState('')
+  const file=useRef<HTMLInputElement>(null)
+  async function importCard(input:File){try{const card=await readCharacterCard(input);setName(card.name);setText(card.text);setSource(card.source??'导入');setNote('已载入编辑区；检查资料后保存为新版本。')}catch(e){setNote(String(e))}}
+  async function exportCard(){const content=JSON.stringify({name,text,source,format:'dsh-companion-persona',version:1},null,2);try{if(nativeCompanion)await run('saveDocument',{name:'小克角色.json',text:content});else downloadText('小克角色.json',content)}catch{/* shown */}}
+  return <section className="content-panel"><Heading title="角色，由你定义" text="这里保存你和 Gemini 共同创作的设定。人格正文与事件、关系记忆分开存储。"/>
+    <form className="stack" onSubmit={e=>{e.preventDefault();void run('persona',{name,text,source}).then(()=>setNote('已保存为新版本')).catch(()=>undefined)}}>
+      <div className="card"><div className="section-row"><h2>当前设定</h2><span className="pill">已保存 v{value.version}</span></div><label>称呼<input value={name} maxLength={40} required onChange={e=>setName(e.target.value)}/></label><label>人格与表达方式<textarea className="persona-input" rows={14} value={text} maxLength={64000} placeholder="暂时留白。接入 Gemini 后，再一起写下你希望的性格、关系定位、表达方式与边界。" onChange={e=>setText(e.target.value)}/></label><label>资料来源 / 版本说明<input value={source} maxLength={1000} onChange={e=>setSource(e.target.value)}/></label><div className="form-actions"><button type="submit" className="primary">保存新版本</button><button type="button" onClick={()=>file.current?.click()}><Upload size={16}/> 导入</button><button type="button" onClick={()=>void exportCard()}><Download size={16}/> 导出</button></div><input ref={file} hidden type="file" accept=".json,.png,application/json,image/png" onChange={e=>{const f=e.target.files?.[0];if(f)void importCard(f);e.target.value=''}}/>{note&&<p role="status" className="subtle">{note}</p>}<small>支持本应用 JSON、Character Card V2/V3 JSON 或 PNG。导入文本不会授予角色额外的账号或设备权限。</small></div>
+      <div className="card"><h2>资料入口</h2><p>「小克」是社区二创称呼，没有本应用认定的唯一官方人设。不同画师、卡片与社区梗可能互相冲突；保留出处并按原作者许可使用。</p><div className="reference-links"><a href="https://github.com/Charliechen114514/deslop/blob/main/example/personas/claude-girl.md" target="_blank" rel="noreferrer">claude-girl 社区文本参考 ↗</a><a href="https://github.com/SillyTavern/SillyTavern" target="_blank" rel="noreferrer">角色卡格式与编辑经验 ↗</a><a href="https://www.anthropic.com/claude" target="_blank" rel="noreferrer">Claude 产品资料（不等同二创设定）↗</a></div><small>这些是可查阅资料，不会自动安装、导入或确认为已获插画授权。</small></div>
+      <div className="card"><h2>历史版本</h2>{versions.length===0?<p className="subtle">保存后会在这里保留版本，可随时恢复。</p>:versions.slice().reverse().slice(0,20).map(v=><div className="record-row" key={v.id}><div><strong>v{Number(v.version)} · {field(v,'name')}</strong><small>{field(v,'source')}</small></div><button type="button" onClick={()=>void run('restorePersona',{id:v.id}).then(()=>{setName(field(v,'name'));setText(field(v,'text'));setNote('已恢复并生成新版本')}).catch(()=>undefined)}>恢复</button></div>)}</div>
+    </form>
+  </section>
+}
+
+function Memory({snapshot,run}:{snapshot:Snapshot;run:Run}) {
+  const [scope,setScope]=useState(ownerScope),[search,setSearch]=useState(''),[id,setId]=useState(''),[kind,setKind]=useState('fact'),[text,setText]=useState(''),[source,setSource]=useState('主人编辑'),[sourceId,setSourceId]=useState(''),[pinned,setPinned]=useState(false)
+  const [password,setPassword]=useState(''),[note,setNote]=useState('');const restoreFile=useRef<HTMLInputElement>(null)
+  const scopes=Array.from(new Set([ownerScope,...snapshot.conversations.map(c=>c.scope),...snapshot.memories.map(m=>m.scope)]))
+  const filtered=snapshot.memories.filter(m=>m.scope===scope && field(m,'text').includes(search))
+  function clear(){setId('');setText('');setSourceId('');setSource('主人编辑');setPinned(false)}
+  async function backup(){try{const result=await run('backup',{password}) as {text:string};if(nativeCompanion)await run('saveDocument',{name:'小克加密备份.json',text:result.text});else downloadText('小克预览备份.json',result.text);setNote('已导出。请保管备份口令；密钥、账号凭据和原始媒体不在备份中。');setPassword('')}catch{/* shown */}}
+  async function restore(file:File){if(file.size>16*1024*1024){setNote('备份不能超过 16 MB');return}if(!confirm('恢复会替换当前角色、记忆、消息与任务记录。请先导出当前备份。继续？'))return;try{await run('restoreBackup',{password,text:await file.text()});setNote('已恢复；联网与发送授权不会随备份恢复。');setPassword('');clear()}catch{/* shown */}}
+  return <section className="content-panel"><Heading title="记得清楚，也能更正" text="主人私聊、每个 QQ 会话与公共内容分别保存。每条记忆有来源，模型提取项须经你确认。"/>
+    <div className="stack"><div className="card"><div className="form-grid"><label>记忆范围<select value={scope} onChange={e=>{setScope(e.target.value);clear()}}>{scopes.map(s=><option key={s} value={s}>{s===ownerScope?'主人 · 本机私聊':field(snapshot.conversations.find(c=>c.scope===s)??{id:'',scope:s},'title')||s}</option>)}</select></label><label>搜索<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="记忆中的词句"/></label></div>
+      {filtered.length===0?<p className="subtle">这个范围还没有记忆。</p>:filtered.map(m=><article key={m.id} className="memory-record"><div className="section-row"><span className="pill">{{fact:'事实',relationship:'关系',event:'事件',task:'任务'}[field(m,'kind')]??'记忆'} · {m.status==='confirmed'?'已确认':'模型提取待确认'}{m.pinned?' · 固定':''}</span><div className="inline-actions"><button onClick={()=>{setId(m.id);setKind(field(m,'kind'));setText(field(m,'text'));setSource(field(m,'source'));setSourceId(field(m,'sourceId'));setPinned(Boolean(m.pinned))}}>编辑</button><button aria-label="删除记忆" onClick={()=>{if(confirm('删除此记忆及其旧修订内容？原会话消息仍单独保留。'))void run('deleteMemory',{scope,id:m.id}).catch(()=>undefined)}}><Trash2 size={15}/></button></div></div><p>{field(m,'text')}</p><small>来源：{field(m,'source')}{m.sourceId?` · 消息 ${field(m,'sourceId')}`:''}</small></article>)}
+    </div><form className="card" onSubmit={e=>{e.preventDefault();void run('memory',{...(id?{id}:{}),scope,kind,text,source,sourceId,pinned}).then(clear).catch(()=>undefined)}}><h2>{id?'更正并确认记忆':'添加记忆'}</h2><div className="form-grid"><label>类别<select value={kind} onChange={e=>setKind(e.target.value)}><option value="fact">事实</option><option value="relationship">关系</option><option value="event">事件</option><option value="task">任务</option></select></label><label>来源说明<input value={source} maxLength={1000} onChange={e=>setSource(e.target.value)}/></label></div><label>内容<textarea rows={4} value={text} maxLength={8000} required onChange={e=>setText(e.target.value)}/></label><label className="check-row"><input type="checkbox" checked={pinned} onChange={e=>setPinned(e.target.checked)}/>优先放入模型上下文</label><div className="form-actions"><button className="primary" type="submit">保存并确认</button>{id&&<button type="button" onClick={clear}>取消编辑</button>}</div></form>
+    <div className="card"><h2>加密备份与恢复</h2><p>备份角色版本、长期记忆、会话记录、观察摘要和任务状态；不包含 API 密钥、原始图片/视频或可继续发送的授权。</p><label>备份口令<input type="password" autoComplete="new-password" minLength={8} maxLength={256} value={password} onChange={e=>setPassword(e.target.value)} placeholder="至少 8 个字符，遗失后无法解密"/></label><div className="form-actions"><button onClick={()=>void backup()} disabled={password.length<8}><Download size={16}/> 导出备份</button><button onClick={()=>restoreFile.current?.click()} disabled={password.length<8}><Upload size={16}/> 选择备份恢复</button></div><input ref={restoreFile} hidden type="file" accept=".json,application/json" onChange={e=>{const f=e.target.files?.[0];if(f)void restore(f);e.target.value=''}}/>{note&&<p role="status" className="subtle">{note}</p>}</div></div>
+  </section>
+}
+
+function Tasks({snapshot,run}:{snapshot:Snapshot;run:Run}) {
+  const [filter,setFilter]=useState('pending')
+  const tasks=snapshot.tasks.slice().reverse().filter(t=>filter==='all'||!['done','cancelled'].includes(field(t,'state')))
+  return <section className="content-panel"><Heading title="每一步，都有去向" text="先审阅目标和正文，再授权发送。提交结果不明时，请核对平台；系统不会猜测成功或自动重发。"/><div className="section-row"><span className="subtle">{tasks.length} 条记录</span><select aria-label="任务筛选" value={filter} onChange={e=>setFilter(e.target.value)}><option value="pending">待处理</option><option value="all">全部记录</option></select></div><div className="stack">{tasks.length===0?<div className="card empty-state"><Check/><h2>这里暂时没有待处理的事</h2><p>模型任务、QQ 回复和 B站评论草稿会出现在这里。</p></div>:tasks.map(t=><TaskCard key={t.id} task={t} run={run}/>)}</div></section>
+}
+
+function TaskCard({task,run}:{task:Entry;run:Run}) {
+  const [body,setBody]=useState(field(task,'body'));const state=field(task,'state'),isSend=field(task,'type')==='send'
+  const execute=(action:string,data:object={})=>void run(action,{id:task.id,...data}).catch(()=>undefined)
+  return <article className="card"><div className="section-row"><h2>{isSend?`${task.package==='tv.danmaku.bili'?'B站评论':'QQ 回复'} · ${field(task,'target')}`:'模型任务'}</h2><span className={'pill state-'+state}>{states[state]??state}</span></div><small className="break-anywhere">{task.scope}</small>
+    {isSend&&<label>正文<textarea rows={4} value={body} maxLength={4000} disabled={!['draft','approved'].includes(state)} onChange={e=>setBody(e.target.value)}/></label>}
+    {field(task,'progress')&&<p className="subtle">{field(task,'progress')}</p>}{field(task,'error')&&<p className="error-text">{field(task,'error')}</p>}
+    <div className="form-actions">{isSend&&['draft','approved'].includes(state)&&body!==field(task,'body')&&<button onClick={()=>execute('editDraft',{body})}>保存修改并撤销旧授权</button>}
+      {isSend&&state==='draft'&&body===field(task,'body')&&<button className="primary" onClick={()=>{if(confirm(`授权向「${field(task,'target')}」提交当前正文？授权两分钟有效，改文后需重审。`))execute('approve')}}>授权此草稿</button>}
+      {isSend&&state==='approved'&&<><button className="primary" onClick={()=>execute('send',{route:'ui'})}>切到目标并准备 UI 发送</button>{task.package==='com.tencent.mobileqq'&&<button onClick={()=>execute('send',{route:'notification'})}>通过 QQ 通知回复</button>}</>}
+      {state==='unknown'&&<><button onClick={()=>execute('resolveUnknown',{delivered:true})}>已核对：发送成功</button><button onClick={()=>execute('resolveUnknown',{delivered:false})}>已核对：未发出，结束此任务</button></>}
+      {!isSend&&['failed','waiting','cancelled'].includes(state)&&<button onClick={()=>execute('retry')}>手动重试</button>}
+      {!['done','cancelled','unknown','sending'].includes(state)&&<button onClick={()=>execute('cancel')}>取消任务</button>}
+    </div>{isSend&&<small>UI 发送要求目标会话与输入框可明确辨认；无法确认时停止，不猜测点击位置。</small>}
+  </article>
+}
+
+function Device({snapshot,run}:{snapshot:Snapshot;run:Run}) {
+  const [videoId,setVideoId]=useState(''),[status,setStatus]=useState(''),[password,setPassword]=useState('');const mediaFile=useRef<HTMLInputElement>(null)
+  const permissions=snapshot.permissions
+  const execute=(action:string,data:object={})=>void run(action,data).then(result=>setStatus(typeof result==='object'?JSON.stringify(result,null,2):String(result))).catch(()=>undefined)
+  async function importMedia(file:File){if(file.size>12*1024*1024){setStatus('附件不能超过 12 MB；请导入相关片段或使用短时画面采样。');return}try{const encoded=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=()=>reject(new Error('文件读取失败'));reader.readAsDataURL(file)});await run('importMedia',{name:file.name,mime:file.type,base64:encoded,videoId});setStatus('已保存观察资料。请回到对话，附加该资料，让所选模型分析。')}catch(e){setStatus(String(e))}}
+  return <section className="content-panel"><Heading title="让能力，接上你的手机" text="按需要开启权限。QQ、B站都通过真实安卓应用使用；登录由你在对应应用完成。"/>
+    <div className="stack"><div className="card"><div className="section-row"><h2>权限与运行状态</h2><span className="pill">Android {permissions.androidVersion}</span></div><small>设备 ABI：{permissions.abis.join('、')||'浏览器不提供'}</small><div className="permission-list">{[
+      ['accessibility','无障碍服务',permissions.accessibility.serviceStatus==='connected'||permissions.accessibility.serviceStatus==='enabled','读取界面、点击与短时截图'],
+      ['notifications','QQ 通知访问',permissions.notificationAccess,'接收系统已展示的 QQ 通知与可用的回复动作'],
+      ['overlay','悬浮窗',permissions.overlay,'在应用外显示可控的助手入口'],
+    ].map(([kind,name,ok,detail])=><div className="record-row" key={String(kind)}><div><strong>{String(name)} <span className={ok?'saved':'subtle'}>{ok?'已开启':'待开启'}</span></strong><small>{String(detail)}</small></div><button onClick={()=>execute('openPermission',{kind})}>设置</button></div>)}</div><div className="form-actions"><button onClick={()=>execute('notificationPermission')}>允许前台任务通知</button><button onClick={()=>execute('openPermission',{kind:'battery'})}>查看电池限制</button></div><label>DSH 设备控制密码（已设置时填写）<input type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)}/></label><button onClick={()=>void run('grantApps',{password}).then(()=>{setPassword('');setStatus('已加入 QQ、B站应用允许列表')}).catch(()=>undefined)}>允许控制 QQ 与 B站</button><small>息屏、锁屏、受保护画面和厂商省电策略可能中断操作，界面控制不会绕过系统锁屏。</small>
+      <label className="check-row"><input type="checkbox" checked={snapshot.settings.backgroundEnabled} onChange={e=>execute('settings',{...snapshot.settings,backgroundEnabled:e.target.checked})}/>维持前台任务服务（显示常驻通知）</label>
+    </div><div className="card"><h2>QQ 会话</h2><label className="check-row"><input type="checkbox" checked={snapshot.settings.qqEnabled??false} onChange={e=>execute('settings',{...snapshot.settings,qqEnabled:e.target.checked})}/>接收 QQ 通知并保存到对应会话</label><p>通知必须可确定会话身份才可启用自动回复；无法识别的通知会单独标记。群聊文字不能取得本机主人权限。</p><button onClick={()=>execute('openApp',{package:'com.tencent.mobileqq'})}>打开 QQ</button>{snapshot.conversations.length===0?<p className="subtle">开启通知权限后，收到新的 QQ 消息时会在这里出现。</p>:snapshot.conversations.map(c=><Conversation key={c.id} value={c} run={run}/>)}
+    </div><div className="card"><h2><Video size={20}/> B站内容观察</h2><label>视频 BV 号<input value={videoId} onChange={e=>setVideoId(e.target.value.trim())} placeholder="BV…"/></label><div className="form-actions"><button onClick={()=>execute('openApp',{package:'tv.danmaku.bili',videoId})}>打开视频</button><button disabled={!/^BV[\w]{10}$/.test(videoId)} onClick={()=>execute('videoInfo',{videoId})}>读取公开字幕与信息</button><button disabled={!/^BV[\w]{10}$/.test(videoId)} onClick={()=>{if(confirm('将打开该视频，在 B站前台短时采集 6 张画面。请自行确保视频播放；无音轨，不能代表看完整片。继续？'))execute('captureVideo',{videoId})}}>采集短时画面</button><button onClick={()=>mediaFile.current?.click()}><Upload size={16}/> 导入视频 / 音频 / 图片</button></div><input ref={mediaFile} type="file" hidden accept="video/mp4,video/webm,audio/mpeg,audio/mp4,audio/wav,image/jpeg,image/png,application/pdf" onChange={e=>{const f=e.target.files?.[0];if(f)void importMedia(f);e.target.value=''}}/><p className="subtle">导入资料只留在本机，直到你在对话中主动附加。仅标题或简介不算视频观察；字幕、采样画面、完整导入文件会分别标注覆盖范围。</p></div>
+    {status&&<div className="card"><div className="section-row"><h2>最近操作结果</h2><button aria-label="清除操作结果" onClick={()=>setStatus('')}><X size={16}/></button></div><pre className="operation-result">{status}</pre></div>}
+    <div className="card"><h2>观察资料</h2>{snapshot.observations.length===0?<p className="subtle">暂无资料。采集或导入后，在对话中附加进行分析。</p>:snapshot.observations.slice().reverse().map(o=><article className="memory-record" key={o.id}><strong>{field(o,'videoId')||field(o,'source')}</strong><p>{field(o,'coverage')}</p><small>{o.analyzed?'已取得模型分析':'尚未发给模型'} · {field(o,'source')}</small>{Boolean(o.analyzed)&&<details><summary>查看分析</summary><p>{field(o,'analysis')}</p></details>}</article>)}</div></div>
+  </section>
+}
+
+function Conversation({value,run}:{value:Entry;run:Run}) {
+  const [mode,setMode]=useState(field(value,'mode')||'quiet'),[cooldown,setCooldown]=useState(Number(value.cooldownSeconds)||60),[hourly,setHourly]=useState(Number(value.hourlyLimit)||10),[auto,setAuto]=useState(Boolean(value.autoReply)),[saved,setSaved]=useState(false)
+  return <form className="conversation-card" onSubmit={e=>{e.preventDefault();void run('conversation',{id:value.id,mode,cooldownSeconds:cooldown,hourlyLimit:hourly,autoReply:auto,threshold:0.65}).then(()=>setSaved(true)).catch(()=>undefined)}}><div className="section-row"><strong>{field(value,'title')}</strong><span className="pill">{value.reliable?'系统会话已识别':'待识别 · 不能自动回复'}</span></div><div className="form-grid"><label>参与方式<select value={mode} disabled={!value.reliable} onChange={e=>{setMode(e.target.value);setSaved(false)}}><option value="quiet">安静 · 只记录</option><option value="mention">提到助手时回复</option><option value="natural">按话题自然参与</option></select></label><label>最短间隔（秒）<input type="number" min={10} max={86400} value={cooldown} onChange={e=>setCooldown(Number(e.target.value))}/></label><label>每小时最多回复<input type="number" min={1} max={60} value={hourly} onChange={e=>setHourly(Number(e.target.value))}/></label></div><label className="check-row"><input type="checkbox" checked={auto} disabled={!value.reliable||mode==='quiet'} onChange={e=>setAuto(e.target.checked)}/>在此会话范围内自动提交回复（未勾选时只生成待审草稿）</label><div className="form-actions"><button type="submit">保存会话范围</button>{saved&&<span className="saved">已保存</span>}</div></form>
+}

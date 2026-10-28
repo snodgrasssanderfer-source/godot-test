@@ -1,0 +1,17 @@
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): false
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 1
+Signer #1 certificate DN: CN=DeepSeek Harness Mobile, OU=Mobile, O=DeepSeek Harness, C=CN
+Signer #1 certificate SHA-256 digest: 6d1b5f231d9b469561b8c3b706a6305ea729e972374df1f210f567573d3c0900
+Signer #1 certificate SHA-1 digest: f4dce7943d9518e6c3e9e3b84f14c1f188f81b49
+Signer #1 certificate MD5 digest: 628e8fe312ddb95d7f1820187481ec51
+Signer #1 key algorithm: RSA
+Signer #1 key size (bits): 4096
+Signer #1 public key SHA-256 digest: 632fd2e6def47a13626b0c3e1c2674d421eb6fd45df9d0345ff1b6444020666d
+Signer #1 public key SHA-1 digest: 0d6e0dddcbba55600bf7a5a91bc49da14ebf8219
+Signer #1 public key MD5 digest: bdbbbb440c7a6612023581a803822d79

@@ -1,0 +1,248 @@
+make: Entering directory '<TOOLS_ROOT>/proot-output/proot-source/arm64-v8a/src'
+if [ -e .check_process_vm ]; then echo "#define HAVE_PROCESS_VM" > .check_process_vm.res; else echo "" > .check_process_vm.res; fi
+if [ -e .check_seccomp_filter ]; then echo "#define HAVE_SECCOMP_FILTER" > .check_seccomp_filter.res; else echo "" > .check_seccomp_filter.res; fi
+echo "/* This file is auto-generated, edit at your own risk.  */" > build.h
+echo "#ifndef BUILD_H"      >> build.h
+echo "#define BUILD_H"      >> build.h
+sh -c 'VERSION=$(git describe --tags --dirty --abbrev=8 --always 2>/dev/null); if [ ! -z "${VERSION}" ]; then printf "#undef VERSION\n#define VERSION \"${VERSION}\"\n"; fi;'    >> build.h
+cat .check_process_vm.res .check_seccomp_filter.res                      >> build.h
+echo "#endif /* BUILD_H */" >> build.h
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./loader/loader.c -o loader/loader.o  -fPIC -ffreestanding 
+./loader/loader.c:253:5: warning: inline asm clobber list contains reserved registers: SP [-Winline-asm]
+  253 |                                 BRANCH(stmt->start.stack_pointer, stmt->start.entry_point);
+      |                                 ^
+./loader/assembly-arm64.h:32:3: note: expanded from macro 'BRANCH'
+   32 |                 "// Restore initial stack pointer.      \n\t"   \
+      |                 ^
+./loader/loader.c:253:5: note: Reserved registers on the clobber list may not be preserved across the asm statement, and clobbering them may lead to undefined behaviour.
+./loader/assembly-arm64.h:32:3: note: expanded from macro 'BRANCH'
+   32 |                 "// Restore initial stack pointer.      \n\t"   \
+      |                 ^
+1 warning generated.
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./loader/assembly.S -o loader/assembly.o  -fPIC -ffreestanding 
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang  -o loader/loader loader/loader.o loader/assembly.o -static -nostdlib -Wl,--build-id=none,--image-base=0x2000000000,--rosegment,-z,noexecstack,-z,max-page-size=16384,-z,common-page-size=16384
+rm .check_seccomp_filter.o .check_process_vm.o .check_seccomp_filter .check_process_vm
+make: Leaving directory '<TOOLS_ROOT>/proot-output/proot-source/arm64-v8a/src'
+make: Entering directory '<TOOLS_ROOT>/proot-output/proot-source/arm64-v8a/src'
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./cli/cli.c -o cli/cli.o
+./cli/cli.c:572:14: warning: unused variable 'pointers' [-Wunused-variable]
+  572 |         void *const pointers[] = { this_function, call_site };
+      |                     ^~~~~~~~
+1 warning generated.
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./cli/proot.c -o cli/proot.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./cli/note.c -o cli/note.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./execve/enter.c -o execve/enter.o
+./execve/enter.c:538:30: warning: 'talloc_autofree_context' is deprecated [-Wdeprecated-declarations]
+  538 |         loader_path = talloc_strdup(talloc_autofree_context(), path);
+      |                                     ^
+<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include/talloc.h:1084:46: note: 'talloc_autofree_context' has been explicitly marked deprecated here
+ 1084 | _PUBLIC_ void *talloc_autofree_context(void) _DEPRECATED_;
+      |                                              ^
+<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include/talloc.h:119:38: note: expanded from macro '_DEPRECATED_'
+  119 | #define _DEPRECATED_ __attribute__ ((deprecated))
+      |                                      ^
+1 warning generated.
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./execve/exit.c -o execve/exit.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./execve/shebang.c -o execve/shebang.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./execve/elf.c -o execve/elf.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./execve/ldso.c -o execve/ldso.o
+./execve/ldso.c:108:8: warning: variable 'is_known' set but not used [-Wunused-but-set-variable]
+  108 |                 bool is_known = false;
+      |                      ^
+1 warning generated.
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./execve/auxv.c -o execve/auxv.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./execve/aoxp.c -o execve/aoxp.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./path/binding.c -o path/binding.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./path/glue.c -o path/glue.o
+./path/glue.c:76:14: warning: 'talloc_autofree_context' is deprecated [-Wdeprecated-declarations]
+   76 |         autofreed = talloc_autofree_context();
+      |                     ^
+<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include/talloc.h:1084:46: note: 'talloc_autofree_context' has been explicitly marked deprecated here
+ 1084 | _PUBLIC_ void *talloc_autofree_context(void) _DEPRECATED_;
+      |                                              ^
+<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include/talloc.h:119:38: note: expanded from macro '_DEPRECATED_'
+  119 | #define _DEPRECATED_ __attribute__ ((deprecated))
+      |                                      ^
+1 warning generated.
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./path/canon.c -o path/canon.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./path/f2fs-bug.c -o path/f2fs-bug.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./path/path.c -o path/path.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./path/proc.c -o path/proc.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./path/temp.c -o path/temp.o
+./path/temp.c:37:33: warning: 'talloc_autofree_context' is deprecated [-Wdeprecated-declarations]
+   37 |         temp_directory = talloc_strdup(talloc_autofree_context(), tmp);
+      |                                        ^
+<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include/talloc.h:1084:46: note: 'talloc_autofree_context' has been explicitly marked deprecated here
+ 1084 | _PUBLIC_ void *talloc_autofree_context(void) _DEPRECATED_;
+      |                                              ^
+<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include/talloc.h:119:38: note: expanded from macro '_DEPRECATED_'
+  119 | #define _DEPRECATED_ __attribute__ ((deprecated))
+      |                                      ^
+./path/temp.c:273:13: warning: 'talloc_autofree_context' is deprecated [-Wdeprecated-declarations]
+  273 |                 context = talloc_autofree_context();
+      |                           ^
+<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include/talloc.h:1084:46: note: 'talloc_autofree_context' has been explicitly marked deprecated here
+ 1084 | _PUBLIC_ void *talloc_autofree_context(void) _DEPRECATED_;
+      |                                              ^
+<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include/talloc.h:119:38: note: expanded from macro '_DEPRECATED_'
+  119 | #define _DEPRECATED_ __attribute__ ((deprecated))
+      |                                      ^
+2 warnings generated.
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./syscall/seccomp.c -o syscall/seccomp.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./syscall/syscall.c -o syscall/syscall.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./syscall/chain.c -o syscall/chain.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./syscall/enter.c -o syscall/enter.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./syscall/exit.c -o syscall/exit.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./syscall/sysnum.c -o syscall/sysnum.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./syscall/socket.c -o syscall/socket.o
+./syscall/socket.c:123:10: warning: 'mktemp' is deprecated: mktemp is unsafe, use mkstemp or tmpfile instead [-Wdeprecated-declarations]
+  123 |                 (void) mktemp(shorter_host_path);
+      |                        ^
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/../sysroot/usr/include/stdlib.h:61:66: note: 'mktemp' has been explicitly marked deprecated here
+   61 | char* _Nullable mktemp(char* _Nonnull __template) __attribute__((__deprecated__("mktemp is unsafe, use mkstemp or tmpfile instead")));
+      |                                                                  ^
+1 warning generated.
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./syscall/heap.c -o syscall/heap.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./syscall/rlimit.c -o syscall/rlimit.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./tracee/tracee.c -o tracee/tracee.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./tracee/mem.c -o tracee/mem.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./tracee/reg.c -o tracee/reg.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./tracee/event.c -o tracee/event.o
+./tracee/event.c:699:95: warning: comparison of integers of different signs: 'int' and 'word_t' (aka 'unsigned long') [-Wsign-compare]
+  699 |                                 if (tracee->skip_next_seccomp_signal || (seccomp_after_ptrace_enter && siginfo.si_syscall == SYSCALL_AVOIDER)) {
+      |                                                                                                        ~~~~~~~~~~~~~~~~~~ ^  ~~~~~~~~~~~~~~~
+1 warning generated.
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./tracee/seccomp.c -o tracee/seccomp.o
+./tracee/seccomp.c:296:7: warning: variable 'status' set but not used [-Wunused-but-set-variable]
+  296 |                 int status;
+      |                     ^
+./tracee/seccomp.c:604:29: warning: comparison of integers of different signs: 'gid_t' (aka 'unsigned int') and 'int' [-Wsign-compare]
+  604 |                 if (rxid != rxid_ && rxid != -1)
+      |                                      ~~~~ ^  ~~
+./tracee/seccomp.c:606:29: warning: comparison of integers of different signs: 'gid_t' (aka 'unsigned int') and 'int' [-Wsign-compare]
+  606 |                 if (exid != exid_ && exid != -1)
+      |                                      ~~~~ ^  ~~
+./tracee/seccomp.c:608:29: warning: comparison of integers of different signs: 'gid_t' (aka 'unsigned int') and 'int' [-Wsign-compare]
+  608 |                 if (sxid != sxid_ && sxid != -1)
+      |                                      ~~~~ ^  ~~
+./tracee/seccomp.c:597:12: warning: variable 'ret' is used uninitialized whenever 'if' condition is false [-Wsometimes-uninitialized]
+  597 |                 else if (sysnum == PR_setresgid)
+      |                          ^~~~~~~~~~~~~~~~~~~~~~
+./tracee/seccomp.c:599:7: note: uninitialized use occurs here
+  599 |                 if (ret) {  // EFAULT = address outside address space
+      |                     ^~~
+./tracee/seccomp.c:597:8: note: remove the 'if' if its condition is always true
+  597 |                 else if (sysnum == PR_setresgid)
+      |                      ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+  598 |                         ret = getresgid(&rxid_, &exid_, &sxid_);
+./tracee/seccomp.c:120:9: note: initialize the variable 'ret' to silence this warning
+  120 |         int ret;
+      |                ^
+      |                 = 0
+5 warnings generated.
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./tracee/statx.c -o tracee/statx.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./ptrace/ptrace.c -o ptrace/ptrace.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./ptrace/user.c -o ptrace/user.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./ptrace/wait.c -o ptrace/wait.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/extension.c -o extension/extension.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/ashmem_memfd/ashmem_memfd.c -o extension/ashmem_memfd/ashmem_memfd.o
+./extension/ashmem_memfd/ashmem_memfd.c:171:96: warning: unused parameter 'data2' [-Wunused-parameter]
+  171 | int ashmem_memfd_callback(Extension *extension, ExtensionEvent event, intptr_t data1, intptr_t data2)
+      |                                                                                                ^
+1 warning generated.
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/kompat/kompat.c -o extension/kompat/kompat.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/fake_id0/chown.c -o extension/fake_id0/chown.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/fake_id0/chroot.c -o extension/fake_id0/chroot.o
+./extension/fake_id0/chroot.c:54:2: warning: ignoring return value of function declared with 'warn_unused_result' attribute [-Wunused-result]
+   54 |         realpath(path, path_host_absolute);
+      |         ^~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~
+1 warning generated.
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/fake_id0/getsockopt.c -o extension/fake_id0/getsockopt.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/fake_id0/sendmsg.c -o extension/fake_id0/sendmsg.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/fake_id0/socket.c -o extension/fake_id0/socket.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/fake_id0/open.c -o extension/fake_id0/open.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/fake_id0/unlink.c -o extension/fake_id0/unlink.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/fake_id0/rename.c -o extension/fake_id0/rename.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/fake_id0/chmod.c -o extension/fake_id0/chmod.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/fake_id0/utimensat.c -o extension/fake_id0/utimensat.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/fake_id0/access.c -o extension/fake_id0/access.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/fake_id0/exec.c -o extension/fake_id0/exec.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/fake_id0/link.c -o extension/fake_id0/link.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/fake_id0/symlink.c -o extension/fake_id0/symlink.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/fake_id0/mk.c -o extension/fake_id0/mk.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/fake_id0/stat.c -o extension/fake_id0/stat.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/fake_id0/helper_functions.c -o extension/fake_id0/helper_functions.o
+./extension/fake_id0/helper_functions.c:185:3: warning: misleading indentation; statement is not part of the previous 'else' [-Wmisleading-indentation]
+  185 |                 emulated_gid = config->egid;
+      |                 ^
+./extension/fake_id0/helper_functions.c:183:2: note: previous statement is here
+  183 |         else
+      |         ^
+1 warning generated.
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/fake_id0/fake_id0.c -o extension/fake_id0/fake_id0.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/hidden_files/hidden_files.c -o extension/hidden_files/hidden_files.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/mountinfo/mountinfo.c -o extension/mountinfo/mountinfo.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/port_switch/port_switch.c -o extension/port_switch/port_switch.o
+./extension/port_switch/port_switch.c:174:100: warning: sizeof on array function parameter will return size of 'long *' instead of 'long[]' [-Wsizeof-array-argument]
+  174 |                     write_data(tracee, peek_reg(tracee, CURRENT, SYSARG_2), socketcall_arg2, sizeof(socketcall_arg2));
+      |                                                                                                    ^
+./extension/port_switch/port_switch.c:145:121: note: declared here
+  145 | void mod_port(Tracee *tracee, bool is_socketcall, bool is_bind, bool is_udp, struct sockaddr_storage *my_sockaddr, long socketcall_arg2[]) {   
+      |                                                                                                                         ^
+./extension/port_switch/port_switch.c:182:100: warning: sizeof on array function parameter will return size of 'long *' instead of 'long[]' [-Wsizeof-array-argument]
+  182 |                     write_data(tracee, peek_reg(tracee, CURRENT, SYSARG_2), socketcall_arg2, sizeof(socketcall_arg2));
+      |                                                                                                    ^
+./extension/port_switch/port_switch.c:145:121: note: declared here
+  145 | void mod_port(Tracee *tracee, bool is_socketcall, bool is_bind, bool is_udp, struct sockaddr_storage *my_sockaddr, long socketcall_arg2[]) {   
+      |                                                                                                                         ^
+./extension/port_switch/port_switch.c:204:100: warning: sizeof on array function parameter will return size of 'long *' instead of 'long[]' [-Wsizeof-array-argument]
+  204 |                     write_data(tracee, peek_reg(tracee, CURRENT, SYSARG_2), socketcall_arg2, sizeof(socketcall_arg2));
+      |                                                                                                    ^
+./extension/port_switch/port_switch.c:145:121: note: declared here
+  145 | void mod_port(Tracee *tracee, bool is_socketcall, bool is_bind, bool is_udp, struct sockaddr_storage *my_sockaddr, long socketcall_arg2[]) {   
+      |                                                                                                                         ^
+./extension/port_switch/port_switch.c:212:100: warning: sizeof on array function parameter will return size of 'long *' instead of 'long[]' [-Wsizeof-array-argument]
+  212 |                     write_data(tracee, peek_reg(tracee, CURRENT, SYSARG_2), socketcall_arg2, sizeof(socketcall_arg2));
+      |                                                                                                    ^
+./extension/port_switch/port_switch.c:145:121: note: declared here
+  145 | void mod_port(Tracee *tracee, bool is_socketcall, bool is_bind, bool is_udp, struct sockaddr_storage *my_sockaddr, long socketcall_arg2[]) {   
+      |                                                                                                                         ^
+4 warnings generated.
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/sysvipc/sysvipc.c -o extension/sysvipc/sysvipc.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/sysvipc/sysvipc_msg.c -o extension/sysvipc/sysvipc_msg.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/sysvipc/sysvipc_sem.c -o extension/sysvipc/sysvipc_sem.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/sysvipc/sysvipc_shm.c -o extension/sysvipc/sysvipc_shm.o
+./extension/sysvipc/sysvipc_shm.c:814:10: warning: 'mktemp' is deprecated: mktemp is unsafe, use mkstemp or tmpfile instead [-Wdeprecated-declarations]
+  814 |                 (void) mktemp(path);
+      |                        ^
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/../sysroot/usr/include/stdlib.h:61:66: note: 'mktemp' has been explicitly marked deprecated here
+   61 | char* _Nullable mktemp(char* _Nonnull __template) __attribute__((__deprecated__("mktemp is unsafe, use mkstemp or tmpfile instead")));
+      |                                                                  ^
+1 warning generated.
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/link2symlink/link2symlink.c -o extension/link2symlink/link2symlink.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./extension/fix_symlink_size/fix_symlink_size.c -o extension/fix_symlink_size/fix_symlink_size.o
+cp loader/loader loader.exe
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip loader.exe
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-objcopy --input-target=binary --output-target=`env LANG=C <TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-objdump -f cli/cli.o | grep 'file format' | awk '{print $4}'` --binary-architecture `env LANG=C <TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-objdump -f cli/cli.o | grep architecture | cut -f 1 -d , | awk '{print $2}'` loader.exe loader/loader-wrapped.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./loader/loader.c -o loader/loader-m32.o -m32 -fPIC -ffreestanding 
+./loader/loader.c:253:5: warning: inline asm clobber list contains reserved registers: SP, PC [-Winline-asm]
+  253 |                                 BRANCH(stmt->start.stack_pointer, stmt->start.entry_point);
+      |                                 ^
+./loader/assembly-arm.h:32:3: note: expanded from macro 'BRANCH'
+   32 |                 "// Restore initial stack pointer.      \n\t"   \
+      |                 ^
+./loader/loader.c:253:5: note: Reserved registers on the clobber list may not be preserved across the asm statement, and clobbering them may lead to undefined behaviour.
+./loader/assembly-arm.h:32:3: note: expanded from macro 'BRANCH'
+   32 |                 "// Restore initial stack pointer.      \n\t"   \
+      |                 ^
+1 warning generated.
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./loader/assembly.S -o loader/assembly-m32.o -m32 -fPIC -ffreestanding 
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -m32 -o loader/loader-m32 loader/loader-m32.o loader/assembly-m32.o -static -nostdlib -Wl,--build-id=none,--image-base=0x20000000,--rosegment,-z,noexecstack,-z,max-page-size=16384,-z,common-page-size=16384
+cp loader/loader-m32 loader-m32.exe
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip loader-m32.exe
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-objcopy --input-target=binary --output-target=`env LANG=C <TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-objdump -f cli/cli.o | grep 'file format' | awk '{print $4}'` --binary-architecture `env LANG=C <TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-objdump -f cli/cli.o | grep architecture | cut -f 1 -d , | awk '{print $2}'` loader-m32.exe loader/loader-m32-wrapped.o
+readelf -s loader/loader | python3 "$DSH_LOADER_INFO_PY" > loader/loader-info.c
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -Wall -Wextra -O2 -I<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/include -MD -c ./loader/loader-info.c -o loader/loader-info.o
+<TOOLS_ROOT>/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang -o proot cli/cli.o cli/proot.o cli/note.o execve/enter.o execve/exit.o execve/shebang.o execve/elf.o execve/ldso.o execve/auxv.o execve/aoxp.o path/binding.o path/glue.o path/canon.o path/f2fs-bug.o path/path.o path/proc.o path/temp.o syscall/seccomp.o syscall/syscall.o syscall/chain.o syscall/enter.o syscall/exit.o syscall/sysnum.o syscall/socket.o syscall/heap.o syscall/rlimit.o tracee/tracee.o tracee/mem.o tracee/reg.o tracee/event.o tracee/seccomp.o tracee/statx.o ptrace/ptrace.o ptrace/user.o ptrace/wait.o extension/extension.o extension/ashmem_memfd/ashmem_memfd.o extension/kompat/kompat.o extension/fake_id0/chown.o extension/fake_id0/chroot.o extension/fake_id0/getsockopt.o extension/fake_id0/sendmsg.o extension/fake_id0/socket.o extension/fake_id0/open.o extension/fake_id0/unlink.o extension/fake_id0/rename.o extension/fake_id0/chmod.o extension/fake_id0/utimensat.o extension/fake_id0/access.o extension/fake_id0/exec.o extension/fake_id0/link.o extension/fake_id0/symlink.o extension/fake_id0/mk.o extension/fake_id0/stat.o extension/fake_id0/helper_functions.o extension/fake_id0/fake_id0.o extension/hidden_files/hidden_files.o extension/mountinfo/mountinfo.o extension/port_switch/port_switch.o extension/sysvipc/sysvipc.o extension/sysvipc/sysvipc_msg.o extension/sysvipc/sysvipc_sem.o extension/sysvipc/sysvipc_shm.o extension/link2symlink/link2symlink.o extension/fix_symlink_size/fix_symlink_size.o loader/loader-wrapped.o loader/loader-m32-wrapped.o loader/loader-info.o -L<TOOLS_ROOT>/proot-output/talloc/arm64-v8a/install/lib -ltalloc -ldl -Wl,-z,noexecstack
+rm loader.exe loader-m32.exe
+make: Leaving directory '<TOOLS_ROOT>/proot-output/proot-source/arm64-v8a/src'
