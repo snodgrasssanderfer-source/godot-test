@@ -18,6 +18,7 @@ class SocialRuntime(
     private val deleteMedia: (String) -> Unit = {},
     private val targetAllowed: (JSONObject) -> Boolean = { true },
     private val networkAllowed: () -> Boolean = { true },
+    private val platformState: (String) -> JSONObject = { accountState() },
 ) {
     @Volatile private var closed = false
     @Volatile private var online = true
@@ -28,7 +29,10 @@ class SocialRuntime(
                 if (a.optString("state") == "submitting") a.put("state", "outcome_unknown").put("detail", "进程中断，先核对平台结果")
                 if (a.optString("state") == "approved") a.put("state", "pending").remove("grant")
             }
-            values(rows(root, "jobs")).filter { it.optString("state") == "running" }.forEach { it.put("state", "interrupted").remove("requestId") }
+            values(rows(root, "jobs")).filter { it.optString("state") == "running" }.forEach {
+                it.put("state", if (it.optString("kind") == "reminder") "queued" else "interrupted")
+                    .put("generation", it.optInt("generation") + 1).remove("requestId")
+            }
         }
     }
     fun snapshot(principal: CommandPrincipal): JSONObject = ledger.read { root ->
@@ -54,8 +58,9 @@ class SocialRuntime(
             "media.list" -> { SocialRules.owner(principal); JSONObject().put("items", snapshot(principal).getJSONArray("media")) }
             "social.configure" -> {
                 SocialRules.owner(principal)
-                ledger.change { root -> JSONObject().put("autonomousDailyPost", data.optBoolean("autonomousDailyPost"))
-                    .put("autonomousReplies", data.optBoolean("autonomousReplies")).also { root.put("config", it) } }
+                ledger.change { root -> rows(root, "config").also { config ->
+                    listOf("autonomousDailyPost", "autonomousReplies", "autonomousBiliLikes", "autonomousBiliFollowing").forEach { key -> if (data.has(key)) config.put(key, data.getBoolean(key)) }
+                } }
             }
             "social.plan" -> plan(data, principal)
             "approvals.approveBatch" -> approve(data, principal)
@@ -114,38 +119,49 @@ class SocialRuntime(
         val ownerAuthored = runCatching { SocialRules.owner(principal) }.isSuccess
         require(ownerAuthored || principal.channel == "background" && principal.actorId == "companion") { "朋友请求不能直接创建外发授权" }
         val kind = input.getString("kind"); require(kind in SocialRules.effects)
+        val bilibili = kind.startsWith("bili_")
         val scope = if (ownerAuthored) input.optString("scope", principal.scope) else principal.scope
         require(scope == "owner:local" || Regex("qq:(private|group):[A-Za-z0-9_-]{1,128}").matches(scope)) { "社交会话范围无效" }
         val account = SocialRules.numeric(input.getString("account"))
         val target = SocialRules.bounded(input.getString("target"), 160)
-        if (kind != "comment") SocialRules.numeric(target)
+        if (bilibili && kind != "bili_follow") BilibiliActions.videoId(target)
+        else if (kind != "comment") SocialRules.numeric(target)
         if (kind == "post") require(target == account) { "只能发布到自己的空间" }
         val now = clock(); val expires = input.optLong("expiresAt", now + 15 * 60_000)
         require(expires in (now + 1)..(now + 24 * 60 * 60_000))
         val sources = strings(input.optJSONArray("sourceIds")); require(sources.size <= 32)
         val content = input.optString("content"); require(content.length <= 4000)
-        if (kind in setOf("reply", "post", "comment")) SocialRules.bounded(content, 4000)
+        if (kind in setOf("reply", "post", "comment", "bili_comment")) SocialRules.bounded(content, 4000)
         val token = SocialRules.bounded(input.getString("idempotencyKey"), 128)
         val payload = copy(input.optJSONObject("payload") ?: JSONObject())
         require(payload.toString().length <= 64000)
         // Route parameters are rebuilt below; no arbitrary API action, local file or sender override.
         val item = JSONObject().put("id", "action-" + hash(principal.actorId + "\u0000" + token)).put("kind", kind)
+            .put("platform", if (bilibili) "bilibili" else "qq")
             .put("effect", SocialRules.effects.getValue(kind)).put("account", account).put("target", target)
             .put("scope", scope).put("content", content).put("payload", payload).put("sourceIds", JSONArray(sources))
             .put("expiresAt", expires).put("createdAt", now).put("ownerAuthored", ownerAuthored).put("motivation", input.optString("motivation").take(1000))
         item.put("digest", SocialRules.digest(item))
         return ledger.change { root ->
-            val old = rows(root, "actions").optJSONObject(item.getString("id"))
-            if (old != null) {
-                // Default expiry is stable for a duplicate click; compare after retaining the first expiry.
-                if (!input.has("expiresAt")) item.put("expiresAt", old.getLong("expiresAt")).put("digest", SocialRules.digest(item))
-                require(old.getString("digest") == item.getString("digest")) { "幂等键已用于不同内容，请重新规划" }
-                return@change old
-            }
             check(!SocialRules.blocked(root, item)) { "动作来源已删除" }
             val config = root.optJSONObject("config") ?: JSONObject()
-            val autonomous = kind == "post" && config.optBoolean("autonomousDailyPost") || kind == "reply" && config.optBoolean("autonomousReplies") || kind == "leave_group"
-            if (kind in setOf("post", "comment")) check(ownerAuthored || safeSources(root, sources)) { "公开表达只能使用明确可分享概要，不能直接发布私密日记或原始对话" }
+            val autonomous = kind == "post" && config.optBoolean("autonomousDailyPost") || kind == "reply" && config.optBoolean("autonomousReplies") || kind == "leave_group" ||
+                kind == "bili_like" && config.optBoolean("autonomousBiliLikes") || kind == "bili_follow" && config.optBoolean("autonomousBiliFollowing")
+            if (kind in setOf("post", "comment", "bili_comment")) check(ownerAuthored || safeSources(root, sources)) { "公开表达只能使用明确可分享概要，不能直接发布私密日记或原始对话" }
+            if (bilibili) {
+                require(scope == "owner:local") { "B站活动不接受群聊身份授权" }
+                val resource = rows(root, "biliResources").getJSONObject(payload.getString("resourceId"))
+                check(!SocialRules.blocked(root, resource)) { "视频来源已删除" }
+                require(target == resource.getString(if (kind == "bili_follow") "upMid" else "videoId")) { "B站目标与已读取资料不符" }
+                require(account == rows(root, "bilibili").optString("account")) { "B站账号未核对" }
+                val approvedPayload = JSONObject().put("resourceId", resource.getString("id")).put("videoId", resource.getString("videoId"))
+                    .put("aid", resource.getString("aid")).put("cid", resource.getLong("cid")).put("title", resource.getString("title")).put("upName", resource.optString("upName"))
+                if (kind == "bili_download") {
+                    val maxBytes = payload.optInt("maxBytes", 16 * 1024 * 1024)
+                    require(maxBytes in 1024..16 * 1024 * 1024); approvedPayload.put("maxBytes", maxBytes)
+                }
+                item.put("payload", approvedPayload).put("sourceIds", JSONArray((sources + resource.getString("sourceId")).distinct()))
+            }
             if (kind == "reply") require(payload.optString("targetType") in setOf("group", "private"))
             if (kind in setOf("add_friend", "join_group")) {
                 val source = rows(root, "events").optJSONObject(payload.optString("requestEventId")) ?: error("需要已接收的真实请求事件")
@@ -154,6 +170,13 @@ class SocialRuntime(
                 item.put("sourceIds", JSONArray((sources + source.getString("sourceId")).distinct()))
             }
             if (kind == "comment") require(rows(root, "feeds").optJSONObject(target)?.optString("account") == account) { "评论必须引用此账号已读取的完整动态" }
+            val old = rows(root, "actions").optJSONObject(item.getString("id"))
+            if (old != null) {
+                // Compare normalized route data, keeping the first expiry on a duplicate click.
+                if (!input.has("expiresAt")) item.put("expiresAt", old.getLong("expiresAt"))
+                require(old.getString("digest") == SocialRules.digest(item)) { "幂等键已用于不同内容，请重新规划" }
+                return@change old
+            }
             item.put("digest", SocialRules.digest(item)).put("state", if (autonomous) "ready" else "pending")
             rows(root, "actions").put(item.getString("id"), item); item
         }
@@ -179,7 +202,7 @@ class SocialRuntime(
         check(!closed)
         val candidate = ledger.read { root -> copy(rows(root, "actions").getJSONObject(actionId)) }
         if (candidate.getString("state") !in setOf("ready", "approved")) return candidate
-        if (!online || !networkAllowed() || !accountState().optBoolean("connected")) return candidate
+        if (!online || !networkAllowed() || !platformState(candidate.optString("platform", "qq")).optBoolean("connected")) return candidate
         check(targetAllowed(candidate)) { "目标会话未授权或绑定已变化" }
         // No store lock while asking the host; revalidate all state afterwards.
         val authority = if (candidate.getString("state") == "approved" && candidate.optString("grant") == candidate.getString("digest")) {
@@ -208,9 +231,12 @@ class SocialRuntime(
             val ack = transport.call(claimed.getString("account"), method, params)
             val accepted = ack.optInt("retcode", -1) == 0 && ack.optString("status") == "ok"
             val external = ack.optJSONObject("data")?.let { it.optString(if (claimed.getString("kind") == "post") "tid" else "message_id") }.orEmpty()
-            val needsId = claimed.getString("kind") in setOf("reply", "post")
+            val needsId = claimed.getString("kind") in setOf("reply", "post", "bili_comment")
             JSONObject().put("state", if (!accepted) "failed" else if (needsId && external.isBlank()) "outcome_unknown" else "done")
-                .put("externalId", external).put("detail", if (!accepted) "平台明确拒绝该动作" else if (needsId && external.isBlank()) "平台未返回可核对 ID，不自动重发" else "平台已确认处理；不代表对方已读")
+                .put("externalId", external).put("detail", if (!accepted) {
+                    if (claimed.optString("platform") == "bilibili") ack.optString("message", "B站未接受操作").take(240) else "平台明确拒绝该动作"
+                } else if (needsId && external.isBlank()) "平台未返回可核对 ID，不自动重发" else "平台已确认处理；不代表对方已读")
+                .also { result -> ack.optJSONObject("data")?.optString("mediaId")?.takeIf(String::isNotBlank)?.let { result.put("mediaId", it).put("detail", "公开单文件视频已保存到本机加密素材") } }
         } catch (_: Exception) { JSONObject().put("state", "outcome_unknown").put("detail", "提交结果未知，请查证平台；不会自动重发") }
         val saved = ledger.change { root -> rows(root, "actions").getJSONObject(actionId).also { current ->
             if (current.optString("state") == "submitting") result.keys().forEach { current.put(it, result.get(it)) }
@@ -227,6 +253,8 @@ class SocialRuntime(
             "post" -> "send_qzone_msg" to JSONObject().put("content", content).put("ugc_right", 4)
             "comment" -> "comment_qzone_public_feed" to ledger.read { root -> JSONObject().put("feed", rows(root, "feeds").getJSONObject(target).getJSONObject("feed")).put("content", content) }
             "leave_group" -> "set_group_leave" to JSONObject().put("group_id", target).put("is_dismiss", false)
+            "bili_like", "bili_follow", "bili_comment", "bili_download" -> "bili." + a.getString("kind").removePrefix("bili_") to copy(p)
+                .put("target", target).put("content", content).put("actionId", a.getString("id")).put("sourceIds", a.getJSONArray("sourceIds"))
             "add_friend", "join_group" -> {
                 val request = ledger.read { root -> rows(root, "events").getJSONObject(p.getString("requestEventId")).getJSONObject("data") }
                 (if (a.getString("kind") == "add_friend") "set_friend_add_request" else "set_group_add_request") to JSONObject().put("flag", request.getString("flag")).put("approve", true)
@@ -269,7 +297,7 @@ class SocialRuntime(
         return job
     }
     /** Existing service/activity calls this; no all-day microphone or polling service is created. */
-    fun tick() {
+    fun tick(processEffects: Boolean = true) {
         if (closed) return
         flushNotifications()
         expireMedia()
@@ -305,9 +333,20 @@ class SocialRuntime(
             }
         }
         flushNotifications()
-        val ready = ledger.read { root -> values(rows(root, "actions")).firstOrNull { it.optString("state") in setOf("ready", "approved") }?.getString("id") }
-        if (ready != null && online) runCatching { dispatchAction(ready) }
+        if (processEffects) tickEffects()
         if (selected.isNotEmpty()) changed()
+    }
+    /** Network effects have their own worker so a bounded download cannot hold reminder delivery. */
+    fun tickEffects() {
+        if (closed) return
+        val candidates = ledger.change { root -> values(rows(root, "actions")).filter { action ->
+            if (action.optString("state") !in setOf("ready", "approved")) false
+            else if (action.getLong("expiresAt") <= clock() || SocialRules.blocked(root, action)) { action.put("state", "expired"); false }
+            else true
+        }.map(::copy) }
+        // A disabled platform must not block unrelated QQ/Bilibili actions behind its first draft.
+        val ready = candidates.firstOrNull { platformState(it.optString("platform", "qq")).optBoolean("connected") }?.getString("id")
+        if (ready != null && online) runCatching { dispatchAction(ready) }
     }
     private fun modelResult(jobId: String, generation: Int, event: JSONObject) {
         if (closed) return
@@ -399,14 +438,14 @@ class SocialRuntime(
             var expanded: Boolean
             do {
                 expanded = false
-                listOf("events", "jobs", "actions", "media", "notifications").forEach { table ->
+                listOf("events", "jobs", "actions", "media", "notifications", "biliResources").forEach { table ->
                     values(rows(root, table)).filter { SocialRules.blocked(root, it) }.forEach { item ->
                         val itemHash = hash(item.getString("id"))
                         if (!tombstones.has(itemHash)) { tombstones.put(itemHash, JSONObject().put("id", itemHash).put("acked", false).put("at", clock())); expanded = true }
                     }
                 }
             } while (expanded)
-            listOf("events", "jobs", "actions", "media", "notifications").forEach { table ->
+            listOf("events", "jobs", "actions", "media", "notifications", "biliResources").forEach { table ->
                 values(rows(root, table)).filter { SocialRules.blocked(root, it) }.forEach { item ->
                     if (!item.optBoolean("redacted")) {
                         if (item.optString("sourceId").isNotBlank()) deletedSources.add(item.getString("sourceId"))
@@ -494,7 +533,7 @@ class SocialRuntime(
     fun close() {
         closed = true
         val requests = ledger.change { root -> values(rows(root, "jobs")).filter { it.optString("state") == "running" }.map { job ->
-            job.put("state", "interrupted").put("generation", job.optInt("generation") + 1); job.optString("requestId")
+            job.put("state", if (job.optString("kind") == "reminder") "queued" else "interrupted").put("generation", job.optInt("generation") + 1); job.optString("requestId")
         } }
         requests.filter { it.isNotBlank() }.forEach(ports::cancelModel)
     }

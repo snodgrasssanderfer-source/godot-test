@@ -63,6 +63,19 @@ class BilibiliReader {
         else data.optJSONArray("durl")?.takeIf { it.length() == 1 }?.getJSONObject(0)?.optString("url")
         return VideoEvidence.publicVideoUrl(url.orEmpty()) ?: error("没有支持的公开 AVC/MP4 视频流；可使用本地视频取帧")
     }
+    /** A real single-file public stream, selected only after exact-target download approval. */
+    fun publicDownloadSource(info: JSONObject): JSONObject {
+        val result = signed("/x/player/playurl", mapOf("bvid" to info.getString("videoId"), "cid" to info.getLong("cid").toString(),
+            "qn" to "16", "fnval" to "0", "fourk" to "0", "platform" to "html5", "high_quality" to "0"))
+        check(result.optInt("code", -1) == 0) { "平台未提供公开下载流" }
+        val data = result.getJSONObject("data")
+        check(!data.optBoolean("is_drm") && data.optInt("drm_tech_type", 0) == 0) { "受保护视频不支持下载" }
+        val parts = data.optJSONArray("durl")
+        check(parts != null && parts.length() == 1) { "平台未提供单文件 MP4；本版本不拼接 DASH 或分段视频" }
+        val part = parts.getJSONObject(0)
+        val url = VideoEvidence.publicVideoUrl(part.optString("url")) ?: error("下载地址不在公开视频域名范围")
+        return JSONObject().put("url", url).put("size", part.optLong("size", -1)).put("quality", data.optInt("quality", 16))
+    }
     fun video(videoId: String, startSeconds: Double = 0.0, endSeconds: Double = 0.0): JSONObject {
         require(Regex("BV[0-9A-Za-z]{10}").matches(videoId))
         val metadata = read("https://api.bilibili.com/x/web-interface/view?bvid=$videoId")
@@ -73,6 +86,7 @@ class BilibiliReader {
         val cid = firstPage?.optLong("cid", data.getLong("cid")) ?: data.getLong("cid")
         val (start, end) = VideoEvidence.range(startSeconds, endSeconds, duration)
         val output = JSONObject().put("videoId", videoId).put("title", data.optString("title"))
+            .put("aid", data.get("aid").toString()).put("upMid", data.getJSONObject("owner").get("mid").toString()).put("upName", data.getJSONObject("owner").optString("name"))
             .put("durationSeconds", duration).put("cid", cid).put("page", 1).put("partTitle", firstPage?.optString("part").orEmpty())
             .put("description", data.optString("desc")).put("meaning", "标题和简介仅用于定位，不是观看证据")
             .put("rangeStart", start).put("rangeEnd", end)
