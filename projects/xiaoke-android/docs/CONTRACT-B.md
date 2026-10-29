@@ -47,3 +47,17 @@
 复用 DSH 原生观察及 presence 音频控制器，原始上游 [DSH e9be0e4](https://github.com/dphmoblie/deepseek-harness-android/tree/e9be0e43629f8b744991c2cf9efd160ca7d41abc)，MIT。只读参考 [RootEncoder InternalAudioSource](https://github.com/pedroSG94/RootEncoder/blob/f1bbda7ca6fb92bb599206fda2b97745ac11b7f2/encoder/src/main/java/com/pedro/encoder/input/sources/audio/InternalAudioSource.kt)，Apache-2.0；不复制、打包或执行其框架。既有浮球可复用，不引入 FloatingX。无新增运行时依赖。
 
 遵循 [Android 音频捕获](https://developer.android.com/media/platform/av-capture)、[前台服务类型](https://developer.android.com/develop/background-work/services/fgs/service-types) 及 [MediaProjection 生命周期](https://developer.android.com/media/grow/media-projection)。现有系统 ASR/TTS 默认外放时轮流听说；实验耳机抢话未验证，不称全双工。
+
+## 2026-10-29 实施检查点
+
+- 已实装 DeviceModule 与前端 DevicePanel，通过 HostPorts 发送音频分析；主集成还需构造模块并挂入根面板。
+- 浮球保持 52dp 小球；球上静止五秒、通知和面板均只停止输入。隐藏浮球保留已有 presence 会话。
+- 输入通过 DSH 已有敏感窗口、锁屏和应用检查；另需控制白名单。连续手势分段不超过约 80ms，停止后只允许释放最后触点；系统调度和释放回执尚待真机测量。
+- 每个动作绑定控制会话、epoch、请求编号和五秒内画面；重复请求不会重复手势。动作后重新采样；系统回执和游戏目标未混淆。
+- 分轨 AudioRecord、每次 MediaProjection、权限拒绝、会话撤销与采集上限均已接入。麦克风采样期间挂起现有系统 ASR，采样结束恢复原 ASR 意图；没有新增语音聊天循环。
+- `audio.cancelAnalysis {}` 是新增扩展动作，只取消宿主模型分析。不会触发输入停止；反向亦然。
+- 原生浮球面板提供刷新画面、选点、点击与长按；`control.swipe` 提供宿主可用的短时滑动原语。仍未完成具体游戏自动规划/实战。
+- 根 Manifest 集成补丁：`integration/device-manifest.patch`。不需要新增依赖、根 Activity 转发或修改现有 Plugin 的权限回调。
+- ModuleEndpoint 应由宿主按进程唯一持有，释放时调用 close；不要在每次 snapshot 创建新实例。模块原始画面 preview 为内存临时数据，宿主不应落库或备份。
+- 已执行：DevicePanel 4 项 Vitest 全通过；`pnpm exec tsc -b` 与该目录 ESLint 通过。
+- 原生 Kotlin 编译/JUnit 正在恢复工具链，结果待补；没有模拟器或真机结果。

@@ -112,6 +112,7 @@ class CompanionPresenceController(context: Context, private val onEvent: (JSONOb
             } catch (_: Exception) { stopInternal(); fail("presence-start-rejected") }
         }
     }
+    fun externalMicrophone(busy: Boolean) = onMain { voice.externalMicrophone(busy); publish() }
     fun stop() = onMain { stopInternal(); publish() }
     fun interrupt() = onMain { events.interrupt(); caption = ""; publish() }
     fun listenOnce() = onMain {

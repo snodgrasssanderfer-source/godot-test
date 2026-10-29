@@ -44,6 +44,7 @@ object CompanionPresenceHost {
         context.stopService(Intent(context, CompanionOverlayService::class.java))
         publish(state().put("running", false).put("phase", "idle").put("text", "").put("lastReply", "").put("audio", JSONObject.NULL))
     }
+    fun externalMicrophone(busy: Boolean) { service?.externalMicrophone(busy) }
     fun command(action: String, data: JSONObject): JSONObject {
         val owner = service ?: error("请先开启本次陪伴")
         owner.presenceCommand(action, data)

@@ -1,0 +1,23 @@
+--- a/projects/xiaoke-android/source/android/app/src/main/AndroidManifest.xml
++++ b/projects/xiaoke-android/source/android/app/src/main/AndroidManifest.xml
+@@ -15,6 +15,7 @@
+     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+     <uses-permission android:name="android.permission.RECORD_AUDIO" />
++    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+     <!-- 目标应用副屏预览需要独立的前台服务；通知用于让用户随时结束会话。 -->
+@@ -115,6 +116,12 @@
+         <service android:name=".companion.CompanionService" android:exported="false" android:foregroundServiceType="specialUse" android:stopWithTask="false">
+             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="用户主动启用的助手任务和已选择QQ会话的处理，可随时暂停" />
+         </service>
++        <activity android:name=".companion.devicev2.DeviceConsentActivity"
++            android:exported="false" android:excludeFromRecents="true"
++            android:theme="@android:style/Theme.Material.Light.NoActionBar" />
++        <service android:name=".companion.devicev2.DeviceAudioService"
++            android:exported="false" android:stopWithTask="true"
++            android:foregroundServiceType="microphone|mediaProjection" />
+         <service android:name=".companion.CompanionOverlayService" android:exported="false" android:foregroundServiceType="specialUse|microphone|mediaPlayback" android:stopWithTask="false">
+             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="用户主动开始的限时悬浮对话和按需单次画面观察，可从通知立即停止" />
+         </service>
