@@ -45,11 +45,18 @@ class CompanionOverlayService : Service() {
     private var characterReady = false
     private var presence: CompanionPresenceController? = null
     private var microphoneForeground = false
-    private var panel: ScrollView? = null
+    private var panel: View? = null
     private var content: LinearLayout? = null
     private var transcript: TextView? = null
     private var stateText: TextView? = null
     private var composer: EditText? = null
+    private var panelParams: WindowManager.LayoutParams? = null
+    private var transcriptBox: View? = null
+    private var extrasBox: View? = null
+    private var typing = false
+    private var lastTranscript = ""
+    /** What the owner just sent, shown until the stored conversation catches up. */
+    private var pendingLine = ""
     private var taskId = ""
     private var observationId = ""
     private var lastObservationId = ""
@@ -68,7 +75,7 @@ class CompanionOverlayService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == "stop_input") { DeviceModule.stopInputFromSurface(); return START_NOT_STICKY }
         if (intent?.action == "visibility") { applyVisibility(intent.getBooleanExtra("visible", true)); return START_NOT_STICKY }
-        if (intent?.action == "stop") { stopSelf(); return START_NOT_STICKY }
+        if (intent?.action == "stop") { rememberBall(false); stopSelf(); return START_NOT_STICKY }
         if (!Settings.canDrawOverlays(this)) { stopSelf(); return START_NOT_STICKY }
         val config = intent?.getStringExtra("presenceConfig")?.let(::JSONObject)
         if (config != null && !CompanionPresenceHost.current(intent.getLongExtra("presenceGeneration", -1))) { stopSelf(); return START_NOT_STICKY }
@@ -84,7 +91,7 @@ class CompanionOverlayService : Service() {
                 .put("text", "系统未允许后台语音启动，请回到助手重试").put("error", "foreground-start-denied"))
             stopSelf(); return START_NOT_STICKY
         }
-        running = true
+        running = true; rememberBall(true)
         CompanionPresenceHost.attach(this)
         if (config != null) {
             presence = CompanionPresenceController(this) { event -> CompanionPresenceHost.publish(event); updateCharacter(event) }
@@ -99,13 +106,21 @@ class CompanionOverlayService : Service() {
         val inputStop = PendingIntent.getService(this, 823, Intent(this, CompanionOverlayService::class.java).setAction("stop_input"), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val open = PendingIntent.getActivity(this, 822, Intent(this, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val notification = Notification.Builder(this, "companion-overlay").setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("小克悬浮陪伴 · 本次限时会话").setContentText(if (continuous) "按本次设置感知与交流；点停止立即结束" else "只在点击后看一次画面；点停止结束本次会话")
+            .setContentTitle("小克悬浮球").setContentText(if (continuous) "正在陪你看当前应用；点停止结束" else "点悬浮球就能和她聊天")
             .setContentIntent(open).setOngoing(true).addAction(Notification.Action.Builder(null, "仅停止输入", inputStop).build()).addAction(Notification.Action.Builder(null, "停止", stop).build()).build()
         var types = if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0
         if (continuous && Build.VERSION.SDK_INT >= 29) types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
         if (microphoneForeground && Build.VERSION.SDK_INT >= 30) types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
         ServiceCompat.startForeground(this, 820, notification, types)
     }
+    private fun hasSession() = presence != null || allowedPackage.isNotBlank()
+    /** Screen/voice permission ends; the ball and its chat stay. */
+    private fun endSession() {
+        presence?.close(); presence = null; allowedPackage = ""; deadline = 0; observationId = ""
+        microphoneForeground = false; runCatching { updateForeground(false) }; localStatus = ""
+        DeviceModule.overlayChanged()
+    }
+    private fun rememberBall(on: Boolean) { getSharedPreferences("companion-overlay", MODE_PRIVATE).edit().putBoolean("ball", on).apply() }
     fun presenceCommand(action: String, data: JSONObject) {
         val controller = presence ?: error("请先开启持续陪伴会话")
         when (action) {
@@ -122,7 +137,7 @@ class CompanionOverlayService : Service() {
     fun externalMicrophone(busy: Boolean) { presence?.externalMicrophone(busy) }
     fun invalidatePresenceContext() { presence?.invalidateContext() }
     private fun applyVisibility(visible: Boolean) {
-        visibleByOwner = visible
+        visibleByOwner = visible; rememberBall(visible)
         if (!visible) { cancelHold?.invoke(); closePanel() }
         bubble?.visibility = if (visible && !hidden) View.VISIBLE else View.GONE
         DeviceModule.overlayChanged()
@@ -137,10 +152,9 @@ class CompanionOverlayService : Service() {
     }
     private val tick = object : Runnable {
         override fun run() {
-            if (SystemClock.elapsedRealtime() >= deadline) { stopSelf(); return }
+            // The ball stays; only a screen/voice session is time-limited and ends with the screen lock.
             val locked = getSystemService(KeyguardManager::class.java).isKeyguardLocked || !getSystemService(PowerManager::class.java).isInteractive
-            if (locked) { stopSelf(); return }
-            if (presence != null && !presence!!.state().optBoolean("running")) { stopSelf(); return }
+            if (hasSession() && (SystemClock.elapsedRealtime() >= deadline || locked || presence?.state()?.optBoolean("running") == false)) endSession()
             val visible = !locked && !hidden && visibleByOwner
             bubble?.visibility = if (visible) View.VISIBLE else View.GONE
             panel?.visibility = if (visible) View.VISIBLE else View.GONE
@@ -148,13 +162,28 @@ class CompanionOverlayService : Service() {
             refreshBubble()
             val presenceState = presence?.state()
             if (presenceState != null) updateCharacter(presenceState)
-            stateText?.text = "${if (engine.store.settings().optBoolean("paused")) "已暂停" else "剩余 ${(deadline - SystemClock.elapsedRealtime()) / 60000 + 1} 分钟"} · $localStatus" +
-                (presenceState?.optString("statusMessage")?.let { "\n$it" } ?: "")
-            val messages = engine.store.list("message", CompanionPolicy.OWNER, 6)
-            val text = (0 until messages.length()).joinToString("\n\n") { val m = messages.getJSONObject(it); "${if (m.optString("role") == "assistant") engine.store.persona().optString("name", "小克") else "你"}：${m.optString("text").takeLast(2500)}" }
-            val active = engine.activeTask?.let { engine.store.get("task", it) }
-            transcript?.text = text + (if (active != null) "\n\n${active.optString("partialText").ifBlank { active.optString("progress") }}" else "") +
-                (presenceState?.optString("text")?.ifBlank { presenceState.optString("lastReply") }?.let { "\n\n陪伴：$it" } ?: "")
+            val status = listOfNotNull(
+                "已暂停".takeIf { engine.store.settings().optBoolean("paused") },
+                "观察剩余 ${(deadline - SystemClock.elapsedRealtime()) / 60000 + 1} 分钟".takeIf { hasSession() },
+                localStatus.takeIf { it.isNotBlank() }, presenceState?.optString("statusMessage")?.takeIf { it.isNotBlank() }).joinToString(" · ")
+            stateText?.text = status; stateText?.visibility = if (status.isBlank()) View.GONE else View.VISIBLE
+            if (transcript != null) {
+                val name = engine.store.persona().optString("name", "小克")
+                val messages = engine.store.list("message", CompanionPolicy.OWNER, 12)
+                val rows = (0 until messages.length()).map(messages::getJSONObject).filter { it.optString("role") in setOf("user", "assistant") }
+                if (pendingLine.isNotBlank() && rows.any { it.optString("role") == "user" && it.optString("text").trim() == pendingLine }) pendingLine = ""
+                val active = engine.activeTask?.let { engine.store.get("task", it) }
+                val text = buildString {
+                    rows.forEach { append(if (it.optString("role") == "assistant") "$name：" else "你：").append(it.optString("text").takeLast(2500)).append("\n\n") }
+                    if (pendingLine.isNotBlank()) append("你：").append(pendingLine).append("\n\n")
+                    active?.optString("partialText")?.takeIf { it.isNotBlank() }?.let { append("$name：").append(it).append("\n\n") }
+                    presenceState?.optString("text")?.ifBlank { presenceState.optString("lastReply") }?.takeIf { it.isNotBlank() }?.let { append("$name（陪伴）：").append(it) }
+                }.trimEnd()
+                if (text != lastTranscript) {
+                    lastTranscript = text; transcript?.text = text.ifBlank { "还没聊过，说点什么吧。" }
+                    (transcriptBox as? ScrollView)?.let { scroll -> scroll.post { scroll.fullScroll(View.FOCUS_DOWN) } }
+                }
+            }
             main.postDelayed(this, 1000)
         }
     }
@@ -247,22 +276,59 @@ class CompanionOverlayService : Service() {
     }
     private fun label(text: String) = TextView(theme).apply { this.text = text; textSize = 14f; setTextColor(Color.rgb(37, 65, 47)); setPadding(0, dp(6), 0, dp(6)) }
     private fun button(text: String, action: () -> Unit) = Button(theme).apply { this.text = text; isAllCaps = false; setOnClickListener { action() } }
+    /** Chat first: conversation on top, input at the bottom, everything else under "更多". The panel only takes focus while typing,
+     * so the game underneath keeps its input and back key the rest of the time. */
+    @SuppressLint("ClickableViewAccessibility")
     private fun showPanel() {
         if (panel != null) return
-        val box = LinearLayout(theme).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(14), dp(10), dp(14), dp(14)); background = background() }
-        content = box
-        box.addView(label(engine.store.persona().optString("name", "小克") + " · 悬浮对话"))
-        stateText = label(localStatus); box.addView(stateText)
-        box.addView(button("收起，继续使用当前应用") { closePanel() })
-        box.addView(button("仅停止输入，继续陪聊") { DeviceModule.stopInputFromSurface(); localStatus = "输入已停止；观察、收音与陪聊不受影响" })
-        if (EmergencyHold.anyHeld) box.addView(button("恢复操作") {
+        val metrics = resources.displayMetrics
+        val params = WindowManager.LayoutParams(minOf(dp(360), metrics.widthPixels - dp(20)), restingHeight(),
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
+            PixelFormat.TRANSLUCENT).apply { gravity = Gravity.TOP or Gravity.END; x = dp(10); y = dp(40) }
+        panelParams = params
+        val root = object : LinearLayout(theme) {
+            override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+                if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_UP) { if (typing) stopTyping() else closePanel(); return true }
+                return super.dispatchKeyEvent(event)
+            }
+        }.apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), dp(8), dp(12), dp(10)); background = background() }
+        // A tap on the game (outside the panel) ends typing at once and hands focus back.
+        root.setOnTouchListener { _, e -> if (e.actionMasked == MotionEvent.ACTION_OUTSIDE && typing) stopTyping(); false }
+        root.setOnApplyWindowInsetsListener { view, insets ->
+            // Shrink by however much the keyboard overlaps us, so the input row stays visible above it.
+            if (Build.VERSION.SDK_INT >= 30 && typing) {
+                val overlap = insets.getInsets(android.view.WindowInsets.Type.ime()).bottom
+                if (overlap > 0) { params.height = (params.height - overlap).coerceAtLeast(dp(160)); runCatching { windows.updateViewLayout(view, params) } }
+            }
+            insets
+        }
+        val header = LinearLayout(theme).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        header.addView(label(engine.store.persona().optString("name", "小克")), LinearLayout.LayoutParams(0, -2, 1f))
+        header.addView(smallButton("更多") { toggleExtras() })
+        header.addView(smallButton("收起") { closePanel() })
+        root.addView(header)
+        stateText = TextView(theme).apply { textSize = 12f; setTextColor(Color.rgb(90, 110, 95)) }
+        root.addView(stateText)
+        val transcriptView = TextView(theme).apply { textSize = 15f; setTextColor(Color.rgb(37, 45, 40)); setTextIsSelectable(false) }
+        transcript = transcriptView
+        val transcriptScroll = ScrollView(theme).apply { addView(transcriptView) }
+        transcriptBox = transcriptScroll
+        root.addView(transcriptScroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        val extras = LinearLayout(theme).apply { orientation = LinearLayout.VERTICAL }
+        content = extras
+        val extrasScroll = ScrollView(theme).apply { addView(extras); visibility = View.GONE }
+        extrasBox = extrasScroll
+        root.addView(extrasScroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        extras.addView(button("仅停止输入，继续陪聊") { DeviceModule.stopInputFromSurface(); localStatus = "输入已停止；观察、收音与陪聊不受影响" })
+        if (EmergencyHold.anyHeld) extras.addView(button("恢复操作") {
             DeviceModule.continueAfterHold(); refreshBubble(); localStatus = "急停已解除"; closePanel(); showPanel()
         })
-        box.addView(button("隐藏浮球，保留本次陪伴") { applyVisibility(false) })
+        extras.addView(button("隐藏浮球，保留本次陪伴") { applyVisibility(false) })
         val deviceFrame = DeviceModule.surfaceFrame()
         if (deviceFrame.optString("packageName").isNotEmpty()) {
-            box.addView(label("单机游戏操作 · 授权与陪聊独立"))
-            box.addView(button("刷新游戏画面") { withoutWindow {
+            extras.addView(label("单机游戏操作 · 授权与陪聊独立"))
+            extras.addView(button("刷新游戏画面") { withoutWindow {
                 DeviceModule.captureFromSurface()
                 main.post { closePanel(); showPanel() }
                 "画面已刷新，请尽快选择位置"
@@ -286,7 +352,7 @@ class CompanionOverlayService : Service() {
                             }; true
                         }
                     }
-                    box.addView(image); box.addView(selected)
+                    extras.addView(image); extras.addView(selected)
                     fun executePoint(kind: String) {
                         if (pointX < 0 || pointY < 0) { localStatus = "请先在画面选择位置"; return }
                         withoutWindow {
@@ -295,45 +361,36 @@ class CompanionOverlayService : Service() {
                             result.optString("detail", result.optString("state"))
                         }
                     }
-                    box.addView(button("确认点击选点") { executePoint("tap") })
-                    box.addView(button("确认长按选点") { executePoint("longPress") })
+                    extras.addView(button("确认点击选点") { executePoint("tap") })
+                    extras.addView(button("确认长按选点") { executePoint("longPress") })
                 }
             }
         }
-        transcript = label(""); box.addView(transcript)
-        composer = EditText(theme).apply { hint = "和我聊聊，或说明这次想看什么"; minLines = 2; maxLines = 4; setTextColor(Color.BLACK); filters = arrayOf(android.text.InputFilter.LengthFilter(12000)) }
-        box.addView(composer)
-        box.addView(button("发送给助手") {
-            val text = composer?.text?.toString().orEmpty()
-            if (text.isBlank()) { localStatus = "请先输入消息"; return@button }
-            if (presence != null && observationId.isBlank()) { presence!!.textInput(text); composer?.setText(""); localStatus = "已交给当前陪伴会话" }
-            else work { val task = engine.submit(CompanionPolicy.OWNER, text, observationId = observationId); observationId = ""; main.post { composer?.setText("") }; "已加入任务 ${task.optString("id").take(6)}" }
-        })
         if (presence != null) {
-            box.addView(button("打断当前回应") { presence!!.interrupt() })
-            box.addView(button("打断并听我说一次") { runCatching { presenceCommand("presenceListen", JSONObject()) }.onFailure { localStatus = "请回助手开启麦克风后重试" } })
-            box.addView(button("保存当前陪伴事件") { presence!!.saveCurrentEvent(); localStatus = "已请求保存当前有依据的事件" })
-            box.addView(button("暂停 / 继续陪伴") { engine.store.saveSettings(engine.store.settings().put("paused", !engine.store.settings().optBoolean("paused"))) })
+            extras.addView(button("打断当前回应") { presence!!.interrupt() })
+            extras.addView(button("打断并听我说一次") { runCatching { presenceCommand("presenceListen", JSONObject()) }.onFailure { localStatus = "请回助手开启麦克风后重试" } })
+            extras.addView(button("保存当前陪伴事件") { presence!!.saveCurrentEvent(); localStatus = "已请求保存当前有依据的事件" })
+            extras.addView(button("暂停 / 继续陪伴") { engine.store.saveSettings(engine.store.settings().put("paused", !engine.store.settings().optBoolean("paused"))) })
         }
         if (allowedPackage.isNotBlank()) {
-            box.addView(label("画面范围：$allowedPackage。点击后只采一张；发送消息时才交给模型。"))
-            box.addView(button("看一次当前画面，暂存为附件") { withoutWindow {
+            extras.addView(label("画面范围：$allowedPackage。点击后只采一张；发送消息时才交给模型。"))
+            extras.addView(button("看一次当前画面，暂存为附件") { withoutWindow {
                 val observation = CompanionDevice(this).captureOnce(allowedPackage); observationId = observation.getString("id"); lastObservationId = observationId
                 "已临时附当前画面；发送才交给模型，未保存画面不会进入备份"
             } })
-            box.addView(button("保存这次画面和已有分析") { work {
+            extras.addView(button("保存这次画面和已有分析") { work {
                 check(lastObservationId.isNotBlank()) { "请先看一次画面" }
                 engine.store.saveTemporaryObservation(lastObservationId); "已按你的操作保存，可在资料页删除"
             } })
-            box.addView(button("移除待发画面") {
+            extras.addView(button("移除待发画面") {
                 if (engine.store.get("observation", observationId)?.optBoolean("temporary") == true) engine.store.deleteObservation(observationId)
                 observationId = ""; localStatus = "已移除待发画面"
             })
         }
         if (taskId.isNotBlank()) {
             val task = engine.store.get("task", taskId)
-            box.addView(label("待提交：${task?.optString("target")}\n账号：${task?.optString("account").orEmpty().ifBlank { "由你核对当前登录账号" }}\n正文：${task?.optString("body")}"))
-            box.addView(button("我已打开正确目标，选择界面标题") { withoutWindow {
+            extras.addView(label("待提交：${task?.optString("target")}\n账号：${task?.optString("account").orEmpty().ifBlank { "由你核对当前登录账号" }}\n正文：${task?.optString("body")}"))
+            extras.addView(button("我已打开正确目标，选择界面标题") { withoutWindow {
                 val tree = CompanionDevice(this).observe()
                 check(tree.optString("packageName") == task?.optString("package")) { "请先切到目标应用" }
                 val nodes = tree.getJSONArray("nodes")
@@ -343,22 +400,68 @@ class CompanionOverlayService : Service() {
                 main.post { showTargetChoices(choices) }
                 "选择标题前请核对账号、群/好友或视频；重名时不能只凭名称判断"
             } })
-            box.addView(button("确认账号和目标，以 UI 提交已绑定草稿") { withoutWindow {
+            extras.addView(button("确认账号和目标，以 UI 提交已绑定草稿") { withoutWindow {
                 val current = engine.store.get("task", taskId) ?: error("任务不存在")
                 check(current.has("uiBinding")) { "请先选择界面标题并确认目标" }
                 CompanionDevice(this).sendUsingUi(current).optString("progress")
             } })
         }
-        box.addView(button("取消当前模型任务") { engine.activeTask?.let(engine::cancel); localStatus = "已请求取消" })
-        box.addView(button("回到助手") { startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); closePanel() })
-        box.addView(button("结束本次悬浮会话") { stopSelf() })
-        val scroll = ScrollView(theme).apply { addView(box); isFillViewport = false }
-        val metrics = resources.displayMetrics
-        val params = WindowManager.LayoutParams(minOf(dp(360), metrics.widthPixels - dp(20)), minOf(dp(560), metrics.heightPixels - dp(100)),
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL, PixelFormat.TRANSLUCENT).apply {
-            gravity = Gravity.TOP or Gravity.END; x = dp(10); y = dp(50); softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+        extras.addView(button("取消当前模型任务") { engine.activeTask?.let(engine::cancel); localStatus = "已请求取消" })
+        extras.addView(button("回到助手（待审清单在这里）") { startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); closePanel() })
+        extras.addView(button("关掉悬浮球") { rememberBall(false); stopSelf() })
+        val input = EditText(theme).apply {
+            hint = "和我说点什么"; maxLines = 3; setTextColor(Color.BLACK); setHorizontallyScrolling(false)
+            inputType = android.text.InputType.TYPE_CLASS_TEXT // Wraps via setHorizontallyScrolling(false) and keeps the keyboard's Send key.
+            imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_SEND
+            filters = arrayOf(android.text.InputFilter.LengthFilter(12000))
+            setOnEditorActionListener { _, action, _ -> if (action == android.view.inputmethod.EditorInfo.IME_ACTION_SEND) { sendTyped(); true } else false }
+            setOnTouchListener { _, e -> if (e.actionMasked == MotionEvent.ACTION_DOWN && !typing) startTyping(); false }
         }
-        windows.addView(scroll, params); panel = scroll
+        composer = input
+        val row = LinearLayout(theme).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        row.addView(input, LinearLayout.LayoutParams(0, -2, 1f))
+        row.addView(smallButton("发送") { sendTyped() })
+        root.addView(row)
+        windows.addView(root, params); panel = root
+        // Opening the ball means "I want to say something": go straight to typing.
+        main.post { startTyping() }
+    }
+    private fun smallButton(text: String, action: () -> Unit) = Button(theme).apply { this.text = text; isAllCaps = false; textSize = 13f; minWidth = 0; minimumWidth = 0; setOnClickListener { action() } }
+    private fun restingHeight() = minOf(dp(440), (resources.displayMetrics.heightPixels * 0.6).toInt())
+    private fun toggleExtras() {
+        val showExtras = extrasBox?.visibility != View.VISIBLE
+        if (showExtras && typing) stopTyping()
+        extrasBox?.visibility = if (showExtras) View.VISIBLE else View.GONE
+        transcriptBox?.visibility = if (showExtras) View.GONE else View.VISIBLE
+    }
+    private fun startTyping() {
+        val view = panel ?: return; val params = panelParams ?: return
+        typing = true
+        extrasBox?.visibility = View.GONE; transcriptBox?.visibility = View.VISIBLE
+        params.flags = params.flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv()
+        // A first guess that fits above most keyboards; the insets listener trims any remaining overlap.
+        params.height = minOf(restingHeight(), (resources.displayMetrics.heightPixels * 0.42).toInt() - params.y).coerceAtLeast(dp(200))
+        runCatching { windows.updateViewLayout(view, params) }
+        composer?.requestFocus()
+        main.postDelayed({ composer?.let { getSystemService(android.view.inputmethod.InputMethodManager::class.java).showSoftInput(it, 0) } }, 120)
+    }
+    private fun stopTyping() {
+        val view = panel ?: return; val params = panelParams ?: return
+        typing = false
+        getSystemService(android.view.inputmethod.InputMethodManager::class.java).hideSoftInputFromWindow(view.windowToken, 0)
+        composer?.clearFocus()
+        params.flags = params.flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+        params.height = restingHeight()
+        runCatching { windows.updateViewLayout(view, params) }
+    }
+    private fun sendTyped() {
+        val text = composer?.text?.toString()?.trim().orEmpty()
+        if (text.isBlank()) return
+        composer?.setText("")
+        stopTyping()
+        pendingLine = text
+        if (presence != null && observationId.isBlank()) { presence!!.textInput(text); localStatus = "" }
+        else work { engine.submit(CompanionPolicy.OWNER, text, observationId = observationId); observationId = ""; "" }
     }
     private fun showTargetChoices(choices: List<JSONObject>) {
         val box = content ?: return
@@ -385,7 +488,10 @@ class CompanionOverlayService : Service() {
         getSystemService(android.view.inputmethod.InputMethodManager::class.java).hideSoftInputFromWindow(panel?.windowToken, 0)
         main.postDelayed({ work { try { action() } finally { hidden = false } } }, 300)
     }
-    private fun closePanel() { panel?.let { getSystemService(android.view.inputmethod.InputMethodManager::class.java).hideSoftInputFromWindow(it.windowToken, 0); runCatching { windows.removeView(it) } }; panel = null; content = null; transcript = null; stateText = null; composer = null }
+    private fun closePanel() {
+        panel?.let { getSystemService(android.view.inputmethod.InputMethodManager::class.java).hideSoftInputFromWindow(it.windowToken, 0); runCatching { windows.removeView(it) } }
+        panel = null; panelParams = null; content = null; transcript = null; transcriptBox = null; extrasBox = null; stateText = null; composer = null; typing = false; lastTranscript = ""
+    }
     override fun onDestroy() {
         cancelHold?.invoke(); cancelHold = null; if (activeService === this) activeService = null
         presence?.close(); presence = null; CompanionPresenceHost.detach(this)
@@ -408,8 +514,14 @@ class CompanionOverlayService : Service() {
         @Volatile private var allowedPackage = ""
         @Volatile var running = false; private set
         fun observedPackage() = if (running && SystemClock.elapsedRealtime() < deadline) allowedPackage else ""
-        fun permits(pkg: String) = (running && pkg == allowedPackage && SystemClock.elapsedRealtime() < deadline) || DeviceModule.permitsObservation(pkg)
-        fun state() = JSONObject().put("visible", activeService?.visibleByOwner == true && running).put("running", running).put("package", allowedPackage).put("remainingSeconds", ((deadline - SystemClock.elapsedRealtime()) / 1000).coerceAtLeast(0))
+        fun permits(pkg: String) = (running && pkg.isNotBlank() && pkg == allowedPackage && SystemClock.elapsedRealtime() < deadline) || DeviceModule.permitsObservation(pkg)
+        /** Bring the ball back if the owner left it on (called by the resident service; may be refused in the background). */
+        fun restoreIfWanted(context: Context) {
+            if (running || !Settings.canDrawOverlays(context) || !context.getSharedPreferences("companion-overlay", Context.MODE_PRIVATE).getBoolean("ball", false)) return
+            runCatching { start(context) }
+        }
+        fun state() = JSONObject().put("visible", activeService?.visibleByOwner == true && running).put("running", running).put("package", allowedPackage)
+            .put("remainingSeconds", if (allowedPackage.isBlank()) 0 else ((deadline - SystemClock.elapsedRealtime()) / 1000).coerceAtLeast(0))
         fun start(context: Context, packageName: String = "", minutes: Int = 15, taskId: String = "") {
             check(Settings.canDrawOverlays(context)) { "请先开启悬浮窗权限" }
             ContextCompat.startForegroundService(context, Intent(context, CompanionOverlayService::class.java).putExtra("package", packageName).putExtra("minutes", minutes).putExtra("taskId", taskId))
