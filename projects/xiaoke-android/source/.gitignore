@@ -1,0 +1,91 @@
+# Dependencies and generated web output
+node_modules/
+dist/
+harness-web/.dist-android/
+www/
+coverage/
+target/
+.playwright-cli/
+output/
+*.exe
+*.tsbuildinfo
+__pycache__/
+*.py[cod]
+capacitor.config.js
+capacitor.config.d.ts
+vite.config.js
+vite.config.d.ts
+vitest.config.js
+vitest.config.d.ts
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+local.properties
+# 团队统一签名：密钥库与真实密码配置仅经安全渠道分发，严禁提交
+android/keystore.properties
+android/keystore/
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+
+# Android generated output and IDE files
+.gradle/
+.idea/
+.vscode/
+*.iml
+.kotlin/
+**/.cxx/
+android/.gradle/
+android/build/
+android/app/build/
+# Gradle/ktlint 的本地检查产物
+kotlin-check-output/
+android/local.properties
+android/capacitor.settings.gradle
+android/app/capacitor.build.gradle
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+android/app/src/main/assets/public/
+android/app/src/main/assets/runtime/runtime-manifest.json
+android/app/src/main/assets/runtime/runtime-manifest.json.bak
+android/app/src/main/assets/runtime/rootfs.bundle
+android/app/src/main/assets/runtime/rootfs.bundle.bak
+android/app/src/main/jniLibs/**/*.so
+android/gradle/wrapper/gradle-wrapper.jar
+*.apk
+*.aab
+
+# Downloaded runtimes, logs, and temporary files
+runtime-cache/
+.pnpm-pi-ai-patch/
+.patch-source/
+*.rootfs
+*.tar
+*.tar.gz
+*.tar.xz
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+# 真机调试临时产物：截图与 UI 层级 dump（用 `adb exec-out screencap` / `uiautomator dump` 生成）。
+# 不锚定根目录：`docs/模拟器实测-…` 约定的产物落在 `_logs/shots/` 等子目录，锚定会让那些漏网。
+# 需要留档的截图请放 output/（见上），那里同样不提交。
+screen*.png
+ui.xml
+_logs/
+# 供应链安全 bootstrap：wrapper jar 二进制不提交，仅保留生成源码；
+# CI/本地用可信 Gradle 8.11.1 在该目录执行 `gradle wrapper` 生成 jar
+.wrapper-bootstrap/*
+!.wrapper-bootstrap/build.gradle
+!.wrapper-bootstrap/settings.gradle
+# 本机安全扫描工具，仅供提交钩子调用，禁止提交二进制文件
+.tools/
+legal/.operit-license-import/
+legal/operit-license.tar
+
+# 介绍视频及其生成脚本、配乐均为本地素材，不纳入版本管理
+video/

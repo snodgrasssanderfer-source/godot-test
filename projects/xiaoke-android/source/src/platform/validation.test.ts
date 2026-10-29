@@ -1,0 +1,2486 @@
+import { describe, expect, it } from 'vitest'
+import {
+  assertAccessibilityAutomationAction,
+  assertAccessibilityAutomationAppConfigInput,
+  assertAccessibilityPackageName,
+  assertAccessibilityRuleId,
+  assertBase64Input,
+  assertBooleanFlag,
+  assertDiagnosticRetentionDays,
+  assertMailboxSubdirectory,
+  assertRuntimeVersionPinTarget,
+  assertRuntimeVersionTarget,
+  assertSessionId,
+  assertStorageDirPath,
+  assertTerminalKind,
+  assertTerminalSize,
+  assertVirtualScreenSettingsUpdate,
+  validateAllFilesAccessResult,
+  validateAppUpdateState,
+  validateDeviceCapabilityReport,
+  validateRootEngineStatus,
+  validateAccessibilityAutomationRuns,
+  validateAccessibilityAutomationAppConfigDetail,
+  validateAccessibilityAutomationRuleDetail,
+  validateAccessibilityAutomationRules,
+  validateAccessibilityAutomationState,
+  validateAccessibilityPasswordInput,
+  validateDiagnosticLogExport,
+  validateDiagnosticLogState,
+  validateDiagnosticLogText,
+  validateHarnessLog,
+  validateKeepAliveState,
+  validateMailboxExportResult,
+  validateMailboxDirectoryState,
+  validateMailboxImportResult,
+  validateMailboxState,
+  validateMediaPermissionResult,
+  validateModelConnectivityResult,
+  validateNotificationPermissionResult,
+  validateOverlayBallState,
+  validatePluginCleanupRequest,
+  validateRuntimeCleanupState,
+  validateRuntimeInstallResult,
+  validateAppUpdateProgress,
+  validateRuntimeProgress,
+  validateRuntimeReleaseList,
+  validateRuntimeSessionListResult,
+  validateRuntimeSessionSnapshotRestoreResult,
+  validateRuntimeSessionSnapshotState,
+  validateRuntimeWorkspaceFileList,
+  validateRuntimeWorkspaceFilePath,
+  validateRuntimeSource,
+  validateRuntimeState,
+  validateRuntimeVersions,
+  validateSettings,
+  validateSettingsUpdate,
+  validateShizukuState,
+  validateStorageAccessState,
+  validateStorageDirectoryState,
+  validateStorageDirsState,
+  validateStoredSettings,
+  validateTerminalChunk,
+  validateTerminalExit,
+  validateVirtualScreenSettings,
+} from './validation'
+import {
+  ALWAYS_ALLOWED_ACCESSIBILITY_PACKAGES,
+  DIAGNOSTIC_LOG_MAX_CHARS,
+  DIAGNOSTIC_LOG_WINDOW_OPTIONS,
+  DIAGNOSTIC_RETENTION_MAX,
+  DIAGNOSTIC_RETENTION_MIN,
+  HARNESS_LOG_MAX_CHARS,
+  HARNESS_LOG_WINDOW_OPTIONS,
+} from './types'
+import type { RuntimeSettings } from './types'
+
+const ipv4 = (...octets: number[]): string => octets.join('.')
+
+describe('runtime source validation', () => {
+  it('accepts an empty pair for the bundled runtime', () => {
+    expect(validateRuntimeSource({ manifestUrl: ' ', manifestSha256: ' ' })).toEqual({
+      manifestUrl: '',
+      manifestSha256: '',
+    })
+  })
+
+  it('rejects a partially configured remote source', () => {
+    expect(() => validateRuntimeSource({
+      manifestUrl: 'https://downloads.example.invalid/runtime.json',
+      manifestSha256: '',
+    })).toThrow('同时填写')
+  })
+
+  it('normalizes a valid HTTPS source and digest', () => {
+    expect(validateRuntimeSource({
+      manifestUrl: ' https://downloads.example.invalid/runtime.json ',
+      manifestSha256: 'A'.repeat(64),
+    })).toEqual({
+      manifestUrl: 'https://downloads.example.invalid/runtime.json',
+      manifestSha256: 'a'.repeat(64),
+    })
+  })
+
+  it('does not mistake public hostnames with IPv6-like prefixes for private addresses', () => {
+    expect(validateRuntimeSource({
+      manifestUrl: 'https://fcdn.example.invalid/runtime.json',
+      manifestSha256: 'a'.repeat(64),
+    }).manifestUrl).toBe('https://fcdn.example.invalid/runtime.json')
+  })
+
+  it.each([
+    'http://downloads.example.invalid/runtime.json',
+    'https://user@downloads.example.invalid/runtime.json',
+    'https://downloads.example.invalid/runtime.json#fragment',
+  ])('rejects unsafe URL %s', manifestUrl => {
+    expect(() => validateRuntimeSource({ manifestUrl, manifestSha256: 'a'.repeat(64) })).toThrow()
+  })
+
+  it.each([
+    'https://localhost/runtime.json',
+    'https://127.0.0.1/runtime.json',
+    `https://${ipv4(10, 0, 0, 2)}/runtime.json`,
+    'https://169.254.169.254/latest/meta-data',
+    `https://${ipv4(192, 168, 1, 2)}/runtime.json`,
+    'https://[::1]/runtime.json',
+    'https://[fd00::1]/runtime.json',
+    'https://[::ffff:127.0.0.1]/runtime.json',
+    'https://localhost./runtime.json',
+    'https://service.local./runtime.json',
+  ])('rejects non-public destination %s', manifestUrl => {
+    expect(() => validateRuntimeSource({ manifestUrl, manifestSha256: 'a'.repeat(64) })).toThrow('私网')
+  })
+
+  it('rejects malformed digests', () => {
+    expect(() => validateRuntimeSource({
+      manifestUrl: 'https://downloads.example.invalid/runtime.json',
+      manifestSha256: 'not-a-digest',
+    })).toThrow('SHA-256')
+  })
+
+  it('rejects URL control characters before parsing', () => {
+    expect(() => validateRuntimeSource({
+      manifestUrl: 'https://downloads.example.invalid/run\ntime.json',
+      manifestSha256: 'a'.repeat(64),
+    })).toThrow('非法字符')
+  })
+})
+
+describe('settings validation', () => {
+  it('accepts only the explicit unconfigured stored-source state', () => {
+    expect(validateStoredSettings({
+      manifestUrl: '',
+      manifestSha256: '',
+      keepScreenAwake: false,
+      terminalFontSize: 14,
+    })).toEqual({
+      manifestUrl: '',
+      manifestSha256: '',
+      keepScreenAwake: false,
+      terminalFontSize: 14,
+      configuredModelProviders: [],
+      // 旧存储没有该键：按默认 false 迁移，不改变既有行为。
+      keepRuntimeInBackground: false,
+      // 同理：旧存储也没有悬浮球键，缺省按关闭处理。
+      overlayBallEnabled: false,
+    })
+    expect(() => validateStoredSettings({
+      manifestUrl: '',
+      manifestSha256: 'a'.repeat(64),
+      keepScreenAwake: false,
+      terminalFontSize: 14,
+    })).toThrow()
+  })
+
+  it('enforces terminal font limits', () => {
+    expect(() => validateSettings({
+      manifestUrl: 'https://downloads.example.invalid/runtime.json',
+      manifestSha256: 'a'.repeat(64),
+      keepScreenAwake: false,
+      terminalFontSize: 25,
+      configuredModelProviders: [],
+    })).toThrow('字号')
+  })
+
+  it('allows saving bundled runtime settings', () => {
+    expect(validateSettings({
+      manifestUrl: '',
+      manifestSha256: '',
+      keepScreenAwake: true,
+      terminalFontSize: 16,
+      configuredModelProviders: [],
+    })).toEqual({
+      manifestUrl: '',
+      manifestSha256: '',
+      keepScreenAwake: true,
+      terminalFontSize: 16,
+      configuredModelProviders: [],
+      keepRuntimeInBackground: false,
+      // 缺省时回落 false：与原生侧「缺键按 false」一致，老用户不会突然多出一个悬浮球。
+      overlayBallEnabled: false,
+    })
+  })
+
+  it('默认关闭后台保持，并保留显式开启的设置', () => {
+    expect(validateSettings({
+      manifestUrl: '',
+      manifestSha256: '',
+      keepScreenAwake: false,
+      terminalFontSize: 14,
+      configuredModelProviders: [],
+    }).keepRuntimeInBackground).toBe(false)
+    expect(validateSettings({
+      manifestUrl: '',
+      manifestSha256: '',
+      keepScreenAwake: false,
+      terminalFontSize: 14,
+      configuredModelProviders: [],
+      keepRuntimeInBackground: true,
+    }).keepRuntimeInBackground).toBe(true)
+    expect(validateStoredSettings({
+      manifestUrl: '',
+      manifestSha256: '',
+      keepScreenAwake: false,
+      terminalFontSize: 14,
+      keepRuntimeInBackground: true,
+    }).keepRuntimeInBackground).toBe(true)
+  })
+
+  it('拒绝非布尔的后台保持设置，不做静默转换', () => {
+    const invalid = {
+      manifestUrl: '',
+      manifestSha256: '',
+      keepScreenAwake: false,
+      terminalFontSize: 14,
+      configuredModelProviders: [],
+      keepRuntimeInBackground: 'true',
+    }
+    expect(() => validateSettings(invalid as never)).toThrow('后台保持')
+    expect(() => validateStoredSettings(invalid)).toThrow('后台保持')
+    expect(() => validateSettingsUpdate(invalid as never)).toThrow('后台保持')
+  })
+
+  it('rejects non-boolean screen settings instead of silently coercing them', () => {
+    expect(() => validateSettings({
+      manifestUrl: 'https://downloads.example.invalid/runtime.json',
+      manifestSha256: 'a'.repeat(64),
+      keepScreenAwake: 'true',
+      terminalFontSize: 14,
+      configuredModelProviders: [],
+    } as unknown as Parameters<typeof validateSettings>[0])).toThrow('屏幕常亮')
+  })
+
+  it('validates bounded provider credential updates', () => {
+    expect(validateSettingsUpdate({
+      manifestUrl: '',
+      manifestSha256: '',
+      keepScreenAwake: true,
+      terminalFontSize: 14,
+      configuredModelProviders: ['deepseek'],
+      providerApiKeys: { openai: 'unit-test-openai-key', google: 'unit-test-gemini-key' },
+      clearProviderApiKeys: ['deepseek'],
+      keepRuntimeInBackground: true,
+    })).toEqual({
+      manifestUrl: '',
+      manifestSha256: '',
+      keepScreenAwake: true,
+      terminalFontSize: 14,
+      configuredModelProviders: ['deepseek'],
+      providerApiKeys: { openai: 'unit-test-openai-key', google: 'unit-test-gemini-key' },
+      clearProviderApiKeys: ['deepseek'],
+      keepRuntimeInBackground: true,
+    })
+  })
+
+  it('设置校验保留悬浮球字段', () => {
+    // validateSettings 是保存路径、validateStoredSettings 是存储读取路径（前端拿到设置的那条路），
+    // 两者都显式重建对象、不展开透传：漏掉字段不会报错，只会让前端永远读不到开关值
+    // （表现为设置页开关永远显示关闭）。两条路径都要锁住 true 值的透传，
+    // 否则把取值写死成 false 也不会有用例变红。
+    const validSettings = {
+      manifestUrl: '',
+      manifestSha256: '',
+      keepScreenAwake: false,
+      terminalFontSize: 14,
+      configuredModelProviders: [],
+    }
+    expect(validateSettings({ ...validSettings, overlayBallEnabled: true }).overlayBallEnabled).toBe(true)
+    expect(validateStoredSettings({ ...validSettings, overlayBallEnabled: true }).overlayBallEnabled).toBe(true)
+    // 字段缺席时回落 false：与原生侧「缺键按 false」一致，
+    // 老版本升级上来的用户不会突然多出一个悬浮球。
+    expect(validateSettings({ ...validSettings }).overlayBallEnabled).toBe(false)
+    expect(validateStoredSettings({ ...validSettings }).overlayBallEnabled).toBe(false)
+    // 保存请求中省略字段表示保留；不能在校验时补 false 后关闭原生侧的开关。
+    expect(validateSettingsUpdate(validSettings)).not.toHaveProperty('overlayBallEnabled')
+    expect(validateSettingsUpdate({ ...validSettings, overlayBallEnabled: undefined })).not.toHaveProperty('overlayBallEnabled')
+    expect(validateSettingsUpdate({ ...validSettings, overlayBallEnabled: false }).overlayBallEnabled).toBe(false)
+    expect(validateSettingsUpdate({ ...validSettings, overlayBallEnabled: true }).overlayBallEnabled).toBe(true)
+  })
+
+  it('保留并校验 Harness 网页凭据的只读状态', () => {
+    const stored: RuntimeSettings = {
+      manifestUrl: '',
+      manifestSha256: '',
+      keepScreenAwake: false,
+      terminalFontSize: 14,
+      configuredModelProviders: [],
+      harnessConfiguredModelProviders: ['openai'],
+      configuredCustomModelProviders: [],
+      harnessConfiguredCustomModelProviders: ['gateway-1'],
+    }
+
+    expect(validateSettings(stored).harnessConfiguredModelProviders).toEqual(['openai'])
+    expect(validateStoredSettings(stored).harnessConfiguredCustomModelProviders).toEqual(['gateway-1'])
+    expect(() => validateStoredSettings({
+      ...stored,
+      harnessConfiguredModelProviders: ['openai', 'openai'],
+    })).toThrow('重复供应商')
+    expect(() => validateStoredSettings({
+      ...stored,
+      harnessConfiguredCustomModelProviders: ['gateway-1', 'gateway-1'],
+    })).toThrow('自定义模型凭据状态')
+  })
+
+  it('ignores retired frontend preferences and rejects invalid provider updates', () => {
+    const base = {
+      manifestUrl: '',
+      manifestSha256: '',
+      keepScreenAwake: true,
+      terminalFontSize: 14,
+      configuredModelProviders: [],
+      keepRuntimeInBackground: false,
+      overlayBallEnabled: false,
+    }
+    expect(validateStoredSettings({ ...base, defaultFrontend: 'workbench' })).toEqual(base)
+    expect(() => validateSettingsUpdate({ ...base, providerApiKeys: { custom: 'key' } } as never)).toThrow('供应商')
+    expect(() => validateSettingsUpdate({ ...base, providerApiKeys: { openai: 'bad key' } })).toThrow('非法字符')
+    expect(() => validateSettingsUpdate({
+      ...base,
+      providerApiKeys: { openai: 'replacement-key' },
+      clearProviderApiKeys: ['openai'],
+    })).toThrow('同时更新和清除')
+  })
+
+  it('enforces terminal dimensions', () => {
+    expect(() => assertTerminalSize(19, 24)).toThrow('列数')
+    expect(() => assertTerminalSize(80, 151)).toThrow('行数')
+  })
+
+  it('enforces terminal kinds and encoded input length', () => {
+    expect(() => assertTerminalKind('host')).toThrow('类型')
+    expect(() => assertBase64Input('***=', 32)).toThrow('编码')
+    expect(() => assertBase64Input('YQ==', 1)).not.toThrow()
+    expect(() => assertBase64Input('YWE=', 1)).toThrow('长度')
+  })
+})
+
+describe('native bridge output validation', () => {
+  const sessionId = '123e4567-e89b-42d3-a456-426614174000'
+
+  it('accepts a bounded runtime state and rejects unsafe Harness URLs', () => {
+    expect(validateRuntimeState({
+      phase: 'running',
+      architecture: 'arm64-v8a',
+      installedVersion: '2026.08.1',
+      updateAvailable: false,
+      downloadedBytes: 100,
+      totalBytes: 100,
+      runnerAvailable: true,
+      harnessUrl: 'http://127.0.0.1:3080/',
+    }).phase).toBe('running')
+    expect(() => validateRuntimeState({
+      phase: 'running',
+      architecture: 'arm64-v8a',
+      updateAvailable: false,
+      downloadedBytes: 100,
+      totalBytes: 100,
+      runnerAvailable: true,
+      harnessUrl: 'https://example.invalid/',
+    })).toThrow('本机 HTTP')
+    expect(() => validateRuntimeState({
+      phase: 'ready',
+      architecture: 'arm64-v8a',
+      downloadedBytes: 100,
+      totalBytes: 100,
+      runnerAvailable: true,
+    })).toThrow('更新状态')
+  })
+
+  it('rejects malformed state, Shizuku, session and terminal event values', () => {
+    expect(() => validateRuntimeState({ phase: 'unknown' })).toThrow()
+    expect(() => validateShizukuState({ installed: true, running: true, permission: 'root', connected: false })).toThrow('权限')
+    expect(() => validateShizukuState({ installed: true, running: true, permission: 'denied', connected: true })).toThrow('连接')
+    expect(validateShizukuState({ installed: true, running: true, permission: 'granted', connected: true, version: '13' }).version).toBe('13')
+    expect(() => validateShizukuState({ installed: true, running: true, permission: 'granted', connected: true, version: '<script>' })).toThrow('版本')
+    // 两种版本分开校验：`version` 是服务端 API 版本（13.x 各版应用都报 13），
+    // `appVersion` 才是已安装应用的版本名（13.6.0 这种），各自独立非法、独立保留。
+    const versions = validateShizukuState({ installed: true, running: true, permission: 'granted', connected: true, version: '13', appVersion: '13.6.0' })
+    expect(versions.appVersion).toBe('13.6.0')
+    expect(versions.version).toBe('13')
+    expect(() => validateShizukuState({ installed: true, running: true, permission: 'granted', connected: true, appVersion: '<script>' })).toThrow('应用版本')
+    // 缺省或原生未运行时回传的空串均归一为 undefined，不抛错阻断
+    expect(validateShizukuState({ installed: true, running: true, permission: 'granted', connected: true }).appVersion).toBeUndefined()
+    expect(validateShizukuState({ installed: false, running: false, permission: 'undetermined', connected: false, version: '', appVersion: '' })).toEqual({
+      installed: false,
+      running: false,
+      permission: 'undetermined',
+      connected: false,
+    })
+    // 支持数字形式的服务端版本与带构建元数据的版本
+    const buildVersions = validateShizukuState({ installed: true, running: true, permission: 'granted', connected: true, version: 13, appVersion: '13.6.0+1034' })
+    expect(buildVersions.version).toBe('13')
+    expect(buildVersions.appVersion).toBe('13.6.0+1034')
+    expect(() => assertSessionId('------------------------------------')).toThrow('会话')
+    expect(() => validateTerminalChunk({ sessionId, dataBase64: '***=' })).toThrow('编码')
+    expect(() => validateTerminalExit({ sessionId, exitCode: 999 })).toThrow('退出码')
+  })
+
+  it('accepts local preparation progress and preserves native error codes', () => {
+    expect(validateRuntimeProgress({
+      phase: 'preparing',
+      downloadedBytes: 50,
+      totalBytes: 100,
+    }).phase).toBe('preparing')
+    expect(validateRuntimeProgress({
+      phase: 'error',
+      downloadedBytes: 50,
+      totalBytes: 100,
+      errorCode: 'DOWNLOAD_INCOMPLETE',
+    }).errorCode).toBe('DOWNLOAD_INCOMPLETE')
+  })
+
+  it('accepts app update progress and rejects one that cannot be drawn as a percentage', () => {
+    expect(validateAppUpdateProgress({ downloadedBytes: 50, totalBytes: 100 })).toEqual({ downloadedBytes: 50, totalBytes: 100 })
+    // 总量为 0 或负、超过总量的读数都不算进度：界面宁可没有进度条，也不显示假的 0%。
+    expect(() => validateAppUpdateProgress({ downloadedBytes: 0, totalBytes: 0 })).toThrow('应用更新进度无效')
+    expect(() => validateAppUpdateProgress({ downloadedBytes: 101, totalBytes: 100 })).toThrow('应用更新进度无效')
+  })
+})
+
+describe('后台保持状态校验', () => {
+  const base = {
+    keepRuntimeInBackground: true,
+    foregroundServiceActive: true,
+    notificationPermission: 'granted',
+    deviceShellReady: false,
+    reconnectRequired: false,
+    lastIntent: 'running',
+  }
+
+  it('接受完整状态并保留可选的最近记录', () => {
+    expect(validateKeepAliveState({
+      ...base,
+      lastPhase: 'running',
+      lastUpdatedAtMillis: 1_700_000_000_000,
+    })).toEqual({
+      ...base,
+      lastPhase: 'running',
+      lastUpdatedAtMillis: 1_700_000_000_000,
+    })
+    // 从未记录时两个可选字段整体缺省，界面据此隐藏该行。
+    expect(validateKeepAliveState(base)).toEqual(base)
+  })
+
+  it('对话完成信号：时间戳与序号成对保留，缺省时不写回', () => {
+    // 这两项是「任务完成 → 回到对话界面」的唯一依据：时间戳给用户看，序号用来判断"有没有新的一轮结束"。
+    expect(validateKeepAliveState({
+      ...base,
+      lastTurnCompletedAtMillis: 1_700_000_000_000,
+      turnCompletionSequence: 7,
+    })).toEqual({
+      ...base,
+      lastTurnCompletedAtMillis: 1_700_000_000_000,
+      turnCompletionSequence: 7,
+    })
+    // 从未收到时（旧原生、预览实现）整体缺省：外壳按 0 处理，不得当成"刚完成"。
+    expect(validateKeepAliveState(base)).toEqual(base)
+    expect(validateKeepAliveState({ ...base, turnCompletionSequence: 0 })).toEqual({ ...base, turnCompletionSequence: 0 })
+  })
+
+  it('拒绝非整数或负数的对话完成信号', () => {
+    expect(() => validateKeepAliveState({ ...base, lastTurnCompletedAtMillis: -1 })).toThrow('对话完成时间')
+    expect(() => validateKeepAliveState({ ...base, lastTurnCompletedAtMillis: 1.5 })).toThrow('对话完成时间')
+    expect(() => validateKeepAliveState({ ...base, lastTurnCompletedAtMillis: '1700000000000' })).toThrow('对话完成时间')
+    expect(() => validateKeepAliveState({ ...base, turnCompletionSequence: -1 })).toThrow('对话完成序号')
+    expect(() => validateKeepAliveState({ ...base, turnCompletionSequence: 2.5 })).toThrow('对话完成序号')
+  })
+
+  it('拒绝非法枚举、非布尔值与负数时间', () => {
+    expect(() => validateKeepAliveState({ ...base, notificationPermission: 'root' })).toThrow('通知权限')
+    expect(() => validateKeepAliveState({ ...base, lastIntent: 'paused' })).toThrow('运行意图')
+    expect(() => validateKeepAliveState({ ...base, lastPhase: 'sleeping' })).toThrow('运行时阶段')
+    expect(() => validateKeepAliveState({ ...base, reconnectRequired: 'yes' })).toThrow('后台保持状态')
+    expect(() => validateKeepAliveState({ ...base, lastUpdatedAtMillis: -1 })).toThrow('更新时间')
+    expect(() => validateKeepAliveState(null)).toThrow('后台保持状态')
+  })
+
+  it('只接受布尔型的通知权限结果', () => {
+    expect(validateNotificationPermissionResult({ granted: true, supported: true })).toEqual({ granted: true, supported: true })
+    expect(validateNotificationPermissionResult({ granted: false, supported: false })).toEqual({ granted: false, supported: false })
+    expect(() => validateNotificationPermissionResult({ granted: 'yes', supported: true })).toThrow('通知权限结果')
+    expect(() => validateNotificationPermissionResult({ granted: true })).toThrow('通知权限结果')
+  })
+})
+
+describe('诊断日志校验', () => {
+  const base = {
+    enabled: false,
+    retentionDays: 3,
+    fileCount: 0,
+    totalBytes: 0,
+    lastEntryAtMillis: 0,
+  }
+
+  it('只接受开关、计数与时间戳', () => {
+    expect(validateDiagnosticLogState(base)).toEqual(base)
+    expect(validateDiagnosticLogState({ ...base, enabled: true, fileCount: 2, totalBytes: 4096, lastEntryAtMillis: 1_700_000_000_000 }))
+      .toEqual({ ...base, enabled: true, fileCount: 2, totalBytes: 4096, lastEntryAtMillis: 1_700_000_000_000 })
+  })
+
+  it('拒绝越界保留天数与非计数值', () => {
+    expect(() => validateDiagnosticLogState({ ...base, retentionDays: 0 })).toThrow('保留天数')
+    expect(() => validateDiagnosticLogState({ ...base, retentionDays: 31 })).toThrow('保留天数')
+    expect(() => validateDiagnosticLogState({ ...base, retentionDays: 3.5 })).toThrow('保留天数')
+    expect(() => validateDiagnosticLogState({ ...base, fileCount: -1 })).toThrow('文件数')
+    expect(() => validateDiagnosticLogState({ ...base, totalBytes: '1024' })).toThrow('总字节数')
+    expect(() => validateDiagnosticLogState({ ...base, enabled: 'yes' })).toThrow('诊断日志状态')
+    expect(() => validateDiagnosticLogState(null)).toThrow('诊断日志状态')
+  })
+
+  it('保留天数边界与原生侧一致', () => {
+    expect(assertDiagnosticRetentionDays(DIAGNOSTIC_RETENTION_MIN)).toBe(DIAGNOSTIC_RETENTION_MIN)
+    expect(assertDiagnosticRetentionDays(DIAGNOSTIC_RETENTION_MAX)).toBe(DIAGNOSTIC_RETENTION_MAX)
+    expect(() => assertDiagnosticRetentionDays(DIAGNOSTIC_RETENTION_MAX + 1)).toThrow('保留天数')
+    expect(() => assertDiagnosticRetentionDays(DIAGNOSTIC_RETENTION_MIN - 1)).toThrow('保留天数')
+  })
+
+  it('导出结果必须带有安全的文件名', () => {
+    expect(validateDiagnosticLogExport({
+      ...base,
+      enabled: true,
+      fileCount: 1,
+      fileName: 'dsh-diagnostic-20260912-102030.txt',
+      exportedBytes: 512,
+    })).toEqual({
+      ...base,
+      enabled: true,
+      fileCount: 1,
+      fileName: 'dsh-diagnostic-20260912-102030.txt',
+      exportedBytes: 512,
+    })
+    // 文件名不得包含路径分隔符或任何自由文本。
+    expect(() => validateDiagnosticLogExport({ ...base, fileName: '../../etc/passwd' })).toThrow('文件名')
+    expect(() => validateDiagnosticLogExport({ ...base, fileName: 'a b.txt' })).toThrow('文件名')
+    expect(() => validateDiagnosticLogExport({ ...base, fileName: '' })).toThrow('文件名')
+    expect(() => validateDiagnosticLogExport({ ...base, fileName: 'ok.txt' })).toThrow('导出字节数')
+  })
+})
+
+describe('运行日志校验', () => {
+  const window = HARNESS_LOG_WINDOW_OPTIONS[0]
+
+  it('接受可用的尾部文本与不可用时的空内容', () => {
+    const text = 'Error: tool call failed\n    at run (dsh.js:1:1)'
+    expect(validateHarnessLog({ available: true, text, maxBytes: window })).toEqual({ available: true, text, maxBytes: window })
+    // 运行时不持有 Harness 输出时如实返回不可用，且 text 为空串。
+    expect(validateHarnessLog({ available: false, text: '', maxBytes: window }))
+      .toEqual({ available: false, text: '', maxBytes: window })
+  })
+
+  it('拒绝类型错误与自相矛盾的载荷', () => {
+    expect(() => validateHarnessLog(null)).toThrow('运行日志')
+    expect(() => validateHarnessLog({ available: 'yes', text: '', maxBytes: window })).toThrow('可用状态')
+    expect(() => validateHarnessLog({ available: true, text: 42, maxBytes: window })).toThrow('内容格式')
+    // 「不可用却带内容」是异常载荷：不接受，避免界面按 available 判定后又渲染出文本。
+    expect(() => validateHarnessLog({ available: false, text: '不该出现的内容', maxBytes: window })).toThrow('不一致')
+    // 窗口只接受受控档位：否则界面会按一个缓冲区里根本不存在的窗口去解释内容。
+    expect(() => validateHarnessLog({ available: true, text: 'x', maxBytes: 12345 })).toThrow('窗口')
+    expect(() => validateHarnessLog({ available: true, text: 'x' })).toThrow('窗口')
+  })
+
+  it('拒绝超长文本，边界值按字符数放行', () => {
+    expect(validateHarnessLog({ available: true, text: 'x'.repeat(HARNESS_LOG_MAX_CHARS), maxBytes: window }).text)
+      .toHaveLength(HARNESS_LOG_MAX_CHARS)
+    expect(() => validateHarnessLog({ available: true, text: 'x'.repeat(HARNESS_LOG_MAX_CHARS + 1), maxBytes: window }))
+      .toThrow('长度')
+  })
+
+  it('三档窗口都接受，最大档也能通过校验', () => {
+    HARNESS_LOG_WINDOW_OPTIONS.forEach(bytes => {
+      expect(validateHarnessLog({ available: true, text: 'x', maxBytes: bytes }).maxBytes).toBe(bytes)
+    })
+  })
+})
+
+describe('诊断日志正文校验', () => {
+  const payload = {
+    text: '2026-09-12T10:21:04Z|WARN|MODULE_GRAPH|result=failed|count=2|files=4\n',
+    maxBytes: DIAGNOSTIC_LOG_WINDOW_OPTIONS[0],
+    totalBytes: 4096,
+    truncated: true,
+  }
+
+  it('接受受控字段组成的正文与计数', () => {
+    expect(validateDiagnosticLogText(payload)).toEqual(payload)
+    expect(validateDiagnosticLogText({ ...payload, text: '', truncated: false }).text).toBe('')
+  })
+
+  it('拒绝异常形态与未知窗口', () => {
+    expect(() => validateDiagnosticLogText(null)).toThrow('诊断日志内容')
+    expect(() => validateDiagnosticLogText({ ...payload, text: 42 })).toThrow('内容格式')
+    expect(() => validateDiagnosticLogText({ ...payload, truncated: 'yes' })).toThrow('截断状态')
+    expect(() => validateDiagnosticLogText({ ...payload, maxBytes: 8192 })).toThrow('窗口')
+    expect(() => validateDiagnosticLogText({ ...payload, totalBytes: -1 })).toThrow('总字节数')
+    expect(() => validateDiagnosticLogText({ ...payload, text: 'x'.repeat(DIAGNOSTIC_LOG_MAX_CHARS + 1) }))
+      .toThrow('长度')
+  })
+})
+
+describe('悬浮球状态校验', () => {
+  it('接受合法的悬浮球状态', () => {
+    const state = validateOverlayBallState({
+      enabled: true,
+      canDrawOverlays: true,
+      serviceActive: true,
+    })
+    expect(state).toEqual({ enabled: true, canDrawOverlays: true, serviceActive: true })
+  })
+
+  it('拒绝非布尔字段', () => {
+    // 原生返回值不可信：字段缺失或类型不符时必须抛错，而不是静默降级成 false，
+    // 否则界面会把「读取失败」显示成「开关是关的」，用户点了没反应也不知道为什么。
+    expect(() => validateOverlayBallState({ enabled: 'true', canDrawOverlays: true, serviceActive: true }))
+      .toThrow()
+    expect(() => validateOverlayBallState({ enabled: true, canDrawOverlays: 1, serviceActive: false }))
+      .toThrow()
+    expect(() => validateOverlayBallState({ enabled: true, canDrawOverlays: true }))
+      .toThrow()
+  })
+})
+
+const mailboxState = {
+  availability: 'available',
+  level: 'T2',
+  available: true,
+  supported: true,
+  granted: true,
+  inboxPath: '/storage/emulated/0/Documents/DSH/inbox',
+  outboxPath: '/storage/emulated/0/Documents/DSH/outbox',
+  guestInboxPath: '/mnt/inbox',
+  guestOutboxPath: '/mnt/outbox',
+  inboxFileCount: 2,
+  inboxTars: [{ name: 'dsh-workspace.tar', bytes: 2048 }],
+  exportTarName: 'dsh-workspace.tar',
+  exportManifestName: 'dsh-workspace.manifest.json',
+  importDirectory: 'mailbox-import',
+}
+
+describe('投递区状态校验', () => {
+  it('接受合法的投递区状态', () => {
+    expect(validateMailboxState(mailboxState)).toEqual(mailboxState)
+    expect(validateMailboxState({ ...mailboxState, availability: 'needsPermission', level: 'T0', available: false }).available)
+      .toBe(false)
+  })
+
+  it('拒绝未知档位、缺失字段与相对路径', () => {
+    // 未知档位不能回落到「可用」：把读不懂的状态显示成可用，用户点了才发现不可用。
+    expect(() => validateMailboxState({ ...mailboxState, availability: 'maybe' })).toThrow('投递区可用性格式无效')
+    expect(() => validateMailboxState({ ...mailboxState, level: 'T3' })).toThrow('投递区权限档位格式无效')
+    expect(() => validateMailboxState({ ...mailboxState, inboxPath: 'Documents/DSH/inbox' })).toThrow()
+    expect(() => validateMailboxState({ ...mailboxState, exportTarName: 'sub/dsh.tar' })).toThrow()
+    expect(() => validateMailboxState({ ...mailboxState, inboxFileCount: -1 })).toThrow()
+    expect(() => validateMailboxState({ ...mailboxState, inboxTars: new Array(6).fill({ name: 'a.tar', bytes: 1 }) }))
+      .toThrow('投递区 tar 列表格式无效')
+    const missing: Record<string, unknown> = { ...mailboxState }
+    delete missing.guestOutboxPath
+    expect(() => validateMailboxState(missing)).toThrow()
+  })
+
+  it('拒绝自相矛盾的可用性', () => {
+    // available=true 但档位是「需要授权」：界面会出现「按钮可点 + 文案说没权限」的矛盾状态。
+    expect(() => validateMailboxState({ ...mailboxState, availability: 'needsPermission' }))
+      .toThrow('投递区状态自相矛盾')
+    expect(() => validateMailboxState({ ...mailboxState, available: false }))
+      .toThrow('投递区状态自相矛盾')
+  })
+})
+
+describe('投递区结果校验', () => {
+  it('接受合法的导入与导出结果', () => {
+    expect(validateMailboxImportResult({
+      entryCount: 3,
+      fileCount: 2,
+      directoryCount: 1,
+      symlinkCount: 0,
+      hardlinkCount: 0,
+      bytes: 2048,
+      tarName: 'dsh-workspace.tar',
+      tarBytes: 4096,
+      verified: true,
+      manifestName: 'dsh-workspace.manifest.json',
+      ignoredFiles: 0,
+      target: 'mailbox-import',
+    }).verified).toBe(true)
+
+    // 没有 manifest 时不补默认文件名：字段缺失就是「未附带」。
+    expect(validateMailboxImportResult({
+      entryCount: 1,
+      fileCount: 1,
+      directoryCount: 0,
+      symlinkCount: 0,
+      hardlinkCount: 0,
+      bytes: 4,
+      tarName: 'loose.tar',
+      tarBytes: 10240,
+      verified: false,
+      ignoredFiles: 0,
+      target: 'mailbox-import',
+    }).manifestName).toBeUndefined()
+
+    expect(validateMailboxExportResult({
+      entryCount: 5,
+      bytes: 8192,
+      tarName: 'dsh-workspace.tar',
+      tarBytes: 10240,
+      tarSha256: 'b'.repeat(64),
+      manifestName: 'dsh-workspace.manifest.json',
+      skippedLinks: 1,
+      skippedSpecial: 0,
+    }).skippedLinks).toBe(1)
+  })
+
+  it('拒绝负数计数、非法摘要与绝对路径文件名', () => {
+    expect(() => validateMailboxImportResult({
+      entryCount: -1, fileCount: 0, directoryCount: 0, symlinkCount: 0, hardlinkCount: 0,
+      bytes: 0, tarName: 'a.tar', tarBytes: 1, verified: false, ignoredFiles: 0, target: 'mailbox-import',
+    })).toThrow()
+    expect(() => validateMailboxExportResult({
+      entryCount: 1, bytes: 1, tarName: 'a.tar', tarBytes: 1, tarSha256: 'B'.repeat(64),
+      manifestName: 'a.json', skippedLinks: 0, skippedSpecial: 0,
+    })).toThrow('投递区导出摘要格式无效')
+    expect(() => validateMailboxExportResult({
+      entryCount: 1, bytes: 1, tarName: '/etc/passwd', tarBytes: 1, tarSha256: 'b'.repeat(64),
+      manifestName: 'a.json', skippedLinks: 0, skippedSpecial: 0,
+    })).toThrow()
+  })
+
+  it('校验目录快照、相对路径和条目类型', () => {
+    const snapshot = {
+      root: 'outbox',
+      path: 'exports/weekly',
+      entries: [
+        { name: 'reports', kind: 'directory', bytes: 0 },
+        { name: 'result.tar', kind: 'file', bytes: 12 },
+      ],
+      truncated: false,
+    }
+    expect(validateMailboxDirectoryState(snapshot)).toEqual(snapshot)
+    expect(() => validateMailboxDirectoryState({ ...snapshot, root: '/storage/emulated/0' })).toThrow()
+    expect(() => validateMailboxDirectoryState({ ...snapshot, path: '../outside' })).toThrow()
+    expect(() => validateMailboxDirectoryState({ ...snapshot, entries: [{ name: 'a', kind: 'symlink', bytes: 0 }] })).toThrow()
+    expect(() => validateMailboxDirectoryState({ ...snapshot, truncated: 'false' })).toThrow()
+  })
+
+  it('校验共享目录快照、访客路径与条目类型', () => {
+    const snapshot = {
+      guestPath: '/mnt/user/2',
+      path: 'projects/demo',
+      entries: [
+        { name: 'src', kind: 'directory', bytes: 0 },
+        { name: 'notes.md', kind: 'file', bytes: 42 },
+      ],
+      truncated: false,
+    }
+    expect(validateStorageDirectoryState(snapshot)).toEqual(snapshot)
+    // 根目录：原生回传的是 path: null，前端统一收敛成 undefined（与投递区同一口径）。
+    expect(validateStorageDirectoryState({ ...snapshot, path: null, truncated: true }))
+      .toEqual({ ...snapshot, path: undefined, truncated: true })
+    // 序号从 1 起且没有前导零：以下写法都指不到白名单里的任何一条目录。
+    const invalidGuestPaths: unknown[] = [
+      '/mnt/user', '/mnt/user/', '/mnt/user/0', '/mnt/user/1/', '/mnt/user/01',
+      '/mnt/user/+1', '/mnt/user/1/extra', '/mnt/user/1 ', '/storage/emulated/0', 1, null, undefined,
+    ]
+    for (const guestPath of invalidGuestPaths) {
+      expect(() => validateStorageDirectoryState({ ...snapshot, guestPath })).toThrow()
+    }
+    expect(() => validateStorageDirectoryState({ ...snapshot, path: '../outside' })).toThrow()
+    expect(() => validateStorageDirectoryState({ ...snapshot, path: '/etc' })).toThrow()
+    expect(() => validateStorageDirectoryState({ ...snapshot, entries: [{ name: 'a', kind: 'symlink', bytes: 0 }] })).toThrow()
+    // 条目数上限与投递区同一个常量（256）；超一条即视为载荷不符合契约。
+    expect(() => validateStorageDirectoryState({
+      ...snapshot,
+      entries: Array.from({ length: 257 }, (_, index) => ({ name: `f${index}`, kind: 'file', bytes: 0 })),
+    })).toThrow()
+    expect(() => validateStorageDirectoryState({ ...snapshot, truncated: 'false' })).toThrow()
+  })
+})
+
+describe('存储访问校验', () => {
+  it('接受合法载荷并拒绝缺失字段', () => {
+    expect(validateStorageAccessState({ mediaGranted: false, allFilesGranted: true, allFilesSupported: true, sdkInt: 34 }))
+      .toEqual({ mediaGranted: false, allFilesGranted: true, allFilesSupported: true, sdkInt: 34 })
+    // allFilesSupported 缺失时不能补成 false：那会把 Android 14 显示成「系统不支持」。
+    expect(() => validateStorageAccessState({ mediaGranted: false, allFilesGranted: true, sdkInt: 34 })).toThrow()
+    expect(() => validateStorageAccessState({ mediaGranted: false, allFilesGranted: true, allFilesSupported: true, sdkInt: -1 }))
+      .toThrow()
+    expect(validateMediaPermissionResult({ granted: true })).toEqual({ granted: true })
+    expect(() => validateMediaPermissionResult({ granted: 'true' })).toThrow()
+    expect(validateAllFilesAccessResult({ supported: false, granted: false }))
+      .toEqual({ supported: false, granted: false })
+    expect(() => validateAllFilesAccessResult({ supported: true })).toThrow()
+  })
+})
+
+describe('投递区导出起点判定', () => {
+  it('省略与空白等价于整个工作区', () => {
+    expect(assertMailboxSubdirectory(undefined)).toBeUndefined()
+    expect(assertMailboxSubdirectory('')).toBeUndefined()
+    expect(assertMailboxSubdirectory('   ')).toBeUndefined()
+    expect(assertMailboxSubdirectory(' proj/src ')).toBe('proj/src')
+  })
+
+  it('拒绝绝对路径与越界分段', () => {
+    for (const value of ['/abs', '../outside', 'proj/../../outside', 'proj/./src', 'proj//src', 'a\\b']) {
+      expect(() => assertMailboxSubdirectory(value), value).toThrow('投递区导出起点格式无效')
+    }
+  })
+})
+
+describe('存储目录白名单校验', () => {
+  const entry = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+    index: 1,
+    path: '/storage/emulated/0/Download',
+    displayName: 'Download',
+    guestPath: '/mnt/user/1',
+    availability: 'available',
+    level: 'T2',
+    available: true,
+    ...overrides,
+  })
+
+  const state = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+    entries: [entry()],
+    maxDirectories: 8,
+    count: 1,
+    supported: true,
+    granted: true,
+    level: 'T2',
+    active: true,
+    ...overrides,
+  })
+
+  it('接受合法载荷并保留受控字段', () => {
+    expect(validateStorageDirsState(state())).toEqual({
+      entries: [{
+        index: 1,
+        path: '/storage/emulated/0/Download',
+        displayName: 'Download',
+        guestPath: '/mnt/user/1',
+        availability: 'available',
+        level: 'T2',
+        available: true,
+        reasonCode: undefined,
+      }],
+      maxDirectories: 8,
+      count: 1,
+      supported: true,
+      granted: true,
+      level: 'T2',
+      active: true,
+    })
+  })
+
+  it('接受不可用条目并保留受控错误码', () => {
+    const value = validateStorageDirsState(state({
+      entries: [entry({
+        availability: 'unavailable',
+        level: 'T0',
+        available: false,
+        reasonCode: 'STORAGE_DIR_NOT_A_DIRECTORY',
+      })],
+      active: false,
+    }))
+    expect(value.entries[0].availability).toBe('unavailable')
+    expect(value.entries[0].reasonCode).toBe('STORAGE_DIR_NOT_A_DIRECTORY')
+    expect(value.active).toBe(false)
+  })
+
+  it('接受空白名单与 T0 档', () => {
+    const value = validateStorageDirsState({
+      entries: [],
+      maxDirectories: 8,
+      count: 0,
+      supported: true,
+      granted: false,
+      level: 'T0',
+      active: false,
+    })
+    expect(value.entries).toEqual([])
+    expect(value.level).toBe('T0')
+  })
+
+  it('接受删除后留下空洞的持久化槽位', () => {
+    const value = validateStorageDirsState(state({
+      entries: [entry({ index: 2, guestPath: '/mnt/user/2' })],
+    }))
+    expect(value.entries[0].index).toBe(2)
+  })
+
+  it('拒绝自相矛盾的载荷', () => {
+    // count 与条目数不符、available 与 availability 不符、level 与权限不符、active 与实际不符。
+    expect(() => validateStorageDirsState(state({ count: 0 }))).toThrow()
+    expect(() => validateStorageDirsState(state({ entries: [entry({ available: false })] }))).toThrow()
+    expect(() => validateStorageDirsState(state({ level: 'T0' }))).toThrow()
+    expect(() => validateStorageDirsState(state({ active: false }))).toThrow()
+    expect(() => validateStorageDirsState(state({ granted: false }))).toThrow()
+    expect(() => validateStorageDirsState(state({ supported: false, granted: true }))).toThrow()
+  })
+
+  it('拒绝未知档位与越界的序号、挂载点', () => {
+    expect(() => validateStorageDirsState(state({ entries: [entry({ availability: 'ok' })] }))).toThrow()
+    // 单条载荷若声明槽位 2，挂载点也必须是 /mnt/user/2。
+    expect(() => validateStorageDirsState(state({ entries: [entry({ index: 2 })] }))).toThrow()
+    expect(() => validateStorageDirsState(state({ entries: [entry({ guestPath: '/mnt/user/2' })] }))).toThrow()
+    expect(() => validateStorageDirsState(state({ count: 1, entries: [entry(), entry({ index: 2 })] }))).toThrow()
+  })
+
+  it('拒绝越出共享存储的路径与非法错误码', () => {
+    for (const path of [
+      '/data/data/io.deepseekharness.mobile/files',
+      '/sdcard/Download',
+      '/storage/emulated/0/../Download',
+      '/storage/emulated/0/',
+      'storage/emulated/0/Download',
+    ]) {
+      expect(() => validateStorageDirsState(state({ entries: [entry({ path })] })), path).toThrow()
+    }
+    expect(() => validateStorageDirsState(state({ entries: [entry({ reasonCode: 'lowercase_code' })] }))).toThrow()
+    // 可用条目不该带错误码：那是自相矛盾的状态。
+    expect(() => validateStorageDirsState(state({ entries: [entry({ reasonCode: 'STORAGE_DIR_UNREADABLE' })] })))
+      .toThrow()
+  })
+
+  it('拒绝把别的东西冒充成白名单', () => {
+    expect(() => validateStorageDirsState(null)).toThrow()
+    expect(() => validateStorageDirsState(state({ maxDirectories: 9 }))).toThrow()
+    expect(() => validateStorageDirsState(state({ entries: [entry({ displayName: '' })] }))).toThrow()
+    expect(() => validateStorageDirsState(state({ entries: [entry({ displayName: 'a/b' })] }))).toThrow()
+  })
+
+  it('移除入参只接受共享存储下的绝对路径', () => {
+    expect(assertStorageDirPath('/storage/emulated/0/Download')).toBe('/storage/emulated/0/Download')
+    for (const path of ['', 'Download', '/sdcard/Download', '/storage/emulated/0/', '/storage/emulated/0/a/../b']) {
+      expect(() => assertStorageDirPath(path), path).toThrow('存储目录路径格式无效')
+    }
+  })
+})
+
+describe('数据清理载荷校验', () => {
+  describe('validatePluginCleanupRequest', () => {
+    it('undefined 和 null 返回空对象', () => {
+      expect(validatePluginCleanupRequest(undefined)).toEqual({})
+      expect(validatePluginCleanupRequest(null)).toEqual({})
+    })
+
+    it('空对象和省略 packageName 都返回空对象', () => {
+      expect(validatePluginCleanupRequest({})).toEqual({})
+      expect(validatePluginCleanupRequest({ packageName: undefined })).toEqual({})
+    })
+
+    it('合法包名原样返回', () => {
+      expect(validatePluginCleanupRequest({ packageName: 'left-pad' })).toEqual({ packageName: 'left-pad' })
+      expect(validatePluginCleanupRequest({ packageName: '@scope/tool' })).toEqual({ packageName: '@scope/tool' })
+      expect(validatePluginCleanupRequest({ packageName: 'a.b-c_d' })).toEqual({ packageName: 'a.b-c_d' })
+    })
+
+    it('非法包名抛出插件标识格式无效', () => {
+      expect(() => validatePluginCleanupRequest({ packageName: '' })).toThrow('插件标识格式无效')
+      expect(() => validatePluginCleanupRequest({ packageName: 'Left-Pad' })).toThrow('插件标识格式无效')
+      expect(() => validatePluginCleanupRequest({ packageName: '..' })).toThrow('插件标识格式无效')
+      expect(() => validatePluginCleanupRequest({ packageName: 'a/../b' })).toThrow('插件标识格式无效')
+      expect(() => validatePluginCleanupRequest({ packageName: 'a/b' })).toThrow('插件标识格式无效')
+      expect(() => validatePluginCleanupRequest({ packageName: 'a b' })).toThrow('插件标识格式无效')
+      expect(() => validatePluginCleanupRequest({ packageName: '-leading' })).toThrow('插件标识格式无效')
+      expect(() => validatePluginCleanupRequest({ packageName: 'x'.repeat(215) })).toThrow('插件标识格式无效')
+    })
+
+    it('非字符串值抛出插件标识格式无效', () => {
+      expect(() => validatePluginCleanupRequest({ packageName: 42 as unknown as string })).toThrow('插件标识格式无效')
+    })
+  })
+
+  describe('validateRuntimeCleanupState', () => {
+    it('合法载荷通过校验且返回值逐字段相等', () => {
+      const input = {
+        runtimeRunning: true,
+        cache: {
+          entries: [
+            { name: 'cache-1', present: true, files: 100, bytes: 1024 },
+            { name: 'cache-2', present: false, files: 0, bytes: 0 },
+          ],
+          files: 200,
+          bytes: 2048,
+        },
+        plugin: {
+          ledger: 'ok',
+          checked: 2,
+          packages: [
+            { id: 'left-pad', present: true, files: 50, bytes: 512 },
+            { id: '@scope/tool', present: true, files: 100, bytes: 1024 },
+          ],
+        },
+      }
+      const result = validateRuntimeCleanupState(input)
+      expect(result.runtimeRunning).toBe(true)
+      expect(result.cache).toEqual(input.cache)
+      expect(result.plugin.ledger).toBe('ok')
+      expect(result.plugin.checked).toBe(2)
+      expect(result.plugin.packages).toHaveLength(2)
+      expect(result.plugin.packages[0]).toEqual({ id: 'left-pad', present: true, files: 50, bytes: 512 })
+      expect(result.plugin.packages[1]).toEqual({ id: '@scope/tool', present: true, files: 100, bytes: 1024 })
+    })
+
+    it('缺 packages 抛出插件数据档包列表格式无效', () => {
+      const input = {
+        runtimeRunning: true,
+        cache: {
+          entries: [],
+          files: 0,
+          bytes: 0,
+        },
+        plugin: {
+          ledger: 'ok',
+          checked: 0,
+        },
+      }
+      expect(() => validateRuntimeCleanupState(input)).toThrow('插件数据档包列表格式无效')
+    })
+
+    it('packages 超过 256 抛出插件数据档包列表格式无效', () => {
+      const input = {
+        runtimeRunning: true,
+        cache: {
+          entries: [],
+          files: 0,
+          bytes: 0,
+        },
+        plugin: {
+          ledger: 'ok',
+          checked: 0,
+          packages: Array.from({ length: 257 }, (_, i) => ({
+            id: `pkg-${i}`,
+            present: true,
+            files: 0,
+            bytes: 0,
+          })),
+        },
+      }
+      expect(() => validateRuntimeCleanupState(input)).toThrow('插件数据档包列表格式无效')
+    })
+
+    it('packages[0].id 为非法值抛出插件条目 1 的标识格式无效', () => {
+      const input = {
+        runtimeRunning: true,
+        cache: {
+          entries: [],
+          files: 0,
+          bytes: 0,
+        },
+        plugin: {
+          ledger: 'ok',
+          checked: 0,
+          packages: [
+            { id: '..', present: true, files: 0, bytes: 0 },
+          ],
+        },
+      }
+      expect(() => validateRuntimeCleanupState(input)).toThrow('插件条目 1 的标识格式无效')
+    })
+
+    it('packages[2].id 为非法值抛出插件条目 3 的标识格式无效', () => {
+      const input = {
+        runtimeRunning: true,
+        cache: {
+          entries: [],
+          files: 0,
+          bytes: 0,
+        },
+        plugin: {
+          ledger: 'ok',
+          checked: 0,
+          packages: [
+            { id: 'pkg-1', present: true, files: 0, bytes: 0 },
+            { id: 'pkg-2', present: true, files: 0, bytes: 0 },
+            { id: '..', present: true, files: 0, bytes: 0 },
+          ],
+        },
+      }
+      expect(() => validateRuntimeCleanupState(input)).toThrow('插件条目 3 的标识格式无效')
+    })
+
+    it('packages[0].present 为非布尔值抛出插件条目存在标记格式无效', () => {
+      const input = {
+        runtimeRunning: true,
+        cache: {
+          entries: [],
+          files: 0,
+          bytes: 0,
+        },
+        plugin: {
+          ledger: 'ok',
+          checked: 0,
+          packages: [
+            { id: 'pkg-1', present: 'true' as unknown as boolean, files: 0, bytes: 0 },
+          ],
+        },
+      }
+      expect(() => validateRuntimeCleanupState(input)).toThrow('插件条目存在标记格式无效')
+    })
+
+    it('packages[0].files 为非整数或负数抛出插件条目文件数格式无效', () => {
+      const input = {
+        runtimeRunning: true,
+        cache: {
+          entries: [],
+          files: 0,
+          bytes: 0,
+        },
+        plugin: {
+          ledger: 'ok',
+          checked: 0,
+          packages: [
+            { id: 'pkg-1', present: true, files: -1, bytes: 0 },
+          ],
+        },
+      }
+      expect(() => validateRuntimeCleanupState(input)).toThrow('插件条目文件数格式无效')
+    })
+
+    it('packages[0].bytes 为非整数或负数抛出插件条目体积格式无效', () => {
+      const input = {
+        runtimeRunning: true,
+        cache: {
+          entries: [],
+          files: 0,
+          bytes: 0,
+        },
+        plugin: {
+          ledger: 'ok',
+          checked: 0,
+          packages: [
+            { id: 'pkg-1', present: true, files: 0, bytes: -1 },
+          ],
+        },
+      }
+      expect(() => validateRuntimeCleanupState(input)).toThrow('插件条目体积格式无效')
+    })
+  })
+})
+
+describe('无障碍自动化状态与验证密码校验', () => {
+  const state = (overrides: Record<string, unknown> = {}) => ({
+    enabled: true,
+    allowedPackages: [...ALWAYS_ALLOWED_ACCESSIBILITY_PACKAGES, 'com.example.target'],
+    alwaysAllowedPackages: [...ALWAYS_ALLOWED_ACCESSIBILITY_PACKAGES],
+    passwordConfigured: false,
+    whitelistEnabled: true,
+    ...overrides,
+  })
+
+  it('合法状态原样通过（自动项与密码标记都被保留）', () => {
+    const result = validateAccessibilityAutomationState(state())
+    expect(result.enabled).toBe(true)
+    expect(result.allowedPackages).toEqual([...ALWAYS_ALLOWED_ACCESSIBILITY_PACKAGES, 'com.example.target'])
+    expect(result.alwaysAllowedPackages).toEqual([...ALWAYS_ALLOWED_ACCESSIBILITY_PACKAGES])
+    expect(result.passwordConfigured).toBe(false)
+    // 已设密码的设备：只有这个布尔为 true，返回体里没有任何密码字段。
+    expect(validateAccessibilityAutomationState(state({ passwordConfigured: true })).passwordConfigured).toBe(true)
+    expect(Object.keys(validateAccessibilityAutomationState(state({ passwordConfigured: true }))).sort())
+      .toEqual(['allowedPackages', 'alwaysAllowedPackages', 'automationRuntime', 'enabled', 'passwordConfigured', 'serviceStatus', 'whitelistEnabled'])
+  })
+
+  it('总开关与服务状态缺省时按最保守的一侧取值，别的一律拒绝', () => {
+    // 旧版壳不送这两个字段：界面必须显示「总开关关着、服务没连上」，
+    // 绝不能因为读不到就显示成一个可能正在跑的状态。
+    const legacy = validateAccessibilityAutomationState(state())
+    expect(legacy.automationRuntime).toBe('off')
+    expect(legacy.serviceStatus).toBe('off')
+
+    for (const automationRuntime of ['running', 'paused', 'off'] as const) {
+      expect(validateAccessibilityAutomationState(state({ automationRuntime })).automationRuntime).toBe(automationRuntime)
+    }
+    for (const serviceStatus of ['connected', 'enabled_disconnected', 'off'] as const) {
+      expect(validateAccessibilityAutomationState(state({ serviceStatus })).serviceStatus).toBe(serviceStatus)
+    }
+    // 枚举外的取值一律拒绝：界面文案是照着枚举写死的，放过去只会渲染出一个说不清的状态。
+    for (const automationRuntime of ['', 'RUNNING', 'on', 'idle', 0, null, true]) {
+      expect(() => validateAccessibilityAutomationState(state({ automationRuntime }))).toThrow('自动化总开关取值无效')
+    }
+    for (const serviceStatus of ['', 'CONNECTED', 'unknown', 1, null]) {
+      expect(() => validateAccessibilityAutomationState(state({ serviceStatus }))).toThrow('无障碍服务状态取值无效')
+    }
+  })
+
+  it('总开关动作名只认四个受控取值', () => {
+    for (const action of ['start', 'pause', 'resume', 'emergency_stop'] as const) {
+      expect(assertAccessibilityAutomationAction(action)).toBe(action)
+    }
+    // 「认不出来就当成开始」是这里最危险的兜底：一个拼错的参数就能把自动化打开。
+    for (const action of ['', 'START', 'Start', 'start ', 'stop', 'on', 'true', 1, null, undefined, {}, ['start']]) {
+      expect(() => assertAccessibilityAutomationAction(action)).toThrow('自动化操作取值无效')
+    }
+  })
+
+  it('包名过滤与白名单同一套格式', () => {
+    expect(assertAccessibilityPackageName('com.example.reader')).toBe('com.example.reader')
+    for (const value of ['', 'com', 'com.example.', ' com.example.app', 'com.example.app ', 'com/example', 1, null, undefined]) {
+      expect(() => assertAccessibilityPackageName(value)).toThrow()
+    }
+  })
+
+  it('运行记录逐项校验，缺字段不补默认值', () => {
+    const valid = {
+      connected: true,
+      limit: 50,
+      dropped: 0,
+      runs: [{
+        atMs: 1000,
+        ruleId: 'rule-1',
+        action: 'click',
+        code: 'AUTOMATION_ACTION_PERFORMED',
+        message: '已执行点击',
+        ok: true,
+        performed: true,
+        degraded: false,
+      }],
+      blocked: [{ code: 'AUTOMATION_SENSITIVE_WINDOW', count: 2, message: null }],
+    }
+    const result = validateAccessibilityAutomationRuns(valid)
+    expect(result.runs).toHaveLength(1)
+    expect(result.runs[0].message).toBe('已执行点击')
+    // 未登记的码允许 message 为 null：界面显示原始码，而不是被编一句「已跳过」。
+    expect(result.blocked[0].message).toBeNull()
+
+    expect(() => validateAccessibilityAutomationRuns({ ...valid, connected: 'true' })).toThrow('自动化运行记录格式无效')
+    expect(() => validateAccessibilityAutomationRuns({ ...valid, runs: null })).toThrow('自动化运行记录格式无效')
+    expect(() => validateAccessibilityAutomationRuns({ ...valid, limit: -1 })).toThrow('自动化运行记录上限无效')
+    expect(() => validateAccessibilityAutomationRuns({ ...valid, dropped: 1.5 })).toThrow('自动化运行记录丢弃计数无效')
+    // `atMs` 是相对开机的毫秒数，负数说明这份读数来路不明。
+    expect(() => validateAccessibilityAutomationRuns({ ...valid, runs: [{ ...valid.runs[0], atMs: -1 }] }))
+      .toThrow('自动化运行记录第 1 项时间无效')
+    for (const key of ['ok', 'performed', 'degraded'] as const) {
+      expect(() => validateAccessibilityAutomationRuns({ ...valid, runs: [{ ...valid.runs[0], [key]: undefined }] }))
+        .toThrow('自动化运行记录第 1 项')
+    }
+    expect(() => validateAccessibilityAutomationRuns({ ...valid, runs: [{ ...valid.runs[0], code: '' }] }))
+      .toThrow('自动化运行记录第 1 项受控码无效')
+    expect(() => validateAccessibilityAutomationRuns({ ...valid, runs: [{ ...valid.runs[0], code: 'x'.repeat(201) }] }))
+      .toThrow('自动化运行记录第 1 项受控码无效')
+    // 0 次的拦截条目没有展示价值，出现即说明原生侧写错了。
+    expect(() => validateAccessibilityAutomationRuns({ ...valid, blocked: [{ code: 'X', count: 0, message: null }] }))
+      .toThrow('自动化拦截原因第 1 项次数无效')
+  })
+
+  it('规则读数逐项校验：只带界面要判断的字段，选择器正文进不来', () => {
+    const valid = {
+      packageName: 'com.example.target',
+      allowed: true,
+      corrupt: null,
+      rules: [{
+        id: 'rule-1',
+        enabled: false,
+        actionKind: 'click',
+        selectorCount: 2,
+        maxActions: 3,
+        actionCoolDownMs: 3000,
+      }],
+    }
+    const result = validateAccessibilityAutomationRules(valid)
+    expect(result.rules[0].id).toBe('rule-1')
+    expect(result.rules[0].enabled).toBe(false)
+    // 白名单外的应用：规则读得出来，但界面必须说明它们不会被用到。
+    expect(validateAccessibilityAutomationRules({ ...valid, allowed: false }).allowed).toBe(false)
+    expect(validateAccessibilityAutomationRules({
+      ...valid,
+      corrupt: { code: 'AUTOMATION_RULE_CORRUPT', message: '规则文件损坏' },
+    }).corrupt).not.toBeNull()
+
+    expect(() => validateAccessibilityAutomationRules({ ...valid, packageName: 'not a package' }))
+      .toThrow('无障碍白名单第 1 项无效')
+    expect(() => validateAccessibilityAutomationRules({ ...valid, allowed: 'true' }))
+      .toThrow('自动化规则白名单状态无效')
+    expect(() => validateAccessibilityAutomationRules({ ...valid, rules: null }))
+      .toThrow('自动化规则列表无效')
+    // 规则 id 与原生 `AUTOMATION_RULE_ID` 同一套格式，别的写法一律拒收。
+    for (const id of ['', ' ', 'rule 1', '规则', 'a'.repeat(65)]) {
+      expect(() => validateAccessibilityAutomationRules({ ...valid, rules: [{ ...valid.rules[0], id }] }))
+        .toThrow('自动化规则第 1 项标识无效')
+    }
+    expect(() => validateAccessibilityAutomationRules({ ...valid, rules: [{ ...valid.rules[0], enabled: 'yes' }] }))
+      .toThrow('自动化规则第 1 项启用状态格式无效')
+    expect(() => validateAccessibilityAutomationRules({ ...valid, rules: [{ ...valid.rules[0], actionKind: '' }] }))
+      .toThrow('自动化规则第 1 项动作类型无效')
+    const numericLabels = {
+      selectorCount: '选择器数量',
+      maxActions: '动作上限',
+      actionCoolDownMs: '冷却时间',
+    } as const
+    for (const [key, label] of Object.entries(numericLabels)) {
+      for (const bad of [-1, 1.5, '3', null]) {
+        expect(() => validateAccessibilityAutomationRules({ ...valid, rules: [{ ...valid.rules[0], [key]: bad }] }))
+          .toThrow(`自动化规则第 1 项${label}无效`)
+      }
+    }
+  })
+
+  it('规则全文读数：包名与标识必须和请求对得上，里层规则走写入侧那套逐项校验', () => {
+    const full = {
+      packageName: 'com.example.target',
+      ruleId: 'rule-1',
+      allowed: true,
+      rule: {
+        id: 'rule-1',
+        packageName: 'com.example.target',
+        enabled: true,
+        allowActivities: [],
+        denyActivities: [],
+        matchDelayMs: 0,
+        maxActions: 3,
+        actionCoolDownMs: 3000,
+        resetOn: 'activity',
+        selectors: [{ id: ':id/target', text: '确定' }],
+        action: { type: 'click' },
+      },
+    }
+    const result = validateAccessibilityAutomationRuleDetail(full, 'com.example.target', 'rule-1')
+    // 选择器正文必须原样读得回来——这正是列表摘要给不了、而编辑表单必须拿到的东西。
+    expect(result.rule.selectors[0]).toEqual({ id: ':id/target', text: '确定' })
+    expect(result.rule.action).toEqual({ type: 'click' })
+    expect(result.allowed).toBe(true)
+    expect(validateAccessibilityAutomationRuleDetail({ ...full, allowed: false }, 'com.example.target', 'rule-1').allowed)
+      .toBe(false)
+    // 桥回错包 / 错规则：拿它预填等于把 B 的内容写进 A，必须拦住。
+    expect(() => validateAccessibilityAutomationRuleDetail(
+      { ...full, packageName: 'com.example.other' },
+      'com.example.target',
+      'rule-1',
+    )).toThrow('规则全文里的包名与请求的包名不一致')
+    expect(() => validateAccessibilityAutomationRuleDetail({ ...full, ruleId: 'rule-2' }, 'com.example.target', 'rule-1'))
+      .toThrow('规则全文里的规则标识与请求的不一致')
+    expect(() => validateAccessibilityAutomationRuleDetail({ ...full, allowed: 'true' }, 'com.example.target', 'rule-1'))
+      .toThrow('规则所属应用是否在自动化白名单内格式无效')
+    // 里层用的是写入侧那套校验：读回来的东西填不进表单，等于预填就是坏的。
+    expect(() => validateAccessibilityAutomationRuleDetail(
+      { ...full, rule: { ...full.rule, selectors: [] } },
+      'com.example.target',
+      'rule-1',
+    )).toThrow('自动化规则至少要有一个选择器')
+    expect(() => validateAccessibilityAutomationRuleDetail(
+      { ...full, rule: { ...full.rule, packageName: 'com.example.other' } },
+      'com.example.target',
+      'rule-1',
+    )).toThrow('规则里的包名与请求的包名不一致')
+  })
+
+  it('每应用参数：读回的损坏说明照收，写入侧四个字段一个都不能少', () => {
+    const detail = {
+      packageName: 'com.example.target',
+      allowed: true,
+      corrupt: null,
+      config: { paused: true, defaultMaxActions: 3, defaultActionCoolDownMs: 1500, defaultMatchDelayMs: 200 },
+    }
+    const read = validateAccessibilityAutomationAppConfigDetail(detail, 'com.example.target')
+    expect(read.config).toEqual(detail.config)
+    expect(read.corrupt).toBeNull()
+    expect(validateAccessibilityAutomationAppConfigDetail({ ...detail, allowed: false }, 'com.example.target').allowed)
+      .toBe(false)
+    // 损坏是这份读数的正常形态之一：以「已暂停」返回是原生的判定，前端不回头套一遍一致性。
+    const corrupt = { code: 'ACCESSIBILITY_CONFIG_CORRUPT', message: '每应用参数不是合法 JSON；已按「已暂停」处理' }
+    expect(validateAccessibilityAutomationAppConfigDetail({
+      ...detail,
+      corrupt,
+      config: { ...detail.config, paused: false },
+    }, 'com.example.target').corrupt).toEqual(corrupt)
+    // 桥回错包：拿它当读数会让用户对着 A 的界面改 B 的参数。
+    expect(() => validateAccessibilityAutomationAppConfigDetail(
+      { ...detail, packageName: 'com.example.other' },
+      'com.example.target',
+    )).toThrow('每应用参数里的包名与请求的包名不一致')
+    // 残缺的损坏说明（有码没文案）也算读不懂：只显示一个受控码对用户没有任何用。
+    expect(() => validateAccessibilityAutomationAppConfigDetail({ ...detail, corrupt: { code: 'X' } }, 'com.example.target'))
+      .toThrow('每应用参数损坏说明必须是文本')
+    // 四个字段一个不能少：缺了若补默认值，界面显示的就不是真机上跑着的那套参数。
+    for (const key of ['paused', 'defaultMaxActions', 'defaultActionCoolDownMs', 'defaultMatchDelayMs']) {
+      const broken: Record<string, unknown> = { ...detail.config }
+      delete broken[key]
+      expect(() => validateAccessibilityAutomationAppConfigDetail({ ...detail, config: broken }, 'com.example.target'))
+        .toThrow()
+    }
+    // 写入侧走的是同一套校验：区间与原生 AutomationRuleLimits 同源。
+    expect(assertAccessibilityAutomationAppConfigInput(detail.config)).toEqual(detail.config)
+    expect(() => assertAccessibilityAutomationAppConfigInput({ ...detail.config, defaultMaxActions: 100 }))
+      .toThrow('默认动作上限必须在 1 到 99 之间')
+    expect(() => assertAccessibilityAutomationAppConfigInput({ ...detail.config, defaultActionCoolDownMs: 600001 }))
+      .toThrow('默认冷却时间必须在 0 到 600000 之间')
+    expect(() => assertAccessibilityAutomationAppConfigInput({ ...detail.config, defaultMatchDelayMs: -1 }))
+      .toThrow('默认匹配延迟必须在 0 到 5000 之间')
+    expect(() => assertAccessibilityAutomationAppConfigInput({ ...detail.config, paused: 'true' }))
+      .toThrow('按应用暂停开关格式无效')
+  })
+
+  it('规则标识与布尔开关的断言：只认受控取值，不做静默转换', () => {
+    expect(assertAccessibilityRuleId('rule_1.a-b')).toBe('rule_1.a-b')
+    for (const bad of ['', 'rule 1', '规则', 'a'.repeat(65), 7, null, undefined]) {
+      expect(() => assertAccessibilityRuleId(bad)).toThrow('自动化规则标识无效')
+    }
+    expect(assertBooleanFlag(true, '启用状态')).toBe(true)
+    expect(assertBooleanFlag(false, '启用状态')).toBe(false)
+    for (const bad of ['true', 0, 1, null, undefined, {}]) {
+      expect(() => assertBooleanFlag(bad, '启用状态')).toThrow('启用状态格式无效')
+    }
+  })
+
+  it('旧版缺省开关保持开启；仅接受明确的布尔状态', () => {
+    expect(validateAccessibilityAutomationState(state()).whitelistEnabled).toBe(true)
+    expect(validateAccessibilityAutomationState(state({ whitelistEnabled: true })).whitelistEnabled).toBe(true)
+    expect(validateAccessibilityAutomationState(state({ whitelistEnabled: false })).whitelistEnabled).toBe(false)
+    for (const whitelistEnabled of [null, 0, 1, 'false', {}, []]) {
+      expect(() => validateAccessibilityAutomationState(state({ whitelistEnabled }))).toThrow('无障碍白名单开关格式无效')
+    }
+  })
+
+  it('缺 alwaysAllowedPackages 或 passwordConfigured 时抛错', () => {
+    expect(() => validateAccessibilityAutomationState({
+      enabled: false,
+      allowedPackages: [],
+      passwordConfigured: false,
+    })).toThrow('无障碍自动白名单格式无效')
+    expect(() => validateAccessibilityAutomationState({
+      enabled: false,
+      allowedPackages: [],
+      alwaysAllowedPackages: [...ALWAYS_ALLOWED_ACCESSIBILITY_PACKAGES],
+    })).toThrow('无障碍验证密码状态格式无效')
+    expect(() => validateAccessibilityAutomationState(state({ passwordConfigured: 'true' })))
+      .toThrow('无障碍验证密码状态格式无效')
+    expect(() => validateAccessibilityAutomationState(state({ alwaysAllowedPackages: 'io.deepseekharness.mobile' })))
+      .toThrow('无障碍自动白名单格式无效')
+  })
+
+  it('自动白名单拒绝空串、非法格式、重复项与非数组；条目数量不设上限', () => {
+    expect(() => validateAccessibilityAutomationState(state({ alwaysAllowedPackages: [''] })))
+      .toThrow('无障碍白名单第 1 项无效')
+    expect(() => validateAccessibilityAutomationState(state({ alwaysAllowedPackages: ['com.example.'] })))
+      .toThrow('无障碍白名单第 1 项无效')
+    expect(() => validateAccessibilityAutomationState(state({ alwaysAllowedPackages: [' com.example.app'] })))
+      .toThrow('无障碍白名单第 1 项无效')
+    expect(() => validateAccessibilityAutomationState(state({ alwaysAllowedPackages: null })))
+      .toThrow('无障碍自动白名单格式无效')
+    expect(() => validateAccessibilityAutomationState(state({ alwaysAllowedPackages: ['com.example.app', 'com.example.app'] })))
+      .toThrow('无障碍自动白名单包含重复项')
+    // 条目数量不设上限（原生侧从不按条数拒绝）：40 条照样放过，只校验每一条的格式。
+    const many = Array.from({ length: 40 }, (_, index) => `com.example.app${index}`)
+    expect(validateAccessibilityAutomationState(state({ alwaysAllowedPackages: many })).alwaysAllowedPackages)
+      .toHaveLength(40)
+  })
+
+  it('验证密码输入：5 种边界拒绝、6 位与 64 位通过', () => {
+    expect(validateAccessibilityPasswordInput('123456', '验证密码')).toBe('123456')
+    expect(validateAccessibilityPasswordInput('a'.repeat(64), '验证密码')).toHaveLength(64)
+    // 太短 / 太长。
+    expect(() => validateAccessibilityPasswordInput('12345', '验证密码')).toThrow('验证密码需要 6 到 64 个字符')
+    expect(() => validateAccessibilityPasswordInput('a'.repeat(65), '验证密码')).toThrow('验证密码需要 6 到 64 个字符')
+    // 全空白 / 首尾带空白 / 含控制字符。
+    expect(() => validateAccessibilityPasswordInput('      ', '验证密码')).toThrow('验证密码不能全是空白')
+    expect(() => validateAccessibilityPasswordInput(' 123456', '验证密码')).toThrow('验证密码首尾不能有空白')
+    expect(() => validateAccessibilityPasswordInput('12345\n6', '验证密码')).toThrow('验证密码包含不可用字符')
+    expect(() => validateAccessibilityPasswordInput('12345\u007f6', '验证密码')).toThrow('验证密码包含不可用字符')
+    // 类型不符与错误文案：文案里不出现用户输入的那串字符。
+    expect(() => validateAccessibilityPasswordInput(123456, '验证密码')).toThrow('验证密码格式无效')
+    expect(() => validateAccessibilityPasswordInput(undefined, '验证密码')).toThrow('验证密码格式无效')
+    try {
+      validateAccessibilityPasswordInput(' 123456', '验证密码')
+      throw new Error('应当抛错')
+    } catch (error) {
+      expect((error as Error).message).not.toContain('123456')
+    }
+  })
+})
+
+describe('运行时版本校验', () => {
+  const runtimeId = 'ubuntu-24.04-arm64-deepseek-harness'
+  const state = (overrides: Record<string, unknown> = {}) => ({
+    versions: [
+      { slot: 'current', version: '2026.08.17', dshVersion: '0.1.5-rc.2', runtimeId, extractedBytes: 640 * 1024 * 1024, active: true },
+      { slot: 'previous', version: '2026.09.01', dshVersion: '0.1.7-rc.2', runtimeId, extractedBytes: 660 * 1024 * 1024, active: false },
+      { slot: 'bundled', version: '2026.09.15', runtimeId, extractedBytes: 672 * 1024 * 1024, active: false },
+    ],
+    canSwitch: true,
+    canDelete: true,
+    ...overrides,
+  })
+
+  it('接受三槽状态，并允许缺少 dsh 版本', () => {
+    expect(validateRuntimeVersions(state()).versions).toHaveLength(3)
+    // 内置版本只有清单声明，没有解压目录就读不到 dsh 版本：这是正常状态，不是错误。
+    expect(validateRuntimeVersions(state()).versions[2].dshVersion).toBeUndefined()
+  })
+
+  it('拒绝未知槽位、非法版本号与凭空多出来的槽', () => {
+    expect(() => validateRuntimeVersions(state({ versions: [{ ...state().versions[0], slot: 'retained' }] })))
+      .toThrow('运行时版本槽位格式无效')
+    expect(() => validateRuntimeVersions(state({ versions: [{ ...state().versions[0], version: 'v 1' }] })))
+      .toThrow('运行时版本号格式无效')
+    expect(() => validateRuntimeVersions(state({ versions: [{ ...state().versions[0], runtimeId: '' }] })))
+      .toThrow('运行时标识格式无效')
+    expect(() => validateRuntimeVersions(state({ versions: [{ ...state().versions[0], extractedBytes: -1 }] })))
+      .toThrow('运行时体积格式无效')
+    expect(() => validateRuntimeVersions(state({ versions: [{ ...state().versions[0], dshVersion: 'not a version' }] })))
+      .toThrow('dsh 版本格式无效')
+    expect(() => validateRuntimeVersions(state({ versions: [{ ...state().versions[0], active: 'true' }] })))
+      .toThrow('运行时版本使用状态格式无效')
+    // 槽位最多三个（当前 / 上一版本 / 内置）：多出来的条目说明原生侧回了一份读不懂的状态。
+    expect(() => validateRuntimeVersions(state({ versions: new Array(4).fill(state().versions[0]) })))
+      .toThrow('运行时版本列表格式无效')
+  })
+
+  it('拒绝缺失或类型不符的整体状态', () => {
+    expect(() => validateRuntimeVersions(null)).toThrow('运行时版本状态格式无效')
+    expect(() => validateRuntimeVersions(state({ versions: 'three' }))).toThrow('运行时版本列表格式无效')
+    expect(() => validateRuntimeVersions(state({ canSwitch: 1 }))).toThrow('运行时版本切换状态格式无效')
+    expect(() => validateRuntimeVersions(state({ canDelete: 'yes' }))).toThrow('运行时版本删除状态格式无效')
+  })
+
+  it('操作目标只认「上一版本」', () => {
+    expect(assertRuntimeVersionTarget('previous')).toBe('previous')
+    for (const target of ['current', 'bundled', 'retained', '', null, 7]) {
+      expect(() => assertRuntimeVersionTarget(target), String(target)).toThrow('运行时版本操作目标无效')
+    }
+  })
+
+  it('版本库条目接受锁定状态与归档时间，并原样透出', () => {
+    const entry = {
+      id: 'b'.repeat(64),
+      version: '2026.09.10',
+      dshVersion: '0.1.6',
+      bytes: 310 * 1024 * 1024,
+      active: false,
+      pinned: true,
+      downloadedAt: '2026-09-10T03:04:05Z',
+    }
+    const parsed = validateRuntimeVersions(state({ library: [entry], libraryCapacity: 5 }))
+
+    expect(parsed.library).toEqual([entry])
+    expect(parsed.libraryCapacity).toBe(5)
+  })
+
+  it('版本库条目的锁定状态缺了就是错，不能默认成未锁定', () => {
+    const base = { id: 'c'.repeat(64), version: '2026.09.11', bytes: 1, active: false }
+    // 缺字段与类型不符都要拦：默认成 false 等于把用户锁好的版本悄悄解锁。
+    expect(() => validateRuntimeVersions(state({ library: [base] }))).toThrow('版本库条目锁定状态格式无效')
+    expect(() => validateRuntimeVersions(state({ library: [{ ...base, pinned: 'true' }] })))
+      .toThrow('版本库条目锁定状态格式无效')
+    // 归档时间可以缺（老版本库没有这条记录），但给了就必须是读得懂的时间。
+    expect(validateRuntimeVersions(state({ library: [{ ...base, pinned: false }] })).library?.[0].downloadedAt)
+      .toBeUndefined()
+    expect(() => validateRuntimeVersions(state({ library: [{ ...base, pinned: false, downloadedAt: '前天' }] })))
+      .toThrow('版本库条目落地时间格式无效')
+  })
+
+  it('锁定目标只认版本库归档 ID：槽位不是归档', () => {
+    const id = 'd'.repeat(64)
+    expect(assertRuntimeVersionPinTarget(id)).toBe(id)
+    for (const target of ['previous', 'bundled', 'current', 'D'.repeat(64), 'd'.repeat(63), '', null, 7]) {
+      expect(() => assertRuntimeVersionPinTarget(target), String(target)).toThrow('版本库条目标识格式无效')
+    }
+  })
+})
+
+describe('运行时可用版本校验', () => {
+  const sha256 = 'a'.repeat(64)
+  const manifestUrl = 'https://example.com/runtime.json'
+  const list = (overrides: Record<string, unknown> = {}) => ({
+    entries: [
+      { version: '0.2.0-mobile-308', dshVersion: '0.1.5-rc.2', manifestUrl, manifestSha256: sha256 },
+      { version: '0.1.9-mobile-300' },
+    ],
+    ...overrides,
+  })
+
+  it('接受带清单与只可展示的条目，并允许缺少内置 dsh 版本', () => {
+    const parsed = validateRuntimeReleaseList(list())
+
+    expect(parsed.entries).toHaveLength(2)
+    expect(parsed.entries[0]).toEqual({
+      version: '0.2.0-mobile-308',
+      dshVersion: '0.1.5-rc.2',
+      manifestUrl,
+      manifestSha256: sha256,
+    })
+    // 没有清单的版本只可展示：解析结果里不该凭空长出地址与摘要，也不该多出 dshVersion。
+    expect(parsed.entries[1]).toEqual({ version: '0.1.9-mobile-300' })
+  })
+
+  it('清单地址与摘要必须同时出现或同时缺失', () => {
+    expect(() => validateRuntimeReleaseList(list({ entries: [{ version: '0.2.0', manifestUrl }] })))
+      .toThrow('运行时版本清单地址与 SHA-256 必须同时出现或同时缺失')
+    expect(() => validateRuntimeReleaseList(list({ entries: [{ version: '0.2.0', manifestSha256: sha256 }] })))
+      .toThrow('运行时版本清单地址与 SHA-256 必须同时出现或同时缺失')
+  })
+
+  it('可选运行时公告原样保留，空文本和 4000 字边界都可接受', () => {
+    for (const notes of ['', '修复说明\n<img src=x>\n第二行', '说'.repeat(4000)]) {
+      const entries = list().entries.map(entry => ({ ...entry, notes }))
+      const parsed = validateRuntimeReleaseList(list({ entries }))
+      expect(parsed.entries.map(entry => entry.notes)).toEqual([notes, notes])
+    }
+  })
+
+  it('拒绝非文本或超过 4000 字的运行时公告，不静默删除或截断', () => {
+    for (const notes of [null, 7, false, [], {}, '说'.repeat(4001)]) {
+      expect(() => validateRuntimeReleaseList(list({ entries: [{ version: '0.2.0', notes }] })))
+        .toThrow('运行时更新说明格式无效')
+    }
+  })
+
+  it('清单地址只认 https，长度上限 1024', () => {
+    const base = { version: '0.2.0', manifestSha256: sha256 }
+    for (const url of ['http://example.com/runtime.json', 'example.com/runtime.json', 'ftp://example.com/runtime.json']) {
+      expect(() => validateRuntimeReleaseList(list({ entries: [{ ...base, manifestUrl: url }] })), url)
+        .toThrow('运行时版本清单地址格式无效')
+    }
+    // 正好 1024 字符要放过，多一个字符就拒绝。
+    const prefix = 'https://example.com/'
+    expect(validateRuntimeReleaseList(list({ entries: [{ ...base, manifestUrl: prefix + 'a'.repeat(1024 - prefix.length) }] })).entries)
+      .toHaveLength(1)
+    expect(() => validateRuntimeReleaseList(list({ entries: [{ ...base, manifestUrl: prefix + 'a'.repeat(1025 - prefix.length) }] })))
+      .toThrow('运行时版本清单地址格式无效')
+    expect(() => validateRuntimeReleaseList(list({ entries: [{ ...base, manifestUrl: 7 }] })))
+      .toThrow('运行时版本清单地址格式无效')
+  })
+
+  it('清单摘要必须是 64 位小写十六进制', () => {
+    const base = { version: '0.2.0', manifestUrl }
+    for (const value of [sha256.slice(0, 63), sha256.toUpperCase(), `${sha256}a`, 'A'.repeat(64), '', 7, null]) {
+      expect(() => validateRuntimeReleaseList(list({ entries: [{ ...base, manifestSha256: value }] })), String(value))
+        .toThrow('运行时版本清单 SHA-256 必须是 64 位小写十六进制')
+    }
+  })
+
+  it('版本号与内置 dsh 版本都走标识符规则', () => {
+    expect(() => validateRuntimeReleaseList(list({ entries: [{ version: '0.2.0 mobile 308' }] })))
+      .toThrow('运行时可用版本号格式无效')
+    expect(() => validateRuntimeReleaseList(list({ entries: [{ version: '' }] })))
+      .toThrow('运行时可用版本号格式无效')
+    expect(() => validateRuntimeReleaseList(list({ entries: [{ version: `v${'1'.repeat(96)}` }] })))
+      .toThrow('运行时可用版本号格式无效')
+    expect(() => validateRuntimeReleaseList(list({ entries: [{ version: '0.2.0', dshVersion: '0.1.5 rc.2' }] })))
+      .toThrow('运行时内置 dsh 版本格式无效')
+    expect(() => validateRuntimeReleaseList(list({ entries: [{ version: '0.2.0', dshVersion: 7 }] })))
+      .toThrow('运行时内置 dsh 版本格式无效')
+  })
+
+  it('列表最多 40 条，且拒绝类型不符的整体载荷', () => {
+    const entry = { version: '0.2.0-mobile-308' }
+    expect(validateRuntimeReleaseList(list({ entries: new Array(40).fill(entry) })).entries).toHaveLength(40)
+    expect(() => validateRuntimeReleaseList(list({ entries: new Array(41).fill(entry) })))
+      .toThrow('运行时可用版本列表格式无效')
+    expect(() => validateRuntimeReleaseList(null)).toThrow('运行时可用版本状态格式无效')
+    expect(() => validateRuntimeReleaseList([])).toThrow('运行时可用版本状态格式无效')
+    expect(() => validateRuntimeReleaseList({})).toThrow('运行时可用版本列表格式无效')
+    expect(() => validateRuntimeReleaseList(list({ entries: 'two' }))).toThrow('运行时可用版本列表格式无效')
+    expect(() => validateRuntimeReleaseList(list({ entries: [null] }))).toThrow('运行时可用版本条目格式无效')
+  })
+})
+
+describe('应用更新状态校验', () => {
+  const sha256 = 'b'.repeat(64)
+  const state = (overrides: Record<string, unknown> = {}) => ({
+    installedVersion: '0.2.0',
+    installedVersionCode: 22,
+    channel: 'stable',
+    installAllowed: false,
+    ...overrides,
+  })
+  const release = (overrides: Record<string, unknown> = {}) => ({
+    version: '0.3.0',
+    bytes: 48 * 1024 * 1024,
+    sha256,
+    notes: '修复窄屏下的按钮遮挡。',
+    ...overrides,
+  })
+
+  it('无可用更新时只回已安装信息，不凭空造一条 available', () => {
+    expect(validateAppUpdateState(state())).toEqual({
+      installedVersion: '0.2.0',
+      installedVersionCode: 22,
+      channel: 'stable',
+      installAllowed: false,
+    })
+    expect(validateAppUpdateState(state({ installAllowed: true })).installAllowed).toBe(true)
+    // 版本代码边界：0 与上限本身都必须放过。
+    expect(validateAppUpdateState(state({ installedVersionCode: 0 })).installedVersionCode).toBe(0)
+    expect(validateAppUpdateState(state({ installedVersionCode: 2_100_000_000 })).installedVersionCode).toBe(2_100_000_000)
+  })
+
+  it('有可用更新时逐字段校验并原样保留', () => {
+    const parsed = validateAppUpdateState(state({ available: release() }))
+
+    expect(parsed.available).toEqual({ version: '0.3.0', bytes: 48 * 1024 * 1024, sha256, notes: '修复窄屏下的按钮遮挡。' })
+    // 体积上限 4 GiB 本身要放过，多 1 字节就拒绝。
+    expect(validateAppUpdateState(state({ available: release({ bytes: 4_294_967_296 }) })).available?.bytes).toBe(4_294_967_296)
+    expect(() => validateAppUpdateState(state({ available: release({ bytes: 4_294_967_297 }) })))
+      .toThrow('应用更新包大小格式无效')
+    expect(() => validateAppUpdateState(state({ available: release({ bytes: 0 }) })))
+      .toThrow('应用更新包大小格式无效')
+    expect(() => validateAppUpdateState(state({ available: release({ bytes: 1.5 }) })))
+      .toThrow('应用更新包大小格式无效')
+  })
+
+  it('缓存来源与检查时间原样保留，有无可用更新均适用', () => {
+    for (const cached of [true, false]) {
+      for (const checkedAt of [1, 1_790_000_000_000, 8_640_000_000_000_000]) {
+        for (const available of [undefined, release()]) {
+          expect(validateAppUpdateState(state({ cached, checkedAt, available })))
+            .toEqual(state({ cached, checkedAt, ...(available === undefined ? {} : { available }) }))
+        }
+      }
+    }
+  })
+
+  it('缓存元数据必须成对，且 cached 为布尔、checkedAt 为可表示日期的安全正整数', () => {
+    const invalid = [
+      { cached: true },
+      { checkedAt: 1 },
+      ...[null, 'true', 0, 1, {}, []].map(cached => ({ cached, checkedAt: 1 })),
+      ...[null, '1', 0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1, 8_640_000_000_000_001]
+        .map(checkedAt => ({ cached: true, checkedAt })),
+    ]
+    for (const fields of invalid) {
+      for (const available of [undefined, release()]) {
+        expect(() => validateAppUpdateState(state({ ...fields, available })))
+          .toThrow('应用更新缓存状态无效')
+      }
+    }
+  })
+
+  it('安装权限状态缺失或非布尔一律拒绝', () => {
+    for (const value of [undefined, null, 'true', 1, 0]) {
+      expect(() => validateAppUpdateState(state({ installAllowed: value })), String(value))
+        .toThrow('应用更新安装权限状态无效')
+    }
+  })
+
+  it('频道缺失或非法一律拒绝，合法值在有无可用更新两个分支都原样保留', () => {
+    for (const value of [undefined, null, '', 'nightly', 'STABLE', 1, true]) {
+      expect(() => validateAppUpdateState(state({ channel: value })), String(value))
+        .toThrow('应用更新频道状态无效')
+    }
+    expect(validateAppUpdateState(state({ channel: 'stable' })).channel).toBe('stable')
+    expect(validateAppUpdateState(state({ channel: 'beta' })).channel).toBe('beta')
+    expect(validateAppUpdateState(state({ channel: 'beta', available: release() })).channel).toBe('beta')
+  })
+
+  it('已安装版本与版本代码走同一套规则', () => {
+    for (const value of ['', 'v 1', 7, undefined, `v${'1'.repeat(96)}`]) {
+      expect(() => validateAppUpdateState(state({ installedVersion: value })), String(value))
+        .toThrow('已安装应用版本号格式无效')
+    }
+    for (const value of [-1, 2_100_000_001, 1.5, '22', null, Number.MAX_SAFE_INTEGER]) {
+      expect(() => validateAppUpdateState(state({ installedVersionCode: value })), String(value))
+        .toThrow('已安装应用版本代码格式无效')
+    }
+  })
+
+  it('更新包的摘要与说明按契约校验，说明超长直接报错不截断', () => {
+    expect(() => validateAppUpdateState(state({ available: release({ sha256: sha256.toUpperCase() }) })))
+      .toThrow('应用更新包 SHA-256 必须是 64 位小写十六进制')
+    expect(() => validateAppUpdateState(state({ available: release({ sha256: sha256.slice(0, 63) }) })))
+      .toThrow('应用更新包 SHA-256 必须是 64 位小写十六进制')
+    expect(() => validateAppUpdateState(state({ available: release({ notes: 7 }) })))
+      .toThrow('应用更新说明格式无效')
+    // 正好 4000 字符必须原样保留（截断会改变用户读到的更新内容）。
+    expect(validateAppUpdateState(state({ available: release({ notes: '说'.repeat(4000) }) })).available?.notes)
+      .toHaveLength(4000)
+    expect(() => validateAppUpdateState(state({ available: release({ notes: '说'.repeat(4001) }) })))
+      .toThrow('应用更新说明长度无效')
+    expect(() => validateAppUpdateState(state({ available: release({ version: 'v 3' }) })))
+      .toThrow('应用更新版本号格式无效')
+  })
+
+  it('拒绝类型不符的整体载荷与可用更新', () => {
+    expect(() => validateAppUpdateState(null)).toThrow('应用更新状态格式无效')
+    expect(() => validateAppUpdateState('0.2.0')).toThrow('应用更新状态格式无效')
+    expect(() => validateAppUpdateState(state({ available: null }))).toThrow('可用应用更新格式无效')
+    expect(() => validateAppUpdateState(state({ available: [] }))).toThrow('可用应用更新格式无效')
+  })
+})
+
+describe('运行时会话快照校验', () => {
+  // 下面这几个载荷是原生侧**真跑出来**的原文，逐字照抄：手写近似值会让校验与真实契约悄悄漂移。
+  const liveSnapshotState = {
+    maxSnapshots: 3,
+    maxBytes: 536870912,
+    totalBytes: 8,
+    snapshots: [
+      {
+        id: 'snap-1700000001000-00000002',
+        createdAt: '2023-11-14T22:13:21Z',
+        bytes: 4,
+        fileCount: 1,
+        dshVersion: '0.2.0',
+        runtimeVersion: '2026.01.01',
+      },
+      {
+        id: 'snap-1700000000000-00000001',
+        createdAt: '2023-11-14T22:13:20Z',
+        bytes: 4,
+        fileCount: 1,
+        dshVersion: '0.2.0',
+        runtimeVersion: '2026.01.01',
+      },
+    ],
+  }
+  const state = (overrides: Record<string, unknown> = {}) => ({ ...liveSnapshotState, ...overrides })
+  const snapshot = (overrides: Record<string, unknown> = {}) => ({ ...liveSnapshotState.snapshots[0], ...overrides })
+  const restore = (overrides: Record<string, unknown> = {}) => ({
+    restoredFileCount: 0,
+    skippedFileCount: 1,
+    state: liveSnapshotState,
+    ...overrides,
+  })
+
+  it('接受原生侧真跑出来的总览，新的在前且字段逐字保留', () => {
+    const parsed = validateRuntimeSessionSnapshotState(liveSnapshotState)
+
+    expect(parsed).toEqual(liveSnapshotState)
+    expect(parsed.snapshots.map(item => item.id)).toEqual([
+      'snap-1700000001000-00000002',
+      'snap-1700000000000-00000001',
+    ])
+  })
+
+  it('上限跟着载荷走：原生今天给 3，改天给 4 也不算非法', () => {
+    const four = {
+      maxSnapshots: 4,
+      maxBytes: 536870912,
+      totalBytes: 8,
+      snapshots: [
+        { ...liveSnapshotState.snapshots[0], id: 'snap-1700000003000-00000004' },
+        { ...liveSnapshotState.snapshots[0], id: 'snap-1700000002000-00000003' },
+        liveSnapshotState.snapshots[0],
+        liveSnapshotState.snapshots[1],
+      ],
+    }
+    expect(validateRuntimeSessionSnapshotState(four).snapshots).toHaveLength(4)
+    // 但载荷自己说只能有 3 份、却回了 4 条，就是自相矛盾。
+    expect(() => validateRuntimeSessionSnapshotState({ ...four, maxSnapshots: 3 }))
+      .toThrow('运行时会话快照列表格式无效')
+  })
+
+  it('上限字段只接受正整数，且有防御性天花板', () => {
+    for (const value of [0, -1, 1.5, '3', null, undefined]) {
+      expect(() => validateRuntimeSessionSnapshotState(state({ maxSnapshots: value })), String(value))
+        .toThrow('会话快照份数上限无效')
+      expect(() => validateRuntimeSessionSnapshotState(state({ maxBytes: value })), String(value))
+        .toThrow('会话快照空间上限无效')
+    }
+    expect(validateRuntimeSessionSnapshotState(state({ maxSnapshots: 32 })).maxSnapshots).toBe(32)
+    expect(() => validateRuntimeSessionSnapshotState(state({ maxSnapshots: 33 }))).toThrow('会话快照份数上限无效')
+    expect(validateRuntimeSessionSnapshotState(state({ maxBytes: 512 * 1024 * 1024 })).maxBytes)
+      .toBe(512 * 1024 * 1024)
+    expect(() => validateRuntimeSessionSnapshotState(state({ maxBytes: 512 * 1024 * 1024 + 1 })))
+      .toThrow('会话快照空间上限无效')
+  })
+
+  it('已用空间必须在 0 与空间上限之间', () => {
+    expect(validateRuntimeSessionSnapshotState(state({ totalBytes: 0 })).totalBytes).toBe(0)
+    expect(validateRuntimeSessionSnapshotState(state({ totalBytes: 536870912 })).totalBytes).toBe(536870912)
+    for (const value of [-1, 536870913, 1.5, '8', null]) {
+      expect(() => validateRuntimeSessionSnapshotState(state({ totalBytes: value })), String(value))
+        .toThrow('会话快照已用空间无效')
+    }
+  })
+
+  it('快照条目：标识宽松、时间可解析、字节与文件数有界', () => {
+    // 宽松形态：序号位数不写死，原生改格式不该把界面打死。
+    for (const id of ['snap-1700000001000-00000002', 'snap-1700000001-a', 'snap-1700000001000-0A1b2C3d']) {
+      expect(validateRuntimeSessionSnapshotState(state({ snapshots: [snapshot({ id })] })).snapshots[0].id).toBe(id)
+    }
+    for (const id of ['', 'snap-1-1', 'snap-1700000001000-', 'snap-1700000001000-00000002/x', 'snap-1700000001000-0000 0002', 7, null]) {
+      expect(() => validateRuntimeSessionSnapshotState(state({ snapshots: [snapshot({ id })] })), String(id))
+        .toThrow('运行时会话快照标识格式无效')
+    }
+
+    for (const createdAt of ['', '昨天', '1700000001000', 7, null]) {
+      expect(() => validateRuntimeSessionSnapshotState(state({ snapshots: [snapshot({ createdAt })] })), String(createdAt))
+        .toThrow('运行时会话快照创建时间格式无效')
+    }
+    // 只要 Date.parse 认得就行：带偏移量的写法同样合法。
+    expect(validateRuntimeSessionSnapshotState(state({ snapshots: [snapshot({ createdAt: '2023-11-14T22:13:21+08:00' })] })).snapshots)
+      .toHaveLength(1)
+
+    for (const bytes of [0, -1, 1.5, 536870913, null]) {
+      expect(() => validateRuntimeSessionSnapshotState(state({ snapshots: [snapshot({ bytes })] })), String(bytes))
+        .toThrow('运行时会话快照大小格式无效')
+    }
+    for (const fileCount of [-1, 1.5, '1', null]) {
+      expect(() => validateRuntimeSessionSnapshotState(state({ snapshots: [snapshot({ fileCount })] })), String(fileCount))
+        .toThrow('运行时会话快照文件数格式无效')
+    }
+    for (const key of ['dshVersion', 'runtimeVersion']) {
+      expect(() => validateRuntimeSessionSnapshotState(state({ snapshots: [snapshot({ [key]: '0.2.0 beta' })] })))
+        .toThrow('格式无效')
+    }
+  })
+
+  it('缺失的可选版本字段不产出空键，未知键一律忽略', () => {
+    const parsed = validateRuntimeSessionSnapshotState(state({
+      snapshots: [{ id: 'snap-1700000001000-00000002', createdAt: '2023-11-14T22:13:21Z', bytes: 4, fileCount: 1 }],
+      // 原生侧以后加字段不该让整块界面失败（`evictedIds` 就是这么加进来的）。
+      directory: '/data/user/0/io.deepseekharness.mobile/files/snapshots',
+    }))
+
+    expect(parsed).toEqual({
+      maxSnapshots: 3,
+      maxBytes: 536870912,
+      totalBytes: 8,
+      snapshots: [{ id: 'snap-1700000001000-00000002', createdAt: '2023-11-14T22:13:21Z', bytes: 4, fileCount: 1 }],
+    })
+    // 路径一类不该过桥的字段不许被带进来。
+    expect('directory' in parsed).toBe(false)
+    expect('dshVersion' in parsed.snapshots[0]).toBe(false)
+  })
+
+  it('拒绝类型不符的总览与快照条目', () => {
+    for (const value of [null, undefined, '{}', [], 7]) {
+      expect(() => validateRuntimeSessionSnapshotState(value), String(value)).toThrow('运行时会话快照状态格式无效')
+    }
+    expect(() => validateRuntimeSessionSnapshotState(state({ snapshots: 'none' })))
+      .toThrow('运行时会话快照列表格式无效')
+    expect(() => validateRuntimeSessionSnapshotState(state({ snapshots: [null] })))
+      .toThrow('运行时会话快照条目格式无效')
+  })
+
+  it('恢复结果：两个计数都是非负整数，内嵌总览走同一套校验', () => {
+    const parsed = validateRuntimeSessionSnapshotRestoreResult(restore())
+
+    expect(parsed.restoredFileCount).toBe(0)
+    // 同名文件被跳过必须如实计数：只报「恢复成功」会把跳过的文件藏起来。
+    expect(parsed.skippedFileCount).toBe(1)
+    expect(parsed.state).toEqual(liveSnapshotState)
+
+    for (const key of ['restoredFileCount', 'skippedFileCount']) {
+      for (const value of [-1, 1.5, '0', null, undefined]) {
+        expect(() => validateRuntimeSessionSnapshotRestoreResult(restore({ [key]: value })), `${key}=${String(value)}`)
+          .toThrow(key === 'restoredFileCount' ? '运行时会话快照恢复文件数格式无效' : '运行时会话快照跳过文件数格式无效')
+      }
+    }
+    expect(() => validateRuntimeSessionSnapshotRestoreResult(restore({ state: { ...liveSnapshotState, totalBytes: 536870913 } })))
+      .toThrow('会话快照已用空间无效')
+    expect(() => validateRuntimeSessionSnapshotRestoreResult(null)).toThrow('运行时会话快照恢复结果格式无效')
+  })
+
+  it('安装结果：没有 autoSnapshot 的三个取值都合法，一律归一化为空对象', () => {
+    for (const value of [undefined, null, {}]) {
+      expect(validateRuntimeInstallResult(value)).toEqual({})
+    }
+    // 旧版原生桥接什么都不返回：结果对象里不该凭空长出 autoSnapshot。
+    expect('autoSnapshot' in validateRuntimeInstallResult(undefined)).toBe(false)
+    // 未知键忽略，但也不带进结果。
+    expect(validateRuntimeInstallResult({ installedBytes: 7 })).toEqual({})
+    expect(() => validateRuntimeInstallResult('ok')).toThrow('运行时安装结果格式无效')
+    expect(() => validateRuntimeInstallResult([])).toThrow('运行时安装结果格式无效')
+  })
+
+  it('自动快照结论：created 必须带标识，skipped/failed 必须带错误码与说明', () => {
+    // 原生侧真跑出来的三条载荷。
+    expect(validateRuntimeInstallResult({
+      autoSnapshot: { status: 'created', snapshotId: 'snap-1700000000000-00000001' },
+    })).toEqual({ autoSnapshot: { status: 'created', snapshotId: 'snap-1700000000000-00000001' } })
+
+    const skipped = { status: 'skipped', code: 'RUNTIME_SNAPSHOT_EMPTY', message: '当前没有可备份的会话数据，未生成快照' }
+    expect(validateRuntimeInstallResult({ autoSnapshot: skipped })).toEqual({ autoSnapshot: skipped })
+
+    const failed = { status: 'failed', code: 'RUNTIME_SNAPSHOT_FAILED', message: '磁盘空间不足，无法生成会话快照' }
+    expect(validateRuntimeInstallResult({ autoSnapshot: failed })).toEqual({ autoSnapshot: failed })
+
+    expect(() => validateRuntimeInstallResult({ autoSnapshot: { status: 'created' } }))
+      .toThrow('运行时自动快照结论缺少快照标识')
+    expect(() => validateRuntimeInstallResult({ autoSnapshot: { status: 'created', snapshotId: 'snap-1-1' } }))
+      .toThrow('运行时会话快照标识格式无效')
+    for (const autoSnapshot of [
+      { status: 'skipped', message: '没有数据' },
+      { status: 'failed', message: '出错了' },
+      { status: 'skipped', code: '', message: '没有数据' },
+    ]) {
+      expect(() => validateRuntimeInstallResult({ autoSnapshot })).toThrow('运行时自动快照结论缺少错误码')
+    }
+    for (const autoSnapshot of [
+      { status: 'skipped', code: 'RUNTIME_SNAPSHOT_EMPTY' },
+      { status: 'failed', code: 'RUNTIME_SNAPSHOT_FAILED', message: '   ' },
+      { status: 'failed', code: 'RUNTIME_SNAPSHOT_FAILED', message: 7 },
+    ]) {
+      expect(() => validateRuntimeInstallResult({ autoSnapshot })).toThrow('运行时自动快照结论缺少说明')
+    }
+    for (const status of ['ok', '', 'CREATED', null, undefined]) {
+      expect(() => validateRuntimeInstallResult({ autoSnapshot: { status, snapshotId: 'snap-1700000000000-00000001' } }), String(status))
+        .toThrow('运行时自动快照结论状态无效')
+    }
+    expect(() => validateRuntimeInstallResult({ autoSnapshot: null })).toThrow('运行时自动快照结论格式无效')
+  })
+
+  it('evictedIds 是契约之外的附加字段：合法时保留，非法时报错', () => {
+    const created = {
+      status: 'created',
+      snapshotId: 'snap-1700000002000-00000003',
+      evictedIds: ['snap-1700000000000-00000001'],
+    }
+    expect(validateRuntimeInstallResult({ autoSnapshot: created })).toEqual({ autoSnapshot: created })
+    // 没有淘汰时原生侧不写这个键：结果里也不该多出空数组。
+    expect(validateRuntimeInstallResult({
+      autoSnapshot: { status: 'created', snapshotId: 'snap-1700000002000-00000003', evictedIds: [] },
+    })).toEqual({ autoSnapshot: { status: 'created', snapshotId: 'snap-1700000002000-00000003', evictedIds: [] } })
+    expect(validateRuntimeInstallResult({
+      autoSnapshot: { status: 'skipped', code: 'RUNTIME_SNAPSHOT_EMPTY', message: '没有数据', evictedIds: ['snap-1700000000000-00000001'] },
+    }).autoSnapshot?.evictedIds).toEqual(['snap-1700000000000-00000001'])
+
+    // 整个字段不是数组：这是「淘汰列表」本身不合法。
+    for (const evictedIds of ['snap-1700000000000-00000001', {}, null]) {
+      expect(() => validateRuntimeInstallResult({
+        autoSnapshot: { status: 'created', snapshotId: 'snap-1700000002000-00000003', evictedIds },
+      }), JSON.stringify(evictedIds)).toThrow('运行时自动快照淘汰列表格式无效')
+    }
+    // 是数组但元素不是合法标识：报的是标识本身的形态问题，便于定位到具体哪一项。
+    for (const evictedIds of [['nope'], [7]]) {
+      expect(() => validateRuntimeInstallResult({
+        autoSnapshot: { status: 'created', snapshotId: 'snap-1700000002000-00000003', evictedIds },
+      }), JSON.stringify(evictedIds)).toThrow('运行时会话快照标识格式无效')
+    }
+  })
+})
+
+describe('会话列表元数据校验', () => {
+  // 原生侧真跑出来的「ready」载荷（访客脚本 → Kotlin → 桥接），逐字照抄：
+  // 手写近似值会让校验与真实契约悄悄漂移。
+  const liveReady = {
+    status: 'ready',
+    sessions: [
+      { id: 'aaaa1111-bbbb-4ccc-8ddd-eeee22223333', title: '整理运行时会话列表', updatedAt: 1770000000000 },
+      { id: 'local-1700000000000', title: '', updatedAt: 1769999999000 },
+    ],
+    truncated: false,
+  }
+  const ready = (overrides: Record<string, unknown> = {}) => ({ ...liveReady, ...overrides })
+  const session = (overrides: Record<string, unknown> = {}) => ({ ...liveReady.sessions[0], ...overrides })
+
+  it('接受原生侧真跑出来的列表，字段逐字保留', () => {
+    expect(validateRuntimeSessionListResult(liveReady)).toEqual(liveReady)
+  })
+
+  it('只保留元数据三个键：正文、片段与路径混进载荷也到不了界面', () => {
+    const tainted = ready({
+      sessions: [session({
+        body: 'ZZ-CONVERSATION-BODY-SENTINEL-ZZ',
+        snippet: 'ZZ-CONVERSATION-BODY-SENTINEL-ZZ',
+        cwd: '/root/secret-project',
+        message: 'secret',
+      })],
+    })
+
+    const parsed = validateRuntimeSessionListResult(tainted)
+
+    expect(Object.keys(parsed.status === 'ready' ? parsed.sessions[0] : {})).toEqual(['id', 'title', 'updatedAt'])
+    expect(JSON.stringify(parsed)).not.toContain('ZZ-CONVERSATION-BODY-SENTINEL-ZZ')
+    expect(JSON.stringify(parsed)).not.toContain('secret-project')
+  })
+
+  it('ready + 空列表是合法的：那就是「确实没有会话」', () => {
+    expect(validateRuntimeSessionListResult(ready({ sessions: [] })))
+      .toEqual({ status: 'ready', sessions: [], truncated: false })
+    // 空列表却标记截断只是奇怪，不算非法：截断标记是原生侧的事实陈述，不该被本地改写。
+    expect(validateRuntimeSessionListResult(ready({ sessions: [], truncated: true })).status).toBe('ready')
+  })
+
+  it('unavailable 的三种原因都合法，别的原因一律报错', () => {
+    for (const reason of ['RUNTIME_NOT_INSTALLED', 'SESSION_CATALOG_TIMEOUT', 'SESSION_CATALOG_FAILED']) {
+      expect(validateRuntimeSessionListResult({ status: 'unavailable', reason })).toEqual({ status: 'unavailable', reason })
+    }
+    for (const reason of ['', 'FAILED', 'SESSION_CATALOG_UNREADABLE', 7, null, undefined]) {
+      expect(() => validateRuntimeSessionListResult({ status: 'unavailable', reason }), String(reason))
+        .toThrow('会话列表读取失败原因无效')
+    }
+  })
+
+  it('状态与整体形态：未知状态与不是对象的值都报错', () => {
+    for (const status of ['loading', 'READY', '', null, undefined]) {
+      expect(() => validateRuntimeSessionListResult({ status, sessions: [] }), String(status)).toThrow('会话列表状态无效')
+    }
+    for (const value of [null, undefined, 'ready', 7, []]) {
+      expect(() => validateRuntimeSessionListResult(value), String(value)).toThrow('会话列表格式无效')
+    }
+  })
+
+  it('条数上限、数组形态与截断标记', () => {
+    const many = Array.from({ length: 51 }, (_, index) => session({ id: `session-${index}` }))
+
+    expect(() => validateRuntimeSessionListResult(ready({ sessions: many }))).toThrow('会话列表格式无效')
+    expect(validateRuntimeSessionListResult(ready({ sessions: many.slice(0, 50) })).status).toBe('ready')
+    for (const [label, sessions] of [['字符串', 'none'], ['对象', {}], ['null', null], ['undefined', undefined]] as const) {
+      expect(() => validateRuntimeSessionListResult(ready({ sessions })), label).toThrow('会话列表格式无效')
+    }
+    for (const truncated of [undefined, null, 'false', 0, 1]) {
+      expect(() => validateRuntimeSessionListResult(ready({ truncated })), String(truncated))
+        .toThrow('会话列表截断标记格式无效')
+    }
+  })
+
+  it('会话标识：路径、控制字符、空白、点开头与超长都报错', () => {
+    for (const id of ['../../etc/passwd', 'sessions/1', 'a\\b', 'a b', '', '.hidden', 'x'.repeat(201), 7, null]) {
+      expect(() => validateRuntimeSessionListResult(ready({ sessions: [session({ id })] })), String(id))
+        .toThrow('会话标识格式无效')
+    }
+    // 用「危险字符」黑名单而不是窄白名单：会话标识由 dsh 生成、形态可能变化，合法的一律照收。
+    for (const id of ['aaaa1111-bbbb-4ccc-8ddd-eeee22223333', 'local-1700000000000', 'session_v4.test~002E']) {
+      expect(validateRuntimeSessionListResult(ready({ sessions: [session({ id })] })).status).toBe('ready')
+    }
+    for (const entry of [null, 'session', 7, []]) {
+      expect(() => validateRuntimeSessionListResult(ready({ sessions: [entry] })), String(entry)).toThrow('会话条目格式无效')
+    }
+  })
+
+  it('标题：非字符串、控制字符与超长都报错', () => {
+    for (const title of [7, null, undefined, 'a\u0000b', 'a\nb', 'x'.repeat(201)]) {
+      expect(() => validateRuntimeSessionListResult(ready({ sessions: [session({ title })] })), String(title))
+        .toThrow('会话标题格式无效')
+    }
+    // 空标题合法：读不到标题是事实，界面显示「未命名会话」，不是编造。
+    expect(validateRuntimeSessionListResult(ready({ sessions: [session({ title: '' })] })).status).toBe('ready')
+    expect(validateRuntimeSessionListResult(ready({ sessions: [session({ title: 'x'.repeat(200) })] })).status).toBe('ready')
+  })
+
+  it('更新时间：负数、小数、非数、字符串与越界都报错', () => {
+    for (const updatedAt of [-1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 4_102_444_800_001, '1770000000000', null, undefined]) {
+      expect(() => validateRuntimeSessionListResult(ready({ sessions: [session({ updatedAt })] })), String(updatedAt))
+        .toThrow('会话更新时间格式无效')
+    }
+    for (const updatedAt of [0, 4_102_444_800_000]) {
+      expect(validateRuntimeSessionListResult(ready({ sessions: [session({ updatedAt })] })).status).toBe('ready')
+    }
+  })
+})
+
+describe('运行时工作区文件列表校验', () => {
+  it('只接受受控的相对路径，并保留原生返回的文件顺序', () => {
+    expect(validateRuntimeWorkspaceFileList({ files: ['reports/summary.md', 'result.json'], truncated: false }))
+      .toEqual({ files: ['reports/summary.md', 'result.json'], truncated: false })
+  })
+
+  it('拒绝路径穿越、绝对路径、控制字符和超长列表', () => {
+    for (const path of ['', '../secret', 'reports/../secret', '/etc/passwd', 'a\\b', 'a\nb', 'x'.repeat(241)]) {
+      expect(() => validateRuntimeWorkspaceFilePath(path), path).toThrow('工作区文件路径无效')
+    }
+    expect(validateRuntimeWorkspaceFilePath('x'.repeat(240))).toHaveLength(240)
+    expect(() => validateRuntimeWorkspaceFileList(null)).toThrow('工作区文件列表格式无效')
+    expect(() => validateRuntimeWorkspaceFileList({ files: 'result.json', truncated: false })).toThrow('工作区文件列表格式无效')
+    expect(() => validateRuntimeWorkspaceFileList({ files: new Array(101).fill('result.json'), truncated: false }))
+      .toThrow('工作区文件列表格式无效')
+    expect(() => validateRuntimeWorkspaceFileList({ files: ['../secret'], truncated: false })).toThrow('工作区文件路径无效')
+    expect(() => validateRuntimeWorkspaceFileList({ files: ['same.txt', 'same.txt'], truncated: false }))
+      .toThrow('工作区文件列表包含重复路径')
+    expect(() => validateRuntimeWorkspaceFileList({ files: [], truncated: 'false' })).toThrow('截断标记')
+  })
+})
+
+describe('副屏设置的悬浮窗宽度校验', () => {
+  /** 一份最小的合法副屏设置：七个必填字段齐了，`overlayWidthPx` 是唯一的选填字段。 */
+  function settings(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      previewMode: '60fps',
+      autoFollow: 'off',
+      orientation: 'auto',
+      adaptive: false,
+      widthPx: 0,
+      heightPx: 0,
+      densityDpi: 0,
+      ...overrides,
+    }
+  }
+
+  it('缺失（或 null）时按 0 收敛：旧壳不发这个字段也能读出设置', () => {
+    expect(validateVirtualScreenSettings(settings()).overlayWidthPx).toBe(0)
+    expect(validateVirtualScreenSettings(settings({ overlayWidthPx: null })).overlayWidthPx).toBe(0)
+  })
+
+  it('0 表示「跟随屏幕最大」，原样读回且不带偏其余字段', () => {
+    const read = validateVirtualScreenSettings(settings({ overlayWidthPx: 0, widthPx: 720, densityDpi: 320 }))
+    expect(read.overlayWidthPx).toBe(0)
+    expect(read.widthPx).toBe(720)
+    expect(read.densityDpi).toBe(320)
+  })
+
+  it('正数原样读回，不设前端上限（120..4096 与按屏幕夹取都在原生侧做）', () => {
+    expect(validateVirtualScreenSettings(settings({ overlayWidthPx: 820 })).overlayWidthPx).toBe(820)
+    expect(validateVirtualScreenSettings(settings({ overlayWidthPx: 120 })).overlayWidthPx).toBe(120)
+    expect(validateVirtualScreenSettings(settings({ overlayWidthPx: 4096 })).overlayWidthPx).toBe(4096)
+    expect(validateVirtualScreenSettings(settings({ overlayWidthPx: 99999 })).overlayWidthPx).toBe(99999)
+  })
+
+  it('负数、小数与非数字一律拒绝，不静默夹取', () => {
+    for (const value of [-1, -820]) {
+      expect(() => validateVirtualScreenSettings(settings({ overlayWidthPx: value })), String(value))
+        .toThrow('悬浮窗宽度需要是非负整数')
+    }
+    // 这些非法值里有 `{}` 与 NaN，`String()` 只会给出 "[object Object]" 这类废话，
+    // 所以用序号标注，失败时能直接对上数组里的位置。
+    const badValues: unknown[] = [820.5, -0.5, '820', true, {}, Number.NaN, Number.POSITIVE_INFINITY]
+    badValues.forEach((value, index) => {
+      expect(() => validateVirtualScreenSettings(settings({ overlayWidthPx: value })), `第 ${index + 1} 个非法值`)
+        .toThrow('悬浮窗宽度需要是非负整数')
+    })
+  })
+
+  it('写入路径：0 与负数清掉自定义宽度，正数原样送出（前端不夹上限）', () => {
+    expect(assertVirtualScreenSettingsUpdate({ overlayWidthPx: 820 })).toEqual({ overlayWidthPx: 820 })
+    expect(assertVirtualScreenSettingsUpdate({ overlayWidthPx: 0 })).toEqual({ overlayWidthPx: 0 })
+    expect(assertVirtualScreenSettingsUpdate({ overlayWidthPx: -1 })).toEqual({ overlayWidthPx: 0 })
+    // 越界交给原生夹（120..4096 再按屏幕夹一次）：前端只把它收敛成整数。
+    expect(assertVirtualScreenSettingsUpdate({ overlayWidthPx: 99999 })).toEqual({ overlayWidthPx: 99999 })
+    expect(assertVirtualScreenSettingsUpdate({ overlayWidthPx: 820.4 })).toEqual({ overlayWidthPx: 820 })
+    expect(() => assertVirtualScreenSettingsUpdate({ overlayWidthPx: '820' })).toThrow('悬浮窗宽度格式无效')
+    expect(() => assertVirtualScreenSettingsUpdate({ overlayWidthPx: Number.NaN })).toThrow('悬浮窗宽度格式无效')
+    // 没传这一项时必须原样缺席，不能补 0 发过去（那会覆盖别处刚改的宽度）。
+    expect(assertVirtualScreenSettingsUpdate({ previewMode: '60fps' })).toEqual({ previewMode: '60fps' })
+    expect(assertVirtualScreenSettingsUpdate({ widthPx: 0, heightPx: 0, densityDpi: 0 }))
+      .toEqual({ widthPx: 0, heightPx: 0, densityDpi: 0 })
+  })
+})
+
+describe('设备能力清单校验', () => {
+  const ids = ['shizuku', 'kernelsu_root', 'accessibility', 'virtual_screen', 'screenshot', 'chinese_input']
+
+  /** 一项「已就绪」的能力条目，按需覆盖字段 —— 形状与原生 `DeviceCapabilityPolicy` 一致。 */
+  function entry(id: string, overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return { id, state: 'ready', reason: 'READY', action: null, alternative: null, ...overrides }
+  }
+
+  function report(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      atMs: 1_700_000_000_123,
+      sdkInt: 34,
+      capabilities: ids.map(id => entry(id)),
+      ...overrides,
+    }
+  }
+
+  /** 只把第 index 项换掉，其余保持就绪：每个用例只改一个事实。 */
+  function withEntry(index: number, overrides: Record<string, unknown>): Record<string, unknown> {
+    return report({ capabilities: ids.map((id, at) => (at === index ? entry(id, overrides) : entry(id))) })
+  }
+
+  it('六项按固定顺序原样返回', () => {
+    const value = validateDeviceCapabilityReport(report())
+    expect(value.atMs).toBe(1_700_000_000_123)
+    expect(value.sdkInt).toBe(34)
+    expect(value.capabilities.map(item => item.id)).toEqual(ids)
+    expect(value.capabilities[0]).toEqual({ id: 'shizuku', state: 'ready', reason: 'READY', action: null, alternative: null })
+  })
+
+  it('没就绪的那一项带着原因、动作与替代方式一起返回', () => {
+    const value = validateDeviceCapabilityReport(
+      withEntry(2, {
+        state: 'needs_action',
+        reason: 'ACCESSIBILITY_OFF',
+        action: 'open_accessibility_settings',
+        alternative: 'SHELL_ASCII_ONLY',
+      }),
+    )
+    expect(value.capabilities[2]).toEqual({
+      id: 'accessibility',
+      state: 'needs_action',
+      reason: 'ACCESSIBILITY_OFF',
+      action: 'open_accessibility_settings',
+      alternative: 'SHELL_ASCII_ONLY',
+    })
+  })
+
+  it('顺序错位整份拒绝，而不是把副屏那一行画成截图', () => {
+    const swapped = ['kernelsu_root', 'shizuku', 'accessibility', 'virtual_screen', 'screenshot', 'chinese_input'].map(id => entry(id))
+    expect(() => validateDeviceCapabilityReport(report({ capabilities: swapped }))).toThrow('设备能力 1 的标识格式无效')
+  })
+
+  it('少一项或多一项都整份拒绝', () => {
+    expect(() => validateDeviceCapabilityReport(report({ capabilities: ids.slice(0, 4).map(id => entry(id)) })))
+      .toThrow('设备能力列表格式无效')
+    expect(() => validateDeviceCapabilityReport(report({ capabilities: [...ids.map(id => entry(id)), entry('extra')] })))
+      .toThrow('设备能力列表格式无效')
+  })
+
+  it('状态取值不在五种里就拒绝', () => {
+    expect(() => validateDeviceCapabilityReport(withEntry(0, { state: 'available' })))
+      .toThrow('设备能力 shizuku 的状态格式无效')
+  })
+
+  it('降级带原因但**不带**待办动作，界面照实说少了哪层保护', () => {
+    const value = validateDeviceCapabilityReport(
+      withEntry(1, { state: 'degraded', reason: 'ROOT_SANDBOX_DEGRADED' }),
+    )
+    expect(value.capabilities[1]).toEqual({
+      id: 'kernelsu_root',
+      state: 'degraded',
+      reason: 'ROOT_SANDBOX_DEGRADED',
+      action: null,
+      alternative: null,
+    })
+  })
+
+  it('降级却带着待办动作、或报了就绪原因，都自相矛盾', () => {
+    expect(() => validateDeviceCapabilityReport(withEntry(1, { state: 'degraded', reason: 'ROOT_SANDBOX_DEGRADED', action: 'enable_root_engine' })))
+      .toThrow('设备能力 kernelsu_root 降级却带着待办动作')
+    expect(() => validateDeviceCapabilityReport(withEntry(1, { state: 'degraded' })))
+      .toThrow('设备能力 kernelsu_root 降级却报了就绪原因')
+  })
+
+  it('原因码必须是原生那套大写枚举', () => {
+    expect(() => validateDeviceCapabilityReport(withEntry(0, { state: 'needs_action', reason: 'shizuku_not_running' })))
+      .toThrow('设备能力 shizuku 的原因格式无效')
+  })
+
+  it('动作码小写、替代码大写，各按自己的形状校验', () => {
+    expect(() => validateDeviceCapabilityReport(withEntry(0, { state: 'needs_action', reason: 'SHIZUKU_NOT_RUNNING', action: 'Open-Shizuku' })))
+      .toThrow('设备能力 shizuku 的动作格式无效')
+    expect(() => validateDeviceCapabilityReport(withEntry(0, { state: 'needs_action', reason: 'ACCESSIBILITY_OFF', alternative: 'ascii_only' })))
+      .toThrow('设备能力 shizuku 的替代方式格式无效')
+  })
+
+  it('已就绪却带着待办动作是自相矛盾，整份拒绝', () => {
+    expect(() => validateDeviceCapabilityReport(withEntry(0, { action: 'connect_shizuku' })))
+      .toThrow('设备能力 shizuku 已就绪却带着待办动作')
+  })
+
+  it('没就绪却报了就绪原因同样是自相矛盾', () => {
+    expect(() => validateDeviceCapabilityReport(withEntry(0, { state: 'blocked' })))
+      .toThrow('设备能力 shizuku 没就绪却报了就绪原因')
+  })
+
+  it('动作与替代方式缺字段按「没有」处理，不编造一个值', () => {
+    const list = ids.map((id, at) => (at === 0 ? { id, state: 'needs_action', reason: 'SHIZUKU_NOT_RUNNING' } : entry(id)))
+    const value = validateDeviceCapabilityReport(report({ capabilities: list }))
+    expect(value.capabilities[0]).toEqual({
+      id: 'shizuku',
+      state: 'needs_action',
+      reason: 'SHIZUKU_NOT_RUNNING',
+      action: null,
+      alternative: null,
+    })
+  })
+
+  it('取样时刻与 API 级别不合法都拒绝', () => {
+    expect(() => validateDeviceCapabilityReport(report({ atMs: 0 }))).toThrow('设备能力取样时刻格式无效')
+    expect(() => validateDeviceCapabilityReport(report({ atMs: 1.5 }))).toThrow('设备能力取样时刻格式无效')
+    expect(() => validateDeviceCapabilityReport(report({ atMs: '1700000000000' }))).toThrow('设备能力取样时刻格式无效')
+    expect(() => validateDeviceCapabilityReport(report({ sdkInt: 0 }))).toThrow('设备 API 级别格式无效')
+    expect(() => validateDeviceCapabilityReport(report({ sdkInt: '34' }))).toThrow('设备 API 级别格式无效')
+  })
+})
+
+describe('根通道状态校验', () => {
+  function status(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      enabled: false,
+      usable: false,
+      kernelSuStatus: 'unsupported',
+      reason: 'ROOT_ENGINE_DISABLED',
+      degraded: false,
+      degradations: [],
+      suVersion: null,
+      ...overrides,
+    }
+  }
+
+  it('关着的时候照样给出完整状态：开关、三态、原因、降级与 su 版本', () => {
+    expect(validateRootEngineStatus(status())).toEqual({
+      enabled: false,
+      usable: false,
+      kernelSuStatus: 'unsupported',
+      reason: 'ROOT_ENGINE_DISABLED',
+      degraded: false,
+      degradations: [],
+      suVersion: null,
+    })
+  })
+
+  it('开着且 KernelSU 就绪才算可用，并带上 su 版本', () => {
+    const value = validateRootEngineStatus(status({
+      enabled: true,
+      usable: true,
+      kernelSuStatus: 'ready',
+      reason: 'READY',
+      suVersion: '3.1.0:KernelSU',
+    }))
+    expect(value.usable).toBe(true)
+    expect(value.suVersion).toBe('3.1.0:KernelSU')
+  })
+
+  it('降级状态带着原因码一起返回', () => {
+    const value = validateRootEngineStatus(status({
+      enabled: true,
+      usable: true,
+      kernelSuStatus: 'ready',
+      reason: 'READY',
+      degraded: true,
+      degradations: ['NAMESPACE_UNAVAILABLE', 'BLOCK_MASK_SKIPPED'],
+    }))
+    expect(value.degraded).toBe(true)
+    expect(value.degradations).toEqual(['NAMESPACE_UNAVAILABLE', 'BLOCK_MASK_SKIPPED'])
+  })
+
+  it('可用性与开关/三态不一致就整份拒绝，不让界面画出自相矛盾的两行', () => {
+    expect(() => validateRootEngineStatus(status({ enabled: true, usable: true })))
+      .toThrow('根通道的可用性与开关状态不一致')
+    expect(() => validateRootEngineStatus(status({ enabled: false, usable: true, kernelSuStatus: 'ready', reason: 'READY' })))
+      .toThrow('根通道的可用性与开关状态不一致')
+  })
+
+  it('未开启却报降级、降级标记与原因不一致，都拒绝', () => {
+    expect(() => validateRootEngineStatus(status({ degraded: true, degradations: ['BLOCK_MASK_FAILED'] })))
+      .toThrow('根通道未开启却报了降级')
+    expect(() => validateRootEngineStatus(status({ enabled: true, kernelSuStatus: 'ready', reason: 'READY', usable: true, degraded: true })))
+      .toThrow('根通道的降级标记与降级原因不一致')
+    expect(() => validateRootEngineStatus(status({ enabled: true, kernelSuStatus: 'ready', reason: 'READY', usable: true, degradations: ['BLOCK_MASK_FAILED'] })))
+      .toThrow('根通道的降级标记与降级原因不一致')
+  })
+
+  it('三态、原因码与降级码各按自己的形状校验', () => {
+    expect(() => validateRootEngineStatus(status({ kernelSuStatus: 'ok' })))
+      .toThrow('根通道的 KernelSU 状态格式无效')
+    expect(() => validateRootEngineStatus(status({ reason: 'root_engine_disabled' })))
+      .toThrow('根通道的原因格式无效')
+    expect(() => validateRootEngineStatus(status({ enabled: true, kernelSuStatus: 'ready', reason: 'READY', usable: true, degraded: true, degradations: ['block_mask_failed'] })))
+      .toThrow('根通道的降级原因格式无效')
+    expect(() => validateRootEngineStatus(status({ degradations: null })))
+      .toThrow('根通道的降级原因格式无效')
+    expect(() => validateRootEngineStatus(status({ suVersion: 3 })))
+      .toThrow('根通道的 su 版本格式无效')
+  })
+})
+
+describe('validateModelConnectivityResult', () => {
+  it('正确解析合法的检测成功结果', () => {
+    const raw = {
+      ok: true,
+      status: 200,
+      latencyMs: 142.5,
+      message: '✓ 连接成功 (142ms)',
+    }
+    expect(validateModelConnectivityResult(raw)).toEqual({
+      ok: true,
+      status: 200,
+      latencyMs: 142,
+      message: '✓ 连接成功 (142ms)',
+    })
+  })
+
+  it('正确解析合法的检测失败结果（如 401 鉴权失败）', () => {
+    const raw = {
+      ok: false,
+      status: 401,
+      latencyMs: 80,
+      message: '401 密钥无效或未授权 (80ms)',
+    }
+    expect(validateModelConnectivityResult(raw)).toEqual({
+      ok: false,
+      status: 401,
+      latencyMs: 80,
+      message: '401 密钥无效或未授权 (80ms)',
+    })
+  })
+
+  it('拒绝非对象或字段缺失的非法结果', () => {
+    expect(() => validateModelConnectivityResult(null)).toThrow('模型连通性检测结果')
+    expect(() => validateModelConnectivityResult('string')).toThrow('模型连通性检测结果')
+    expect(() => validateModelConnectivityResult({ ok: 'true' })).toThrow('模型连通性状态')
+    expect(() => validateModelConnectivityResult({ ok: true, status: '200' })).toThrow('模型连通性状态码无效')
+    expect(() => validateModelConnectivityResult({ ok: true, status: 200, latencyMs: -5 })).toThrow('模型连通性延迟无效')
+    expect(() => validateModelConnectivityResult({ ok: true, status: 200, latencyMs: 50, message: 123 })).toThrow('模型连通性提示无效')
+  })
+})

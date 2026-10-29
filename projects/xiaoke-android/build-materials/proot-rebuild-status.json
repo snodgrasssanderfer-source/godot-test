@@ -1,0 +1,55 @@
+{
+  "operit_commit": "dc4c3a9405dc7ed3ef69b2ac9a6ace65374d77cf",
+  "ndk": "29.0.14033849-beta4",
+  "abi": "arm64-v8a",
+  "api": 24,
+  "sources": [
+    {
+      "name": "operit2-source.tar.gz",
+      "bytes": 5004458,
+      "sha256": "291ecf2da99cc168099b239e0db74f72a08b2e02285efa80d255eec27581f30e",
+      "source": "corresponding-source.tar.gz -> proot-corresponding-source.tar.gz -> upstream/operit2-source.tar.gz"
+    },
+    {
+      "name": "termux-proot-v5.1.107.78.tar.gz",
+      "bytes": 299355,
+      "sha256": "f3377ba49dcd833370420c34c5081b4c243ecbb85b2a9881a4f4586012599afa",
+      "source": "corresponding-source.tar.gz -> proot-corresponding-source.tar.gz -> upstream/termux-proot-v5.1.107.78.tar.gz"
+    },
+    {
+      "name": "talloc-2.4.3.tar.gz",
+      "bytes": 684092,
+      "sha256": "dc46c40b9f46bb34dd97fe41f548b0e8b247b77a918576733c528e83abd854dd",
+      "source": "corresponding-source.tar.gz -> proot-corresponding-source.tar.gz -> upstream/talloc-2.4.3.tar.gz"
+    },
+    {
+      "name": "busybox-1.38.0.tar.bz2",
+      "bytes": 2695723,
+      "sha256": "34f9ea6ff8636f2c9241153b9114eefa9e65674a45318ae1ef95bb5f31c53bb2",
+      "source": "corresponding-source.tar.gz -> proot-corresponding-source.tar.gz -> upstream/busybox-1.38.0.tar.bz2",
+      "purpose": "Upstream build script requires source directory even when only proot is selected"
+    },
+    {
+      "name": "bash-5.2.37.tar.gz",
+      "bytes": 11128314,
+      "sha256": "9599b22ecd1d5787ad7d3b7bf0c59f312b3396d1e281175dd1f8a4014da621ff",
+      "source": "corresponding-source.tar.gz -> proot-corresponding-source.tar.gz -> upstream/bash-5.2.37.tar.gz",
+      "purpose": "Upstream build script requires source directory even when only proot is selected"
+    }
+  ],
+  "outputs": [
+    {
+      "filename": "libdsh_proot.so",
+      "bytes": 257088,
+      "sha256": "caa5d7d65952b258b3427322448db91b5eebea4aa72ab66c77174b86c8437f94",
+      "uploaded": false
+    },
+    {
+      "filename": "libdsh_proot_loader.so",
+      "bytes": 1632,
+      "sha256": "f149774236db1e69b36cc1e4ed3866c7094db2eee52da0d4956aa63a9bb26929",
+      "uploaded": false
+    }
+  ],
+  "status": "Source rebuild completed before handoff; runtime not executed; final APK provenance/notices not updated; build paths affect runner bytes."
+}

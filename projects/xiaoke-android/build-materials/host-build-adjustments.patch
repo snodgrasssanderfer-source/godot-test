@@ -1,0 +1,19 @@
+--- a/tools/android-runtime/build_android_tools_wsl.sh
++++ b/tools/android-runtime/build_android_tools_wsl.sh
+@@ -5,7 +5,7 @@
+ repo_dir="$(cd "$script_dir/../.." && pwd)"
+ runtime_dir="$repo_dir/tools/android-runtime"
+ source_dir="$runtime_dir/sources"
+-build_dir="$HOME/.cache/operit-android-runtime/build/assistance2"
++build_dir="${OPERIT_BUILD_DIR:?set an independent build directory}"
+ asset_dir="$repo_dir/apps/flutter/app/android/app/src/main/assets/android-runtime"
+ jni_libs_dir="$repo_dir/apps/flutter/app/android/app/src/main/jniLibs"
+ 
+@@ -449,6 +449,7 @@
+     rm -rf "$out_dir" "$work_src"
+     mkdir -p "$out_dir" "$work_src"
+     cp -a "$proot_operit_src/." "$work_src"
++    sed -i 's@awk -f loader/loader-info.awk@python3 "$$DSH_LOADER_INFO_PY"@' "$work_src/src/GNUmakefile"
+     awk '
+         /^LOADER_LDFLAGS\$1 \+= -static -nostdlib / {
+             sub(/-Ttext=\$\(LOADER_ADDRESS\$1\)/, "--image-base=$(LOADER_ADDRESS$1)")

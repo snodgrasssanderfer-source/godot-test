@@ -1,0 +1,258 @@
+[
+  {
+    "local": "audit/backend/LICENSE",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber",
+    "commit": "992309c0aa19845960228f880013d4685fde93b5",
+    "path": "LICENSE",
+    "blob": "8c13e43124f5656eebcc721e8744b5d40e6b98aa",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber/blob/992309c0aa19845960228f880013d4685fde93b5/LICENSE"
+  },
+  {
+    "local": "audit/backend/.gitmodules",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber",
+    "commit": "992309c0aa19845960228f880013d4685fde93b5",
+    "path": ".gitmodules",
+    "blob": "96b7bd7bea454ec9958e6ace2bf0d7a42bc2465b",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber/blob/992309c0aa19845960228f880013d4685fde93b5/.gitmodules"
+  },
+  {
+    "local": "audit/backend/src/open_llm_vtuber/conversations/conversation_handler.py",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber",
+    "commit": "992309c0aa19845960228f880013d4685fde93b5",
+    "path": "src/open_llm_vtuber/conversations/conversation_handler.py",
+    "blob": "02780b486bcb13783bf9a3b04b2dcbb5d182665f",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber/blob/992309c0aa19845960228f880013d4685fde93b5/src/open_llm_vtuber/conversations/conversation_handler.py"
+  },
+  {
+    "local": "audit/backend/src/open_llm_vtuber/conversations/tts_manager.py",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber",
+    "commit": "992309c0aa19845960228f880013d4685fde93b5",
+    "path": "src/open_llm_vtuber/conversations/tts_manager.py",
+    "blob": "59c36b7522ba34b9267076c41f621a7dbe1bf83c",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber/blob/992309c0aa19845960228f880013d4685fde93b5/src/open_llm_vtuber/conversations/tts_manager.py"
+  },
+  {
+    "local": "audit/backend/src/open_llm_vtuber/conversations/conversation_utils.py",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber",
+    "commit": "992309c0aa19845960228f880013d4685fde93b5",
+    "path": "src/open_llm_vtuber/conversations/conversation_utils.py",
+    "blob": "02286e95138060cdae5fdb81de8f94d4c1902566",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber/blob/992309c0aa19845960228f880013d4685fde93b5/src/open_llm_vtuber/conversations/conversation_utils.py"
+  },
+  {
+    "local": "audit/backend/src/open_llm_vtuber/conversations/single_conversation.py",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber",
+    "commit": "992309c0aa19845960228f880013d4685fde93b5",
+    "path": "src/open_llm_vtuber/conversations/single_conversation.py",
+    "blob": "493fa9c4e55bd83cb6ed3118c8b4da5b2112cc8c",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber/blob/992309c0aa19845960228f880013d4685fde93b5/src/open_llm_vtuber/conversations/single_conversation.py"
+  },
+  {
+    "local": "audit/backend/src/open_llm_vtuber/agent/output_types.py",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber",
+    "commit": "992309c0aa19845960228f880013d4685fde93b5",
+    "path": "src/open_llm_vtuber/agent/output_types.py",
+    "blob": "10aafea87a6155f579479ca2f046372d3d3c47e6",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber/blob/992309c0aa19845960228f880013d4685fde93b5/src/open_llm_vtuber/agent/output_types.py"
+  },
+  {
+    "local": "audit/backend/src/open_llm_vtuber/agent/input_types.py",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber",
+    "commit": "992309c0aa19845960228f880013d4685fde93b5",
+    "path": "src/open_llm_vtuber/agent/input_types.py",
+    "blob": "e18bec9070e4094d0488812ee6b469897e92eccf",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber/blob/992309c0aa19845960228f880013d4685fde93b5/src/open_llm_vtuber/agent/input_types.py"
+  },
+  {
+    "local": "audit/backend/src/open_llm_vtuber/websocket_handler.py",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber",
+    "commit": "992309c0aa19845960228f880013d4685fde93b5",
+    "path": "src/open_llm_vtuber/websocket_handler.py",
+    "blob": "41368a6f6ba4ab82defb59df8be4b96fd2f6bfb7",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber/blob/992309c0aa19845960228f880013d4685fde93b5/src/open_llm_vtuber/websocket_handler.py"
+  },
+  {
+    "local": "audit/backend/src/open_llm_vtuber/agent/agents/basic_memory_agent.py",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber",
+    "commit": "992309c0aa19845960228f880013d4685fde93b5",
+    "path": "src/open_llm_vtuber/agent/agents/basic_memory_agent.py",
+    "blob": "403b559075da25a51e0defcb50b460d561fcd523",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber/blob/992309c0aa19845960228f880013d4685fde93b5/src/open_llm_vtuber/agent/agents/basic_memory_agent.py"
+  },
+  {
+    "local": "audit/backend/src/open_llm_vtuber/utils/stream_audio.py",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber",
+    "commit": "992309c0aa19845960228f880013d4685fde93b5",
+    "path": "src/open_llm_vtuber/utils/stream_audio.py",
+    "blob": "c8ae52b3ba3ee8d9fd71ac7783a1db7901daf1c3",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber/blob/992309c0aa19845960228f880013d4685fde93b5/src/open_llm_vtuber/utils/stream_audio.py"
+  },
+  {
+    "local": "audit/backend/prompts/utils/proactive_speak_prompt.txt",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber",
+    "commit": "992309c0aa19845960228f880013d4685fde93b5",
+    "path": "prompts/utils/proactive_speak_prompt.txt",
+    "blob": "70f16ab39ddb07e9044ba3f80c4a9a779016d9a7",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber/blob/992309c0aa19845960228f880013d4685fde93b5/prompts/utils/proactive_speak_prompt.txt"
+  },
+  {
+    "local": "audit/frontend-review-only/LICENSE",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber-Web",
+    "commit": "3d57a9a0125a0ca13e5d096f7092e4e494ed389e",
+    "path": "LICENSE",
+    "blob": "fd3ba2874a0c5a78b19c565bfdc569462f179176",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber-Web/blob/3d57a9a0125a0ca13e5d096f7092e4e494ed389e/LICENSE"
+  },
+  {
+    "local": "audit/frontend-review-only/src/renderer/src/context/proactive-speak-context.tsx",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber-Web",
+    "commit": "3d57a9a0125a0ca13e5d096f7092e4e494ed389e",
+    "path": "src/renderer/src/context/proactive-speak-context.tsx",
+    "blob": "b8c2d87dc1dae1f1b1faeb9a0bbe19d45742b16b",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber-Web/blob/3d57a9a0125a0ca13e5d096f7092e4e494ed389e/src/renderer/src/context/proactive-speak-context.tsx"
+  },
+  {
+    "local": "audit/frontend-review-only/src/renderer/src/hooks/utils/use-interrupt.ts",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber-Web",
+    "commit": "3d57a9a0125a0ca13e5d096f7092e4e494ed389e",
+    "path": "src/renderer/src/hooks/utils/use-interrupt.ts",
+    "blob": "5986aa25acd048649ffd56ba339e0d0d31d7ae3f",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber-Web/blob/3d57a9a0125a0ca13e5d096f7092e4e494ed389e/src/renderer/src/hooks/utils/use-interrupt.ts"
+  },
+  {
+    "local": "audit/frontend-review-only/src/renderer/src/hooks/utils/use-audio-task.ts",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber-Web",
+    "commit": "3d57a9a0125a0ca13e5d096f7092e4e494ed389e",
+    "path": "src/renderer/src/hooks/utils/use-audio-task.ts",
+    "blob": "27cba6836ebd54b591d3ca39cf1fe530a8a974e3",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber-Web/blob/3d57a9a0125a0ca13e5d096f7092e4e494ed389e/src/renderer/src/hooks/utils/use-audio-task.ts"
+  },
+  {
+    "local": "audit/frontend-review-only/src/renderer/src/utils/audio-manager.ts",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber-Web",
+    "commit": "3d57a9a0125a0ca13e5d096f7092e4e494ed389e",
+    "path": "src/renderer/src/utils/audio-manager.ts",
+    "blob": "7caa275734ac16269d14d28f5d305024da306140",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber-Web/blob/3d57a9a0125a0ca13e5d096f7092e4e494ed389e/src/renderer/src/utils/audio-manager.ts"
+  },
+  {
+    "local": "audit/frontend-review-only/src/renderer/src/utils/task-queue.ts",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber-Web",
+    "commit": "3d57a9a0125a0ca13e5d096f7092e4e494ed389e",
+    "path": "src/renderer/src/utils/task-queue.ts",
+    "blob": "a475f2d9b236963f2447cf262a6c9b98093fe4e8",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber-Web/blob/3d57a9a0125a0ca13e5d096f7092e4e494ed389e/src/renderer/src/utils/task-queue.ts"
+  },
+  {
+    "local": "audit/frontend-review-only/src/renderer/src/context/vad-context.tsx",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber-Web",
+    "commit": "3d57a9a0125a0ca13e5d096f7092e4e494ed389e",
+    "path": "src/renderer/src/context/vad-context.tsx",
+    "blob": "f38a4e60e89f899fd3fa1bda5b30fa3a51a06901",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber-Web/blob/3d57a9a0125a0ca13e5d096f7092e4e494ed389e/src/renderer/src/context/vad-context.tsx"
+  },
+  {
+    "local": "audit/frontend-review-only/src/renderer/src/services/websocket-handler.tsx",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber-Web",
+    "commit": "3d57a9a0125a0ca13e5d096f7092e4e494ed389e",
+    "path": "src/renderer/src/services/websocket-handler.tsx",
+    "blob": "5283617d95639e0504384f2825bb88569c8926d4",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber-Web/blob/3d57a9a0125a0ca13e5d096f7092e4e494ed389e/src/renderer/src/services/websocket-handler.tsx"
+  },
+  {
+    "local": "audit/frontend-review-only/src/renderer/src/hooks/utils/use-trigger-speak.ts",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber-Web",
+    "commit": "3d57a9a0125a0ca13e5d096f7092e4e494ed389e",
+    "path": "src/renderer/src/hooks/utils/use-trigger-speak.ts",
+    "blob": "8c3b8e85ae8240ce3a93660bb5d6c82f2f98ee03",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber-Web/blob/3d57a9a0125a0ca13e5d096f7092e4e494ed389e/src/renderer/src/hooks/utils/use-trigger-speak.ts"
+  },
+  {
+    "local": "audit/frontend-review-only/src/renderer/src/hooks/utils/use-media-capture.tsx",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber-Web",
+    "commit": "3d57a9a0125a0ca13e5d096f7092e4e494ed389e",
+    "path": "src/renderer/src/hooks/utils/use-media-capture.tsx",
+    "blob": "ef4c62762e2edb7dceb39f1a311d6aefea7a9dea",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber-Web/blob/3d57a9a0125a0ca13e5d096f7092e4e494ed389e/src/renderer/src/hooks/utils/use-media-capture.tsx"
+  },
+  {
+    "local": "audit/frontend-review-only/src/renderer/src/hooks/utils/use-send-audio.tsx",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber-Web",
+    "commit": "3d57a9a0125a0ca13e5d096f7092e4e494ed389e",
+    "path": "src/renderer/src/hooks/utils/use-send-audio.tsx",
+    "blob": "063a48db7e72b0a6896f02c20c79bdd9115b08b4",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber-Web/blob/3d57a9a0125a0ca13e5d096f7092e4e494ed389e/src/renderer/src/hooks/utils/use-send-audio.tsx"
+  },
+  {
+    "local": "audit/frontend-review-only/src/renderer/src/context/ai-state-context.tsx",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber-Web",
+    "commit": "3d57a9a0125a0ca13e5d096f7092e4e494ed389e",
+    "path": "src/renderer/src/context/ai-state-context.tsx",
+    "blob": "ce61e0936bc0ee1a2a516efc315fdefcab6e0765",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber-Web/blob/3d57a9a0125a0ca13e5d096f7092e4e494ed389e/src/renderer/src/context/ai-state-context.tsx"
+  },
+  {
+    "local": "audit/host-baseline/src/companion/bridge.ts",
+    "repo": "snodgrasssanderfer-source/godot-test",
+    "commit": "b93d665a5a3828f1838d9b01e3503248fb379ec5",
+    "path": "projects/xiaoke-android/source/src/companion/bridge.ts",
+    "blob": "d533553a62954ac1cfc5cc597eba720b5c0f543b",
+    "url": "https://github.com/snodgrasssanderfer-source/godot-test/blob/b93d665a5a3828f1838d9b01e3503248fb379ec5/projects/xiaoke-android/source/src/companion/bridge.ts"
+  },
+  {
+    "local": "audit/host-baseline/src/companion/browser.ts",
+    "repo": "snodgrasssanderfer-source/godot-test",
+    "commit": "b93d665a5a3828f1838d9b01e3503248fb379ec5",
+    "path": "projects/xiaoke-android/source/src/companion/browser.ts",
+    "blob": "7f989facf7ed1e6615084e080d891d3077b5b202",
+    "url": "https://github.com/snodgrasssanderfer-source/godot-test/blob/b93d665a5a3828f1838d9b01e3503248fb379ec5/projects/xiaoke-android/source/src/companion/browser.ts"
+  },
+  {
+    "local": "audit/host-baseline/android/app/src/main/java/io/deepseekharness/mobile/companion/CompanionEngine.kt",
+    "repo": "snodgrasssanderfer-source/godot-test",
+    "commit": "b93d665a5a3828f1838d9b01e3503248fb379ec5",
+    "path": "projects/xiaoke-android/source/android/app/src/main/java/io/deepseekharness/mobile/companion/CompanionEngine.kt",
+    "blob": "666fe54305b0fb9b536c5c71ca5da4437337d14d",
+    "url": "https://github.com/snodgrasssanderfer-source/godot-test/blob/b93d665a5a3828f1838d9b01e3503248fb379ec5/projects/xiaoke-android/source/android/app/src/main/java/io/deepseekharness/mobile/companion/CompanionEngine.kt"
+  },
+  {
+    "local": "audit/host-baseline/android/app/src/main/java/io/deepseekharness/mobile/companion/CompanionDevice.kt",
+    "repo": "snodgrasssanderfer-source/godot-test",
+    "commit": "b93d665a5a3828f1838d9b01e3503248fb379ec5",
+    "path": "projects/xiaoke-android/source/android/app/src/main/java/io/deepseekharness/mobile/companion/CompanionDevice.kt",
+    "blob": "25becf67521b4ea0f31cb355dde0b6a459f852a9",
+    "url": "https://github.com/snodgrasssanderfer-source/godot-test/blob/b93d665a5a3828f1838d9b01e3503248fb379ec5/projects/xiaoke-android/source/android/app/src/main/java/io/deepseekharness/mobile/companion/CompanionDevice.kt"
+  },
+  {
+    "local": "audit/host-baseline/android/app/src/main/java/io/deepseekharness/mobile/companion/GeminiClient.kt",
+    "repo": "snodgrasssanderfer-source/godot-test",
+    "commit": "b93d665a5a3828f1838d9b01e3503248fb379ec5",
+    "path": "projects/xiaoke-android/source/android/app/src/main/java/io/deepseekharness/mobile/companion/GeminiClient.kt",
+    "blob": "4eb0e733abdb4c12d7296f6f1fd62af303113d01",
+    "url": "https://github.com/snodgrasssanderfer-source/godot-test/blob/b93d665a5a3828f1838d9b01e3503248fb379ec5/projects/xiaoke-android/source/android/app/src/main/java/io/deepseekharness/mobile/companion/GeminiClient.kt"
+  },
+  {
+    "local": "audit/host-baseline/android/app/src/main/java/io/deepseekharness/mobile/companion/CompanionService.kt",
+    "repo": "snodgrasssanderfer-source/godot-test",
+    "commit": "b93d665a5a3828f1838d9b01e3503248fb379ec5",
+    "path": "projects/xiaoke-android/source/android/app/src/main/java/io/deepseekharness/mobile/companion/CompanionService.kt",
+    "blob": "d1da76f8a79aa37664e4b6333c4c225450abead2",
+    "url": "https://github.com/snodgrasssanderfer-source/godot-test/blob/b93d665a5a3828f1838d9b01e3503248fb379ec5/projects/xiaoke-android/source/android/app/src/main/java/io/deepseekharness/mobile/companion/CompanionService.kt"
+  },
+  {
+    "local": "audit/host-baseline/.agents/rules/git-workflow.md",
+    "repo": "snodgrasssanderfer-source/godot-test",
+    "commit": "b93d665a5a3828f1838d9b01e3503248fb379ec5",
+    "path": "projects/xiaoke-android/source/.agents/rules/git-workflow.md",
+    "blob": "a9558d28ef83ce20d7b15e2a827b3010dcdf6e34",
+    "url": "https://github.com/snodgrasssanderfer-source/godot-test/blob/b93d665a5a3828f1838d9b01e3503248fb379ec5/projects/xiaoke-android/source/.agents/rules/git-workflow.md"
+  },
+  {
+    "local": "audit/backend/README.md",
+    "repo": "Open-LLM-VTuber/Open-LLM-VTuber",
+    "commit": "992309c0aa19845960228f880013d4685fde93b5",
+    "path": "README.md",
+    "blob": "d5453728cd9b9c405ccf6dcfb75b9dfde7d530ae",
+    "url": "https://github.com/Open-LLM-VTuber/Open-LLM-VTuber/blob/992309c0aa19845960228f880013d4685fde93b5/README.md"
+  }
+]

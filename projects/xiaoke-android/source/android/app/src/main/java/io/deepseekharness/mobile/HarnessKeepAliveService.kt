@@ -1,0 +1,421 @@
+package io.deepseekharness.mobile
+
+import android.app.Notification
+import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
+import android.content.Context
+import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.IBinder
+import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
+import androidx.core.content.ContextCompat
+import io.deepseekharness.mobile.runtime.HarnessKeepAlivePolicy
+import io.deepseekharness.mobile.runtime.RuntimeHost
+import io.deepseekharness.mobile.runtime.RuntimeEventSink
+import io.deepseekharness.mobile.runtime.RuntimeStateSnapshot
+import io.deepseekharness.mobile.runtime.RuntimeStore
+import io.deepseekharness.mobile.runtime.ShizukuReconnectResult
+import io.deepseekharness.mobile.runtime.TaskNotification
+import io.deepseekharness.mobile.runtime.diagnostics.DiagnosticEvent
+import io.deepseekharness.mobile.runtime.diagnostics.DiagnosticLevel
+import io.deepseekharness.mobile.runtime.diagnostics.DiagnosticLog
+import java.util.concurrent.atomic.AtomicBoolean
+
+/**
+ * 「后台保持 Harness」前台服务。
+ *
+ * 职责边界：
+ *  - 只把本应用进程标记为前台服务，提升其在锁屏、返回桌面、划掉最近任务后的存活优先级；
+ *  - 不执行任何 Shell 命令、不读取任何凭据；系统重启恢复时仅按已授权状态尽力绑定
+ *    Shizuku UserService，失败只发固定提醒，不阻止 Harness 启动；
+ *  - 通知内容固定，不含 URL、密码、API Key、终端输出或其他用户数据；
+ *  - 明确不承诺绝对保活：Android 与厂商系统的内存回收、强制停止、电池与后台策略
+ *    仍然可以随时结束本进程。
+ *
+ * 运行时归属：本服务只挂载/卸载 [RuntimeHost] 中的前台服务标记，真正的运行时由
+ * [RuntimeHost] 统一持有；进程被系统重启后没有可管理的运行时时，服务立即结束，
+ * 避免留下无法解释的通知。
+ */
+class HarnessKeepAliveService : Service() {
+    /** 服务侧自有实例：不依赖插件是否存活，服务启停本身也要进诊断时间线。 */
+    private val diagnostics by lazy { DiagnosticLog(this) }
+    private val recoveryExecutor by lazy {
+        java.util.concurrent.Executors.newSingleThreadExecutor { runnable ->
+            Thread(runnable, "dsh-boot-recovery").apply { isDaemon = true }
+        }
+    }
+    @Volatile private var recoverySinkAttached = false
+    private val recoveryCancelled = AtomicBoolean(false)
+
+    override fun onCreate() {
+        super.onCreate()
+        runCatching { ensureNotificationChannel() }
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // 必须最先进入前台状态。
+        //
+        // Android 12+ 对 startForegroundService() 启动的服务有 5 秒硬性要求：超时未调用
+        // startForeground()（或一次都没调用就 stopSelf）会抛
+        // ForegroundServiceDidNotStartInTimeException 并终结整个进程。
+        // 先前「没有 controller 就直接 stopSelf()」的写法全程没有进入前台状态，只是运气好
+        // 没触发；这里改成先无条件进入前台，再决定是否立即结束。
+        // POST_NOTIFICATIONS 未授予不影响前台身份（Android 13+ 仅隐藏通知），因此不再
+        // 因通知权限缺失而跳过 startForeground —— 那正是小米真机上的进程级闪退根因。
+        if (!startForegroundCompat()) {
+            // 进入前台失败时必须在此收尾：服务既没有通知，也没有被系统认定的前台身份，
+            // 继续运行只会留下一个无法自解释的进程。立即结束，Harness 本身照常以普通
+            // 后台进程运行，只是失去存活优先级提升。
+            lastStartFailure = FAILURE_FOREGROUND_DECLINED
+            stopForegroundCompat()
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        lastStartFailure = null
+        // START_STICKY 重启时系统可能传入 null Intent；只有持久化条件仍满足时才恢复，
+        // 否则立即移除通知并结束，避免留下空转前台服务。
+        val recoveryRequested = intent?.action == ACTION_RECOVER_AFTER_BOOT ||
+            (intent == null && canRecoverAfterBoot())
+        if (RuntimeHost.controllerOrNull() == null && recoveryRequested) {
+            // 解锁后的系统广播只负责触发恢复；真正的启动放到工作线程，避免阻塞主线程。
+            // RuntimeStore 只读取非敏感开关与运行意图，凭据仍由运行时自己的加密存储管理。
+            val shouldRecover = try {
+                val store = RuntimeStore(applicationContext)
+                HarnessKeepAlivePolicy.shouldRecoverAfterBoot(
+                    store.keepRuntimeInBackground(),
+                    store.runtimeIntentRecord().intent,
+                )
+            } catch (_: Throwable) {
+                false
+            }
+            if (!shouldRecover) {
+                diagnostics.record(
+                    DiagnosticLevel.INFO,
+                    DiagnosticEvent.KEEP_ALIVE,
+                    mapOf("reason" to "boot_recovery_not_requested", "active" to "false"),
+                )
+                stopForegroundCompat()
+                stopSelfResult(startId)
+                return START_NOT_STICKY
+            }
+            try {
+                recoverySinkAttached = true
+                recoveryCancelled.set(false)
+                // 标记先于 acquire，确保构造 RuntimeHost 失败时也能回滚订阅者。
+                RuntimeHost.acquire(applicationContext, BOOT_RECOVERY_SINK)
+                RuntimeHost.attachForegroundService()
+                recoveryExecutor.execute { recoverHarness(startId) }
+            } catch (_: Throwable) {
+                diagnostics.record(
+                    DiagnosticLevel.WARN,
+                    DiagnosticEvent.KEEP_ALIVE,
+                    mapOf("reason" to "boot_recovery_failed", "active" to "false"),
+                )
+                detachRecoveryRuntime()
+                stopForegroundCompat()
+                stopSelfResult(startId)
+            }
+            // 恢复任务已接管服务；若系统随后回收，START_STICKY 会再次投递空 Intent，
+            // 由 canRecoverAfterBoot() 再次校验用户意图后重建运行时。
+            return START_STICKY
+        }
+        if (HarnessKeepAlivePolicy.shouldStopServiceWithoutController(RuntimeHost.controllerOrNull() != null)) {
+            // 进程被系统回收后重启：运行时与临时认证凭据都已不存在，旧会话无法恢复。
+            // 此时保持前台服务只会留下一个空转通知，因此立即结束，由界面提示重新连接。
+            diagnostics.record(
+                DiagnosticLevel.WARN,
+                DiagnosticEvent.KEEP_ALIVE,
+                mapOf("reason" to "no_runtime", "active" to "false"),
+            )
+            stopForegroundCompat()
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        RuntimeHost.attachForegroundService()
+        diagnostics.record(
+            DiagnosticLevel.INFO,
+            DiagnosticEvent.KEEP_ALIVE,
+            mapOf("reason" to "foreground", "active" to "true"),
+        )
+        // 正常路径由已存在的 RuntimeHost 负责运行时；若服务被回收，空 Intent
+        // 会进入上面的受控恢复路径，不满足条件时立即结束，不留下空转通知。
+        return START_STICKY
+    }
+
+    /**
+     * 划掉最近任务时不主动调用 `stopSelf()`。
+     *
+     * 是否继续运行完全交给系统与厂商后台策略判断；本方法有意留空，不在此处
+     * 终止服务，也不做任何保活承诺。
+     */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        // 有意留空：保留前台服务与运行时，由系统策略决定后续行为。
+    }
+
+    override fun onDestroy() {
+        recoveryCancelled.set(true)
+        // 先取消在途启动，再关闭工作线程：即使 worker 已越过取消检查，
+        // RuntimeSupervisor 的启动代次也会拒绝随后拉起子进程。
+        RuntimeHost.controllerOrNull()?.requestStartCancellation()
+        recoveryExecutor.shutdownNow()
+        stopForegroundCompat()
+        RuntimeHost.detachForegroundService()
+        detachRecoveryRuntime()
+        diagnostics.record(
+            DiagnosticLevel.INFO,
+            DiagnosticEvent.KEEP_ALIVE,
+            mapOf("reason" to "destroyed", "active" to "false"),
+        )
+        super.onDestroy()
+    }
+
+    /** 仅以启动方式运行，不提供绑定接口。 */
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    /**
+     * 进入前台状态，返回是否成功。
+     *
+     * 刻意不让异常逃出这里：`onStartCommand` 抛出的异常会终结**整个应用进程**，
+     * 也就是用户看到的「闪退」。实测部分厂商 ROM 会拒绝该前台服务类型（specialUse），
+     * 因此这里降级处理：先经 [ForegroundServices] 做带类型 + 不带类型两次尽力尝试，
+     * 仍失败时记录受控诊断后返回 false，由调用方结束服务，Harness 继续以普通后台进程运行。
+     *
+     * 不再因 POST_NOTIFICATIONS 缺失而拒绝进入前台：Android 13+ 上通知权限只决定常驻
+     * 通知是否可见，缺它时前台服务身份仍然有效；旧写法在缺权限时一次 startForeground
+     * 都不调用，会被系统以 ForegroundServiceDidNotStartInTimeException 终结整个进程。
+     */
+    private fun startForegroundCompat(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            diagnostics.record(DiagnosticLevel.INFO, DiagnosticEvent.KEEP_ALIVE,
+                mapOf("reason" to "notification_permission_missing", "active" to "true"))
+        }
+        val started = ForegroundServices.start(
+            service = this,
+            notificationId = NOTIFICATION_ID,
+            notification = buildNotification(),
+            logTag = "dsh-runtime",
+            label = "keep-alive",
+        )
+        if (!started) {
+            diagnostics.record(
+                DiagnosticLevel.WARN,
+                DiagnosticEvent.KEEP_ALIVE,
+                mapOf("reason" to "foreground_failed", "active" to "false"),
+            )
+        }
+        return started
+    }
+
+    private fun stopForegroundCompat() {
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+    }
+
+    /**
+     * 通知只使用固定资源文案：不含运行时地址、端口、凭据、版本、终端内容或会话标识，
+     * 因而在锁屏与通知栏都不会泄露用户数据。
+     */
+    private fun buildNotification(): Notification {
+        // 入口使用透明转发，确保已有 HarnessActivity 通过 REORDER_TO_FRONT 复用，
+        // 不创建重复页面或撤销会话凭据。
+        val openApp = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, KeepAliveEntryActivity::class.java).addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP,
+            ),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_keep_alive)
+            .setContentTitle(getString(R.string.keep_alive_notification_title))
+            .setContentText(getString(R.string.keep_alive_notification_text))
+            .setContentIntent(openApp)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
+            .setSilent(true)
+            .setShowWhen(false)
+            .setOnlyAlertOnce(true)
+            .build()
+    }
+
+    private fun ensureNotificationChannel() {
+        val manager = getSystemService(NotificationManager::class.java) ?: return
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            getString(R.string.keep_alive_channel_name),
+            NotificationManager.IMPORTANCE_LOW,
+        ).apply {
+            description = getString(R.string.keep_alive_channel_description)
+            setShowBadge(false)
+            enableVibration(false)
+            setSound(null, null)
+        }
+        manager.createNotificationChannel(channel)
+    }
+
+    companion object {
+        /** 系统重启后恢复运行时的内部动作，不对外导出。 */
+        const val ACTION_RECOVER_AFTER_BOOT = "io.deepseekharness.mobile.action.RECOVER_AFTER_BOOT"
+        private const val CHANNEL_ID = "harness_keep_alive"
+        private const val NOTIFICATION_ID = 0x44534801
+
+        /**
+         * 最近一次启动失败的原因令牌（null 表示没有失败或上次已成功进入前台）。
+         * 仅取受控常量，供界面给出针对性指引；不参与服务自身决策。
+         */
+        @Volatile
+        var lastStartFailure: String? = null
+            private set
+
+        /** 前台身份被系统拒绝（厂商后台策略 / 后台启动限制 / specialUse 不被受理）。 */
+        const val FAILURE_FOREGROUND_DECLINED = "foreground_declined"
+
+        /** 系统连 startForegroundService 都拒绝（后台启动限制）。 */
+        const val FAILURE_START_DISALLOWED = "start_disallowed"
+
+        /**
+         * 启动前台服务。
+         *
+         * 系统可能因后台启动限制或厂商策略拒绝启动前台服务；此时静默降级，
+         * Harness 继续按原有方式运行，只是失去优先级提升。失败令牌留在
+         * [lastStartFailure]，由界面状态查询读取后提示用户检查厂商后台设置。
+         */
+        fun start(context: Context) {
+            val intent = Intent(context, HarnessKeepAliveService::class.java)
+            try {
+                ContextCompat.startForegroundService(context.applicationContext, intent)
+            } catch (error: Throwable) {
+                // 降级：不提升优先级，也不影响已启动的 Harness。
+                lastStartFailure = FAILURE_START_DISALLOWED
+                android.util.Log.w(
+                    "dsh-runtime",
+                    "keep-alive start disallowed: ${error.javaClass.simpleName}",
+                )
+            }
+        }
+
+        /**
+         * 显式停止：由 stopService 触发 [onDestroy]，统一走 [RuntimeHost.detachForegroundService]。
+         */
+        fun stop(context: Context) {
+            try {
+                context.applicationContext.stopService(Intent(context.applicationContext, HarnessKeepAliveService::class.java))
+            } catch (_: Throwable) {
+                // 服务未运行时 stopService 本身即为无操作。
+            }
+        }
+
+        /** 由系统启动广播调用；只在已解锁且用户开启后台保持时恢复。 */
+        fun startAfterBoot(context: Context) {
+            val intent = Intent(context.applicationContext, HarnessKeepAliveService::class.java)
+                .setAction(ACTION_RECOVER_AFTER_BOOT)
+            try {
+                ContextCompat.startForegroundService(context.applicationContext, intent)
+            } catch (_: Throwable) {
+                // 启动限制或厂商策略拒绝时保持静默，前端下次进入仍可手动启动。
+            }
+        }
+    }
+
+    /** 启动恢复不依赖 WebView；界面稍后打开时会替换为插件事件订阅者。 */
+    private val BOOT_RECOVERY_SINK = object : RuntimeEventSink {
+        override fun onProgress(snapshot: RuntimeStateSnapshot) = Unit
+        override fun onTerminalOutput(sessionId: String, dataBase64: String, suppressPublicOutput: Boolean) = Unit
+        override fun onTerminalExit(sessionId: String, exitCode: Int) = Unit
+    }
+
+    private fun recoverHarness(startId: Int) {
+        val controller = RuntimeHost.controllerOrNull()
+        if (controller == null || recoveryCancelled.get()) {
+            detachRecoveryRuntime()
+            stopForegroundCompat()
+            stopSelfResult(startId)
+            return
+        }
+        try {
+            check(!recoveryCancelled.get() && RuntimeHost.controllerOrNull() === controller) { "恢复已取消" }
+            // 与 WebView 插件加载走同一幂等路径：先把 Shizuku 设备桥配置到
+            // RuntimeSupervisor，再启动 Harness，避免运行中再配置而触发 RUNTIME_BUSY。
+            try {
+                RuntimeHost.ensureDeviceBridge(controller)
+            } catch (_: Throwable) {
+                // Shizuku 未安装或未授权时只降级设备工具，不阻止 Harness 启动。
+                diagnostics.record(
+                    DiagnosticLevel.INFO,
+                    DiagnosticEvent.DEVICE_BRIDGE,
+                    mapOf("result" to "unavailable"),
+                )
+            }
+            // 重启后 WebView 尚未加载，不能依赖 MobileRuntimePlugin 的前台回调触发
+            // Shizuku 自动连接。仅在已安装、已运行且已授权时尝试绑定；未准备好的
+            // 状态不提醒用户，避免把「Shizuku 尚未启动」误报成连接失败。
+            val shizukuReconnect = runCatching {
+                controller.reconnectShizukuIfAuthorized {
+                    !recoveryCancelled.get() && RuntimeHost.controllerOrNull() === controller
+                }
+            }.getOrDefault(ShizukuReconnectResult.NOT_ELIGIBLE)
+            when (shizukuReconnect) {
+                ShizukuReconnectResult.FAILED -> {
+                    diagnostics.record(
+                        DiagnosticLevel.WARN,
+                        DiagnosticEvent.DEVICE_BRIDGE,
+                        mapOf("result" to "failed", "reason" to "shizuku_reconnect"),
+                    )
+                    runCatching { TaskNotification.postShizukuReconnectFailed(applicationContext) }
+                }
+                ShizukuReconnectResult.CONNECTED -> diagnostics.record(
+                    DiagnosticLevel.INFO,
+                    DiagnosticEvent.DEVICE_BRIDGE,
+                    mapOf("result" to "ok", "reason" to "shizuku_reconnect"),
+                )
+                ShizukuReconnectResult.NOT_ELIGIBLE -> Unit
+            }
+            check(!recoveryCancelled.get() && RuntimeHost.controllerOrNull() === controller) { "恢复已取消" }
+            RuntimeHost.startHarness(controller)
+            diagnostics.record(
+                DiagnosticLevel.INFO,
+                DiagnosticEvent.KEEP_ALIVE,
+                mapOf("reason" to "boot_recovery_started", "active" to "true"),
+            )
+        } catch (_: Throwable) {
+            diagnostics.record(
+                DiagnosticLevel.WARN,
+                DiagnosticEvent.KEEP_ALIVE,
+                mapOf("reason" to "boot_recovery_failed", "active" to "false"),
+            )
+            // 启动失败时立即移除前台服务，避免留下误导性常驻通知。
+            detachRecoveryRuntime()
+            stopForegroundCompat()
+            stopSelfResult(startId)
+        }
+    }
+
+    private fun canRecoverAfterBoot(): Boolean = try {
+        val store = RuntimeStore(applicationContext)
+        HarnessKeepAlivePolicy.shouldRecoverAfterBoot(
+            store.keepRuntimeInBackground(),
+            store.runtimeIntentRecord().intent,
+        )
+    } catch (_: Throwable) {
+        false
+    }
+
+    private fun detachRecoveryRuntime() {
+        if (!recoverySinkAttached) return
+        recoverySinkAttached = false
+        try {
+            RuntimeHost.detachPluginSink(BOOT_RECOVERY_SINK)
+        } catch (_: Throwable) {
+            // 释放失败不阻塞服务销毁；RuntimeHost 会在下次获取时重建。
+        }
+    }
+}

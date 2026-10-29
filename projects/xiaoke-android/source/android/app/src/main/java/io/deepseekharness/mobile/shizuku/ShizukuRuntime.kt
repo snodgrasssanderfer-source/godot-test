@@ -1,0 +1,892 @@
+package io.deepseekharness.mobile.shizuku
+
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Handler
+import android.os.IBinder
+import android.os.Looper
+import android.os.RemoteException
+import io.deepseekharness.mobile.BuildConfig
+import io.deepseekharness.mobile.runtime.RuntimeFailure
+import io.deepseekharness.mobile.runtime.RuntimeLimits
+import io.deepseekharness.mobile.runtime.UbuntuTerminalManager
+import rikka.shizuku.Shizuku
+import java.util.Base64
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicBoolean
+
+data class ShizukuState(
+    val installed: Boolean,
+    val running: Boolean,
+    val permission: String,
+    val connected: Boolean,
+    /**
+     * Shizuku **服务端 API 版本**（未安装或未运行时为空串）。
+     *
+     * 注意它不是 Shizuku 应用的版本号：13.x 的各版应用（13.5.x、13.6.0…）上报的都是 `13`，
+     * 因此在界面上必须与 [appVersion] 分开显示，否则用户会以为「版本识别错了」。
+     */
+    val version: String,
+    /**
+     * 已安装的 Shizuku **应用版本名**（读不到时为空串）。
+     *
+     * 用户更新 Shizuku 后最需要看到的就是它：拿它可以和 Shizuku 应用里显示的版本对齐，
+     * 也能判断「服务端 API 13」到底是哪个版本的 Shizuku 在提供。
+     */
+    val appVersion: String,
+)
+
+class ShizukuRuntime(
+    context: Context,
+    private val onOutput: (sessionId: String, dataBase64: String, suppressPublicOutput: Boolean) -> Unit,
+    private val onExit: (sessionId: String, exitCode: Int) -> Unit,
+) {
+    private val appContext = context.applicationContext
+    private val mainHandler = Handler(Looper.getMainLooper())
+    /**
+     * Shizuku.bindUserService() performs a synchronous Binder RPC in the caller.  Keep it
+     * off the main looper; a stuck Shizuku server must not freeze the management WebView.
+     */
+    private val bindExecutor: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "dsh-shizuku-bind").apply { isDaemon = true }
+    }
+    private val bindDispatcher = ShizukuBindDispatcher(bindExecutor)
+    /** 远程 closeAll 也可能卡在 Binder；它不能占住运行时生命周期锁。 */
+    private val closeExecutor: ExecutorService = Executors.newCachedThreadPool { runnable ->
+        Thread(runnable, "dsh-shizuku-close").apply { isDaemon = true }
+    }
+    private val sessions = ConcurrentHashMap.newKeySet<String>()
+    /** 客户端侧预检，配合 UserService 的信号量共同限制 PTY 资源。 */
+    private val sessionCreateLock = Any()
+    private val binderFutureLock = Any()
+    private val connectionFutureLock = Any()
+    private var binderFuture: CompletableFuture<Unit>? = null
+    private var connectionFuture: CompletableFuture<IDeviceShellService>? = null
+    private val serviceGeneration = AtomicLong(0)
+    @Volatile private var permissionDeniedThisSession = false
+    @Volatile private var permissionFuture: CompletableFuture<Int>? = null
+    @Volatile private var service: IDeviceShellService? = null
+    // 保留创建副屏的那条连接，主 Shizuku Binder 撤销后仍可尽力回收旧会话。
+    @Volatile private var virtualScreenOwner: Pair<IDeviceShellService, String>? = null
+    @Volatile private var activeServiceGeneration = 0L
+    @Volatile private var activeConnection: ServiceConnection? = null
+    private val closed = AtomicBoolean(false)
+    private val stopGate = ShizukuStopGate { disconnectBlocking() }
+
+    private val serviceArgs = Shizuku.UserServiceArgs(
+        ComponentName(appContext, DeviceShellUserService::class.java),
+    )
+        .daemon(false)
+        .tag("dsh-device-shell")
+        .processNameSuffix("device_shell")
+        .debuggable(BuildConfig.DEBUG)
+        .version(USER_SERVICE_VERSION)
+
+    /**
+     * 状态读取闸门。
+     *
+     * 前端每 5 秒轮询一次 [state]；服务端卡住时读取会一直挂在 binder 上，
+     * 闸门保证「同时只有一次读取」，后续轮询直接复用上一次结果，不再占用执行线程。
+     * binder 到达或断开时要作废一次（见 [binderReceivedListener] 与 [binderDeadListener]）：
+     * 那时服务端已经换了，卡死在途的那次读取永远不会回来，不作废就再也读不出真实状态。
+     */
+    private val stateCache = ShizukuStateCache(
+        read = { readState() },
+        fallback = { fallbackState() },
+    )
+
+    private val binderReceivedListener = Shizuku.OnBinderReceivedListener {
+        permissionDeniedThisSession = false
+        // 服务端到达（含重启后的重新到达）：上一茬的读数、以及可能卡死在途的那次读取一起作废。
+        stateCache.invalidate()
+        synchronized(binderFutureLock) {
+            binderFuture?.complete(Unit)
+        }
+    }
+
+    private val binderDeadListener = Shizuku.OnBinderDeadListener {
+        val error = RemoteException("Shizuku binder died")
+        val staleNotification = synchronized(connectionFutureLock) {
+            if (tryPingBinder()) {
+                true
+            } else {
+                service = null
+                activeServiceGeneration = serviceGeneration.incrementAndGet()
+                activeConnection = null
+                connectionFuture?.completeExceptionally(error)
+                connectionFuture = null
+                false
+            }
+        }
+        if (staleNotification) return@OnBinderDeadListener
+        // binder 真的断了（不是「ping 得到」的旧通知）：此刻的读数与在途读取都属于上一茬服务端。
+        stateCache.invalidate()
+        permissionFuture?.completeExceptionally(error)
+        synchronized(binderFutureLock) {
+            binderFuture?.completeExceptionally(error)
+            binderFuture = null
+        }
+        failSessions(255)
+    }
+
+    private fun serviceConnection(generation: Long): ServiceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+            if (!isActiveConnection(generation, this)) return
+            if (binder == null || !binder.isBinderAlive) {
+                failServiceConnection(RemoteException("Shizuku returned an invalid UserService binder"), generation, this)
+                return
+            }
+            val connected = IDeviceShellService.Stub.asInterface(binder)
+            synchronized(connectionFutureLock) {
+                if (!isActiveConnection(generation, this)) return
+                service = connected
+                connectionFuture?.complete(connected)
+            }
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            failServiceConnection(RemoteException("Shizuku UserService disconnected"), generation, this)
+        }
+
+        override fun onBindingDied(name: ComponentName?) {
+            failServiceConnection(RemoteException("Shizuku UserService binding died"), generation, this)
+        }
+
+        override fun onNullBinding(name: ComponentName?) {
+            failServiceConnection(RemoteException("Shizuku returned a null UserService binding"), generation, this)
+        }
+    }
+
+    init {
+        Shizuku.addBinderReceivedListenerSticky(binderReceivedListener, mainHandler)
+        Shizuku.addBinderDeadListener(binderDeadListener, mainHandler)
+    }
+
+    private fun callback(
+        suppressPublicOutput: Boolean,
+        onSessionExit: ((String) -> Unit)?,
+    ) = object : IDeviceShellCallback.Stub() {
+        override fun onOutput(sessionId: String?, data: ByteArray?) {
+            if (sessionId == null || !SESSION_PATTERN.matches(sessionId) || data == null || data.isEmpty() || data.size > 32 * 1024) return
+            onOutput(sessionId, Base64.getEncoder().encodeToString(data), suppressPublicOutput)
+        }
+
+        override fun onExit(sessionId: String?, exitCode: Int) {
+            if (sessionId != null && SESSION_PATTERN.matches(sessionId)) {
+                sessions.remove(sessionId)
+                // 设备命令会话（suppressPublicOutput=true）不向终端 UI 广播退出事件，
+                // 但会话内的在途设备命令必须立刻知道「不会再有输出了」，
+                // 否则「BEGIN 已出现、END 永不到来」只能拖到 60 秒超时。
+                onSessionExit?.invoke(sessionId)
+                // 必须带外层限定符：裸写 onExit(...) 会解析到本对象自己的 onExit，
+                // 变成无限递归并抛 StackOverflowError，退出事件永远送不到运行时。
+                if (!suppressPublicOutput) this@ShizukuRuntime.onExit(sessionId, exitCode.coerceIn(0, 255))
+            }
+        }
+    }
+
+    /**
+     * Shizuku 当前状态。
+     *
+     * 走 [ShizukuStateCache]：服务端卡住时，新的调用不会继续堆在 binder 上
+     * （真机反馈的「点打开 Shizuku 会卡」正是这么来的），界面最多显示上一次的结果。
+     */
+    fun state(): ShizukuState = stateCache.current()
+
+    /** 真实读取一次：只读状态，不执行任何设备命令。 */
+    private fun readState(): ShizukuState {
+        val installed = appContext.packageManager.resolveContentProvider(SHIZUKU_AUTHORITY, 0) != null
+        val running = installed && try {
+            Shizuku.pingBinder()
+        } catch (_: Throwable) {
+            false
+        }
+        val granted = running && try {
+            !Shizuku.isPreV11() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+        } catch (_: Throwable) {
+            false
+        }
+        val permission = when {
+            granted -> "granted"
+            running && (permissionDeniedThisSession || permissionRationaleVisible()) -> "denied"
+            else -> "undetermined"
+        }
+        val connected = granted && liveService() != null
+        // 服务端 API 版本：`Shizuku.getVersion()` 在权限未授予时不抛异常而是返回 -1，
+        // 直接显示会变成「服务端 API -1」这种像乱码的版本，所以只认正数。
+        val version = if (installed && running) {
+            try {
+                Shizuku.getVersion().takeIf { it > 0 }?.toString() ?: ""
+            } catch (_: Throwable) {
+                ""
+            }
+        } else {
+            ""
+        }
+        return ShizukuState(installed, running, permission, connected, version, installedAppVersion(installed))
+    }
+
+    /**
+     * 有另一次读取在途时的兜底状态：只查「是否安装」，一个 binder 调用都不做。
+     *
+     * 结果偏向保守（`running = false`）：服务端既然卡到读不出状态，界面上按「未运行」显示
+     * 反而给出正确的下一步——点「打开 Shizuku」去重启服务，而不是让用户对着转圈等。
+     */
+    private fun fallbackState(): ShizukuState {
+        val installed = try {
+            appContext.packageManager.resolveContentProvider(SHIZUKU_AUTHORITY, 0) != null
+        } catch (_: Throwable) {
+            false
+        }
+        return ShizukuState(
+            installed = installed,
+            running = false,
+            permission = "undetermined",
+            connected = false,
+            version = "",
+            appVersion = installedAppVersion(installed),
+        )
+    }
+
+    /**
+     * 已安装 Shizuku 应用的版本名（如 `13.6.0`）。
+     *
+     * 只回传能过前端标识符校验的字符（字母、数字、点、下划线、连字符，最多 32 个字符）：
+     * 版本名里混进别的字符（空格、括号、中文等）时宁可不显示，也不让整份状态
+     * 因为前端格式校验失败被整体丢弃——那样界面会连「已安装」都读不出来。
+     */
+    private fun installedAppVersion(installed: Boolean): String {
+        if (!installed) return ""
+        return try {
+            val raw = appContext.packageManager.getPackageInfo(SHIZUKU_PACKAGE, 0).versionName ?: ""
+            raw.filter { APP_VERSION_ALLOWED.contains(it) }.take(APP_VERSION_MAX_LENGTH)
+        } catch (_: Throwable) {
+            ""
+        }
+    }
+
+    /**
+     * 设备 Shell 健康检查。
+     *
+     * 只读取 binder 可用性、用户授权与 UserService 状态：
+     *  - 不执行任何 Shell 命令，不读写文件，不连接设备桥；
+     *  - 不抛出异常，未安装、未授权、服务断开或 binder 死亡时统一返回不可用状态，
+     *    调用方据此降级运行；
+     *  - 不写日志，因而不会输出凭据、命令参数或会话标识。
+     */
+    fun healthCheck(): ShizukuState = try {
+        state()
+    } catch (_: Throwable) {
+        ShizukuState(
+            installed = false,
+            running = false,
+            permission = "undetermined",
+            connected = false,
+            version = "",
+            appVersion = "",
+        )
+    }
+
+    @Synchronized
+    fun requestPermission(): ShizukuState {
+        val current = readState()
+        if (!current.installed) throw RuntimeFailure("SHIZUKU_UNAVAILABLE", "请先安装 Shizuku")
+        if (!current.running) awaitBinder()
+        if (Shizuku.isPreV11()) {
+            throw RuntimeFailure("SHIZUKU_VERSION_UNSUPPORTED", "当前 Shizuku 版本过旧，请升级后重试")
+        }
+        if (readState().permission == "granted") return connect()
+
+        val result = CompletableFuture<Int>()
+        val listener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
+            if (requestCode == PERMISSION_REQUEST_CODE) result.complete(grantResult)
+        }
+        permissionFuture = result
+        var listenerAdded = false
+        try {
+            Shizuku.addRequestPermissionResultListener(listener)
+            listenerAdded = true
+            val posted = mainHandler.post {
+                try {
+                    Shizuku.requestPermission(PERMISSION_REQUEST_CODE)
+                } catch (error: Throwable) {
+                    result.completeExceptionally(error)
+                }
+            }
+            if (!posted) {
+                result.completeExceptionally(IllegalStateException("main handler rejected permission request"))
+            }
+            val grantResult = result.get(PERMISSION_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            // Sticky binder callbacks are delivered asynchronously and may arrive while the
+            // permission dialog is open. The permission result itself remains authoritative;
+            // binder death already completes permissionFuture exceptionally.
+            permissionDeniedThisSession = grantResult != PackageManager.PERMISSION_GRANTED
+            if (grantResult != PackageManager.PERMISSION_GRANTED) {
+                throw RuntimeFailure("SHIZUKU_PERMISSION_DENIED", "Shizuku 权限未授予")
+            }
+            return connect()
+        } catch (error: TimeoutException) {
+            throw RuntimeFailure("SHIZUKU_PERMISSION_TIMEOUT", "等待 Shizuku 授权超时", error)
+        } catch (error: InterruptedException) {
+            Thread.currentThread().interrupt()
+            throw RuntimeFailure("SHIZUKU_PERMISSION_INTERRUPTED", "等待 Shizuku 授权被中断", error)
+        } catch (error: ExecutionException) {
+            throw RuntimeFailure("SHIZUKU_PERMISSION_FAILED", "无法向 Shizuku 请求授权", error.cause ?: error)
+        } catch (error: RuntimeFailure) {
+            throw error
+        } catch (error: Throwable) {
+            throw RuntimeFailure("SHIZUKU_PERMISSION_FAILED", "无法向 Shizuku 请求授权", error)
+        } finally {
+            if (listenerAdded) {
+                try {
+                    Shizuku.removeRequestPermissionResultListener(listener)
+                } catch (_: Throwable) {
+                    // Binder death already invalidates the listener registration.
+                }
+            }
+            if (permissionFuture === result) permissionFuture = null
+        }
+    }
+
+    /**
+     * 打开 Shizuku：已安装就拉起它，未安装则指向官方分发位置。
+     *
+     * 未安装时**不再尝试应用商店**：Shizuku 不在应用商店分发（既有的 `market://` 与
+     * `play.google.com` 兜底早已失效，点了只会落空），官方只在自己的 GitHub 仓库发布。
+     * 因此这里统一指向仓库地址，由用户按官方说明安装。
+     */
+    fun openManager() {
+        val launch = appContext.packageManager.getLaunchIntentForPackage(SHIZUKU_PACKAGE)
+        if (launch != null) {
+            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            try {
+                appContext.startActivity(launch)
+                return
+            } catch (_: Exception) {
+                // 部分 ROM 会拒绝直接拉起（或安装包不完整）：落回下面的官方页面，
+                // 让用户仍有可操作的下一步，而不是只看到一句失败。
+            }
+        }
+        try {
+            appContext.startActivity(
+                Intent(Intent.ACTION_VIEW, Uri.parse(SHIZUKU_REPOSITORY_URL))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        } catch (fallbackError: Exception) {
+            throw RuntimeFailure("SHIZUKU_OPEN_FAILED", "无法打开 Shizuku", fallbackError)
+        }
+    }
+
+    fun connect(): ShizukuState {
+        requirePermission()
+        requireService()
+        // 用户显式连接后必须回真实读数，不能复用轮询结果（否则刚连上却显示未连接）。
+        return readState()
+    }
+
+    /**
+     * 只恢复已运行、受支持且已授权的连接；不等服务启动、不弹授权、不读取状态缓存。
+     *
+     * 返回值只表示「已完成一次 UserService 连接（或复用了现有连接）」；false 表示
+     * 前置条件在执行期间不再满足。调用方可据此区分重启后的连接失败与「Shizuku 尚未
+     * 运行/授权」这类无需打扰用户的状态。
+     */
+    fun connectIfAuthorized(permitted: () -> Boolean, current: () -> Boolean): Boolean {
+        val allowed = { !closed.get() && !Thread.currentThread().isInterrupted && permitted() }
+        if (!allowed() || !current() || !tryPingBinder()) return false
+        if (Shizuku.isPreV11() || Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) return false
+        if (!allowed() || !current()) return false
+        // 一旦开始绑定便由 UserService 的连接代次接管；首次 sticky 回调不能取消其他调用已复用的 future。
+        requireService(allowed, waitForBinder = false)
+        return true
+    }
+
+    fun startVirtualScreen(component: String, width: Int, height: Int, dpi: Int, owner: IBinder): org.json.JSONObject {
+        requirePermission()
+        io.deepseekharness.mobile.virtualscreen.VirtualScreenPolicy.component(component)
+        io.deepseekharness.mobile.virtualscreen.VirtualScreenPolicy.dimensions(width, height, dpi)
+        val connection = requireService()
+        val created = org.json.JSONObject(connection.startVirtualScreen(component, width, height, dpi, owner))
+        virtualScreenOwner = connection to created.getString("sessionId")
+        return created
+    }
+
+    fun virtualScreenState(): org.json.JSONObject {
+        requirePermission()
+        return org.json.JSONObject(requireService().virtualScreenState())
+    }
+
+    fun virtualScreenAction(parameters: String): org.json.JSONObject {
+        requirePermission()
+        require(parameters.length <= 4096)
+        return org.json.JSONObject(requireService().virtualScreenAction(parameters))
+    }
+
+    /** 仅用于回收已拥有的副屏；撤销权限后仍尝试通过旧连接释放，不重新绑定服务。 */
+    fun closeVirtualScreen(sessionId: String) {
+        require(SESSION_PATTERN.matches(sessionId))
+        val owned = virtualScreenOwner?.takeIf { it.second == sessionId } ?: return
+        try {
+            if (owned.first.asBinder().isBinderAlive) owned.first.virtualScreenAction(org.json.JSONObject().put("sessionId", sessionId).put("action", "stop").toString())
+            else throw RuntimeFailure("SHIZUKU_SERVICE_FAILED", "Shizuku 用户服务已断开")
+            virtualScreenOwner = null
+        } catch (error: Exception) {
+            // Keep the owner so disconnect/shutdown can retry while the old binder is alive.
+            throw if (error is RuntimeFailure) error else RuntimeFailure("VIRTUAL_SCREEN_CLOSE_FAILED", "无法关闭副屏", error)
+        } finally {
+            // A dead binder cannot be retried; a live binder remains owned on failure.
+            if (!owned.first.asBinder().isBinderAlive && virtualScreenOwner === owned) virtualScreenOwner = null
+        }
+    }
+
+    fun virtualScreenSnapshot(sessionId: String): ByteArray {
+        requirePermission()
+        require(SESSION_PATTERN.matches(sessionId))
+        val pipe = requireService().virtualScreenSnapshot(sessionId)
+        return android.os.ParcelFileDescriptor.AutoCloseInputStream(pipe).use { input ->
+            val out = java.io.ByteArrayOutputStream()
+            val buffer = ByteArray(8192)
+            while (true) {
+                val n = input.read(buffer)
+                if (n < 0) break
+                check(out.size() + n <= 8 * 1024 * 1024) { "副屏截图过大" }
+                out.write(buffer, 0, n)
+            }
+            pipe.checkError()
+            out.toByteArray()
+        }
+    }
+
+    /** 预览专用硬件帧；像素不再经过 PNG 编解码。 */
+    fun virtualScreenFrame(sessionId: String): android.hardware.HardwareBuffer {
+        requirePermission()
+        require(SESSION_PATTERN.matches(sessionId))
+        return requireService().virtualScreenFrame(sessionId).buffer
+    }
+
+    /** Reads the same-frame PNG envelope through a pipe; image bytes never cross Binder inline. */
+    fun virtualScreenScreenshot(sessionId: String): org.json.JSONObject {
+        requirePermission()
+        require(SESSION_PATTERN.matches(sessionId))
+        val pipe = requireService().virtualScreenSnapshotEnvelope(sessionId)
+        return android.os.ParcelFileDescriptor.AutoCloseInputStream(pipe).use { input ->
+            val data = java.io.DataInputStream(java.io.BufferedInputStream(input))
+            val headerLength = data.readInt()
+            require(headerLength in 1..4096) { "副屏截图元数据无效" }
+            val header = ByteArray(headerLength)
+            data.readFully(header)
+            val result = org.json.JSONObject(String(header, Charsets.UTF_8))
+            val image = java.io.ByteArrayOutputStream()
+            val buffer = ByteArray(8192)
+            while (true) {
+                val count = data.read(buffer)
+                if (count < 0) break
+                check(image.size() + count <= 8 * 1024 * 1024) { "副屏截图过大" }
+                image.write(buffer, 0, count)
+            }
+            pipe.checkError()
+            check(image.size() > 0) { "副屏截图为空" }
+            result.put("imageBase64", java.util.Base64.getEncoder().encodeToString(image.toByteArray()))
+        }
+    }
+
+    fun create(
+        columns: Int,
+        rows: Int,
+        suppressPublicOutput: Boolean = false,
+        permitted: () -> Boolean = { true },
+        onSessionExit: ((String) -> Unit)? = null,
+    ): String {
+        UbuntuTerminalManager.validateSize(columns, rows)
+        if (!permitted()) throw RuntimeFailure("DEVICE_BRIDGE_STOPPED", "设备桥已停止")
+        requirePermission()
+        val current = requireService(permitted)
+        if (!permitted()) throw RuntimeFailure("DEVICE_BRIDGE_STOPPED", "设备桥已停止")
+        val id = synchronized(sessionCreateLock) {
+            if (sessions.size >= MAX_SESSIONS) {
+                throw RuntimeFailure("DEVICE_SESSION_LIMIT", "设备 Shell 会话数已达上限，请先关闭已有会话")
+            }
+            val created = try {
+                current.createSession(columns, rows, callback(suppressPublicOutput, onSessionExit))
+            } catch (error: RemoteException) {
+                service = null
+                throw RuntimeFailure("SHIZUKU_SERVICE_FAILED", "无法创建设备 Shell", error)
+            }
+            if (!SESSION_PATTERN.matches(created)) {
+                try {
+                    current.closeSession(created)
+                } catch (_: RemoteException) {
+                    // 无效标识无法由客户端追踪；UserService 会在连接回收时清理。
+                }
+                throw RuntimeFailure("SESSION_ID_INVALID", "设备 Shell 返回无效会话标识")
+            }
+            sessions.add(created)
+            created
+        }
+        if (!permitted()) {
+            try {
+                current.closeSession(id)
+            } catch (_: RemoteException) {
+                // Service teardown owns any session that raced with bridge shutdown.
+            }
+            throw RuntimeFailure("DEVICE_BRIDGE_STOPPED", "设备桥已停止")
+        }
+        return id
+    }
+
+    fun contains(sessionId: String): Boolean = sessions.contains(sessionId)
+
+    fun hasSessions(): Boolean = sessions.isNotEmpty()
+
+    fun write(sessionId: String, data: ByteArray) {
+        requireSession(sessionId)
+        if (data.isEmpty() || data.size > RuntimeLimits.MAX_TERMINAL_INPUT_BYTES) {
+            throw RuntimeFailure("TERMINAL_INPUT_INVALID", "终端输入长度无效")
+        }
+        try {
+            requireService().write(sessionId, data)
+        } catch (error: RemoteException) {
+            throw RuntimeFailure("TERMINAL_WRITE_FAILED", "无法写入设备 Shell", error)
+        }
+    }
+
+    fun resize(sessionId: String, columns: Int, rows: Int) {
+        UbuntuTerminalManager.validateSize(columns, rows)
+        requireSession(sessionId)
+        try {
+            requireService().resize(sessionId, columns, rows)
+        } catch (error: RemoteException) {
+            throw RuntimeFailure("TERMINAL_RESIZE_FAILED", "无法调整设备 Shell", error)
+        }
+    }
+
+    fun close(sessionId: String) {
+        requireSession(sessionId)
+        try {
+            requireService().closeSession(sessionId)
+        } catch (error: RemoteException) {
+            sessions.remove(sessionId)
+            throw RuntimeFailure("TERMINAL_CLOSE_FAILED", "无法关闭设备 Shell", error)
+        }
+    }
+
+    fun closeAllAndWait(timeoutMillis: Long = 4_000) {
+        val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis.coerceAtLeast(1))
+        val current = service ?: run {
+            while (sessions.isNotEmpty() && System.nanoTime() < deadline) {
+                try {
+                    Thread.sleep(20)
+                } catch (error: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    throw RuntimeFailure("TERMINAL_STOP_INTERRUPTED", "等待设备 Shell 关闭时被中断", error)
+                }
+            }
+            if (sessions.isNotEmpty()) failSessions(255)
+            return
+        }
+        run {
+            val closeTask = try {
+                closeExecutor.submit {
+                    try {
+                        current.closeAll()
+                    } catch (_: RemoteException) {
+                        service = null
+                    }
+                }
+            } catch (_: Throwable) {
+                null
+            }
+            if (closeTask != null) {
+                try {
+                    val remaining = (deadline - System.nanoTime()).coerceAtLeast(1)
+                    closeTask.get(remaining, TimeUnit.NANOSECONDS)
+                } catch (_: TimeoutException) {
+                    // Binder 调用无法可靠中断；放弃等待并让会话回收路径继续。
+                } catch (error: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    throw RuntimeFailure("TERMINAL_STOP_INTERRUPTED", "等待设备 Shell 关闭时被中断", error)
+                } catch (_: java.util.concurrent.ExecutionException) {
+                    service = null
+                }
+            }
+        }
+        while (sessions.isNotEmpty() && System.nanoTime() < deadline) {
+            try {
+                Thread.sleep(20)
+            } catch (error: InterruptedException) {
+                Thread.currentThread().interrupt()
+                throw RuntimeFailure("TERMINAL_STOP_INTERRUPTED", "等待设备 Shell 关闭时被中断", error)
+            }
+        }
+        if (sessions.isNotEmpty()) failSessions(255)
+    }
+
+    fun disconnect() {
+        stopGate.await()
+    }
+
+    private fun disconnectBlocking() {
+        var failure: RuntimeFailure? = null
+        virtualScreenOwner?.let {
+            try {
+                closeVirtualScreen(it.second)
+            } catch (error: RuntimeFailure) {
+                // Do not hide a failed stop: callers must know the display may still be alive.
+                failure = error
+            }
+        }
+        val current = service
+        val currentBinder = current?.asBinder()?.takeIf { it.isBinderAlive }
+        val serviceStopped = CountDownLatch(if (currentBinder != null) 1 else 0)
+        val deathRecipient = IBinder.DeathRecipient { serviceStopped.countDown() }
+        var deathLinked = false
+        if (currentBinder != null) {
+            try {
+                currentBinder.linkToDeath(deathRecipient, 0)
+                deathLinked = true
+                if (!currentBinder.isBinderAlive) serviceStopped.countDown()
+            } catch (_: RemoteException) {
+                serviceStopped.countDown()
+            }
+        }
+        val connection = synchronized(connectionFutureLock) {
+            activeServiceGeneration = serviceGeneration.incrementAndGet()
+            activeConnection.also { activeConnection = null }
+        }
+        try {
+            closeAllAndWait()
+        } catch (error: RuntimeFailure) {
+            if (failure == null) failure = error
+        }
+        // 此方法只在清理工作线程运行，解绑同样留在该线程，避免远程调用阻塞主线程。
+        try {
+            if (connection != null) Shizuku.unbindUserService(serviceArgs, connection, true)
+        } catch (_: Throwable) {
+            // Binding may already be gone after service death or permission revocation.
+        }
+        service = null
+        synchronized(connectionFutureLock) {
+            connectionFuture?.cancel(true)
+            connectionFuture = null
+        }
+        failSessions(255)
+        try {
+            if (!serviceStopped.await(SERVICE_EXIT_TIMEOUT_SECONDS, TimeUnit.SECONDS) && failure == null) {
+                failure = RuntimeFailure("SHIZUKU_UNBIND_TIMEOUT", "等待 Shizuku 用户服务退出超时")
+            }
+        } catch (error: InterruptedException) {
+            Thread.currentThread().interrupt()
+            if (failure == null) failure = RuntimeFailure("SHIZUKU_UNBIND_INTERRUPTED", "等待 Shizuku 用户服务退出被中断", error)
+        } finally {
+            if (deathLinked) {
+                try {
+                    currentBinder?.unlinkToDeath(deathRecipient, 0)
+                } catch (_: Throwable) {
+                    // The old UserService binder has already died.
+                }
+            }
+        }
+        failure?.let { throw it }
+    }
+
+    fun shutdown() {
+        closed.set(true)
+        var failure: RuntimeFailure? = null
+        try {
+            disconnect()
+        } catch (error: RuntimeFailure) {
+            failure = error
+        }
+        Shizuku.removeBinderReceivedListener(binderReceivedListener)
+        Shizuku.removeBinderDeadListener(binderDeadListener)
+        bindDispatcher.shutdown()
+        bindExecutor.shutdownNow()
+        closeExecutor.shutdownNow()
+        failure?.let { throw it }
+    }
+
+    private fun requireService(permitted: () -> Boolean = { true }, waitForBinder: Boolean = true): IDeviceShellService {
+        if (stopGate.isStopping()) throw RuntimeFailure("SHIZUKU_DISCONNECTING", "Shizuku 用户服务正在停止")
+        if (waitForBinder) awaitBinder()
+        else if (!tryPingBinder()) throw RuntimeFailure("SHIZUKU_BINDER_UNAVAILABLE", "Shizuku 服务不可用")
+        var bindingGeneration = 0L
+        var bindingConnection: ServiceConnection? = null
+        val future = synchronized(connectionFutureLock) {
+            if (!permitted()) throw RuntimeFailure("DEVICE_BRIDGE_STOPPED", "设备桥已停止")
+            if (stopGate.isStopping()) throw RuntimeFailure("SHIZUKU_DISCONNECTING", "Shizuku 用户服务正在停止")
+            bindingGeneration = activeServiceGeneration
+            bindingConnection = activeConnection
+            liveService()?.let { return it }
+            connectionFuture?.takeUnless { it.isDone } ?: CompletableFuture<IDeviceShellService>().also { created ->
+                val generation = serviceGeneration.incrementAndGet()
+                val connection = serviceConnection(generation)
+                bindingGeneration = generation
+                bindingConnection = connection
+                activeServiceGeneration = generation
+                activeConnection = connection
+                connectionFuture = created
+                val posted = bindDispatcher.submit(
+                    current = { permitted() && isActiveConnection(generation, connection) },
+                    bind = {
+                        // This is a synchronous Binder RPC; never run it on the main looper.
+                        Shizuku.bindUserService(serviceArgs, connection)
+                    },
+                    fail = created::completeExceptionally,
+                )
+                if (!posted) {
+                    created.completeExceptionally(IllegalStateException("Shizuku bind executor rejected binding"))
+                }
+            }
+        }
+        return try {
+            future.get(SERVICE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        } catch (error: TimeoutException) {
+            var staleConnection: ServiceConnection? = null
+            synchronized(connectionFutureLock) {
+                if (connectionFuture === future && activeServiceGeneration == bindingGeneration) {
+                    activeServiceGeneration = serviceGeneration.incrementAndGet()
+                    activeConnection = null
+                    connectionFuture = null
+                    staleConnection = bindingConnection
+                }
+            }
+            staleConnection?.let { stale ->
+                runCatching { Shizuku.unbindUserService(serviceArgs, stale, true) }
+            }
+            future.completeExceptionally(error)
+            throw RuntimeFailure("SHIZUKU_SERVICE_TIMEOUT", "连接 Shizuku 用户服务超时", error)
+        } catch (error: InterruptedException) {
+            Thread.currentThread().interrupt()
+            future.completeExceptionally(error)
+            throw RuntimeFailure("SHIZUKU_SERVICE_INTERRUPTED", "连接 Shizuku 用户服务被中断", error)
+        } catch (error: ExecutionException) {
+            throw RuntimeFailure("SHIZUKU_SERVICE_FAILED", "Shizuku 用户服务连接失败", error.cause ?: error)
+        } catch (error: Exception) {
+            throw RuntimeFailure("SHIZUKU_SERVICE_TIMEOUT", "连接 Shizuku 用户服务超时", error)
+        }
+    }
+
+    private fun requirePermission() {
+        awaitBinder()
+        val granted = try {
+            !Shizuku.isPreV11() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+        } catch (_: Throwable) {
+            false
+        }
+        if (!granted) {
+            throw RuntimeFailure("SHIZUKU_PERMISSION_REQUIRED", "设备 Shell 需要 Shizuku 授权")
+        }
+    }
+
+    private fun awaitBinder() {
+        if (tryPingBinder()) return
+        val future = synchronized(binderFutureLock) {
+            if (tryPingBinder()) return
+            binderFuture?.takeUnless { it.isDone } ?: CompletableFuture<Unit>().also { binderFuture = it }
+        }
+        try {
+            future.get(BINDER_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        } catch (error: TimeoutException) {
+            future.completeExceptionally(error)
+            throw RuntimeFailure("SHIZUKU_BINDER_TIMEOUT", "未能连接 Shizuku，请确认服务已启动", error)
+        } catch (error: InterruptedException) {
+            Thread.currentThread().interrupt()
+            future.completeExceptionally(error)
+            throw RuntimeFailure("SHIZUKU_BINDER_INTERRUPTED", "等待 Shizuku 连接被中断", error)
+        } catch (error: ExecutionException) {
+            throw RuntimeFailure("SHIZUKU_BINDER_UNAVAILABLE", "Shizuku 连接已断开", error.cause ?: error)
+        }
+        if (!tryPingBinder()) throw RuntimeFailure("SHIZUKU_BINDER_UNAVAILABLE", "Shizuku 服务不可用")
+    }
+
+    private fun tryPingBinder(): Boolean = try {
+        Shizuku.pingBinder()
+    } catch (_: Throwable) {
+        false
+    }
+
+    private fun permissionRationaleVisible(): Boolean = try {
+        !Shizuku.isPreV11() && Shizuku.shouldShowRequestPermissionRationale()
+    } catch (_: Throwable) {
+        false
+    }
+
+    private fun liveService(): IDeviceShellService? {
+        val current = service ?: return null
+        return if (current.asBinder().isBinderAlive && current.asBinder().pingBinder()) current else {
+            service = null
+            null
+        }
+    }
+
+    private fun isActiveConnection(generation: Long, connection: ServiceConnection): Boolean =
+        !stopGate.isStopping() && generation == activeServiceGeneration && activeConnection === connection
+
+    private fun failServiceConnection(error: Throwable, generation: Long, connection: ServiceConnection) {
+        synchronized(connectionFutureLock) {
+            if (!isActiveConnection(generation, connection)) return
+            service = null
+            activeServiceGeneration = serviceGeneration.incrementAndGet()
+            activeConnection = null
+            connectionFuture?.completeExceptionally(error)
+            connectionFuture = null
+        }
+        failSessions(255)
+    }
+
+    private fun requireSession(sessionId: String) {
+        if (!SESSION_PATTERN.matches(sessionId) || !sessions.contains(sessionId)) {
+            throw RuntimeFailure("SESSION_NOT_FOUND", "设备 Shell 会话不存在或已结束")
+        }
+    }
+
+    private fun failSessions(exitCode: Int) {
+        sessions.toList().forEach { id -> if (sessions.remove(id)) onExit(id, exitCode) }
+    }
+
+    companion object {
+        // Shizuku Manager 的 ContentProvider authority 为「包名.shizuku」，
+        // 不是包名本身；写错会导致 resolveContentProvider 检测不到已安装。
+        private const val SHIZUKU_AUTHORITY = "moe.shizuku.privileged.api.shizuku"
+        private const val SHIZUKU_PACKAGE = "moe.shizuku.privileged.api"
+
+        /**
+         * Shizuku 的官方分发位置。
+         *
+         * 它**不在应用商店分发**，因此未安装时的引导一律指向这个 GitHub 仓库，
+         * 不再尝试 `market://` 或 `play.google.com`（那些兜底点了只会落空）。
+         */
+        private const val SHIZUKU_REPOSITORY_URL = "https://github.com/RikkaApps/Shizuku"
+        private const val PERMISSION_REQUEST_CODE = 7319
+        private const val PERMISSION_TIMEOUT_SECONDS = 60L
+        private const val BINDER_TIMEOUT_SECONDS = 8L
+        private const val SERVICE_TIMEOUT_SECONDS = 10L
+        private const val SERVICE_EXIT_TIMEOUT_SECONDS = 5L
+        private const val USER_SERVICE_VERSION = 6
+        private const val MAX_SESSIONS = 4
+
+        /**
+         * 应用版本名允许回传给前端的字符集。
+         *
+         * 与前端 `src/platform/validation.ts` 的 `IDENTIFIER_PATTERN` 保持一致：
+         * 版本名里出现集合外的字符时会被过滤掉，宁可少显示也不让整份状态被前端丢弃。
+         */
+        private const val APP_VERSION_ALLOWED = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ._-"
+
+        /** 与前端 `optionalIdentifier` 的长度上限（32）一致。 */
+        private const val APP_VERSION_MAX_LENGTH = 32
+        private val SESSION_PATTERN = Regex("^[a-f0-9-]{36}$")
+    }
+}

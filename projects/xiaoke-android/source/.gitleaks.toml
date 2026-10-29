@@ -1,0 +1,4 @@
+# All source and example files use the default credential-scanning rules.
+title = "DeepSeek Harness Android"
+[extend]
+useDefault = true

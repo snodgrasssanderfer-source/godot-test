@@ -1,0 +1,13 @@
+plugins {
+    id 'com.android.application' version '8.7.3' apply false
+    id 'org.jetbrains.kotlin.android' version '2.0.21' apply false
+}
+tasks.register('clean', Delete) {
+    delete rootProject.layout.buildDirectory
+}
+
+// 使用已固定的构建工具，避免 AGP 为库子项目隐式下载另一版本。
+subprojects {
+    plugins.withId('com.android.application') { android.buildToolsVersion '35.0.0' }
+    plugins.withId('com.android.library') { android.buildToolsVersion '35.0.0' }
+}

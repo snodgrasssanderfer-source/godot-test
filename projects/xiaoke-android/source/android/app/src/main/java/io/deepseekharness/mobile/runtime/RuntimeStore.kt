@@ -1,0 +1,1565 @@
+package io.deepseekharness.mobile.runtime
+
+import android.content.Context
+import android.content.SharedPreferences
+import android.os.Build
+import android.system.ErrnoException
+import android.system.Os
+import android.system.OsConstants
+import io.deepseekharness.mobile.BuildConfig
+import io.deepseekharness.mobile.runtime.diagnostics.DiagnosticEvent
+import io.deepseekharness.mobile.runtime.diagnostics.DiagnosticLevel
+import io.deepseekharness.mobile.runtime.diagnostics.DiagnosticLog
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileInputStream
+import java.io.InputStream
+import java.nio.channels.Channels
+import java.nio.channels.FileChannel
+import java.nio.file.LinkOption
+import java.nio.file.StandardCopyOption
+import java.nio.file.StandardOpenOption
+import java.util.concurrent.TimeUnit
+
+class RuntimeStore(context: Context) {
+    private val appContext = context.applicationContext
+    private val preferences: SharedPreferences = appContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+    private val credentialCipher = RuntimeCredentialCipher()
+
+    val runtimeParent = File(appContext.noBackupFilesDir, "dsh-runtime")
+    val currentRoot = File(runtimeParent, "current")
+    val currentManifest = File(runtimeParent, "current-manifest.json")
+    internal val sharedFilesDirectory: File get() = appContext.filesDir
+
+    /**
+     * 安装期间的瞬时槽：提升新运行时前，旧运行时先改名到这里。
+     * 它**不是**用户可以切换的版本，提升成功后会被 [retainedRoot] 接手（见 RuntimeInstaller）。
+     */
+    val backupRoot = File(runtimeParent, "previous")
+    val backupManifest = File(runtimeParent, "previous-manifest.json")
+
+    /**
+     * 上一版本槽：上一次提升成功后，被换下来的那一份运行时留在这里。
+     *
+     * 与 [backupRoot] 分开是有意的：`previous*` 的语义是「提升正在进行」，
+     * 中断恢复逻辑据此判断该前滚还是回滚；已完成的版本必须用一个不会被恢复逻辑
+     * 误判的独立名字保存，否则用户会在下次安装开始时丢掉可回退的副本。
+     */
+    val retainedRoot = File(runtimeParent, "retained")
+    val retainedManifest = File(runtimeParent, "retained-manifest.json")
+    val runnerFile get() = File(appContext.applicationInfo.nativeLibraryDir, RUNNER_NAME)
+    val loaderFile get() = File(appContext.applicationInfo.nativeLibraryDir, LOADER_NAME)
+
+    /**
+     * APK 的 `nativeLibraryDir`：`libdsh_proot*.so` 的宿主真实路径所在目录。
+     *
+     * 移动端沙箱必须把这个目录授权进 Landlock 规则集，否则受限进程 execve `PROOT_LOADER`
+     * 会被内核拒绝（详见 [RuntimeSandboxRunner]）。
+     */
+    val nativeLibraryDirectory get() = File(appContext.applicationInfo.nativeLibraryDir)
+
+    /** proot 本体：由应用自身执行，留在私有目录（访客看不到，见 [RuntimeLauncherFiles]）。 */
+    private val launchDirectory = RuntimeLauncherFiles.runnerDirectory(appContext.noBackupFilesDir)
+    val launchRunnerFile = RuntimeLauncherFiles.runnerFile(appContext.noBackupFilesDir)
+
+    /**
+     * loader 的落点：**运行时根之内**（实体拷贝，或指回 [loaderFile] 的符号链接）。
+     *
+     * 三种形态由 [installGuestLoader] 按**实测**挑选，结论来自真机取证（见
+     * `docs/真机缺陷与改进清单.md` 的 P0-3 段）：
+     *  - 根内**实体拷贝**在 Android 17 上根本执行不了：SELinux 拒绝
+     *    `execute_no_trans` 于 `app_data_file` 的**常规文件**，而应用设不上
+     *    `security.android.exec` 属性（`Os.setxattr` 静默失败，实测 `stamped=false`）；
+     *  - 指回 APK `nativeLibraryDir` 的**符号链接**可用——执行的是 `apk_data_file`；
+     *  - 私有目录里的那份（0.2.3 的老位置）同样落在应用数据目录，只能救未受限启动。
+     *
+     * 「Landlock 只授权运行时根、且按最终 inode 判定」这条约束依然成立，它约束的是**沙箱内**
+     * 的运行；沙箱侧的补齐方式是把这个真实路径授权进规则集（见 [RuntimeSandboxRunner]），
+     * 而不是把 loader 搬回根内。
+     */
+    private val guestLoaderDirectory = RuntimeLauncherFiles.loaderDirectory(currentRoot)
+    val launchLoaderFile = RuntimeLauncherFiles.loaderFile(currentRoot)
+
+    /**
+     * 根内 loader 不可执行时的兜底落点：私有目录里的那份（0.2.3 的老位置）。
+     * 只救未受限启动，见 [RuntimeLauncherFiles.privateLoaderFile]。
+     */
+    private val privateLoaderFile = RuntimeLauncherFiles.privateLoaderFile(appContext.noBackupFilesDir)
+
+    /**
+     * 本次启动实际要交给 `PROOT_LOADER` 的 loader。
+     *
+     * 空 = 落在 [launchLoaderFile]（根内实体拷贝，或指回 APK 的符号链接）；
+     * 非空 = 两种根内形态都执行不了，已回退到私有副本 [privateLoaderFile]。
+     * 取值只由 [prepareLaunchFiles] 刷新，启动路径一律通过 [launchLoaderPath] 读取。
+     */
+    @Volatile private var launchLoaderOverride: File? = null
+
+    /** 最近一次 loader 实测执行的结果（[probeExecutable] 的原样输出），只用于日志与诊断。 */
+    @Volatile private var lastLoaderProbe: String? = null
+    val resolverFile = File(appContext.filesDir, "runtime-resolv.conf")
+    /** Host name map is generated alongside resolver configuration and bind-mounted into guest. */
+    val hostsFile = File(appContext.filesDir, "runtime-hosts")
+    val harnessPidFile = File(appContext.noBackupFilesDir, "dsh-harness.pid")
+
+    /**
+     * 应用自诊断日志。
+     *
+     * 放在 store 上的原因：运行时各组件（状态机、supervisor、插件、前台服务）都持有 store，
+     * 排障所需的埋点因此不需要新增构造参数。它只写受控枚举与受控键值，绝不保存凭据。
+     */
+    val diagnostics: DiagnosticLog by lazy { DiagnosticLog(appContext) }
+
+    private val launcherConfigDirectory = File(currentRoot, "root/.dsh-mobile")
+    private val providerPatchFile = File(launcherConfigDirectory, PROVIDER_PATCH_FILENAME)
+
+    /**
+     * 运行时根的执行位一次性修复。
+     *
+     * 已经装好的根救不了「解压器改对」——旧版本在链接降级路径上用 `File.setExecutable` 落执行位，
+     * 该 API 在荣耀等 ROM 上静默失败，于是根内的动态链接器副本可能没有执行位，只能就地补。
+     * 标记文件放在运行器私有目录里，[writeGuestLoaderCopy] 重写 loader 时会一并清掉（= 重装后重扫）。
+     */
+    private val guestExecutableRepair: RuntimeExecutableRepair by lazy {
+        RuntimeExecutableRepair(
+            root = currentRoot,
+            markerFile = File(guestLoaderDirectory, EXEC_REPAIR_MARKER_NAME),
+            log = { android.util.Log.w("dsh-runtime", it) },
+        )
+    }
+
+    @Volatile private var manifestCacheLoaded = false
+    @Volatile private var manifestCache: RuntimeManifest? = null
+    @Volatile private var retainedCacheLoaded = false
+    @Volatile private var retainedCache: RuntimeManifest? = null
+    @Volatile private var bundledManifestCacheLoaded = false
+    @Volatile private var bundledManifestCache: RuntimeManifest? = null
+
+    // UI lifecycle reads do not need credentials or a working Keystore service.
+    fun keepScreenAwake(): Boolean = preferences.getBoolean(KEY_KEEP_AWAKE, false)
+
+    /**
+     * 「后台保持 Harness」开关。
+     * 旧版本配置里没有该键，缺失时统一按 false 处理，与设置默认值保持一致。
+     */
+    fun keepRuntimeInBackground(): Boolean = preferences.getBoolean(KEY_KEEP_BACKGROUND, false)
+
+    /** 悬浮球开关。缺键时按 false 处理：老版本升级上来的用户不会突然多出一个球。 */
+    fun overlayBallEnabled(): Boolean = preferences.getBoolean(KEY_OVERLAY_BALL, false)
+
+    /**
+     * 由悬浮球菜单在原生侧直接关闭开关。
+     *
+     * 菜单是原生界面，没有前端调用栈可以回写设置，因此这里直接落盘。
+     * 本方法只负责写入持久化存储，不负责通知前端；界面要看到新值，
+     * 需要界面侧在进入设置页时重新读取设置，这是界面侧的职责。
+     * 只写这一个布尔量，不触碰其他设置。
+     */
+    fun setOverlayBallEnabled(enabled: Boolean) {
+        preferences.edit().putBoolean(KEY_OVERLAY_BALL, enabled).apply()
+    }
+
+    /**
+     * 把应用界面语言同步到 Harness 运行时的 `~/.dsh/settings.yaml`（locale.preference）。
+     *
+     * 运行时尚未安装时视为合法空操作：允许在安装前选择语言，由 startHarness() 重放。
+     * 安全校验点：路径全程 NoFollow 防符号链接逃逸；目录 0700、文件 0600（仅属主可读写）；
+     * 先写临时文件并 fsync，再原子替换，避免写出半截配置。
+     */
+    @Synchronized
+    fun syncHarnessLocale(language: String): Boolean {
+        val harnessLanguage = when (language) {
+            "zh-CN" -> "zh"
+            "en" -> "en"
+            else -> throw RuntimeFailure("LANGUAGE_INVALID", "不支持的应用语言")
+        }
+        // 安装前选择语言是允许的；运行时文件系统就绪后由 startHarness() 重放已保存的选择。
+        if (!RuntimeFiles.isDirectoryNoFollow(currentRoot)) return true
+        val rootHome = File(currentRoot, "root")
+        if (!RuntimeFiles.isDirectoryNoFollow(rootHome)) {
+            throw RuntimeFailure("LANGUAGE_SYNC_FAILED", "Harness 主目录无效")
+        }
+        val settingsFile = File(rootHome, ".dsh/settings.yaml")
+        val settingsDirectory = settingsFile.parentFile
+            ?: throw RuntimeFailure("LANGUAGE_SYNC_FAILED", "Harness 语言设置路径无效")
+        // dsh-settings-file 惰性创建该文件。这里补齐父目录与 locale 文档，
+        // 使首次 Harness 写入设置前选择的语言也能持久化并被其文件监听拾取。
+        if (!RuntimeFiles.existsNoFollow(settingsDirectory)) {
+            if (!settingsDirectory.mkdir() && !RuntimeFiles.existsNoFollow(settingsDirectory)) {
+                throw RuntimeFailure("LANGUAGE_SYNC_FAILED", "无法创建 Harness 语言设置目录")
+            }
+        }
+        if (!RuntimeFiles.isDirectoryNoFollow(settingsDirectory)) {
+            throw RuntimeFailure("LANGUAGE_SYNC_FAILED", "Harness 语言设置目录无效")
+        }
+        Os.chmod(settingsDirectory.absolutePath, 0x1c0)
+        val settingsExists = RuntimeFiles.existsNoFollow(settingsFile)
+        if (settingsExists && !isRegularFileNoFollow(settingsFile)) {
+            throw RuntimeFailure("LANGUAGE_SYNC_FAILED", "Harness 语言设置文件无效")
+        }
+        val current = try {
+            if (settingsExists) settingsFile.readText(Charsets.UTF_8) else ""
+        } catch (error: Exception) {
+            throw RuntimeFailure("LANGUAGE_SYNC_FAILED", "无法读取 Harness 语言设置", error)
+        }
+        val updated = HarnessLocaleSettings.updateYaml(current, harnessLanguage)
+        if (settingsExists && updated == current) return true
+        val temporary = File(settingsDirectory, ".settings.yaml.dsh-locale.tmp")
+        try {
+            if (RuntimeFiles.existsNoFollow(temporary)) temporary.delete()
+            FileChannel.open(
+                temporary.toPath(),
+                StandardOpenOption.CREATE_NEW,
+                StandardOpenOption.WRITE,
+                LinkOption.NOFOLLOW_LINKS,
+            ).use { channel ->
+                Channels.newOutputStream(channel).use { output ->
+                    output.write(updated.toByteArray(Charsets.UTF_8))
+                    output.flush()
+                    channel.force(true)
+                }
+            }
+            Os.chmod(temporary.absolutePath, 0x180)
+            try {
+                java.nio.file.Files.move(
+                    temporary.toPath(), settingsFile.toPath(),
+                    StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING,
+                    LinkOption.NOFOLLOW_LINKS,
+                )
+            } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
+                // 个别文件系统不支持原子改名时退化为普通替换，NoFollow 约束仍保留。
+                java.nio.file.Files.move(
+                    temporary.toPath(), settingsFile.toPath(),
+                    StandardCopyOption.REPLACE_EXISTING,
+                    LinkOption.NOFOLLOW_LINKS,
+                )
+            }
+            return true
+        } catch (error: Exception) {
+            try { temporary.delete() } catch (_: Exception) { }
+            throw RuntimeFailure("LANGUAGE_SYNC_FAILED", "无法保存 Harness 语言设置", error)
+        }
+    }
+
+    private fun isRegularFileNoFollow(file: File): Boolean = try {
+        val mode = Os.lstat(file.absolutePath).st_mode
+        OsConstants.S_ISREG(mode)
+    } catch (error: ErrnoException) {
+        if (error.errno == OsConstants.ENOENT) false else throw RuntimeFailure("FILESYSTEM_ERROR", "无法检查 Harness 设置文件", error)
+    }
+
+    /**
+     * 写入运行时恢复记录：只保存运行意图、最近阶段与时间。
+     *
+     * 这里刻意不保存任何凭据——Harness 的临时 Basic Auth 密码只存在于进程内存中。
+     * Android 进程被系统强制停止后，该密码不可恢复，恢复流程必须据此提示重新连接，
+     * 而不是假装旧会话仍在。
+     *
+     * 必须同步落盘（[android.content.SharedPreferences.Editor.commit]）：这条记录是
+     * 进程消失后判定「上次是否正常结束」的唯一依据，而进程消失恰恰可能紧跟在写入之后
+     * （正常退出后立即被系统或厂商清理；实测 MIUI 上出现过正常退出仍被误判为
+     * unclean_exit 的案例）。异步 apply 的磁盘写可能来不及完成就随进程丢失。
+     * 写入是低频的（仅在阶段变化时触发），commit 的开销可忽略。
+     */
+    fun recordRuntimeIntent(intent: RuntimeIntent, phase: RuntimePhase, updatedAtMillis: Long) {
+        preferences.edit()
+            .putString(KEY_RUNTIME_INTENT, intent.wireValue)
+            .putString(KEY_RUNTIME_PHASE, phase.wireValue)
+            .putLong(KEY_RUNTIME_UPDATED_AT, updatedAtMillis.coerceAtLeast(0))
+            .commit()
+    }
+
+    /** 读取运行时恢复记录；从未记录或内容损坏时返回 [RuntimeIntentRecord.EMPTY]。 */
+    fun runtimeIntentRecord(): RuntimeIntentRecord {
+        val phase = preferences.getString(KEY_RUNTIME_PHASE, null)
+            ?.let { raw -> RuntimePhase.entries.firstOrNull { it.wireValue == raw } }
+        return RuntimeIntentRecord(
+            intent = RuntimeIntent.parse(preferences.getString(KEY_RUNTIME_INTENT, null)),
+            phase = phase,
+            updatedAtMillis = preferences.getLong(KEY_RUNTIME_UPDATED_AT, 0L).coerceAtLeast(0L),
+        )
+    }
+
+    @Synchronized
+    fun settings(): RuntimeSettings {
+        val storedUrl = preferences.getString(KEY_MANIFEST_URL, null)
+        val storedSha256 = preferences.getString(KEY_MANIFEST_SHA256, null)
+        val pinnedDefaultAvailable = BuildConfig.DEFAULT_MANIFEST_URL.isNotEmpty() &&
+            BuildConfig.DEFAULT_MANIFEST_SHA256.isNotEmpty()
+        val migrateEmptyBundledSource = storedUrl == "" && storedSha256 == "" && pinnedDefaultAvailable
+        val usePinnedDefault = (storedUrl == null && storedSha256 == null) || migrateEmptyBundledSource
+        val providerApiKeys = providerApiKeysLocked()
+        val customProviders = customModelProvidersLocked()
+        val customProviderApiKeys = customProviderApiKeysLocked(customProviders.mapTo(linkedSetOf()) { it.id })
+        val harnessCredentials = harnessCredentialStatus(customProviders)
+        return RuntimeSettings(
+            manifestUrl = if (usePinnedDefault) BuildConfig.DEFAULT_MANIFEST_URL else storedUrl.orEmpty(),
+            manifestSha256 = if (usePinnedDefault) BuildConfig.DEFAULT_MANIFEST_SHA256 else storedSha256.orEmpty(),
+            keepScreenAwake = keepScreenAwake(),
+            keepRuntimeInBackground = keepRuntimeInBackground(),
+            overlayBallEnabled = overlayBallEnabled(),
+            terminalFontSize = preferences.getInt(KEY_FONT_SIZE, 14).coerceIn(11, 24),
+            configuredModelProviders = ModelProvider.entries.filterTo(linkedSetOf()) { providerApiKeys.containsKey(it) },
+            harnessConfiguredModelProviders = harnessCredentials.modelProviders,
+            customModelProviders = customProviders,
+            configuredCustomModelProviders = customProviders.mapNotNullTo(linkedSetOf()) { provider ->
+                provider.id.takeIf(customProviderApiKeys::containsKey)
+            },
+            harnessConfiguredCustomModelProviders = harnessCredentials.customProviderIds,
+        )
+    }
+
+    @Synchronized
+    fun saveSettings(
+        settings: RuntimeSettings,
+        providerApiKeyUpdates: Map<ModelProvider, String> = emptyMap(),
+        clearedProviderApiKeys: Set<ModelProvider> = emptySet(),
+        customProviders: List<CustomModelProvider> = emptyList(),
+        customProviderApiKeyUpdates: Map<String, String> = emptyMap(),
+        clearedCustomProviderApiKeys: Set<String> = emptySet(),
+        overlayBallEnabledUpdate: Boolean? = settings.overlayBallEnabled,
+    ): RuntimeSettings {
+        if (providerApiKeyUpdates.keys.any(clearedProviderApiKeys::contains)) {
+            throw RuntimeFailure("SETTINGS_INVALID", "同一模型凭据不能同时更新和清除")
+        }
+        val allowedCustomIds = customProviders.mapTo(linkedSetOf()) { it.id }
+        if (customProviderApiKeyUpdates.keys.any(clearedCustomProviderApiKeys::contains) ||
+            customProviderApiKeyUpdates.keys.any { it !in allowedCustomIds } || clearedCustomProviderApiKeys.any { it !in allowedCustomIds }
+        ) throw RuntimeFailure("SETTINGS_INVALID", "自定义模型凭据更新与供应商配置不一致")
+        val providerApiKeys = providerApiKeysLocked().toMutableMap()
+        clearedProviderApiKeys.forEach(providerApiKeys::remove)
+        providerApiKeys.putAll(providerApiKeyUpdates)
+        val storedCustomIds = customModelProvidersLocked().mapTo(linkedSetOf()) { it.id }
+        val customProviderApiKeys = customProviderApiKeysLocked(storedCustomIds).toMutableMap()
+        customProviderApiKeys.keys.retainAll(allowedCustomIds)
+        clearedCustomProviderApiKeys.forEach(customProviderApiKeys::remove)
+        customProviderApiKeys.putAll(customProviderApiKeyUpdates)
+        val encryptedCredentials = encryptProviderApiKeys(providerApiKeys)
+        val encryptedCustomCredentials = encryptCustomProviderApiKeys(customProviderApiKeys)
+        val editor = preferences.edit()
+            .putString(KEY_MANIFEST_URL, settings.manifestUrl)
+            .putString(KEY_MANIFEST_SHA256, settings.manifestSha256)
+            .putBoolean(KEY_KEEP_AWAKE, settings.keepScreenAwake)
+            .putBoolean(KEY_KEEP_BACKGROUND, settings.keepRuntimeInBackground)
+            .putInt(KEY_FONT_SIZE, settings.terminalFontSize)
+            // Retired frontend choices must not redirect the single official entrypoint.
+            .remove(KEY_LEGACY_DEFAULT_FRONTEND)
+            .putString(KEY_CUSTOM_PROVIDERS, customProvidersToJson(customProviders).toString())
+            .remove(KEY_API_KEY)
+            .remove("device_bridge_token")
+        overlayBallEnabledUpdate?.let { editor.putBoolean(KEY_OVERLAY_BALL, it) }
+        if (encryptedCredentials == null) editor.remove(KEY_PROVIDER_CREDENTIALS)
+        else editor.putString(KEY_PROVIDER_CREDENTIALS, encryptedCredentials)
+        if (encryptedCustomCredentials == null) editor.remove(KEY_CUSTOM_PROVIDER_CREDENTIALS)
+        else editor.putString(KEY_CUSTOM_PROVIDER_CREDENTIALS, encryptedCustomCredentials)
+        val committed = editor.commit()
+        if (!committed) throw RuntimeFailure("SETTINGS_WRITE_FAILED", "无法保存运行时设置")
+        val harnessCredentials = harnessCredentialStatus(customProviders)
+        return settings.copy(
+            // Omitted updates are read after commit so a concurrent native-menu hide is preserved.
+            overlayBallEnabled = overlayBallEnabledUpdate ?: overlayBallEnabled(),
+            configuredModelProviders = ModelProvider.entries.filterTo(linkedSetOf()) { providerApiKeys.containsKey(it) },
+            harnessConfiguredModelProviders = harnessCredentials.modelProviders,
+            customModelProviders = customProviders,
+            configuredCustomModelProviders = customProviders.mapNotNullTo(linkedSetOf()) { provider ->
+                provider.id.takeIf(customProviderApiKeys::containsKey)
+            },
+            harnessConfiguredCustomModelProviders = harnessCredentials.customProviderIds,
+        )
+    }
+
+    private fun harnessCredentialStatus(customProviders: List<CustomModelProvider>): HarnessCredentialStatus =
+        HarnessCredentialStatusReader.read(harnessCredentialsFile, customProviders)
+
+    /**
+     * Harness 自己的凭据文档（`$DSH_HOME/.credentials.yaml`，访客内 `/root/.dsh/.credentials.yaml`）。
+     *
+     * 官方前端「模型页」写的就是这一份；它也在 [RuntimePreservePolicy] 的保留白名单里，
+     * 因此 App 侧写入的是**同一份**用户数据，不引入第二处真源。
+     */
+    val harnessCredentialsFile = File(currentRoot, "${RuntimePreservePolicy.GUEST_DSH_HOME}/.credentials.yaml")
+
+    /**
+     * 访客侧 0600 环境文件（[RuntimeCommand.GUEST_SECRET_ENV_PATH] 对应的宿主路径）。
+     *
+     * 与 `launcher-providers.patch.json` 同目录、同样每次启动重新生成，不在保留白名单内 ——
+     * 运行时升级换代时随旧根目录一起消失。
+     */
+    val runtimeSecretFile = File(currentRoot, RuntimeCommand.GUEST_SECRET_ENV_PATH.removePrefix("/"))
+
+    /**
+     * 把本次启动的秘密投递到访客侧，返回**只含位置**的投递描述。
+     *
+     * 分两路：
+     *  - **模型凭据优先并写 [harnessCredentialsFile]（0600）**。pinned dsh 的
+     *    `@deepseek-ai/dsh-credentials-local` 分层是
+     *    「继承的进程环境 > `$DSH_HOME/.credentials.yaml` > `.env`」，因此**不设同名环境变量**时
+     *    dsh 就从它自己的凭据文档读取，取值连进程环境都不进。这条路径同时修掉一个既有症状：
+     *    环境层存在时 dsh 把该引用判为**只读**，模型页对同一把 key 的保存会直接报错。
+     *  - **每次启动生成的临时令牌**（`DSH_MOBILE_AUTH_TOKEN` / `DSH_DEVICE_BRIDGE_TOKEN`）
+     *    不能进那份跨升级保留的长期文档，写进访客侧 0600 环境文件，
+     *    由 argv 里那层固定的 `sh` 包装 `source` 之后 exec 真正的入口。
+     *
+     * 凭据文档不可安全编辑（形态陌生、目录/文件不可信、写入失败）时**回落**：模型凭据改由同一个
+     * 环境文件承载 —— 功能不变、argv 依旧只有路径。回落是刻意的：为了 argv 的清洁让 Harness 起不来
+     * 是本末倒置，而两条路径的 argv 形态完全相同。
+     *
+     * 顺序：先落文件、再返回描述；`RuntimeCommand.prootArgv` 只使用描述里的路径。
+     */
+    @Synchronized
+    internal fun prepareRuntimeSecrets(
+        harnessAuthToken: String?,
+        deviceBridgeAccess: DeviceBridgeAccess?,
+    ): RuntimeSecretDelivery {
+        if (harnessAuthToken != null && !RuntimeSecretPolicy.TOKEN_PATTERN.matches(harnessAuthToken)) {
+            throw RuntimeFailure("HARNESS_AUTH_INVALID", "Harness 临时凭据无效")
+        }
+        deviceBridgeAccess?.let { access ->
+            if (access.port !in 1024..65535 || !RuntimeSecretPolicy.TOKEN_PATTERN.matches(access.token)) {
+                throw RuntimeFailure("DEVICE_BRIDGE_INVALID", "设备桥临时连接信息无效")
+            }
+        }
+        val ephemeralSecrets = linkedMapOf<String, String>().apply {
+            harnessAuthToken?.let { put(MOBILE_AUTH_TOKEN_ENV, it) }
+            deviceBridgeAccess?.let { put(DEVICE_BRIDGE_TOKEN_ENV, it.token) }
+        }
+        val modelCredentials = modelCredentialValues()
+        val deliveredByFile = modelCredentials.isNotEmpty() && writeHarnessCredentials(modelCredentials)
+        val environmentValues = RuntimeSecretPolicy.route(modelCredentials, ephemeralSecrets, deliveredByFile)
+        val delivery = RuntimeSecretPolicy.delivery(environmentValues, modelCredentials.size)
+        writeRuntimeSecretFile(delivery)
+        return delivery
+    }
+
+    /**
+     * 尽力删除访客侧环境文件。
+     *
+     * 删除的是固定路径本身（`unlink` 不跟随符号链接）：访客里的同 uid 代码可以把这个路径换成
+     * 符号链接，但被摘掉的只会是链接。删除失败不算错误 —— 临时令牌每次启动重新生成，
+     * 残留文件里的旧值对下一次运行没有任何作用，且下次启动会整份重写。
+     */
+    fun deleteRuntimeSecrets() {
+        try {
+            Os.remove(runtimeSecretFile.absolutePath)
+        } catch (_: ErrnoException) {
+            // ENOENT 是常态（本次启动没有需要投递的秘密）。
+        }
+    }
+
+    /** 本机保存的模型凭据：环境变量名 → 取值。只用于写入 0600 文件与 Harness 凭据文档。 */
+    private fun modelCredentialValues(): Map<String, String> {
+        val values = linkedMapOf<String, String>()
+        val providerApiKeys = providerApiKeysLocked()
+        ModelProvider.entries.forEach { provider ->
+            providerApiKeys[provider]?.let { values[provider.environmentVariable] = it }
+        }
+        val customProviders = customModelProvidersLocked()
+        val customProviderApiKeys = customProviderApiKeysLocked(customProviders.mapTo(linkedSetOf()) { it.id })
+        customProviders.forEach { provider ->
+            customProviderApiKeys[provider.id]?.let { values[provider.environmentVariable] = it }
+        }
+        return values
+    }
+
+    /**
+     * 把模型凭据并写进 Harness 自己的凭据文档。
+     *
+     * @return 文档现在确实承载了全部 [values]（因此不需要再把取值放进环境文件）。
+     *   任何一步不确定都返回 false，由调用方回落到环境文件路径，绝不猜、也绝不覆盖可疑文件。
+     *
+     * 只并写 `refs` 段：`records`（OAuth 授权记录等）与全部注释、格式逐行保留，
+     * 且**从不删除**已有条目 —— 用户可能在模型页配了另一把 key，删掉它是破坏用户数据。
+     */
+    private fun writeHarnessCredentials(values: Map<String, String>): Boolean = try {
+        upsertHarnessCredentials(values)
+    } catch (_: Throwable) {
+        // 凭据文档不可用不是启动失败：回落到访客环境文件，功能不变、argv 依旧只有路径。
+        false
+    }
+
+    /** [writeHarnessCredentials] 的本体；任何一步不确定都返回 false。 */
+    private fun upsertHarnessCredentials(values: Map<String, String>): Boolean {
+        val directory = harnessCredentialsFile.parentFile ?: return false
+        if (!ensurePrivateDirectory(directory)) return false
+        val existing = when (val document = readCredentialsDocument()) {
+            is CredentialsDocument.Absent -> null
+            is CredentialsDocument.Text -> document.text
+            is CredentialsDocument.Untrusted -> return false
+        }
+        val updated = HarnessCredentialsDocument.upsert(existing, values) ?: return false
+        // 文档已经承载全部凭据时一个字节都不动：避免与模型页/另一个实例的写入互相覆盖。
+        if (updated == existing) return true
+        return writePrivateFile(harnessCredentialsFile, updated.toByteArray(Charsets.UTF_8))
+    }
+
+    /**
+     * 读取现有凭据文档原文。
+     *
+     * 只接受**不跟随符号链接**打开的常规文件，与 [HarnessCredentialStatusReader] 的信任模型一致。
+     */
+    private fun readCredentialsDocument(): CredentialsDocument {
+        if (!RuntimeFiles.existsNoFollow(harnessCredentialsFile)) return CredentialsDocument.Absent
+        val descriptor = try {
+            Os.open(
+                harnessCredentialsFile.absolutePath,
+                OsConstants.O_RDONLY or OsConstants.O_NOFOLLOW,
+                0,
+            )
+        } catch (_: ErrnoException) {
+            return CredentialsDocument.Untrusted
+        }
+        return try {
+            val stat = Os.fstat(descriptor)
+            if (!OsConstants.S_ISREG(stat.st_mode) ||
+                stat.st_size !in 0..HarnessCredentialsDocument.MAX_DOCUMENT_BYTES.toLong()
+            ) {
+                Os.close(descriptor)
+                CredentialsDocument.Untrusted
+            } else {
+                val text = FileInputStream(descriptor).use { it.readBytes().toString(Charsets.UTF_8) }
+                if (text.isBlank()) CredentialsDocument.Absent else CredentialsDocument.Text(text)
+            }
+        } catch (_: Exception) {
+            try {
+                Os.close(descriptor)
+            } catch (_: Exception) {
+                // FileInputStream owns the descriptor after successful construction.
+            }
+            CredentialsDocument.Untrusted
+        }
+    }
+
+    /**
+     * 写入访客侧秘密环境文件；本次启动没有秘密可投递时删除它。
+     *
+     * 写不进去就是受控启动失败：没有这份文件 dsh 会缺临时令牌起来，
+     * 用户看到的是下游的「认证不可用」，把投递故障伪装成运行故障。
+     */
+    private fun writeRuntimeSecretFile(delivery: RuntimeSecretDelivery) {
+        if (delivery.isEmpty) {
+            deleteRuntimeSecrets()
+            return
+        }
+        val directory = runtimeSecretFile.parentFile
+            ?: throw RuntimeFailure("RUNTIME_CONFIG_FAILED", "运行时秘密文件路径无效")
+        if (!ensurePrivateDirectory(directory)) {
+            throw RuntimeFailure("RUNTIME_CONFIG_FAILED", "无法创建运行时秘密文件目录")
+        }
+        val bytes = RuntimeSecretPolicy.renderEnvironmentFile(delivery.environmentValues).toByteArray(Charsets.UTF_8)
+        if (!writePrivateFile(runtimeSecretFile, bytes)) {
+            throw RuntimeFailure("RUNTIME_CONFIG_FAILED", "无法写入运行时秘密文件")
+        }
+    }
+
+    /** 确保目录存在且为 0700 的真目录；不可信时返回 false 而不是抛异常（调用方要据此回落）。 */
+    private fun ensurePrivateDirectory(directory: File): Boolean {
+        if (RuntimeFiles.existsNoFollow(directory)) {
+            if (!RuntimeFiles.isDirectoryNoFollow(directory)) return false
+        } else if (!directory.mkdirs() && !RuntimeFiles.existsNoFollow(directory)) {
+            return false
+        }
+        return try {
+            Os.chmod(directory.absolutePath, 0x1c0)
+            true
+        } catch (_: ErrnoException) {
+            false
+        }
+    }
+
+    /**
+     * 原子写入一个 0600 文件：同目录临时文件 → fsync → chmod → rename。
+     *
+     * 权限必须在 rename **之前**设好：dsh 的 `assertOwnerOnly` 会拒绝任何带 group/other 位的
+     * 凭据文档并让插件激活失败，而「先 rename 再 chmod」会留下一个已经就位、权限还宽的窗口。
+     */
+    private fun writePrivateFile(file: File, bytes: ByteArray): Boolean {
+        val directory = file.parentFile ?: return false
+        // 去掉前导点再拼 `.name.new`：`.credentials.yaml` 的临时名因此是 `.credentials.yaml.new`，
+        // 而不是看起来像父目录引用的 `..credentials.yaml.new`。
+        val pending = File(directory, ".${file.name.trimStart('.')}.new")
+        return try {
+            if (RuntimeFiles.existsNoFollow(pending) && !pending.delete()) return false
+            FileChannel.open(
+                pending.toPath(),
+                StandardOpenOption.CREATE_NEW,
+                StandardOpenOption.WRITE,
+                LinkOption.NOFOLLOW_LINKS,
+            ).use { channel ->
+                Channels.newOutputStream(channel).use { output ->
+                    output.write(bytes)
+                    output.flush()
+                    channel.force(true)
+                }
+            }
+            Os.chmod(pending.absolutePath, 0x180)
+            Os.rename(pending.absolutePath, file.absolutePath)
+            true
+        } catch (_: Throwable) {
+            try {
+                pending.delete()
+            } catch (_: Throwable) {
+                // 清理失败不影响返回值；下次启动会覆盖这个名字。
+            }
+            false
+        }
+    }
+
+    /** 现有凭据文档的三种状态；`Untrusted` 一律拒绝编辑，绝不覆盖。 */
+    private sealed interface CredentialsDocument {
+        /** 不存在或为空：可以新建。 */
+        object Absent : CredentialsDocument
+
+        /** 现有文档原文。 */
+        class Text(val text: String) : CredentialsDocument
+
+        /** 存在但不是可安全编辑的常规文件（符号链接、目录、超限、读取失败）。 */
+        object Untrusted : CredentialsDocument
+    }
+
+    @Synchronized
+    fun providerApiKeys(): Map<ModelProvider, String> = providerApiKeysLocked().toMap()
+
+    @Synchronized
+    fun customProviderApiKeys(): Map<String, String> {
+        val allowedIds = customModelProvidersLocked().mapTo(linkedSetOf()) { it.id }
+        return customProviderApiKeysLocked(allowedIds).toMap()
+    }
+
+    @Synchronized
+    fun readModelCredential(providerId: String): String? {
+        val builtIn = ModelProvider.entries.firstOrNull { it.wireValue == providerId }
+        if (builtIn != null) {
+            return providerApiKeysLocked()[builtIn]
+        }
+        val allowedIds = customModelProvidersLocked().mapTo(linkedSetOf()) { it.id }
+        return customProviderApiKeysLocked(allowedIds)[providerId]
+    }
+
+    /**
+     * 写出固定的、无密钥的 Cordis 覆盖：**沙箱运行器条目始终存在**，模型供应商条目按配置可选。
+     *
+     * 沙箱条目与“用户有没有配模型供应商”无关：缺了它，访客里的受限执行会在 execve
+     * `PROOT_LOADER` 时被内核拒绝（真机表现为「沙箱内命令/沙箱内 PTY 全失败」，见
+     * [RuntimeSandboxRunner]）。因此这里不再有“没配供应商就删掉补丁文件”的分支。
+     */
+    @Synchronized
+    fun prepareProviderPatch(configuredProviders: Set<ModelProvider>): String {
+        val enabled = ModelProvider.entries.filter { it != ModelProvider.DEEPSEEK && configuredProviders.contains(it) }
+        val customProviders = customModelProvidersLocked()
+        val rootHome = File(currentRoot, "root")
+        if (!RuntimeFiles.isDirectoryNoFollow(rootHome)) {
+            throw RuntimeFailure("RUNTIME_CONFIG_FAILED", "Ubuntu 主目录无效")
+        }
+        if (RuntimeFiles.existsNoFollow(launcherConfigDirectory)) {
+            if (!RuntimeFiles.isDirectoryNoFollow(launcherConfigDirectory)) {
+                throw RuntimeFailure("RUNTIME_CONFIG_FAILED", "启动器配置目录无效")
+            }
+        } else if (!launcherConfigDirectory.mkdir()) {
+            throw RuntimeFailure("RUNTIME_CONFIG_FAILED", "无法创建启动器配置目录")
+        }
+
+        val providers = JSONObject()
+        enabled.forEach { provider ->
+            providers.put(provider.wireValue, JSONObject().put("apiKeyEnv", provider.environmentVariable))
+        }
+        customProviders.forEach { provider ->
+            providers.put(
+                provider.id,
+                JSONObject()
+                    .put("apiKeyEnv", provider.environmentVariable)
+                    .put("displayName", provider.name)
+                    .put("api", provider.api.wireValue)
+                    .put("baseURL", provider.baseUrl)
+                    .put("models", JSONArray().also { models ->
+                        provider.models.forEach { model ->
+                            models.put(
+                                JSONObject()
+                                    .put("id", model.id)
+                                    .put("name", model.name)
+                                    .put("contextWindow", model.contextWindow)
+                                    .put("maxTokens", model.maxTokens),
+                            )
+                        }
+                    }),
+            )
+        }
+        val providersEntry = if (enabled.isEmpty() && customProviders.isEmpty()) {
+            null
+        } else {
+            JSONObject()
+                .put("id", "llm-pi-ai")
+                .put("config", JSONObject().put("providers", providers))
+        }
+        val bytes = RuntimeSandboxRunner.overlay(providersEntry)
+            .toString()
+            .toByteArray(Charsets.UTF_8)
+        val pending = File(launcherConfigDirectory, ".$PROVIDER_PATCH_FILENAME.new")
+        try {
+            Os.chmod(launcherConfigDirectory.absolutePath, 0x1c0)
+            deleteGeneratedFile(pending)
+            requireRegularGeneratedFileOrMissing(providerPatchFile)
+            FileChannel.open(
+                pending.toPath(),
+                StandardOpenOption.CREATE_NEW,
+                StandardOpenOption.WRITE,
+                LinkOption.NOFOLLOW_LINKS,
+            ).use { channel ->
+                Channels.newOutputStream(channel).use { output ->
+                    output.write(bytes)
+                    output.flush()
+                    channel.force(true)
+                }
+            }
+            Os.chmod(pending.absolutePath, 0x180)
+            Os.rename(pending.absolutePath, providerPatchFile.absolutePath)
+        } catch (error: Throwable) {
+            try {
+                deleteGeneratedFile(pending)
+            } catch (_: Throwable) {
+                // Preserve the original bounded configuration failure.
+            }
+            if (error is RuntimeFailure) throw error
+            throw RuntimeFailure("RUNTIME_CONFIG_FAILED", "无法生成模型供应商启动配置", error)
+        }
+        return RuntimeCommand.PROVIDER_PATCH_GUEST_PATH
+    }
+
+    private fun providerApiKeysLocked(): Map<ModelProvider, String> {
+        val encrypted = preferences.getString(KEY_PROVIDER_CREDENTIALS, null)
+        if (!encrypted.isNullOrEmpty()) {
+            return try {
+                val plaintext = credentialCipher.decrypt(encrypted)
+                try {
+                    RuntimeValidation.providerApiKeyUpdates(JSONObject(plaintext.toString(Charsets.UTF_8)))
+                } finally {
+                    plaintext.fill(0)
+                }
+            } catch (error: Exception) {
+                // A temporary Keystore failure must never erase saved credentials.
+                throw RuntimeFailure(
+                    "CREDENTIALS_DECRYPT_FAILED",
+                    "无法读取已保存的模型凭据；原有数据已保留，请稍后重试",
+                    error,
+                )
+            }
+        }
+
+        val legacy = preferences.getString(KEY_API_KEY, null)?.trim().orEmpty()
+        if (legacy.isEmpty()) return emptyMap()
+        val migrated = try {
+            mapOf(ModelProvider.DEEPSEEK to RuntimeValidation.requireProviderApiKey(legacy))
+        } catch (error: RuntimeFailure) {
+            throw RuntimeFailure(
+                "CREDENTIALS_DECRYPT_FAILED",
+                "无法读取已保存的模型凭据；原有数据已保留，请稍后重试",
+                error,
+            )
+        }
+        val encryptedMigration = encryptProviderApiKeys(migrated)
+            ?: throw RuntimeFailure("SETTINGS_WRITE_FAILED", "无法迁移模型凭据")
+        val committed = preferences.edit()
+            .putString(KEY_PROVIDER_CREDENTIALS, encryptedMigration)
+            .remove(KEY_API_KEY)
+            .commit()
+        if (!committed) throw RuntimeFailure("SETTINGS_WRITE_FAILED", "无法迁移模型凭据")
+        return migrated
+    }
+
+    private fun encryptProviderApiKeys(providerApiKeys: Map<ModelProvider, String>): String? {
+        if (providerApiKeys.isEmpty()) return null
+        val json = JSONObject()
+        ModelProvider.entries.forEach { provider ->
+            providerApiKeys[provider]?.let { json.put(provider.wireValue, it) }
+        }
+        val plaintext = json.toString().toByteArray(Charsets.UTF_8)
+        return try {
+            credentialCipher.encrypt(plaintext)
+        } catch (error: Throwable) {
+            throw RuntimeFailure("CREDENTIALS_ENCRYPT_FAILED", "无法安全保存模型凭据", error)
+        } finally {
+            plaintext.fill(0)
+        }
+    }
+
+    private fun customModelProvidersLocked(): List<CustomModelProvider> {
+        val raw = preferences.getString(KEY_CUSTOM_PROVIDERS, null) ?: return emptyList()
+        return try {
+            RuntimeValidation.customModelProviders(JSONArray(raw))
+        } catch (error: Exception) {
+            throw RuntimeFailure("SETTINGS_READ_FAILED", "无法读取自定义模型供应商配置", error)
+        }
+    }
+
+    private fun customProviderApiKeysLocked(allowedIds: Set<String>): Map<String, String> {
+        val encrypted = preferences.getString(KEY_CUSTOM_PROVIDER_CREDENTIALS, null) ?: return emptyMap()
+        return try {
+            val plaintext = credentialCipher.decrypt(encrypted)
+            try {
+                RuntimeValidation.customProviderApiKeyUpdates(JSONObject(plaintext.toString(Charsets.UTF_8)), allowedIds)
+            } finally {
+                plaintext.fill(0)
+            }
+        } catch (error: Exception) {
+            throw RuntimeFailure("CREDENTIALS_DECRYPT_FAILED", "无法读取已保存的自定义模型凭据；原有数据已保留", error)
+        }
+    }
+
+    private fun encryptCustomProviderApiKeys(values: Map<String, String>): String? {
+        if (values.isEmpty()) return null
+        val plaintext = JSONObject(values).toString().toByteArray(Charsets.UTF_8)
+        return try {
+            credentialCipher.encrypt(plaintext)
+        } catch (error: Throwable) {
+            throw RuntimeFailure("CREDENTIALS_ENCRYPT_FAILED", "无法安全保存自定义模型凭据", error)
+        } finally {
+            plaintext.fill(0)
+        }
+    }
+
+    private fun customProvidersToJson(providers: List<CustomModelProvider>): JSONArray = JSONArray().also { result ->
+        providers.forEach { provider ->
+            result.put(
+                JSONObject()
+                    .put("id", provider.id)
+                    .put("name", provider.name)
+                    .put("api", provider.api.wireValue)
+                    .put("baseUrl", provider.baseUrl)
+                    .put("models", JSONArray().also { models ->
+                        provider.models.forEach { model ->
+                            models.put(JSONObject().put("id", model.id).put("name", model.name)
+                                .put("contextWindow", model.contextWindow).put("maxTokens", model.maxTokens))
+                        }
+                    }),
+            )
+        }
+    }
+
+    private fun requireRegularGeneratedFileOrMissing(file: File) {
+        if (!RuntimeFiles.existsNoFollow(file)) return
+        val stat = try {
+            Os.lstat(file.absolutePath)
+        } catch (error: ErrnoException) {
+            throw RuntimeFailure("RUNTIME_CONFIG_FAILED", "无法检查启动器配置文件", error)
+        }
+        if (!OsConstants.S_ISREG(stat.st_mode)) {
+            throw RuntimeFailure("RUNTIME_CONFIG_FAILED", "启动器配置文件类型无效")
+        }
+    }
+
+    private fun deleteGeneratedFile(file: File) {
+        if (!RuntimeFiles.existsNoFollow(file)) return
+        requireRegularGeneratedFileOrMissing(file)
+        if (!file.delete()) throw RuntimeFailure("RUNTIME_CONFIG_FAILED", "无法清理旧的启动器配置")
+    }
+
+    fun runnerAvailable(): Boolean {
+        // 先看设备能不能**原生**执行这个运行器：内置运行器只有 arm64-v8a，而
+        // `SUPPORTED_ABIS` 会把转译出来的架构也算进去（x86_64 模拟器的 abilist 是
+        // `x86_64,arm64-v8a,x86`），所以判据必须是**首选 ABI**（`cpuAbi`），不是列表包含。
+        // 用列表包含判会让模拟器通过检查、却在实际 execve 时 SIGSEGV（真机取证见
+        // `docs/模拟器实测-运行时启动与前端问题清单.md` 的 M-1：loader/gate 两处都崩）。
+        // 这一条只拦「设备原生架构就不是 arm64」，不改变任何 arm64 真机的行为。
+        if (Build.SUPPORTED_ABIS.firstOrNull() != RUNNER_ABI) {
+            android.util.Log.w(
+                "dsh-runtime",
+                "runner check failed: device abi=" + (Build.SUPPORTED_ABIS.firstOrNull() ?: "unknown") +
+                    "，内置运行器需要 " + RUNNER_ABI,
+            )
+            return false
+        }
+        // 信任来自 APK 打包与签名，不依赖提取库的 x 位：部分机型（如荣耀）
+        // 上 nativeLibraryDir 提取文件的 canExecute() 恒为 false，但硬链接后
+        // 经系统加载路径执行不受 x 位影响。
+        val missing = listOf(RUNNER_NAME to runnerFile, LOADER_NAME to loaderFile).filter { (_, file) ->
+            !file.isFile || !file.canRead()
+        }
+        if (missing.isNotEmpty()) {
+            android.util.Log.w(
+                "dsh-runtime",
+                "runner check failed: " + missing.joinToString(", ") { (name, file) ->
+                    name + "(exists=" + file.exists() + ",isFile=" + file.isFile +
+                        ",readable=" + file.canRead() + ",executable=" + file.canExecute() +
+                        ",length=" + file.length() + ")"
+                },
+            )
+        }
+        return missing.isEmpty()
+    }
+
+    /**
+     * `PROOT_LOADER` 的取值：正常是运行时根内的 loader —— [RuntimeLauncherPolicy.FORM_ROOT_COPY]
+     * 的实体拷贝，或 [RuntimeLauncherPolicy.FORM_SYMLINK] 指回 `nativeLibraryDir` 的符号链接；
+     * 两种根内形态都执行不了时才是私有兜底副本（[RuntimeLauncherPolicy.FORM_PRIVATE]）。
+     *
+     * 这里必须返回「刚刚实测能执行」的那一个：真机回归里，内容正确、权限位齐全、
+     * `access(X_OK)` 也通过的 loader 被就绪判定反复复用，而系统实际上不允许执行它，
+     * 表现就是每次启动都 `proot error: execve("/usr/bin/env"): Permission denied`。
+     */
+    fun launchLoaderPath(): String = (launchLoaderOverride ?: launchLoaderFile).absolutePath
+
+    @Synchronized
+    fun prepareLaunchFiles() {
+        if (!runnerAvailable()) {
+            throw RuntimeFailure("RUNNER_UNAVAILABLE", "APK 未包含当前架构的受信任运行器")
+        }
+        ensureLaunchDirectory(launchDirectory, "运行器私有目录")
+        ensureLaunchDirectory(guestLoaderDirectory, "运行时根内的运行器目录")
+        try {
+            Os.chmod(launchDirectory.absolutePath, 0x1c0)
+            // 根内目录跟随运行时根：权限与私有目录一致即可，真正的约束来自 Landlock 与 PRoot。
+            Os.chmod(guestLoaderDirectory.absolutePath, 0x1c0)
+            refreshExecutableLink(runnerFile, launchRunnerFile)
+            installGuestLoader()
+            auditGuestExecutables()
+        } catch (error: Throwable) {
+            if (error is RuntimeFailure) throw error
+            throw RuntimeFailure("RUNNER_PREPARE_FAILED", "无法准备受信任运行器", error)
+        }
+    }
+
+    private fun ensureLaunchDirectory(directory: File, label: String) {
+        if (RuntimeFiles.existsNoFollow(directory)) {
+            if (!RuntimeFiles.isDirectoryNoFollow(directory)) {
+                throw RuntimeFailure("RUNNER_PREPARE_FAILED", "$label 无效")
+            }
+            return
+        }
+        if (!directory.mkdirs()) {
+            throw RuntimeFailure("RUNNER_PREPARE_FAILED", "无法创建$label")
+        }
+    }
+
+    fun openBundledManifest(): InputStream = openBundledAsset(BUNDLED_MANIFEST_ASSET)
+
+    fun openBundledRootfs(): InputStream {
+        // bundle 按 noCompress 打包；有界文件流保留 APK 条目偏移和长度，避免大资产映射读取。
+        val asset = try {
+            appContext.assets.openFd(BUNDLED_ROOTFS_ASSET)
+        } catch (error: Exception) {
+            throw RuntimeFailure("BUNDLED_RUNTIME_MISSING", "APK 未包含可直接读取的初始化运行时", error)
+        }
+        return try {
+            asset.createInputStream()
+        } catch (error: Exception) {
+            try {
+                asset.close()
+            } catch (closeError: Exception) {
+                error.addSuppressed(closeError)
+            }
+            throw error
+        }
+    }
+
+    /**
+     * APK assets are immutable for the lifetime of this process. A missing or malformed bundled
+     * manifest is treated as "no bundled update" here; installation still reports its precise
+     * validation error when the user explicitly selects the bundled source.
+     */
+    @Synchronized
+    fun bundledManifestOrNull(): RuntimeManifest? {
+        if (bundledManifestCacheLoaded) return bundledManifestCache
+        bundledManifestCache = try {
+            openBundledManifest().use { input ->
+                val output = ByteArrayOutputStream()
+                val buffer = ByteArray(16 * 1024)
+                var total = 0
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    total += read
+                    if (total > RuntimeLimits.MAX_MANIFEST_BYTES) {
+                        throw RuntimeFailure("MANIFEST_SIZE_INVALID", "APK 内置运行时清单大小无效")
+                    }
+                    output.write(buffer, 0, read)
+                }
+                RuntimeManifest.parse(output.toByteArray()).also {
+                    // A thin APK may carry no rootfs asset; do not advertise an update it cannot apply.
+                    openBundledRootfs().use { }
+                }
+            }
+        } catch (_: Exception) {
+            null
+        }
+        bundledManifestCacheLoaded = true
+        return bundledManifestCache
+    }
+
+    @Synchronized
+    fun installedManifest(): RuntimeManifest? {
+        if (manifestCacheLoaded) return manifestCache
+        manifestCache = readInstalledManifest()
+        manifestCacheLoaded = true
+        return manifestCache
+    }
+
+    @Synchronized
+    fun updateInstalledManifest(manifest: RuntimeManifest?) {
+        manifestCache = manifest
+        manifestCacheLoaded = true
+    }
+
+    @Synchronized
+    fun invalidateInstalledManifest() {
+        manifestCache = null
+        manifestCacheLoaded = false
+    }
+
+    fun writeInstalledManifest(destination: File, manifest: RuntimeManifest) {
+        val bytes = JSONObject()
+            .put("schemaVersion", 1)
+            .put("runtimeId", manifest.runtimeId)
+            .put("version", manifest.version)
+            .put("architecture", manifest.architecture)
+            .put(
+                "rootfs",
+                JSONObject()
+                    // The signed download URL is deliberately not persisted in guest-visible metadata.
+                    .put("url", "https://installed.invalid/rootfs")
+                    .put("sha256", manifest.rootfs.sha256)
+                    .put("compressedBytes", manifest.rootfs.compressedBytes)
+                    .put("extractedBytes", manifest.rootfs.extractedBytes)
+                    .put("compression", manifest.rootfs.compression.wireValue),
+            )
+            .put(
+                "entrypoints",
+                JSONObject()
+                    .put("shell", JSONArray(manifest.shellArgv))
+                    .put("harness", JSONArray(manifest.harnessArgv)),
+            )
+            .put("harnessUrl", manifest.harnessUri.toASCIIString())
+            // 展示字段：装上的是哪个 dsh 版本，版本列表不必进访客读包内 package.json 就能显示。
+            .apply { manifest.dshVersion?.let { put("dshVersion", it) } }
+            .toString()
+            .toByteArray(Charsets.UTF_8)
+        if (bytes.size > RuntimeLimits.MAX_MANIFEST_BYTES) {
+            throw RuntimeFailure("MANIFEST_SIZE_INVALID", "运行时元数据超过限制")
+        }
+        FileChannel.open(
+            destination.toPath(),
+            StandardOpenOption.CREATE_NEW,
+            StandardOpenOption.WRITE,
+            LinkOption.NOFOLLOW_LINKS,
+        ).use { channel ->
+            Channels.newOutputStream(channel).use { output ->
+                output.write(bytes)
+                output.flush()
+                channel.force(true)
+            }
+        }
+    }
+
+    /**
+     * 上一版本（被换下来的那一份）的清单。
+     *
+     * 与 [installedManifest] 采用同一套读取规则：清单必须与根目录同时存在，
+     * 且必须是常规文件、不跟随符号链接、大小受限。任一条不满足都视为「没有上一版本」，
+     * 界面据此不展示切换入口——版本信息宁可少报，也不能指向一个不可用的根目录。
+     */
+    @Synchronized
+    fun retainedManifest(): RuntimeManifest? {
+        if (retainedCacheLoaded) return retainedCache
+        retainedCache = readManifestAt(retainedRoot, retainedManifest)
+        retainedCacheLoaded = true
+        return retainedCache
+    }
+
+    @Synchronized
+    fun invalidateRetainedManifest() {
+        retainedCache = null
+        retainedCacheLoaded = false
+    }
+
+    private fun readInstalledManifest(): RuntimeManifest? = readManifestAt(currentRoot, currentManifest)
+
+    private fun readManifestAt(root: File, manifestFile: File): RuntimeManifest? {
+        if (!RuntimeFiles.isDirectoryNoFollow(root)) return null
+        val descriptor = try {
+            Os.open(manifestFile.absolutePath, OsConstants.O_RDONLY or OsConstants.O_NOFOLLOW, 0)
+        } catch (error: ErrnoException) {
+            if (error.errno == OsConstants.ENOENT || error.errno == OsConstants.ELOOP) return null
+            return null
+        }
+        return try {
+            val stat = Os.fstat(descriptor)
+            if (!OsConstants.S_ISREG(stat.st_mode) || stat.st_size !in 1..RuntimeLimits.MAX_MANIFEST_BYTES.toLong()) {
+                Os.close(descriptor)
+                return null
+            }
+            FileInputStream(descriptor).use { input ->
+                val output = ByteArrayOutputStream(stat.st_size.toInt())
+                val buffer = ByteArray(16 * 1024)
+                var total = 0
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    total += read
+                    if (total > RuntimeLimits.MAX_MANIFEST_BYTES) return null
+                    output.write(buffer, 0, read)
+                }
+                RuntimeManifest.parse(output.toByteArray())
+            }
+        } catch (_: Exception) {
+            try {
+                Os.close(descriptor)
+            } catch (_: Exception) {
+                // FileInputStream owns the descriptor after successful construction.
+            }
+            null
+        }
+    }
+
+    private fun openBundledAsset(path: String): InputStream = try {
+        appContext.assets.open(path)
+    } catch (error: Exception) {
+        throw RuntimeFailure("BUNDLED_RUNTIME_MISSING", "APK 未包含完整的初始化运行时", error)
+    }
+
+    private fun refreshExecutableLink(target: File, link: File) {
+        if (isPreparedRunner(target, link)) return
+
+        val pending = File(launchDirectory, ".${link.name}.new")
+        if (RuntimeFiles.existsNoFollow(pending) && !pending.delete()) {
+            throw RuntimeFailure("RUNNER_PREPARE_FAILED", "无法清理运行器临时链接")
+        }
+        try {
+            try {
+                Os.symlink(target.absolutePath, pending.absolutePath)
+            } catch (error: android.system.ErrnoException) {
+                // 荣耀等 ROM 的 SELinux 禁止应用创建符号链接（EACCES/EPERM）：
+                // 降级为复制运行器文件并标记可执行，保证启动路径在任何设备上可用。
+                if (error.errno == android.system.OsConstants.EACCES ||
+                    error.errno == android.system.OsConstants.EPERM ||
+                    error.errno == android.system.OsConstants.ENOTSUP ||
+                    error.errno == android.system.OsConstants.EXDEV
+                ) {
+                    copyExecutableFallback(target, pending)
+                } else {
+                    throw error
+                }
+            }
+            if (!isPreparedRunner(target, pending)) {
+                throw RuntimeFailure("RUNNER_PREPARE_FAILED", "运行器临时链接不可执行")
+            }
+            // rename replaces an old link atomically, so active PRoot processes never observe a missing loader.
+            Os.rename(pending.absolutePath, link.absolutePath)
+        } finally {
+            if (RuntimeFiles.existsNoFollow(pending)) pending.delete()
+        }
+        if (!isPreparedRunner(target, link)) {
+            throw RuntimeFailure("RUNNER_PREPARE_FAILED", "运行器私有链接不可执行")
+        }
+    }
+
+    /**
+     * 选定 `PROOT_LOADER` 的落地形态：按候选形态依次落地，**第一个实测能执行的胜出**。
+     *
+     * 判定标准只有「本应用能不能真的 exec 它」这一条。真机证据（HONOR AAP-AN00 / Android 17，
+     * 0.2.4 第二次真机回归）：根内实体拷贝的权限位与系统记录全都正常 ——
+     * `mode=0700`、`access(X_OK)=true`、SELinux `avc: granted { execute }`、挂载也不是 noexec ——
+     * 而 PRoot 仍然报 `proot error: execve("/usr/bin/env"): Permission denied`。
+     * 反证是 proot 本体：它以「私有目录里的符号链接指回 `nativeLibraryDir`」的形态跑得起来，
+     * 说明这台 ROM 拦的是**应用数据目录里的常规文件**，而不是链接的执行目标（`apk_data_file`）。
+     *
+     * 所以形态只能实测决定，而且要记住上次胜出的那种：每次都先试失败的形态，
+     * 会在两种形态之间来回改写文件（还会连带清掉执行位巡检的标记）。
+     */
+    private fun installGuestLoader() {
+        val attempts = ArrayList<String>(3)
+        for (form in RuntimeLauncherPolicy.loaderFormOrder(rememberedLoaderForm())) {
+            if (installLoaderForm(form, attempts)) return
+        }
+        throw RuntimeFailure(
+            "RUNNER_PREPARE_FAILED",
+            "运行器 loader 在本机无法执行（" + attempts.joinToString("；") + "）",
+        )
+    }
+
+    /**
+     * 落地一种 loader 形态并实测执行；不通过就交给下一个候选。
+     *
+     * 已就位的形态不重写（正在运行的 PRoot 会把 loader 映射进自己的地址空间，无谓重写只会制造竞态）；
+     * 观测到「缺属主执行位」时先就地补位，再实测 —— 「我改过权限了」从来不算可用性证据。
+     */
+    private fun installLoaderForm(form: String, attempts: MutableList<String>): Boolean {
+        val path = if (form == RuntimeLauncherPolicy.FORM_PRIVATE) privateLoaderFile else launchLoaderFile
+        try {
+            when (form) {
+                RuntimeLauncherPolicy.FORM_ROOT_COPY ->
+                    if (!isGuestLoaderUpToDate()) writeGuestLoaderCopy()
+                RuntimeLauncherPolicy.FORM_SYMLINK ->
+                    if (!isExecutableLinkTo(loaderFile, launchLoaderFile)) linkLoaderToApk()
+                else -> if (!isExecutableLinkTo(loaderFile, privateLoaderFile)) {
+                    refreshExecutableLink(loaderFile, privateLoaderFile)
+                }
+            }
+        } catch (error: Throwable) {
+            attempts += form + "（准备失败：" + (error.message ?: error.javaClass.simpleName) + "）"
+            return false
+        }
+        var observation = observeRunner(path)
+        if (RuntimeLauncherPolicy.repairableInPlace(observation)) {
+            observation = repairExecutableMode(path, observation)
+        }
+        val probe = probeExecutable(path)
+        lastLoaderProbe = probe
+        attempts += form + "（" + RuntimeLauncherPolicy.describe(observation) + "," + probe + "）"
+        if (!probe.startsWith(EXEC_PROBE_STARTED)) {
+            recordLauncherState(
+                DiagnosticLevel.WARN,
+                "failed",
+                RuntimeLauncherPolicy.codeForProbe(observation, false),
+                form,
+                observation,
+                probe,
+            )
+            return false
+        }
+        launchLoaderOverride = if (form == RuntimeLauncherPolicy.FORM_PRIVATE) privateLoaderFile else null
+        rememberLoaderForm(form)
+        recordLauncherState(
+            DiagnosticLevel.INFO,
+            "ok",
+            RuntimeLauncherPolicy.codeForProbe(observation, true),
+            form,
+            observation,
+            probe,
+        )
+        return true
+    }
+
+    /**
+     * 把 loader 建成「指回 APK 的符号链接」（0.2.3 的原始形态）。
+     *
+     * 这里刻意**不**降级复制：复制出来的常规文件落在应用数据目录，正是本机 exec 被拒的那种形态；
+     * 复制由候选循环里的 [RuntimeLauncherPolicy.FORM_ROOT_COPY] 单独负责。
+     */
+    private fun linkLoaderToApk() {
+        val pending = File(guestLoaderDirectory, ".${launchLoaderFile.name}.link")
+        if (RuntimeFiles.existsNoFollow(pending) && !pending.delete()) {
+            throw RuntimeFailure("RUNNER_PREPARE_FAILED", "无法清理运行时根内的运行器临时链接")
+        }
+        try {
+            Os.symlink(loaderFile.absolutePath, pending.absolutePath)
+            Os.rename(pending.absolutePath, launchLoaderFile.absolutePath)
+        } finally {
+            if (RuntimeFiles.existsNoFollow(pending)) pending.delete()
+        }
+        if (!isExecutableLinkTo(loaderFile, launchLoaderFile)) {
+            throw RuntimeFailure("RUNNER_PREPARE_FAILED", "运行时根内的运行器链接不可用")
+        }
+    }
+
+    /** 上次实测能执行的 loader 形态；没有记录时返回 null（走默认顺序）。 */
+    private fun rememberedLoaderForm(): String? = preferences.getString(KEY_LOADER_FORM, null)
+
+    private fun rememberLoaderForm(form: String) {
+        if (rememberedLoaderForm() != form) preferences.edit().putString(KEY_LOADER_FORM, form).apply()
+    }
+
+    /** 原子写入根内 loader 的实体拷贝（内容校验只在这里做，可执行性留给 [installGuestLoader]）。 */
+    private fun writeGuestLoaderCopy() {
+        val pending = File(guestLoaderDirectory, ".${launchLoaderFile.name}.new")
+        if (RuntimeFiles.existsNoFollow(pending) && !pending.delete()) {
+            throw RuntimeFailure("RUNNER_PREPARE_FAILED", "无法清理运行时根内的运行器临时文件")
+        }
+        try {
+            copyExecutableFallback(loaderFile, pending)
+            if (!isPreparedRunner(loaderFile, pending)) {
+                throw RuntimeFailure("RUNNER_PREPARE_FAILED", "运行时根内的运行器临时文件不可执行")
+            }
+            Os.rename(pending.absolutePath, launchLoaderFile.absolutePath)
+        } finally {
+            if (RuntimeFiles.existsNoFollow(pending)) pending.delete()
+        }
+        if (!hasGuestLoaderContent()) {
+            throw RuntimeFailure("RUNNER_PREPARE_FAILED", "运行时根内的运行器文件不可用")
+        }
+        // 刚重写过 loader 说明运行时根是新的一份：清掉执行位修复的标记，让它重新扫一遍。
+        val repairMarker = File(guestLoaderDirectory, EXEC_REPAIR_MARKER_NAME)
+        if (RuntimeFiles.existsNoFollow(repairMarker)) repairMarker.delete()
+    }
+
+    /**
+     * 就行地把运行器文件修成可执行：先补属主执行位，再针对「有执行位仍被拒」尝试去掉执行标记。
+     *
+     * 修不动只返回最新观测（不抛异常）：候选循环会继续试下一种形态，真正的可用性判定始终是
+     * **实测执行**（见 [probeExecutable]），不是 `access(X_OK)`，更不是「我改过权限了」。
+     */
+    private fun repairExecutableMode(
+        path: File,
+        observation: RuntimeLauncherPolicy.Observation?,
+    ): RuntimeLauncherPolicy.Observation? {
+        var current = observation
+        if (RuntimeLauncherPolicy.repairableInPlace(current)) {
+            try {
+                Os.chmod(path.absolutePath, RuntimeLauncherPolicy.EXECUTABLE_FILE_MODE)
+            } catch (_: Throwable) {
+                // 补权限失败会体现在下面的观测里；日志与失败消息给出的是观测而不是「预期」。
+            }
+            current = observeRunner(path)
+        }
+        if (RuntimeLauncherPolicy.shouldDropStamp(current)) {
+            try {
+                Os.removexattr(path.absolutePath, EXEC_XATTR_NAME)
+                current = observeRunner(path)
+            } catch (_: Throwable) {
+                // 去不掉标记时保持原观测：能否执行最终由实测决定。
+            }
+        }
+        return current
+    }
+
+    /**
+     * 实测一个文件能不能被本应用执行，返回可进日志的一行结果。
+     *
+     * 成败都是证据：`started` 说明权限位之外没有系统级封锁；失败时异常消息里带 errno
+     * （例如 `Cannot run program …: error=13, Permission denied`），正是判定
+     * 「权限位问题 vs 系统策略问题」需要的那一条。0.2.4 第二次真机回归就是靠它定案的。
+     *
+     * 不重定向到外部文件（这台设备的编译类路径里没有 `ProcessBuilder.Redirect`）：
+     * 合并 stderr 后在进程结束后一次性读干，避免子进程写满管道阻塞。
+     */
+    private fun probeExecutable(path: File): String = try {
+        val process = ProcessBuilder(path.absolutePath).redirectErrorStream(true).start()
+        if (process.waitFor(EXEC_PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+            val output = try {
+                process.inputStream.readBytes().decodeToString().replace('\n', ' ').trim()
+            } catch (_: Throwable) {
+                ""
+            }
+            EXEC_PROBE_STARTED + ",exit=" + process.exitValue() +
+                if (output.isEmpty()) "" else ",output=" + output.take(EXEC_PROBE_OUTPUT_CHARS)
+        } else {
+            process.destroyForcibly()
+            EXEC_PROBE_STARTED + ",timeout=true"
+        }
+    } catch (error: Throwable) {
+        "failed,detail=" + (error.message ?: error.javaClass.simpleName)
+    }
+
+    /**
+     * 记录 loader 的落地形态与实测结果。
+     *
+     * 诊断日志只接受受控枚举与白名单字段（`phase`/`result`/`code`/`reason`），权限位与 errno
+     * 这类细节进不了日志文件，所以同时写一条 logcat —— 真机排障靠的就是这一行
+     * （`adb logcat -s dsh-runtime`）。
+     */
+    private fun recordLauncherState(
+        level: DiagnosticLevel,
+        result: String,
+        code: String,
+        reason: String,
+        observation: RuntimeLauncherPolicy.Observation?,
+        probe: String,
+    ) {
+        android.util.Log.w(
+            "dsh-runtime",
+            "loader state: code=$code,reason=$reason,probe=$probe," +
+                "detail=${RuntimeLauncherPolicy.describe(observation)}",
+        )
+        diagnostics.record(
+            level,
+            DiagnosticEvent.RUNTIME_PHASE,
+            mapOf(
+                "phase" to "launcher",
+                "result" to result,
+                "code" to code,
+                "reason" to reason,
+            ),
+        )
+    }
+
+    /**
+     * 访客侧可执行性巡检：每次启动把关键路径的落地形态与 loader 实测结果写进 logcat，
+     * 并对已经装好的运行时根做**一次**执行位补齐（标记保护，重装后重扫）。
+     *
+     * 这两件事是为了把三类原因分开（0.2.4 两次真机回归各命中一类）：
+     * 1）权限位：`File.setExecutable` 在部分 ROM 上静默失败，链接降级出的动态链接器副本天然缺 +x；
+     * 2）系统策略：权限位齐全、`access(X_OK)` 通过、SELinux 也 `granted { execute }`，execve 仍 EACCES ——
+     *    本轮真机的 loader 属于这一类（应用数据目录里的常规文件），补权限位永远修不好；
+     * 3）内容：与 APK 内的字节不一致（由 [installGuestLoader] 负责改写形态）。
+     */
+    private fun auditGuestExecutables() {
+        RuntimeGuestExecutables.CRITICAL_PATHS.forEach { relativePath ->
+            android.util.Log.w(
+                "dsh-runtime",
+                "guest file: " + RuntimeGuestExecutables.describe(currentRoot, relativePath),
+            )
+        }
+        val outcome = guestExecutableRepair.runIfNeeded()
+        if (outcome.ran) {
+            android.util.Log.w(
+                "dsh-runtime",
+                "exec repair: scanned=" + outcome.scanned + ",repaired=" + outcome.repaired +
+                    ",failed=" + outcome.failed + ",elapsedMs=" + outcome.elapsedMillis +
+                    ",completed=" + outcome.completed,
+            )
+            diagnostics.record(
+                if (outcome.repaired > 0) DiagnosticLevel.WARN else DiagnosticLevel.INFO,
+                DiagnosticEvent.RUNTIME_PHASE,
+                mapOf(
+                    "phase" to "exec_repair",
+                    "result" to if (outcome.completed) "ok" else "failed",
+                    "code" to if (outcome.repaired > 0) "EXEC_BIT_REPAIRED" else "EXEC_BIT_INTACT",
+                    "reason" to if (outcome.completed) "scan_completed" else "scan_stopped",
+                ),
+            )
+        } else {
+            android.util.Log.w("dsh-runtime", "exec repair: skipped,reason=marker")
+        }
+        // 每次启动都写这条：它是「应用数据目录里的文件到底能不能执行」的唯一直接证据，
+        // 不能因为执行位巡检跑过就省掉（0.2.4 第二次真机回归正是被那个提前返回挡住的）。
+        android.util.Log.w(
+            "dsh-runtime",
+            "exec probe: name=loader,path=" + launchLoaderPath() +
+                ",result=" + (lastLoaderProbe ?: EXEC_PROBE_SKIPPED),
+        )
+    }
+
+    /**
+     * 根内 loader 是否已就绪：**常规文件、与 APK 里的字节一致、且真的可执行**。
+     *
+     * 前两条兜住链接形态（旧版本遗留）与内容被替换/截断；第三条是 0.2.4 真机回归的修复点 ——
+     * 只看内容会让「内容对但缺属主执行位」的文件被永久复用，而那种文件在 PRoot 里必然 EACCES。
+     */
+    private fun isGuestLoaderUpToDate(): Boolean =
+        hasGuestLoaderContent() && RuntimeLauncherPolicy.isUsable(observeRunner(launchLoaderFile))
+
+    /** 只比内容形态：常规文件、长度一致、字节一致；可执行性由 [RuntimeLauncherPolicy] 单独判定。 */
+    private fun hasGuestLoaderContent(): Boolean = try {
+        val stat = Os.lstat(launchLoaderFile.absolutePath)
+        OsConstants.S_ISREG(stat.st_mode) &&
+            stat.st_size == loaderFile.length() &&
+            RuntimeFiles.sameContent(loaderFile, launchLoaderFile)
+    } catch (error: ErrnoException) {
+        if (error.errno == OsConstants.ENOENT) false else throw error
+    }
+
+    private fun isExecutableLinkTo(target: File, link: File): Boolean = try {
+        val stat = Os.lstat(link.absolutePath)
+        OsConstants.S_ISLNK(stat.st_mode) &&
+            Os.readlink(link.absolutePath) == target.absolutePath &&
+            link.isFile && link.canRead() && link.canExecute()
+    } catch (error: ErrnoException) {
+        if (error.errno == OsConstants.ENOENT) false else throw error
+    }
+
+    /**
+     * 运行器已就绪的判定：指向 APK 的符号链接，或 ROM 拒绝链接时的降级复制形态。
+     *
+     * 复制形态必须是**真的可执行**（而不只是非空）：真机回归正是被这条宽松判定放过去的 ——
+     * 内容正确的拷贝缺了属主执行位，`isPreparedRunner` 仍然通过，于是坏文件被反复复用。
+     */
+    private fun isPreparedRunner(target: File, path: File): Boolean {
+        if (isExecutableLinkTo(target, path)) return true
+        return RuntimeLauncherPolicy.isUsable(observeRunner(path))
+    }
+
+    /**
+     * 观测一个运行器文件：是否常规文件、字节数、权限位、系统是否允许执行、是否带执行标记。
+     *
+     * `lstat`（而不是 `stat`）是有意的：一旦谁把 loader 换回符号链接，这里必须报 S_ISREG 为假，
+     * 而不是跟随链接给出「看起来正常」的结论。返回 null 表示路径不存在。
+     */
+    private fun observeRunner(path: File): RuntimeLauncherPolicy.Observation? = try {
+        val stat = Os.lstat(path.absolutePath)
+        val stamp: ByteArray? = try {
+            Os.getxattr(path.absolutePath, EXEC_XATTR_NAME)
+        } catch (_: Throwable) {
+            null
+        }
+        RuntimeLauncherPolicy.Observation(
+            regular = OsConstants.S_ISREG(stat.st_mode),
+            size = stat.st_size,
+            mode = stat.st_mode,
+            execAccess = Os.access(path.absolutePath, OsConstants.X_OK),
+            stamped = stamp != null,
+        )
+    } catch (error: ErrnoException) {
+        if (error.errno == OsConstants.ENOENT) null else throw error
+    }
+
+    /**
+     * 符号链接不可用时的降级复制：把受信任运行器文件复制到目标位置并标成可执行。
+     *
+     * 两处调用：ROM 拒绝创建符号链接时的 proot 本体，以及**必须**是实体文件的根内 loader。
+     * 复制完只保证「文件已就位、权限已尽力设置」，是否真的可执行交给调用方的观测判定 ——
+     * 这里不再用 `File.setExecutable`：它在部分 ROM 上会静默失败（返回值过去也没检查），
+     * 而 `Os.chmod` 的 errno 至少能进日志。
+     */
+    private fun copyExecutableFallback(target: File, pending: File) {
+        target.copyTo(pending, overwrite = false)
+        applyExecutableMode(pending)
+    }
+
+    /**
+     * 给运行器文件设置属主可执行位（0o700），并尽力打上 Android 15+ 的 `security.android.exec`
+     * 标记（与 rootfs 可执行文件的盖章一致）。
+     *
+     * 两步都**不**因失败而中断：真机上该属性是否必需、语义是放行还是禁止都还没有定论
+     * （应用读不回来，壳 uid 连 `setfattr` 都是 EPERM），所以它们只是尽力而为的一步；
+     * 最终判据是**真实执行探测**（`probeExecutable`），若「有执行位却仍被拒」，
+     * [repairExecutableMode] 会试着去掉这个标记，仍不行就换下一种 loader 落地形态。
+     * 失败原因写进 logcat，方便下次真机复现时一次定位。
+     */
+    private fun applyExecutableMode(path: File) {
+        try {
+            Os.chmod(path.absolutePath, RuntimeLauncherPolicy.EXECUTABLE_FILE_MODE)
+        } catch (error: ErrnoException) {
+            android.util.Log.w("dsh-runtime", "runner chmod failed: errno=" + error.errno)
+        }
+        try {
+            Os.setxattr(path.absolutePath, EXEC_XATTR_NAME, EXEC_XATTR_VALUE, 0)
+        } catch (error: Throwable) {
+            android.util.Log.w("dsh-runtime", "runner exec stamp failed: " + error.javaClass.simpleName)
+        }
+    }
+
+    companion object {
+        private const val PREFERENCES = "runtime_settings"
+        private const val KEY_MANIFEST_URL = "manifest_url"
+        private const val KEY_MANIFEST_SHA256 = "manifest_sha256"
+        private const val KEY_KEEP_AWAKE = "keep_screen_awake"
+        private const val KEY_KEEP_BACKGROUND = "keep_runtime_in_background"
+        private const val KEY_OVERLAY_BALL = "overlay_ball_enabled"
+            // 运行时恢复记录：只保存运行意图、最近阶段与时间，绝不保存凭据。
+        private const val KEY_RUNTIME_INTENT = "runtime_intent"
+        private const val KEY_RUNTIME_PHASE = "runtime_last_phase"
+        private const val KEY_RUNTIME_UPDATED_AT = "runtime_last_updated_at"
+        private const val KEY_FONT_SIZE = "terminal_font_size"
+        private const val KEY_API_KEY = "model_api_key"
+        private const val KEY_PROVIDER_CREDENTIALS = "provider_credentials_encrypted_v1"
+        private const val KEY_CUSTOM_PROVIDERS = "custom_model_providers_v1"
+        private const val KEY_CUSTOM_PROVIDER_CREDENTIALS = "custom_provider_credentials_encrypted_v1"
+        private const val KEY_LEGACY_DEFAULT_FRONTEND = "default_frontend"
+        private const val RUNNER_NAME = "libdsh_proot.so"
+        private const val LOADER_NAME = "libdsh_proot_loader.so"
+
+        /**
+         * 内置运行器的目标架构。
+         *
+         * 与 `build.gradle` 的 `abiFilters 'arm64-v8a'` 和 [RuntimeManifest] 的
+         * `architecture` 校验是同一个值，三处必须一致。
+         */
+        private const val RUNNER_ABI = "arm64-v8a"
+        private const val EXEC_XATTR_NAME = "security.android.exec"
+        private val EXEC_XATTR_VALUE: ByteArray = byteArrayOf('1'.code.toByte())
+        // 执行位一次性修复的标记：跟着运行时根走，重装（重写 loader）时清掉。
+        private const val EXEC_REPAIR_MARKER_NAME = ".exec-repair.done"
+        private const val EXEC_PROBE_TIMEOUT_SECONDS = 3L
+        private const val EXEC_PROBE_OUTPUT_CHARS = 160
+        // 实测结果的两种可辨识前缀：起得来 / 根本没轮到（巡检提前返回）。
+        private const val EXEC_PROBE_STARTED = "started"
+        private const val EXEC_PROBE_SKIPPED = "skipped"
+        // 上次实测能执行的 loader 形态（loader_root_copy / loader_symlink / loader_private）。
+        private const val KEY_LOADER_FORM = "runtime_loader_form"
+        private const val BUNDLED_MANIFEST_ASSET = "runtime/runtime-manifest.json"
+        private const val BUNDLED_ROOTFS_ASSET = "runtime/rootfs.bundle"
+        private const val PROVIDER_PATCH_FILENAME = "launcher-providers.patch.json"
+        // 只经访客环境文件投递的两个临时令牌；取值每次启动重新生成，绝不进 .credentials.yaml。
+        private const val MOBILE_AUTH_TOKEN_ENV = "DSH_MOBILE_AUTH_TOKEN"
+        private const val DEVICE_BRIDGE_TOKEN_ENV = "DSH_DEVICE_BRIDGE_TOKEN"
+    }
+}

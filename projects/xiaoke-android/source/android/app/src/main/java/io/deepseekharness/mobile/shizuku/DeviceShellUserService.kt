@@ -1,0 +1,228 @@
+package io.deepseekharness.mobile.shizuku
+
+import android.content.Context
+import android.os.IBinder
+import android.os.RemoteException
+import io.deepseekharness.mobile.runtime.NativePty
+import io.deepseekharness.mobile.runtime.RuntimeLimits
+import io.deepseekharness.mobile.runtime.TerminalInputWriter
+import io.deepseekharness.mobile.runtime.UbuntuTerminalManager
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.Semaphore
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+
+class DeviceShellUserService() : IDeviceShellService.Stub() {
+    private val virtualScreen = io.deepseekharness.mobile.virtualscreen.ShellVirtualScreen()
+
+    // 特权操作以用户服务进程身份执行，权限由 Shizuku 与宿主授权共同控制。
+    private fun <T> asService(operation: () -> T): T {
+        val identity = android.os.Binder.clearCallingIdentity()
+        try { return operation() } finally { android.os.Binder.restoreCallingIdentity(identity) }
+    }
+
+    override fun startVirtualScreen(component: String, width: Int, height: Int, dpi: Int, owner: IBinder): String =
+        asService { virtualScreen.start(component, width, height, dpi, owner) }
+    override fun virtualScreenState(): String = asService { virtualScreen.state().toString() }
+    override fun virtualScreenAction(parameters: String): String = asService { virtualScreen.action(parameters) }
+    override fun virtualScreenSnapshot(sessionId: String): android.os.ParcelFileDescriptor = asService { virtualScreen.snapshot(sessionId) }
+    override fun virtualScreenFrame(sessionId: String): VirtualScreenFrameHandle = asService { VirtualScreenFrameHandle(virtualScreen.frame(sessionId)) }
+    override fun virtualScreenSnapshotEnvelope(sessionId: String): android.os.ParcelFileDescriptor = asService { virtualScreen.snapshotEnvelope(sessionId) }
+    @Suppress("UNUSED_PARAMETER")
+    constructor(context: Context) : this()
+
+    private class Session(
+        val id: String,
+        val processId: Int,
+        val fileDescriptor: Int,
+        val callback: IDeviceShellCallback,
+        val closing: AtomicBoolean = AtomicBoolean(false),
+        val writeLock: Any = Any(),
+    ) {
+        lateinit var deathRecipient: IBinder.DeathRecipient
+    }
+
+    private val sessions = ConcurrentHashMap<String, Session>()
+    /** 限制单个 Shizuku 用户服务的 PTY、文件描述符与读线程总量。 */
+    private val sessionSlots = Semaphore(MAX_SESSIONS, true)
+    private val ioExecutor = Executors.newCachedThreadPool()
+    private val scheduler: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
+
+    override fun createSession(columns: Int, rows: Int, callback: IDeviceShellCallback?): String {
+        UbuntuTerminalManager.validateSize(columns, rows)
+        requireNotNull(callback) { "Terminal callback is required" }
+        check(sessionSlots.tryAcquire()) { "设备 Shell 会话数已达上限，请先关闭已有会话" }
+        val handles = try {
+            NativePty.spawn(
+                arrayOf(DEVICE_SHELL),
+                arrayOf(
+                    "HOME=/data/local/tmp",
+                    // Android 框架工具启动时读取这些变量；PTY 刻意用小环境启动，
+                    // 所以显式给出平台根，而不是继承父 Shizuku 进程的环境。
+                    "ANDROID_DATA=/data",
+                    "ANDROID_ROOT=/system",
+                    "ANDROID_STORAGE=/storage",
+                    "EXTERNAL_STORAGE=/sdcard",
+                    "LANG=C.UTF-8",
+                    "PATH=/system/bin:/system/xbin",
+                    "TERM=xterm-256color",
+                    "TMPDIR=/data/local/tmp",
+                ),
+                columns,
+                rows,
+            )
+        } catch (error: Throwable) {
+            sessionSlots.release()
+            throw error
+        }
+        if (handles.size != 2 || handles[0] <= 1 || handles[1] < 0) {
+            if (handles.size >= 1 && handles[0] > 1) {
+                runCatching { NativePty.signal(handles[0].toInt(), SIGNAL_KILL) }
+                runCatching { NativePty.waitFor(handles[0].toInt()) }
+            }
+            if (handles.size >= 2 && handles[1] >= 0) {
+                runCatching { NativePty.close(handles[1].toInt()) }
+            }
+            sessionSlots.release()
+            error("终端句柄无效")
+        }
+        val session = Session(UUID.randomUUID().toString(), handles[0].toInt(), handles[1].toInt(), callback)
+        session.deathRecipient = IBinder.DeathRecipient { close(session) }
+        try {
+            callback.asBinder().linkToDeath(session.deathRecipient, 0)
+        } catch (error: RemoteException) {
+            NativePty.signal(session.processId, SIGNAL_KILL)
+            NativePty.waitFor(session.processId)
+            NativePty.close(session.fileDescriptor)
+            sessionSlots.release()
+            throw error
+        }
+        sessions[session.id] = session
+        try {
+            ioExecutor.execute { readLoop(session) }
+        } catch (error: Throwable) {
+            sessions.remove(session.id, session)
+            runCatching { session.callback.asBinder().unlinkToDeath(session.deathRecipient, 0) }
+            runCatching { NativePty.signal(session.processId, SIGNAL_KILL) }
+            runCatching { NativePty.waitFor(session.processId) }
+            runCatching { NativePty.close(session.fileDescriptor) }
+            sessionSlots.release()
+            throw error
+        }
+        return session.id
+    }
+
+    override fun write(sessionId: String?, data: ByteArray?) {
+        val session = requireSession(sessionId)
+        requireNotNull(data) { "Terminal data is required" }
+        require(data.isNotEmpty() && data.size <= RuntimeLimits.MAX_TERMINAL_INPUT_BYTES) { "Terminal data length is invalid" }
+        synchronized(session.writeLock) {
+            TerminalInputWriter.writeAll(data) { NativePty.write(session.fileDescriptor, it) }
+        }
+    }
+
+    override fun resize(sessionId: String?, columns: Int, rows: Int) {
+        UbuntuTerminalManager.validateSize(columns, rows)
+        val session = requireSession(sessionId)
+        NativePty.resize(session.fileDescriptor, columns, rows)
+    }
+
+    override fun closeSession(sessionId: String?) {
+        close(requireSession(sessionId))
+    }
+
+    override fun closeAll() {
+        virtualScreen.close()
+        sessions.values.toList().forEach(::close)
+    }
+
+    override fun destroy() {
+        closeAll()
+        scheduler.schedule({ Runtime.getRuntime().exit(0) }, 3, TimeUnit.SECONDS)
+    }
+
+    private fun readLoop(session: Session) {
+        var exitCode = 255
+        var waited = false
+        try {
+            val buffer = ByteArray(16 * 1024)
+            while (true) {
+                val read = NativePty.read(session.fileDescriptor, buffer)
+                if (read <= 0) break
+                session.callback.onOutput(session.id, buffer.copyOf(read))
+            }
+            exitCode = NativePty.waitFor(session.processId)
+            waited = true
+        } catch (_: RemoteException) {
+            close(session)
+            try {
+                exitCode = NativePty.waitFor(session.processId)
+                waited = true
+            } catch (_: Throwable) {
+                exitCode = 255
+            }
+        } catch (_: Throwable) {
+            close(session)
+        } finally {
+            if (!waited) {
+                try {
+                    NativePty.signal(session.processId, SIGNAL_KILL)
+                    exitCode = NativePty.waitFor(session.processId)
+                } catch (_: Throwable) {
+                    exitCode = 255
+                }
+            }
+            sessions.remove(session.id, session)
+            try {
+                session.callback.asBinder().unlinkToDeath(session.deathRecipient, 0)
+            } catch (_: Throwable) {
+                // 回调的 binder 可能已经死了（客户端进程先关）。
+            }
+            try {
+                NativePty.close(session.fileDescriptor)
+            } catch (_: Throwable) {
+                // 描述符所有权随本会话结束，这里吞掉也不影响外部状态。
+            }
+            try {
+                session.callback.onExit(session.id, exitCode)
+            } catch (_: RemoteException) {
+                // 客户端可能已经把终端关掉了，回调失败正常。
+            }
+            sessionSlots.release()
+        }
+    }
+
+    private fun close(session: Session) {
+        if (!session.closing.compareAndSet(false, true)) return
+        try {
+            NativePty.signal(session.processId, SIGNAL_TERM)
+        } catch (_: Throwable) {
+            return
+        }
+        scheduler.schedule({
+            if (sessions.containsKey(session.id)) {
+                try {
+                    NativePty.signal(session.processId, SIGNAL_KILL)
+                } catch (_: Throwable) {
+                    // 进程可能已经自己退出了，signal 打不到。
+                }
+            }
+        }, 2, TimeUnit.SECONDS)
+    }
+
+    private fun requireSession(sessionId: String?): Session {
+        require(sessionId != null && SESSION_PATTERN.matches(sessionId)) { "Invalid terminal session" }
+        return sessions[sessionId] ?: throw IllegalStateException("Terminal session is not active")
+    }
+
+    companion object {
+        private const val DEVICE_SHELL = "/system/bin/sh"
+        private const val SIGNAL_TERM = 15
+        private const val SIGNAL_KILL = 9
+        private const val MAX_SESSIONS = 4
+        private val SESSION_PATTERN = Regex("^[a-f0-9-]{36}$")
+    }
+}

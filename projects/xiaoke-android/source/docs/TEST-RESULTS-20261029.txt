@@ -1,0 +1,38 @@
+历史候选基线记录；本轮正在改变的体验以 projects/xiaoke-android/docs/REQUIREMENTS.md 和 PROGRESS.md 为准。
+
+小克安卓助手 · 本轮验证记录
+2026-10-29
+
+制品：io.github.dshcompanion.mobile，0.2.0-companion-private / versionCode 2，ARM64，minSdk 26 / targetSdk 35。
+这是私人候选安装包；不是已完成真实模型、平台账号与 目标 Android 设备 手机验收的承诺。
+
+已完成
+- AIRI 与 Open-LLM-VTuber 的私有交付均已校验、合并；同一模型队列、同一陪伴控制器和权限范围，无两套助手争抢麦克风。
+- React / TypeScript / Vite production build 通过。主线 PresencePanel 的 6 项组件测试通过；8 个 Chromium 界面场景、0 JS 异常。浏览器测试不替代原生运行。
+- Gradle lintRelease、testDebugUnitTest、assembleRelease 成功。149 个单元测试套件共 1,486 项：0 失败、0 错误、3 跳过。小克专属 25 个测试入口：14 个业务场景、7 个本地 TLS/SSE Gemini 协议场景、4 个语音状态机入口（覆盖分支交付的 31 个逻辑场景）。这些不是实际语音或账号测试。
+- Lint 没有 Error，仍有 85 个 Warning（含原项目项目级警告、单例应用 Context / 服务生命周期提示、界面字符串和兼容 API 常量）；没有隐藏为“零警告”。
+- 原生 ARM64 私有 release 已签名；签名、包名/版本、APK 16 KiB zip alignment、AArch64 原生库、rootfs 与许可证打包已检查。最终准确字节数 / SHA-256 见交付摘要和证据包 private-apk-manifest.json。
+- 原生 PRoot / loader 使用固定来源重建产物。未在 x86_64 模拟器运行 ARM64 Ubuntu；没有声称 目标 Android 设备 PRoot 已通过。
+- NapCat v4.18.41 官方镜像、本机 127.0.0.1 端口测试：核心版本确认，原生模块加载正常，WebUI 返回 200，未授权 bearer 的受保护接口拒绝访问。测试后停止并移除容器。没有扫码、QQ 登录、真实收发或公网端口。
+- 源码凭据检查未发现新凭据。两处原版测试文件含公开假密钥用例，已确认与原检查点逐字节相同，且不打入 APK。签名文件和 NapCat data 均忽略，源码附件排除。
+
+Android 16 原生运行
+- Google 官方模拟器 37.2.12、Platform-Tools 37.0.1、API 36 AOSP x86_64 revision 2，来源 / 摘要记录在证据包。
+- 当前云环境无 /dev/kvm，采用纯软件仿真；不更改宿主安全挂载或增加容器特权。首次系统启动很慢。
+- 首次 Google APIs 镜像启动未达到可用条件，改用较轻的官方 AOSP 镜像。后者已连接 ADB / API 36，系统包管理出现；在 boot_completed 之前的安装尝试明确返回 device is still booting，不能算安装成功。
+- 最终结果：截至 2026-10-29 05:17 UTC，AOSP 镜像仍未完成首启。日志证明系统 Watchdog 在主线程阻塞 66 秒后终止 system_server；此时尚未安装小克。全局 watchdog_timeout_millis 已在自建测试机写入并读回 600000，额外有界窗口仍未达到 boot_completed=1。没有禁用 Watchdog，没有改变宿主安全挂载或增加容器特权。
+- APK 安装未完成；CompanionPersistenceTest 的三项 Android 仪器测试没有执行，原生界面、系统视频解码、真实 Android SQLite/加密备份与浮窗运行验收均未通过本环境验证。测试代码已经编译，可在具备硬件加速的 Android 16 模拟器或用户授权设备执行。
+- 此环境的失败不能用来判定小克已运行后崩溃，也不能拿构建通过来代替运行结果。测试虚拟机在收尾停止，不持续占用资源。
+- AOSP 对 Watchdog 超时的定义与可配置入口：https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android16-release/services/core/java/com/android/server/Watchdog.java 。本次设置仅用于临时虚拟机；不能将该环境的响应时长作为手机性能数据。
+
+仍须在授权后验证
+- 目标 Android 设备 / Android 16 厂商系统：安装、无障碍授权与实际截图、浮窗拖动和输入法、切应用挂起 / 三分钟结束 / 锁屏停、后台存活、电量和音频路由。
+- 新密钥由用户安装后填写；真实中转的 gemini-3.8-flash / gemini-4-argon、图片、function calling、thought signature、速度、计费均未调用验证。
+- 系统离线 ASR/TTS 取决于手机服务。扬声器半双工；耳机抢话代码已有，物理音频实测未做；未完成扬声器免手持全双工 AEC。三秒响应目标与八秒默认过期策略不等于实测延迟。
+- 角色支持内置几何示意与用户 PNG / 4×6 图集；没有完整 Live2D / VRM 模型加载器，也没有替用户定稿二创人设。
+- QQ 需要用户控制的常驻 NapCat 主机 / 手机可达的 WSS 与独立 token。当前任务容器没有被当作 24/7 托管。真实登录、通知/接收、本人避让、群聊发送、断线与重复发送的账号验收未做。
+- B站公开字幕 / 视频路径未登录验证；本地和公开取帧是有明确覆盖范围的视觉依据，不代表自动获取全部音轨或观看过整段。真实评论提交未做。
+- 加密备份不包含密钥、原始媒体、角色图片、平台登录和可执行发送授权。原始媒体和角色素材另行保管；恢复后联网关闭且暂停。
+
+不应重新做的工作
+不重启整轮 APK 拆包研究；不要把旧 HANDOFF 的“未编译”当当前进度。来源版本、移植文件和许可见 COMMUNITY_REUSE.md；重建见 ../../build-materials/PRIVATE-BUILD-20261029.md。用户 Windows 未推送文件不在本包中，不能用此云端版本覆盖。

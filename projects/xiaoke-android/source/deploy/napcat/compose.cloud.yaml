@@ -1,0 +1,10 @@
+# Managed-cloud overlay: host path comes from the current cloud runtime skill,
+# never from a checked-in credential, and must remain a read-only bind mount.
+services:
+  napcat:
+    environment:
+      NODE_EXTRA_CA_CERTS: /xiaoke/session-ca.crt
+      SSL_CERT_FILE: /xiaoke/session-ca.crt
+      REQUESTS_CA_BUNDLE: /xiaoke/session-ca.crt
+    volumes:
+      - ${CLOUD_PROXY_CA_FILE:?Set the current session CA file}:/xiaoke/session-ca.crt:ro

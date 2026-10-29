@@ -1,0 +1,778 @@
+/**
+ * `App.*.test.tsx` 系列的共享夹具：桥接 mock、固定状态数据与「默认桩」。
+ *
+ * 为什么要有这个文件（而不是每个拆分文件各抄一份）：
+ *  - `vi.mock` 是**文件级**的，拆分后每个测试文件都必须自己写一行
+ *    `vi.mock('../platform/native', ...)` 与终端面板的 mock——这部分辅助模块代替不了；
+ *    但被 mock 的**内容**（四十多个桥方法桩）与固定数据（readyState / settings / mailbox …）
+ *    没有任何理由抄六份。抄六份的下场是改一处漏五处，而且各文件的「默认桩」会悄悄漂移：
+ *    同一个界面在不同文件里被测到的初始前提就不一样了，失败时也没人知道该信哪一份。
+ *  - 这里导出的 [bridge] 是**每个测试文件各自一份**实例（vitest 默认按测试文件隔离模块注册表），
+ *    因此 `vi.clearAllMocks()` 只影响当前文件，隔离性与原先 `vi.hoisted` 的写法完全等价。
+ *
+ * 用法（固定三步，顺序不能变）：
+ *  1. `vi.mock('../platform/native', () => ({ runtimeBridge: bridge }))`；
+ *  2. `beforeEach(beforeEachAppTest)`；
+ *  3. 用例内按需覆盖某个桥方法的返回值，用例结束无需手动还原（beforeEach 会重设）。
+ */
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { expect, vi } from 'vitest'
+import { ALWAYS_ALLOWED_ACCESSIBILITY_PACKAGES } from '../platform/types'
+import type {
+  DiagnosticLogState,
+  KeepAliveState,
+  MailboxState,
+  RuntimeSettings,
+  RuntimeSettingsUpdate,
+  RuntimeState,
+  ShizukuState,
+  StorageAccessState,
+} from '../platform/types'
+
+/**
+ * 桥接 mock 本体。
+ *
+ * 用普通模块级常量而不是 `vi.hoisted`：`vi.hoisted` 的回调会在 import 之前执行，
+ * 因此它不可能引用别的模块；而 `vi.mock` 的**工厂函数是惰性调用**的（首次 import 被 mock 的模块时才执行），
+ * 那时本模块早已求值完毕，所以这里可以安全地被各测试文件的 `vi.mock` 工厂引用。
+ */
+export const bridge = {
+  setAppLanguage: vi.fn(),
+  /**
+   * 主题模式同步给原生（§5.4 状态栏配色）。
+   *
+   * 这个桩是本文件里**唯一不是为了 §5.6-B 而加**的，补它是为了让仓库回到全绿：
+   * `src/theme.ts` 的 `applyTheme()` 会调用它，而 `AppearanceSettings` 在挂载时就会调一次
+   * `applyTheme`。提交 `caadeae`（状态栏跟随应用主题）把 `setAppTheme` 加进了
+   * `src/platform/{native,types,browser}.ts` 与 `src/theme.ts`，却漏了这个共享桩 ——
+   * 实测少了它，已提交的 `App.test.tsx` 里有 2 条会失败（「saves source and terminal
+   * preferences from settings」与「设置切换立即生效且重新挂载后保留语言」）。
+   *
+   * 失败形态很难认：异常发生在 effect 阶段，React 直接**卸载整棵树**，
+   * 表现成「找不到任何元素」，与真正的界面缺陷几乎无法区分。
+   */
+  setAppTheme: vi.fn(),
+  getState: vi.fn(),
+  getSettings: vi.fn(),
+  saveSettings: vi.fn(),
+  install: vi.fn(),
+  startHarness: vi.fn(),
+  openHarness: vi.fn(),
+  stopRuntime: vi.fn(),
+  reset: vi.fn(),
+  createTerminal: vi.fn(),
+  writeTerminal: vi.fn(),
+  resizeTerminal: vi.fn(),
+  closeTerminal: vi.fn(),
+  getShizukuState: vi.fn(),
+  requestShizukuPermission: vi.fn(),
+  connectShizuku: vi.fn(),
+  openShizuku: vi.fn(),
+  getAccessibilityAutomationState: vi.fn(),
+  listInstalledApplications: vi.fn().mockResolvedValue({ apps: [], total: 0, nextOffset: null }),
+  getDeviceShellAccess: vi.fn().mockResolvedValue({ enabled: false }),
+  setDeviceShellAccess: vi.fn().mockImplementation((enabled: boolean) => Promise.resolve({ enabled })),
+  openVirtualScreen: vi.fn().mockResolvedValue(undefined),
+  // 副屏独立设置页的五条桥方法（授权范围：只追加这 5 条）。默认值与原生侧同形——
+  // `VirtualScreenPreferences` 的默认（60fps / off / auto / 未自定义尺寸的三项 0）与
+  // `mergeState()` 的空状态（未运行、displayId 用 -1、读数用 0、文本字段为空串）。
+  // 两条读方法不能是裸桩：设置页会读它们的字段，返回 undefined 会在渲染里抛。
+  // 三条写方法回 undefined 就是真实契约（原生桥只回 void，界面靠重新读取拿显示依据）。
+  getVirtualScreenSettings: vi.fn().mockResolvedValue({
+    previewMode: '60fps', autoFollow: 'off', orientation: 'auto', adaptive: false,
+    widthPx: 0, heightPx: 0, densityDpi: 0,
+  }),
+  setVirtualScreenSettings: vi.fn().mockResolvedValue(undefined),
+  startVirtualScreen: vi.fn().mockResolvedValue(undefined),
+  stopVirtualScreen: vi.fn().mockResolvedValue(undefined),
+  getVirtualScreenState: vi.fn().mockResolvedValue({
+    active: false, sessionId: '', displayId: -1, previewMode: '60fps', autoFollow: 'off',
+    orientation: 'auto', adaptive: false, widthPx: 0, heightPx: 0, densityDpi: 0,
+    targetPackage: '', frameFps: 0, displayRefreshRate: 0,
+    targetFps: 0, frameAtElapsedMs: 0, frameAgeMs: 0, inputFrameDelayLastMs: 0, inputFrameDelayAverageMs: 0, inputFrameDelaySamples: 0,
+    virtualForegroundPackage: '', virtualForegroundActivity: '',
+  }),
+  setAccessibilityAutomationPackages: vi.fn(),
+  // 验证密码三条（设置/清除/生物识别重置）。与上面同一道理：桥加了方法而夹具没加，
+  // 用到它的界面会在 effect 阶段抛错并**整棵树卸载**，表现成「找不到任何元素」。
+  setAccessibilityPassword: vi.fn(),
+  clearAccessibilityPassword: vi.fn(),
+  resetAccessibilityPasswordWithBiometric: vi.fn(),
+  // 无障碍控制台第二批（总开关 + 运行记录）：与上面同一道理，夹具缺一条桥方法，
+  // 用到它的界面会在 effect 阶段抛错并整棵树卸载，表现成「找不到任何元素」。
+  setAccessibilityAutomationRuntime: vi.fn(),
+  getAccessibilityAutomationRuns: vi.fn(),
+  // 无障碍控制台第三批（规则读写）：名单里少一条，用到它的界面同样会在 effect 阶段抛错。
+  getAccessibilityAutomationRules: vi.fn(),
+  setAccessibilityAutomationRuleEnabled: vi.fn(),
+  saveAccessibilityAutomationRule: vi.fn(),
+  deleteAccessibilityAutomationRule: vi.fn(),
+  getAccessibilityAutomationRule: vi.fn(),
+  // 每应用参数（按应用暂停开关 + 默认值）：与规则读写同一批，缺一条同样会整棵树卸载。
+  getAccessibilityAutomationAppConfig: vi.fn(),
+  setAccessibilityAutomationAppConfig: vi.fn(),
+  openAccessibilitySettings: vi.fn(),
+  getKeepAliveState: vi.fn(),
+  getOverlayBallState: vi.fn(),
+  openOverlaySettings: vi.fn(),
+  getMailboxState: vi.fn(),
+  getMailboxDirectory: vi.fn(),
+  createMailboxFolder: vi.fn(),
+  // 「文件管理」一级页会读共享目录（`/mnt/user/<序号>`）。放在投递区两条旁边：
+  // 两者的线形状只差根字段，缺桩的后果与上面 §5.1 那条注释一样——effect 阶段抛错、
+  // 整棵树卸载，表现成「找不到任何元素」。
+  getStorageDirectory: vi.fn(),
+  createStorageFolder: vi.fn(),
+  getStorageAccessState: vi.fn(),
+  // 存储目录白名单（§5.1）。界面接线尚未做，但桩必须先在：桥加了方法而夹具没加，
+  // 用到它的界面会在 effect 阶段抛错并**整棵树卸载**，表现成「找不到任何元素」——
+  // 与真正的界面缺陷几乎无法区分（这个坑已经踩过一次）。`appTestHarness.test.ts` 里有守卫。
+  getStorageDirs: vi.fn(),
+  addStorageDirectory: vi.fn(),
+  removeStorageDirectory: vi.fn(),
+  execDeviceCommand: vi.fn(),
+  requestMediaPermission: vi.fn(),
+  openAllFilesAccessSettings: vi.fn(),
+  importMailbox: vi.fn(),
+  exportMailbox: vi.fn(),
+  requestNotificationPermission: vi.fn(),
+  openNotificationSettings: vi.fn(),
+  openApplicationSettings: vi.fn(),
+  getHarnessLog: vi.fn(),
+  runRuntimeSelfCheck: vi.fn(),
+  // 运行时版本管理（双槽）：界面进「运行环境」页就会读一次列表，
+  // 桩必须先在，否则那次 effect 会抛错并整棵树卸载（同上一条注释里的坑）。
+  getRuntimeVersions: vi.fn(),
+  switchRuntimeVersion: vi.fn(),
+  deleteRuntimeVersion: vi.fn(),
+  setRuntimeVersionPinned: vi.fn(),
+  // 「运行时占用」卡片进版本管理页就会读一次残留（清理按钮另有一条）；缺桩会让那次 effect 抛错，
+  // 同上一条注释里的坑。
+  getRuntimeResidue: vi.fn(),
+  cleanRuntimeResidue: vi.fn(),
+  // 「数据清理」卡片与「运行时占用」卡片挨着渲染，进版本管理页会读一次数据占用；
+  // 两条清理入口只在用户点击后才调，同样必须有桩。
+  getRuntimeCleanupState: vi.fn(),
+  getDeviceCapabilities: vi.fn(),
+  // 根通道卡片紧跟设备能力清单渲染，进设置页就会读一次状态；缺桩会让 effect 抛错并卸载整棵树
+  // （同上一条注释里的坑）。开关是用户点击后才调，但同样留桩。
+  getRootEngineStatus: vi.fn(),
+  setRootEngineEnabled: vi.fn(),
+  // 任务台账：界面进「无障碍应用自动化」页会读一次当前任务，取消是用户点击后才调；
+  // 缺桩同样会让 effect 抛错并卸载整棵树。
+  getAutomationTaskState: vi.fn(),
+  cancelAutomationTask: vi.fn(),
+  clearRuntimeCache: vi.fn(),
+  purgePluginData: vi.fn(),
+  // 会话快照：界面进「运行环境」页会读一次总览，缺桩同样会让 effect 抛错并卸载整棵树。
+  getRuntimeSessionSnapshotState: vi.fn(),
+  createRuntimeSessionSnapshot: vi.fn(),
+  restoreRuntimeSessionSnapshot: vi.fn(),
+  deleteRuntimeSessionSnapshot: vi.fn(),
+  // 会话工作区：首页一挂载就会调一次 listSessions()，缺这个桩同样会让 effect 抛错并卸载整棵树
+  // （见上面 `setAppTheme` 的注释：表现成「找不到任何元素」，与真正的界面缺陷几乎无法区分）。
+  listSessions: vi.fn(),
+  // 更新：可用版本列表与应用自更新同样有默认桩——界面一进相关页面就会读一次，
+  // 缺桩会让 effect 抛错并卸载整棵树（同上一条注释里的坑）。
+  listRuntimeReleases: vi.fn(),
+  downloadRuntimeRelease: vi.fn(),
+  getAppUpdateState: vi.fn(),
+  setAppUpdateChannel: vi.fn(),
+  downloadAppUpdate: vi.fn(),
+  installAppUpdate: vi.fn(),
+  openAppUpdateInstallSettings: vi.fn(),
+  managePlugins: vi.fn(),
+  testModelConnectivity: vi.fn(),
+  getDiagnosticLogState: vi.fn(),
+  readDiagnosticLog: vi.fn(),
+  setDiagnosticLogSettings: vi.fn(),
+  shareDiagnosticLog: vi.fn(),
+  shareRuntimeWorkspace: vi.fn(),
+  listRuntimeWorkspaceFiles: vi.fn(),
+  shareRuntimeWorkspaceFile: vi.fn(),
+  openRuntimeWorkspaceFile: vi.fn(),
+  deleteRuntimeWorkspaceFile: vi.fn(),
+  clearDiagnosticLog: vi.fn(),
+  addRuntimeProgressListener: vi.fn(),
+  addAppUpdateProgressListener: vi.fn(),
+  addTerminalOutputListener: vi.fn(),
+  addTerminalExitListener: vi.fn(),
+}
+
+export const readyState: RuntimeState = {
+  phase: 'ready',
+  architecture: 'arm64-v8a',
+  installedVersion: '2026.08.17',
+  updateAvailable: false,
+  downloadedBytes: 640 * 1024 * 1024,
+  totalBytes: 640 * 1024 * 1024,
+  runnerAvailable: true,
+}
+
+export const runningState: RuntimeState = {
+  ...readyState,
+  phase: 'running',
+  harnessUrl: 'http://127.0.0.1:3080/',
+}
+
+export const notInstalledState: RuntimeState = {
+  phase: 'not-installed',
+  architecture: 'arm64-v8a',
+  updateAvailable: false,
+  downloadedBytes: 0,
+  totalBytes: readyState.totalBytes,
+  runnerAvailable: true,
+}
+
+export const settings: RuntimeSettings = {
+  manifestUrl: 'https://downloads.example.invalid/runtime.json',
+  manifestSha256: 'a'.repeat(64),
+  keepScreenAwake: true,
+  terminalFontSize: 14,
+  // 默认开着自动启动，与引导页首次写入的值一致（`Onboarding.tsx`）。
+  // 老存储缺这一项时原生侧按关闭处理，所以用例里要显式给值，不能靠缺省。
+  // 默认视为「本机已保存过一次模型密钥」：没有密钥时应用会拦住「打开 Harness」，
+  // 而这里多数用例关心的是设置与启动流程本身，门禁行为有专门用例覆盖。
+  configuredModelProviders: ['deepseek'],
+}
+
+export const shizuku: ShizukuState = {
+  installed: true,
+  running: true,
+  permission: 'undetermined',
+  connected: false,
+}
+
+export const keepAlive: KeepAliveState = {
+  keepRuntimeInBackground: false,
+  foregroundServiceActive: false,
+  notificationPermission: 'granted',
+  deviceShellReady: false,
+  reconnectRequired: false,
+  lastIntent: 'stopped',
+}
+
+const diagnostic: DiagnosticLogState = {
+  enabled: false,
+  retentionDays: 3,
+  fileCount: 0,
+  totalBytes: 0,
+  lastEntryAtMillis: 0,
+}
+
+/**
+ * 投递区状态：默认取「系统支持但尚未授予所有文件访问」。
+ *
+ * 这是真机首次安装后的真实状态，也是界面必须如实降级的那一档；
+ * 需要「可用」的用例自行覆盖（见 [availableMailbox]）。
+ */
+export const unavailableMailbox: MailboxState = {
+  availability: 'needsPermission',
+  level: 'T0',
+  available: false,
+  supported: true,
+  granted: false,
+  inboxPath: '/storage/emulated/0/Documents/DSH/inbox',
+  outboxPath: '/storage/emulated/0/Documents/DSH/outbox',
+  guestInboxPath: '/mnt/inbox',
+  guestOutboxPath: '/mnt/outbox',
+  inboxFileCount: 0,
+  inboxTars: [],
+  exportTarName: 'dsh-workspace.tar',
+  exportManifestName: 'dsh-workspace.manifest.json',
+  importDirectory: 'mailbox-import',
+}
+
+export const availableMailbox: MailboxState = {
+  ...unavailableMailbox,
+  availability: 'available',
+  level: 'T2',
+  available: true,
+  granted: true,
+  inboxFileCount: 2,
+  inboxTars: [{ name: 'dsh-workspace.tar', bytes: 2048 }],
+}
+
+export const storageAccess: StorageAccessState = {
+  mediaGranted: false,
+  allFilesGranted: false,
+  allFilesSupported: true,
+  sdkInt: 34,
+}
+
+/**
+ * `src/App.tsx` 里 `FOREGROUND_SERVICE_SETTLE_MS` 的镜像值。
+ *
+ * 「保存后复核前台服务」是应用侧的真实 1.5 秒定时器：用例必须把它推快，
+ * 否则每条都要真实睡满 1.5 秒，而这段真实等待正是登记册 5.6-J 记下的那次 5 秒超时 flake 的来源。
+ * 这个常量只用于测试里推进假定时器，改了 `App.tsx` 的宽限期就必须同步改这里。
+ */
+export const FOREGROUND_SERVICE_SETTLE_MS = 1500
+
+/**
+ * 各 `App.*.test.tsx` 的 beforeEach 统一入口。
+ *
+ * 固定成「本地存储复位 → 清空所有 mock → 铺默认桩」的顺序：
+ * 默认桩必须建立在 clear 之后，否则某条用例自己设过的返回值会漏到下一条用例里。
+ */
+export function beforeEachAppTest(): void {
+  window.localStorage.clear()
+  window.localStorage.setItem('dsh-mobile-language-v1', 'zh-CN')
+  window.localStorage.setItem('dsh-mobile-onboarding-v1', '1')
+  // 普通页面测试关闭自动提示；更新集成测试显式开启，避免启动弹窗掩盖被测页面。
+  window.localStorage.setItem('dsh-app-update-reminder-enabled-v1', 'false')
+  vi.clearAllMocks()
+  bridge.setAppLanguage.mockResolvedValue(undefined)
+  bridge.setAppTheme.mockResolvedValue(undefined)
+  bridge.getState.mockResolvedValue({ ...readyState })
+  bridge.getSettings.mockResolvedValue({ ...settings })
+  bridge.getShizukuState.mockResolvedValue({ ...shizuku })
+  bridge.getAccessibilityAutomationState.mockResolvedValue({
+    enabled: false,
+    whitelistEnabled: true,
+    allowedPackages: [],
+    alwaysAllowedPackages: [...ALWAYS_ALLOWED_ACCESSIBILITY_PACKAGES],
+    passwordConfigured: false,
+    // 默认与真机「装完没点过任何按钮」一致：总开关关闭、服务未连上。
+    automationRuntime: 'off',
+    serviceStatus: 'off',
+  })
+  bridge.listInstalledApplications.mockResolvedValue({ apps: [], total: 0, nextOffset: null })
+  bridge.getDeviceShellAccess.mockResolvedValue({ enabled: false })
+  bridge.setDeviceShellAccess.mockImplementation((enabled: boolean) => Promise.resolve({ enabled }))
+  bridge.openVirtualScreen.mockResolvedValue(undefined)
+  // 第二个参数是「本次修改白名单」的验证密码；夹具不比对密码（那是原生侧的事），
+  // 但**签名必须收**，否则用例里带密码调用会落进 `undefined` 分支，测的还是旧行为。
+  bridge.setAccessibilityAutomationPackages.mockImplementation((packages: string[], ...rest: [password?: string, whitelistEnabled?: boolean]) => {
+    // 收下密码只为证明「带密码调用」也走同一条路径：夹具不校验它，也绝不回显它。
+    const passwordIgnored = rest.length
+    void passwordIgnored
+    return Promise.resolve({
+      enabled: false,
+      whitelistEnabled: rest[1] ?? true,
+      allowedPackages: [...new Set([...ALWAYS_ALLOWED_ACCESSIBILITY_PACKAGES, ...packages])],
+      alwaysAllowedPackages: [...ALWAYS_ALLOWED_ACCESSIBILITY_PACKAGES],
+      passwordConfigured: false,
+      automationRuntime: 'off',
+      serviceStatus: 'off',
+    })
+  })
+  // 三条密码桩的默认返回：形状必须过得了 validateAccessibilityAutomationState，
+  // 否则界面侧的载荷校验会抛错（同上面 getStorageDirectory 那条注释）。
+  // 每次都新建数组，避免不同用例共用同一个引用。
+  const accessibilityState = (passwordConfigured: boolean) => ({
+    enabled: false,
+    whitelistEnabled: true,
+    allowedPackages: [] as string[],
+    alwaysAllowedPackages: [...ALWAYS_ALLOWED_ACCESSIBILITY_PACKAGES],
+    passwordConfigured,
+    automationRuntime: 'off' as const,
+    serviceStatus: 'off' as const,
+  })
+  bridge.setAccessibilityPassword.mockResolvedValue(accessibilityState(true))
+  bridge.clearAccessibilityPassword.mockResolvedValue(accessibilityState(false))
+  bridge.resetAccessibilityPasswordWithBiometric.mockResolvedValue(accessibilityState(false))
+  // 总开关：夹具按与原生同一套转移规则回状态（关闭态上按暂停仍是关闭、紧急停止回关闭），
+  // 这样界面上的按钮文案与禁用条件能在不使用真机的情况下被断言。
+  bridge.setAccessibilityAutomationRuntime.mockImplementation((action: string) => Promise.resolve({
+    ...accessibilityState(false),
+    automationRuntime: action === 'start' || action === 'resume'
+      ? 'running'
+      : action === 'pause' ? 'paused' : 'off',
+  }))
+  // 运行记录默认「服务没连上、什么都没读到」：界面必须能在这个状态下如实说明，而不是显示成空列表。
+  bridge.getAccessibilityAutomationRuns.mockResolvedValue({ connected: false, limit: 50, dropped: 0, runs: [], blocked: [] })
+  // 规则默认「这个包不在白名单、还没有规则」：界面要能在这个状态下说明「规则不会被执行」。
+  bridge.getAccessibilityAutomationRules.mockResolvedValue({
+    packageName: 'com.example.target', allowed: false, corrupt: null, rules: [],
+  })
+  // 开关一条规则：按传入的 enabled 回一份更新后的读数（原生成交后也是回整包读数）。
+  bridge.setAccessibilityAutomationRuleEnabled.mockImplementation((options: {
+    packageName: string
+    ruleId: string
+    enabled: boolean
+  }) => Promise.resolve({
+    packageName: options.packageName,
+    allowed: true,
+    corrupt: null,
+    rules: [{
+      id: options.ruleId,
+      enabled: options.enabled,
+      actionKind: 'click',
+      selectorCount: 1,
+      maxActions: 1,
+      actionCoolDownMs: 3000,
+    }],
+  }))
+  bridge.openAccessibilitySettings.mockResolvedValue(undefined)
+  bridge.getKeepAliveState.mockResolvedValue({ ...keepAlive })
+  // 新建 / 改写规则：按原生契约回「写完之后整包读数」，默认把这条规则原样放进列表。
+  bridge.saveAccessibilityAutomationRule.mockImplementation((options: {
+    packageName: string
+    mode: 'create' | 'update'
+    rule: { id: string; action: { type: string }; selectors: unknown[] }
+  }) => Promise.resolve({
+    packageName: options.packageName,
+    allowed: true,
+    corrupt: null,
+    rules: [{
+      id: options.rule.id,
+      enabled: true,
+      actionKind: options.rule.action.type,
+      selectorCount: options.rule.selectors.length,
+      maxActions: 1,
+      actionCoolDownMs: 3000,
+    }],
+  }))
+  // 删除规则：默认删完就没这条了（同样回整包读数，而不是 void）。
+  bridge.deleteAccessibilityAutomationRule.mockImplementation((options: { packageName: string }) => Promise.resolve({
+    packageName: options.packageName, allowed: true, corrupt: null, rules: [],
+  }))
+  // 读一条规则的全文：默认给一条「能过校验的完整规则」——返回 undefined 会让界面的载荷校验抛错，
+  // 那和「读回来是坏的」看起来一样，用例就分不出是桩没配还是代码写错了。
+  bridge.getAccessibilityAutomationRule.mockImplementation((options: { packageName: string; ruleId: string }) =>
+    Promise.resolve({
+      packageName: options.packageName,
+      ruleId: options.ruleId,
+      allowed: true,
+      rule: {
+        id: options.ruleId,
+        packageName: options.packageName,
+        enabled: true,
+        allowActivities: [],
+        denyActivities: [],
+        matchDelayMs: 0,
+        maxActions: 1,
+        actionCoolDownMs: 3000,
+        resetOn: 'activity',
+        selectors: [{ id: ':id/target' }],
+        action: { type: 'click' },
+      },
+    }))
+  // 每应用参数：默认给一份「读得出来、没暂停、数字都在范围内」的读数。上限的最小值是 1，
+  // 所以不能图省事给 0（会被 validateAccessibilityAutomationAppConfigDetail 拒收，
+  // 表现成「界面的载荷校验抛错」，与「读回来是坏的」分不出来）。
+  bridge.getAccessibilityAutomationAppConfig.mockImplementation((options: { packageName: string }) =>
+    Promise.resolve({
+      packageName: options.packageName,
+      allowed: true,
+      corrupt: null,
+      config: { paused: false, defaultMaxActions: 1, defaultActionCoolDownMs: 3000, defaultMatchDelayMs: 0 },
+    }))
+  // 写参数：回「写完之后」的那份读数（界面拿它刷新区块，不再额外读一次）。
+  bridge.setAccessibilityAutomationAppConfig.mockImplementation((options: {
+    packageName: string
+    paused: boolean
+    defaultMaxActions: number
+    defaultActionCoolDownMs: number
+    defaultMatchDelayMs: number
+  }) => Promise.resolve({
+    packageName: options.packageName,
+    allowed: true,
+    corrupt: null,
+    config: {
+      paused: options.paused,
+      defaultMaxActions: options.defaultMaxActions,
+      defaultActionCoolDownMs: options.defaultActionCoolDownMs,
+      defaultMatchDelayMs: options.defaultMatchDelayMs,
+    },
+  }))
+  // 默认已授予「显示在其他应用上层」权限：与用例无关的测试不该被一个禁用开关影响。
+  bridge.getOverlayBallState.mockResolvedValue({ enabled: false, canDrawOverlays: true, serviceActive: false })
+  bridge.openOverlaySettings.mockResolvedValue(undefined)
+  // 默认投递区不可用（未授予「所有文件访问」）：与真机首次安装后的状态一致。
+  bridge.getMailboxState.mockResolvedValue({ ...unavailableMailbox })
+  bridge.getMailboxDirectory.mockResolvedValue({ root: 'inbox', path: undefined, entries: [], truncated: false })
+  bridge.createMailboxFolder.mockResolvedValue({ root: 'inbox', path: undefined, entries: [], truncated: false })
+  // 共享目录的默认值同样给「第 1 条 + 根目录 + 空目录」：形状必须过得了 validateStorageDirectoryState，
+  // 否则界面侧的载荷校验会抛错（同 §5.1 那条注释）。
+  bridge.getStorageDirectory.mockResolvedValue({ guestPath: '/mnt/user/1', path: undefined, entries: [], truncated: false })
+  bridge.createStorageFolder.mockResolvedValue({ guestPath: '/mnt/user/1', path: undefined, entries: [], truncated: false })
+  bridge.getStorageAccessState.mockResolvedValue({ ...storageAccess })
+  // 与「未授予所有文件访问」的真机初始状态一致：白名单为空、档位 T0、上限照实回 8。
+  // 给默认值而不只是 vi.fn()，是为了让桩在**被调用**时也返回符合契约的形状——
+  // 返回 undefined 会让界面侧的载荷校验抛错，那同样会整棵树卸载。
+  const emptyStorageDirs = {
+    entries: [],
+    maxDirectories: 8,
+    count: 0,
+    supported: false,
+    granted: false,
+    level: 'T0' as const,
+    active: false,
+  }
+  bridge.getStorageDirs.mockResolvedValue({ ...emptyStorageDirs })
+  bridge.addStorageDirectory.mockResolvedValue({ ...emptyStorageDirs })
+  bridge.removeStorageDirectory.mockResolvedValue({ ...emptyStorageDirs })
+  bridge.execDeviceCommand.mockResolvedValue({ ok: false, exitCode: 1, text: '', truncated: false, errorCode: 'DEVICE_COMMAND_UNAVAILABLE' })
+  bridge.requestMediaPermission.mockResolvedValue({ granted: false })
+  bridge.openAllFilesAccessSettings.mockResolvedValue({ supported: true, granted: false })
+  bridge.requestNotificationPermission.mockResolvedValue({ granted: true, supported: true })
+  bridge.openNotificationSettings.mockResolvedValue(undefined)
+  bridge.openApplicationSettings.mockResolvedValue(undefined)
+  bridge.getHarnessLog.mockResolvedValue({ available: true, text: 'Error: tool call failed\n    at run (dsh.js:1:1)', maxBytes: 8 * 1024 })
+  // 默认是一次「全部正常」的自检：多数用例只关心设置页本身，不该被一个非 ok 项影响。
+  bridge.runRuntimeSelfCheck.mockResolvedValue({
+    operation: 'check',
+    availableBytes: 4 * 1024 * 1024 * 1024,
+    dshVersion: '0.1.5-rc.2',
+    checks: [{ id: 'shell', status: 'ok' }, { id: 'node', status: 'ok' }],
+  })
+  // 默认只有「当前版本 + 内置版本」，没有上一版本：多数用例只关心设置页本身，
+  // 不该被一个可切换的版本槽影响；涉及切换/删除的用例自己覆盖这三条桩。
+  bridge.getRuntimeVersions.mockResolvedValue({
+    versions: [
+      {
+        slot: 'current',
+        version: '2026.08.17',
+        dshVersion: '0.1.5-rc.2',
+        runtimeId: 'ubuntu-24.04-arm64-deepseek-harness',
+        extractedBytes: 640 * 1024 * 1024,
+        active: true,
+      },
+      {
+        slot: 'bundled',
+        version: '2026.09.01',
+        runtimeId: 'ubuntu-24.04-arm64-deepseek-harness',
+        extractedBytes: 660 * 1024 * 1024,
+        active: false,
+      },
+    ],
+    canSwitch: false,
+    canDelete: false,
+  })
+  bridge.switchRuntimeVersion.mockResolvedValue({ versions: [], canSwitch: false, canDelete: false })
+  bridge.deleteRuntimeVersion.mockResolvedValue({ versions: [], canSwitch: false, canDelete: false })
+  // 锁定桩的默认回执同样是空状态：它只在「版本管理」页里被调用，且真要检验锁定效果时
+  // 用例自己覆盖。方法与其它版本操作并列放在这里，缺了会被 appTestHarness 的自检用例抓住。
+  bridge.setRuntimeVersionPinned.mockResolvedValue({ versions: [], canSwitch: false, canDelete: false })
+  // 默认「没有可回收的残留」：多数用例只关心别的页面，不该被一张写着残留的卡片影响；
+  // 关心这张卡片的用例自己覆盖这两条桩。
+  bridge.getRuntimeResidue.mockResolvedValue({ count: 0, bytes: 0, truncated: false })
+  bridge.cleanRuntimeResidue.mockResolvedValue({ cleaned: 0, failed: 0, reclaimedBytes: 0, message: '没有可回收的残留，无需清理' })
+  // 默认「缓存是空的、插件账本可用、一个可清理的插件都没有」：多数用例只关心别的页面，
+  // 不该被一张写着占用的卡片影响；关心这张卡片的用例自己覆盖这三条桩。
+  bridge.getRuntimeCleanupState.mockResolvedValue({
+    runtimeRunning: false,
+    cache: { entries: [], files: 0, bytes: 0 },
+    plugin: { ledger: 'ok', checked: 0, packages: [] },
+  })
+  bridge.clearRuntimeCache.mockResolvedValue({ scope: 0, targets: 0, removed: 0, fallback: 0, failed: 0, files: 0, bytes: 0, skipped: 0, ok: true })
+  bridge.purgePluginData.mockResolvedValue({ scope: 0, targets: 0, removed: 0, fallback: 0, failed: 0, files: 0, bytes: 0, skipped: 0, ok: true })
+  // 默认「六项能力全部就绪、取样时刻是固定值」：多数用例只关心别的页面，不该被一张写着
+  // 「Shizuku 没装」的卡片影响；关心能力清单的用例自己覆盖这一条桩。
+  bridge.getDeviceCapabilities.mockResolvedValue({
+    atMs: 1_700_000_000_000,
+    sdkInt: 34,
+    capabilities: [
+      { id: 'shizuku', state: 'ready', reason: 'READY', action: null, alternative: null },
+      { id: 'kernelsu_root', state: 'ready', reason: 'READY', action: null, alternative: null },
+      { id: 'accessibility', state: 'ready', reason: 'READY', action: null, alternative: null },
+      { id: 'virtual_screen', state: 'ready', reason: 'READY', action: null, alternative: null },
+      { id: 'screenshot', state: 'ready', reason: 'READY', action: null, alternative: null },
+      { id: 'chinese_input', state: 'ready', reason: 'READY', action: null, alternative: null },
+    ],
+  })
+  // 根通道默认「关着、不能用」：这是出厂状态，也是唯一不该在测试里假装成别的值的状态——
+  // 假装「开着且可用」会让默认桩反而在教界面显示一个真机上不存在的组合。
+  bridge.getRootEngineStatus.mockResolvedValue({
+    enabled: false,
+    usable: false,
+    kernelSuStatus: 'unsupported',
+    reason: 'ROOT_ENGINE_DISABLED',
+    degraded: false,
+    degradations: [],
+    suVersion: null,
+  })
+  bridge.setRootEngineEnabled.mockResolvedValue({
+    enabled: true,
+    usable: false,
+    kernelSuStatus: 'needs_action',
+    reason: 'KERNELSU_PERMISSION_REQUIRED',
+    degraded: false,
+    degradations: [],
+    suVersion: '3.1.0:KernelSU',
+  })
+  // 任务台账默认「服务连着、当前没有任务」：多数用例只关心别的页面，不该被一块写着「有任务在跑」
+  // 的读数影响；需要「读不到」（connected=false）或「有任务」的用例自己覆盖这两条桩。
+  bridge.getAutomationTaskState.mockResolvedValue({ connected: true, task: null })
+  bridge.cancelAutomationTask.mockResolvedValue({ connected: true, task: null })
+  // 默认「没有任何快照」：多数用例只关心别的页面，不该被一份假快照影响；
+  // 关心快照的用例自己覆盖这四条桩。上限取值与原生侧一致（3 份 / 512 MiB）。
+  const emptySnapshotState = () => ({ maxSnapshots: 3, maxBytes: 512 * 1024 * 1024, totalBytes: 0, snapshots: [] })
+  bridge.getRuntimeSessionSnapshotState.mockResolvedValue(emptySnapshotState())
+  bridge.createRuntimeSessionSnapshot.mockResolvedValue(emptySnapshotState())
+  bridge.restoreRuntimeSessionSnapshot.mockResolvedValue({
+    restoredFileCount: 0,
+    skippedFileCount: 0,
+    state: emptySnapshotState(),
+  })
+  bridge.deleteRuntimeSessionSnapshot.mockResolvedValue(emptySnapshotState())
+  // 默认「确实没有会话」（ready + 空列表）：多数用例只关心别的页面，不该被一份假会话影响；
+  // 关心会话列表的用例自己覆盖这条桩。注意不要用 unavailable 当默认值——
+  // 那会让首页显示「读不到会话列表」，等于把一件没发生的事故塞给所有用例。
+  bridge.listSessions.mockResolvedValue({ status: 'ready', sessions: [], truncated: false })
+  // 默认空版本列表（没有可用版本可装）+ 未授权安装权限：多数用例只关心别的页面，
+  // 真正关心更新的用例自己覆盖这几条桩。
+  bridge.listRuntimeReleases.mockResolvedValue({ entries: [] })
+  bridge.downloadRuntimeRelease.mockResolvedValue(undefined)
+  bridge.getAppUpdateState.mockResolvedValue({
+    installedVersion: '0.2.0',
+    installedVersionCode: 22,
+    channel: 'stable',
+    installAllowed: false,
+  })
+  // 默认回显入参频道的最小状态（与 getAppUpdateState 默认桩同源）：关心频道语义的用例自己覆盖。
+  bridge.setAppUpdateChannel.mockImplementation((channel: 'stable' | 'beta') => Promise.resolve({
+    installedVersion: '0.2.0',
+    installedVersionCode: 22,
+    channel,
+    installAllowed: false,
+  }))
+  bridge.downloadAppUpdate.mockResolvedValue(undefined)
+  bridge.installAppUpdate.mockResolvedValue(undefined)
+  bridge.openAppUpdateInstallSettings.mockResolvedValue(undefined)
+  bridge.managePlugins.mockResolvedValue({ plugins: [] })
+  bridge.getDiagnosticLogState.mockResolvedValue({ ...diagnostic })
+  bridge.readDiagnosticLog.mockResolvedValue({
+    text: '2026-09-12T10:20:30Z|INFO|RUNTIME_PHASE|phase=running\n2026-09-12T10:21:04Z|WARN|MODULE_GRAPH|result=failed|count=2|files=4\n',
+    maxBytes: 64 * 1024,
+    totalBytes: 4096,
+    truncated: false,
+  })
+  bridge.setDiagnosticLogSettings.mockImplementation((enabled: boolean, retentionDays: number) =>
+    Promise.resolve({ ...diagnostic, enabled, retentionDays }))
+  bridge.clearDiagnosticLog.mockResolvedValue({ ...diagnostic })
+  bridge.shareDiagnosticLog.mockResolvedValue({ ...diagnostic, fileName: 'dsh-diagnostic-20260912-102030.txt', exportedBytes: 512 })
+  bridge.addRuntimeProgressListener.mockResolvedValue({ remove: vi.fn().mockResolvedValue(undefined) })
+  // 应用更新进度：订阅在挂载时就发生，所以这里必须给一个可用的默认取消句柄，
+  // 否则界面一挂载就会在 `subscribeProgress(...).then` 上炸掉。
+  bridge.addAppUpdateProgressListener.mockResolvedValue({ remove: vi.fn().mockResolvedValue(undefined) })
+  bridge.saveSettings.mockImplementation((value: RuntimeSettingsUpdate) => Promise.resolve(value))
+  // 安装结果默认**不带** autoSnapshot：界面就不会多显示一条快照结论，
+  // 用例若自己设成 undefined，桥的校验也会把它归一化成 {}。
+  bridge.install.mockResolvedValue({})
+  bridge.startHarness.mockResolvedValue({ ...runningState })
+  bridge.openHarness.mockResolvedValue(undefined)
+  bridge.stopRuntime.mockResolvedValue({ ...readyState })
+  bridge.reset.mockResolvedValue({ ...notInstalledState })
+  bridge.requestShizukuPermission.mockResolvedValue({ ...shizuku, permission: 'granted', connected: true })
+  bridge.connectShizuku.mockResolvedValue({ ...shizuku, permission: 'granted', connected: true })
+  bridge.openShizuku.mockResolvedValue(undefined)
+  bridge.testModelConnectivity.mockResolvedValue({ ok: true, status: 200, latencyMs: 120, message: '✓ 连接成功 (120ms)' })
+}
+
+/**
+ * 进入某个设置二级页：设置首页只保留分类入口。
+ *
+ * 入口按钮刻意用 `findByRole` 而不是 `getByRole`：应用是**先自动启动运行时、再切到设置视图**的，
+ * 「进设置」这个动作能不能立刻点，取决于启动流程跑到哪一步。用同步查询等于把用例的成败
+ * 押在「启动链是否已经在同一个微任务里跑完」上——实测在并行跑多个测试文件（CPU 争抢）时会直接失败。
+ * 改成有界等待后，前置条件变成「设置首页出现了」，用例自己的断言一条都没有放宽。
+ *
+ * **为什么显式给 5 s**：`findBy*` 的默认上限只有 1 s，而这个用例**单独跑**时这条等待就要
+ * 842 ms（实测），全量并行跑（CPU 争抢 + 4 个 worker）时越过 1 s 直接失败——
+ * 失败信息是「找不到入口按钮」，看起来像功能坏了，实际上是等待上限太短。
+ * 5 s 只放宽**等待**，不放宽断言：入口真的不出现时依然失败，只是失败得更慢一点。
+ */
+const SETTINGS_NAV_TIMEOUT_MS = 5_000
+
+/**
+ * 底栏元素。
+ *
+ * 无障碍名跟着界面语言走（中文「底部导航」/ 英文「Bottom navigation」），按名字找会在
+ * 语言用例里直接失败，所以按稳定的 class 定位；等待仍走 `waitFor`，语义与 findByRole 一致。
+ */
+async function bottomNav(): Promise<HTMLElement> {
+  await waitFor(
+    () => expect(document.querySelector('.bottom-navigation')).toBeInstanceOf(HTMLElement),
+    { timeout: SETTINGS_NAV_TIMEOUT_MS },
+  )
+  const nav = document.querySelector('.bottom-navigation')
+  if (!(nav instanceof HTMLElement)) throw new Error('底栏没有渲染出来')
+  return nav
+}
+
+/** 底栏「设置」入口：标签同样随语言变化，两种写法都认。 */
+async function settingsTab(): Promise<HTMLElement> {
+  const nav = await bottomNav()
+  for (const label of ['设置', 'Settings']) {
+    const found = within(nav).queryByRole('button', { name: label })
+    if (found !== null) return found
+  }
+  throw new Error('底栏里没有「设置」入口')
+}
+
+/** 设置首页标题：中英文都要能认出来。 */
+function settingsHeading(): HTMLElement | null {
+  return screen.queryByRole('heading', { name: '设置', level: 1 })
+    ?? screen.queryByRole('heading', { name: 'Settings', level: 1 })
+}
+
+/**
+ * 等外壳启动完成。
+ *
+ * 旧用例拿「启动链已经自动调用过一次 `openHarness`」当哨兵：等得到就说明设置读完、
+ * 视图稳定。自动启动已经移除（打开 Harness 只由用户点击触发），那条哨兵永远不会成立，
+ * 于是换成底栏出现作为同义信号——它同样意味着启动链跑完，可以开始操作界面。
+ */
+export async function arriveAtShell(): Promise<void> {
+  await bottomNav()
+}
+
+/**
+ * 从底栏点「设置」，落到设置首页。
+ *
+ * 自动启动移除后，「开机就在设置首页」这个前提不成立了：用例必须自己导航一次。
+ * 只负责点这一下，不渲染、不等标题——等待口径留给调用方（各文件的上限不同）。
+ */
+export async function clickSettingsTab(): Promise<void> {
+  fireEvent.click(await settingsTab())
+}
+
+/**
+ * 从底栏进入设置首页。
+ *
+ * 已经停在设置首页时是无操作：老用例通过自动启动链路到达这里，路径变了但落点相同。
+ */
+export async function openSettingsHome(): Promise<void> {
+  if (settingsHeading() !== null) return
+  fireEvent.click(await settingsTab())
+  await waitFor(() => expect(settingsHeading()).not.toBeNull(), { timeout: SETTINGS_NAV_TIMEOUT_MS })
+}
+
+/**
+ * 等外壳就绪并进入设置首页。
+ *
+ * 老用例靠「自动启动把视图推到设置首页」到达这里；自动启动移除后必须自己导航。
+ * 设置相关的用例统一用它，语义与当年的落点一致。
+ */
+export async function arriveAtSettingsHome(): Promise<void> {
+  await arriveAtShell()
+  await openSettingsHome()
+}
+
+export async function openSettingsPage(name: string): Promise<void> {
+  await openSettingsHome()
+  const entry = await screen.findByRole('button', { name: new RegExp(name) }, {
+    timeout: SETTINGS_NAV_TIMEOUT_MS,
+  })
+  fireEvent.click(entry)
+  await screen.findByRole('heading', { name }, { timeout: SETTINGS_NAV_TIMEOUT_MS })
+}
+
+/**
+ * 打开「文件管理」一级页（投递区与共享目录现在都在这里，不再挂在「运行与后台」页）。
+ *
+ * 与 [openSettingsPage] 同一条等待口径，理由也一样：`findBy*` 默认只等 1 s，
+ * 而这条链路要先等设置首页出现。先点入口按钮、再等页面标题，顺序不能反
+ * （入口按钮的 accessible name 里也含「文件管理」，先找标题会命中按钮）。
+ */
+export async function openFilesPage(): Promise<void> {
+  await openSettingsHome()
+  const entry = await screen.findByRole('button', { name: /文件管理/ }, {
+    timeout: SETTINGS_NAV_TIMEOUT_MS,
+  })
+  fireEvent.click(entry)
+  await screen.findByRole('heading', { name: '文件管理', level: 1 }, { timeout: SETTINGS_NAV_TIMEOUT_MS })
+}

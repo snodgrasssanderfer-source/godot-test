@@ -1,0 +1,179 @@
+package io.deepseekharness.mobile.runtime.audit
+
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
+
+enum class AuditEvent {
+    PLUGIN_LIST,
+    PLUGIN_ENABLE,
+    PLUGIN_UPDATE,
+
+    /**
+     * 插件导入：从 npm 包名、`https://` 直链或 `git+https://` 地址受控导入。
+     *
+     * 只记动作与受控错误码（如 `PLUGIN_SOURCE_INVALID`、`PLUGIN_GIT_MISSING`、`PLUGIN_IMPORT_UNRESOLVED`）；
+     * 用户填的来源地址**一律不落审计**——地址可能带内网主机名、端口甚至凭据，
+     * 写进来等于把"谁从哪儿装了什么"长期留在本地。
+     */
+    PLUGIN_IMPORT,
+
+    /** 插件回滚：把运行时指向该插件的链接切回上一版；只记动作与受控码（如 `PLUGIN_ROLLBACK_UNAVAILABLE`）。 */
+    PLUGIN_ROLLBACK,
+
+    /**
+     * 插件修复：用户在插件设置页点了「立即修复插件」，显式重跑一次链接接回。
+     *
+     * 只记动作与受控码（如 `PLUGIN_OPERATION_FAILED`、`RUNTIME_NOT_INSTALLED`）；修复计数
+     * 走诊断事件 `REPAIR`，不进审计。自愈路径（启动时的 `repairInstalledIfNeeded()`）
+     * 不经过桥接、不产生本事件，因此审计里出现它就等于「用户手动重试过一次」。
+     */
+    PLUGIN_REPAIR,
+
+    /** 插件历史副本清理：清除未被活动清单、回滚或锁引用的孤立 versions 目录。 */
+    PLUGIN_PRUNE,
+    PLUGIN_LOAD,
+    PLUGIN_DESTROY,
+    RUNTIME_INSTALL,
+    RUNTIME_START,
+    RUNTIME_STOP,
+    RUNTIME_RESET,
+
+    /**
+     * 分级清理：缓存档（诊断导出、工作区分享暂存、PRoot 临时目录）与插件数据档
+     * （插件自己的 `data`/`config`/`storage`/`.config`）。
+     *
+     * 与 [RUNTIME_RESET] 分开记：重置动的是运行时本体，清理只是删缓存与插件数据，两件事的
+     * 破坏面不同，混在一个事件里以后没人能分清「到底是被重置了还是被清了」。只记动作与受控
+     * 结果码（如 `CLEANUP_LEDGER_UNAVAILABLE`、`RUNTIME_BUSY`）；删了哪些目录、涉及哪些包
+     * 一律不落审计——包名能反推用户装了什么，目录名能反推本机路径。
+     */
+    DATA_CLEANUP,
+
+    /** 运行时版本：切换到保留下来的上一版本。 */
+    RUNTIME_VERSION_SWITCH,
+
+    /** 运行时版本：删除保留下来的上一版本。 */
+    RUNTIME_VERSION_DELETE,
+
+    /**
+     * 运行时版本：锁定/解锁版本库里的一个已下载版本。
+     *
+     * 单独记而不是并进删除：锁定决定「满额时谁可以被自动淘汰」，用户事后追问「为什么我的版本
+     * 被删了」，这条记录就是唯一能分清「他自己锁过」还是「他从没锁过」的证据。
+     * 只记动作与受控码；版本 ID 与版本号不落审计。
+     */
+    RUNTIME_VERSION_PIN,
+
+    /**
+     * 运行时会话快照：创建、恢复、删除，以及安装/更新前的自动快照。
+     *
+     * 只记结果与受控错误码（如 `RUNTIME_SNAPSHOT_EMPTY`）；快照标识是应用自己生成的
+     * `snap-<时间戳>-<随机>`，不含用户内容，因此可作为详情记录。
+     */
+    RUNTIME_SNAPSHOT,
+    TERMINAL_OPEN,
+    TERMINAL_CLOSE,
+    SHIZUKU_PERMISSION,
+
+    /**
+     * 根通道（KernelSU + 命名空间沙箱）开关变更。
+     *
+     * 这条开关会把设备命令的执行身份从 Shizuku 的 UID 2000 提升到 UID 0，是权限面上最重的一次
+     * 状态变化，因此单独记一条：只记开关目标值与受控结果，不记命令内容。
+     * 沙箱降级（`ROOT_SANDBOX_DEGRADED`）也走这条事件——它是同一件事的另一半。
+     */
+    ROOT_ENGINE_SETTING,
+
+    /** 无障碍应用白名单与系统设置入口。 */
+    ACCESSIBILITY_CONFIG,
+
+    /** 无障碍窗口读取；不记录窗口内容、包名或资源 ID。 */
+    ACCESSIBILITY_READ,
+
+    /** 无障碍节点动作；不记录输入内容、包名或资源 ID。 */
+    ACCESSIBILITY_ACTION,
+
+    /** 副屏生命周期、读取与操作；仅记录动作类别和结果，不记录应用、图像、坐标或输入。 */
+    VIRTUAL_SCREEN_SESSION,
+    VIRTUAL_SCREEN_READ,
+    VIRTUAL_SCREEN_ACTION,
+
+    /** 外置投递区：一键导入（inbox 的 tar → 工作区 mailbox-import）。 */
+    MAILBOX_IMPORT,
+
+    /** 外置投递区：一键导出（工作区 → outbox 的 tar + manifest + sha256）。 */
+    MAILBOX_EXPORT,
+
+    /** 存储目录白名单：用户通过 SAF 新增一个要绑进访客的目录。 */
+    STORAGE_DIR_ADD,
+
+    /** 存储目录白名单：用户移除一个目录。 */
+    STORAGE_DIR_REMOVE,
+
+    /**
+     * 应用自身更新：检查、下载、调起系统安装器、打开安装授权设置页。
+     *
+     * 只记动作与受控结果码（如 `APP_UPDATE_FILE_MISSING`、`APP_UPDATE_INSTALL_PERMISSION`）；
+     * 下载地址、落地路径与更新说明一律不落审计。
+     */
+    APP_UPDATE,
+
+    /**
+     * 访客侧「任务完成」事件经设备桥的受控收单（`notify-turn-complete`）。
+     *
+     * 只记动作与受控结果码：结果码枚举写死在本仓
+     * （`TURN_NOTIFY_INVALID` / `TURN_NOTIFY_TOO_SOON` / `TURN_NOTIFY_RATE_LIMITED` /
+     * `TURN_NOTIFY_UNAVAILABLE` / `TURN_NOTIFY_POSTED` / `TURN_NOTIFY_SUPPRESSED`），
+     * 其中 `TURN_NOTIFY_POSTED`·`TURN_NOTIFY_SUPPRESSED` 是**受理成功**的两种落点
+     * （前台抑制时为 SUPPRESSED）。请求参数里的会话摘要**一律不落审计**——
+     * 它与会话一一对应，写进来等于把「哪一轮是谁的」长期留在本地。
+     */
+    TURN_NOTIFY,
+}
+
+enum class AuditResult {
+    STARTED,
+    SUCCEEDED,
+    FAILED,
+    DENIED,
+    CANCELLED,
+}
+
+internal object AuditPolicy {
+    const val RETENTION_DAYS = 90L
+
+    private val auditFilePattern = Regex("^audit-(\\d{4}-\\d{2}-\\d{2})\\.log$")
+
+    // 详情字段仅允许受控错误码：大写字母、数字、下划线。
+    // 原始进程输出、路径、凭据一律不落审计日志，防止敏感信息滞留本地。
+    private val detailPattern = Regex("^[A-Z][A-Z0-9_]{0,63}$")
+
+    fun recordLine(instant: Instant, event: AuditEvent, result: AuditResult, detail: String? = null): String {
+        val base = "${DateTimeFormatter.ISO_INSTANT.format(instant)}|${event.name}|${result.name}"
+        val safeDetail = detail?.takeIf(detailPattern::matches)
+        return if (safeDetail == null) "$base\n" else "$base|$safeDetail\n"
+    }
+
+    fun utcDate(instant: Instant): LocalDate = instant.atZone(ZoneOffset.UTC).toLocalDate()
+
+    fun fileName(date: LocalDate): String = "audit-$date.log"
+
+    fun parseFileDate(fileName: String): LocalDate? {
+        val dateText = auditFilePattern.matchEntire(fileName)?.groupValues?.get(1) ?: return null
+        return try {
+            LocalDate.parse(dateText, DateTimeFormatter.ISO_LOCAL_DATE)
+        } catch (_: DateTimeParseException) {
+            null
+        }
+    }
+
+    fun retentionCandidates(fileNames: Iterable<String>, today: LocalDate): Set<String> {
+        val oldestRetainedDate = today.minusDays(RETENTION_DAYS)
+        return fileNames.filterTo(linkedSetOf()) { fileName ->
+            parseFileDate(fileName)?.isBefore(oldestRetainedDate) == true
+        }
+    }
+}

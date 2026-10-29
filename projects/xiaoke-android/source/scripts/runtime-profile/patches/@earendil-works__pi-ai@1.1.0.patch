@@ -1,0 +1,39 @@
+diff --git a/dist/api/transform-messages.js b/dist/api/transform-messages.js
+index 1e7873e..c6db568 100644
+--- a/dist/api/transform-messages.js
++++ b/dist/api/transform-messages.js
+@@ -126,6 +126,7 @@ export function transformMessages(messages, model, normalizeToolCallId) {
+     // This preserves thinking signatures and satisfies API requirements
+     const result = [];
+     let pendingToolCalls = [];
++    let pendingToolCallIds = new Set();
+     let existingToolResultIds = new Set();
+     // System messages are transparent to tool-call accounting: one that lands between a tool
+     // call and its results is held back and emitted after the results (synthetic ones
+@@ -146,6 +147,7 @@ export function transformMessages(messages, model, normalizeToolCallId) {
+                 }
+             }
+             pendingToolCalls = [];
++            pendingToolCallIds = new Set();
+             existingToolResultIds = new Set();
+         }
+         result.push(...heldSystemMessages);
+@@ -169,11 +171,18 @@ export function transformMessages(messages, model, normalizeToolCallId) {
+             const toolCalls = assistantMsg.content.filter((b) => b.type === "toolCall");
+             if (toolCalls.length > 0) {
+                 pendingToolCalls = toolCalls;
++                pendingToolCallIds = new Set(toolCalls.map((toolCall) => toolCall.id));
+                 existingToolResultIds = new Set();
+             }
+             result.push(msg);
+         }
+         else if (msg.role === "toolResult") {
++            // OpenAI requires exactly one tool response for every call in the
++            // immediately preceding assistant message. Drop stale/duplicate
++            // results instead of forwarding an invalid transcript.
++            if (!pendingToolCallIds.has(msg.toolCallId) || existingToolResultIds.has(msg.toolCallId)) {
++                continue;
++            }
+             existingToolResultIds.add(msg.toolCallId);
+             result.push(msg);
+         }

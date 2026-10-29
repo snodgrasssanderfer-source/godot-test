@@ -1,0 +1,24 @@
+{
+  "backend": {
+    "repository": "Open-LLM-VTuber/Open-LLM-VTuber",
+    "commit": "992309c0aa19845960228f880013d4685fde93b5",
+    "frontendGitlink": "06a659b114fff788cf0daaa86e484576db4975bf"
+  },
+  "frontend": {
+    "repository": "Open-LLM-VTuber/Open-LLM-VTuber-Web",
+    "buildCommit": "06a659b114fff788cf0daaa86e484576db4975bf",
+    "buildCommitMessage": "Deploying to build from @ Open-LLM-VTuber/Open-LLM-VTuber-Web@3d57a9a0125a0ca13e5d096f7092e4e494ed389e \ud83d\ude80",
+    "declaredSourceCommit": "3d57a9a0125a0ca13e5d096f7092e4e494ed389e",
+    "sourceTreeVerified": true,
+    "bundleRebuilt": false,
+    "license": "Open-LLM-VTuber License 1.0: Apache-2.0 with additional commercial conditions",
+    "runtimeCodeAdopted": false
+  },
+  "host": {
+    "referenceCommit": "b93d665a5a3828f1838d9b01e3503248fb379ec5",
+    "reportedIntegrationCheckpoint": "528a8561f02583484c3c9911d5ed8152730c2bbe",
+    "checkpointLocallyAvailable": true,
+    "integrationCheckpoint": "e2a21d55e8def1803a9e578a73a91d05cfe89a73",
+    "checkpointSha256": "e0766da475b8d5ef891517e38cd1d4745a7b36448597f735f14b56d25ca0d00d"
+  }
+}
