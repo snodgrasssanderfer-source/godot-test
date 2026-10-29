@@ -1,0 +1,79 @@
+{
+  "dateUtc": "2026-10-29",
+  "baseline": "34290cab4eac3b75caf92c7c89711bf5727d302b",
+  "kind": "JVM unit tests, Kotlin production compilation, Android lint; no device execution",
+  "command": "gradle -p android --no-daemon :app:compileDebugKotlin :app:testDebugUnitTest --tests io.deepseekharness.mobile.companion.devicev2.* --tests io.deepseekharness.mobile.companion.presence.* :app:lintDebug",
+  "result": "BUILD SUCCESSFUL in 1m 10s; 73 actionable tasks: 13 executed, 60 up-to-date",
+  "suites": [
+    {
+      "name": "io.deepseekharness.mobile.companion.devicev2.InputFenceTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timestamp": "2026-10-29T11:52:06"
+    },
+    {
+      "name": "io.deepseekharness.mobile.companion.devicev2.PcmSessionTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timestamp": "2026-10-29T11:52:06"
+    },
+    {
+      "name": "io.deepseekharness.mobile.companion.presence.PresenceContextGateTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timestamp": "2026-10-29T11:52:06"
+    },
+    {
+      "name": "io.deepseekharness.mobile.companion.presence.PresenceModuleTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timestamp": "2026-10-29T11:52:06"
+    }
+  ],
+  "totals": {
+    "tests": 19,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "sourceSha256": {
+    "source/android/app/src/main/java/io/deepseekharness/mobile/companion/CompanionOverlayService.kt": "b045572d6f2d083e2e045654322cd9afb87e443f5a470681f906834802664f1b",
+    "source/android/app/src/main/java/io/deepseekharness/mobile/companion/CompanionPresenceHost.kt": "afcf1a9ef1bc782d70eeb8ba56f3c88f9c968d5303cf78b8ac79e7ef36b61eef",
+    "source/android/app/src/main/java/io/deepseekharness/mobile/companion/devicev2/DeviceAudioService.kt": "01727df0981667597dc4354fb93abd50a7eda5e1f5871a42132aed971ae0f1d5",
+    "source/android/app/src/main/java/io/deepseekharness/mobile/companion/devicev2/DeviceAudioSession.kt": "c9ec8dd30389b71f5036339bf91e69a1b1c7b7bdf559173249d839b89a7c71ad",
+    "source/android/app/src/main/java/io/deepseekharness/mobile/companion/devicev2/DeviceConsentActivity.kt": "32385abe1838d75ab0fbe6594e6125bc79b7e51b1bd43273c8be7567da1d5958",
+    "source/android/app/src/main/java/io/deepseekharness/mobile/companion/devicev2/DeviceModule.kt": "1fdadd297f3c3b6e95a720baee67ecbefec4f97f26ac539b696dd697e67150b5",
+    "source/android/app/src/main/java/io/deepseekharness/mobile/companion/devicev2/GameInputController.kt": "da3fccefacddcc02f094e784154bec64f4c149704ba5ee7523c7cc7e4e922980",
+    "source/android/app/src/main/java/io/deepseekharness/mobile/companion/devicev2/InputFence.kt": "50b342e40fa57c3c0302cad3b949113d6576241411a98ce7516ff8d358c6ea47",
+    "source/android/app/src/main/java/io/deepseekharness/mobile/companion/devicev2/PcmSession.kt": "a3022d7166906a11f79e9708e6be0c78eb51b9cde7a19922f75a50f5a15bee95",
+    "source/android/app/src/main/java/io/deepseekharness/mobile/companion/presence/AndroidPresenceVoice.kt": "6eb29b19c4f72e657c4a7d74ef66a8f2c64985bd012ce36a843e519806b38641",
+    "source/android/app/src/main/java/io/deepseekharness/mobile/companion/presence/CompanionPresenceController.kt": "f3e1ff6c5ce58f65d0e0d3c91885c2640a2927310bb17278108e2ca61bd57a02",
+    "source/android/app/src/main/java/io/deepseekharness/mobile/companion/presence/PresenceContextGate.kt": "1bdf774e4502e33d5517ed4a233ddba9acbaddd242e44b52a91de15c6c735671",
+    "source/android/app/src/main/java/io/deepseekharness/mobile/companion/presence/PresenceCore.java": "57f6ab99b3ae8e12207773cf3b7ba35d05e7c1aeed72955f5ea3595838ee75a4",
+    "source/android/app/src/main/java/io/deepseekharness/mobile/companion/presence/PresenceEventController.java": "6b567776572d8582cbf5f67e4ca70fd196d4831fe745f5ddd8266452c1a0a53a",
+    "source/android/app/src/main/java/io/deepseekharness/mobile/companion/presence/PresenceModelJob.kt": "da6138382bca0952a3f94c4e934d15e05d89eb0d9a49bd375572bae9b02aee77",
+    "source/android/app/src/main/java/io/deepseekharness/mobile/companion/presence/PresenceProtocol.java": "17a19430ab41d615ff55c9614952c3e35fa2763678b8386c75e0f70685e32acf",
+    "source/android/app/src/main/java/io/deepseekharness/mobile/companion/presence/PresenceTextStream.java": "d0a23b342e7e62660e0e5d9db39de400dcef0b01c530351788b95ad5449263b1",
+    "source/android/app/src/main/java/io/deepseekharness/mobile/companion/presence/WavEnvelope.java": "e2d2a5211dabfda2fdc7b294b7d19dd5da568d43b07b5955380f0b4c7ca12fa4"
+  },
+  "integrationPatch": {
+    "base": "fe93ac83599633a5fc04a2b51104f879071a0914",
+    "path": "integration/device-context.patch",
+    "applyCheck": "passed",
+    "compiledInHost": "pending root integration"
+  },
+  "limitations": [
+    "No physical Android / emulator test",
+    "No model or real account requests",
+    "No APK built or distributed by B",
+    "Store transaction adapter must be integrated and tested by root"
+  ]
+}

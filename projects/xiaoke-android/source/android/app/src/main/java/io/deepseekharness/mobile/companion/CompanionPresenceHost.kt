@@ -45,6 +45,10 @@ object CompanionPresenceHost {
         publish(state().put("running", false).put("phase", "idle").put("text", "").put("lastReply", "").put("audio", JSONObject.NULL))
     }
     fun externalMicrophone(busy: Boolean) { service?.externalMicrophone(busy) }
+    fun invalidateContext() {
+        service?.invalidatePresenceContext()
+        publish(state().put("text", "").put("lastReply", "").put("canSaveEvent", false).put("audio", JSONObject.NULL))
+    }
     fun command(action: String, data: JSONObject): JSONObject {
         val owner = service ?: error("请先开启本次陪伴")
         owner.presenceCommand(action, data)

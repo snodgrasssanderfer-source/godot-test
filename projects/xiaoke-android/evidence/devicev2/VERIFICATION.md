@@ -9,6 +9,10 @@
 - 前端 `pnpm exec vitest run src/companion/devicev2/DevicePanel.test.tsx`：4 项通过。`pnpm exec tsc -b` 和对 `src/companion/devicev2` 的 ESLint 检查通过。
 - `git apply --check projects/xiaoke-android/integration/device-manifest.patch`：基线 Manifest 上通过；主集成负责最终合并与打包。
 
+删除传播后再次运行同一原生定向命令：19 项，0 失败、0 错误、0 跳过，`BUILD SUCCESSFUL in 1m 10s`。新增 5 项 PresenceContextGate 检查删除事件尚未投递时的数据库代际拒绝、在途保存、临时上下文的祖先来源、局部取消与缺失适配时禁止保存；既有 presence controller fixture 另加入重建会话后迟到模型结果拒绝的断言。完整测试计数、时间和已编译源文件 SHA-256 见 [native-targeted-result.json](native-targeted-result.json)。
+
+`integration/device-context.patch` 在主线 `fe93ac83599633a5fc04a2b51104f879071a0914` 两个目标文件副本上 `git apply --check` 通过。补丁没有套入 B 的旧基线根文件，未冒称 A 的真实数据库事务与最终接线已在此执行器验证。主线需合并该适配后完成集成编译和删除 / 保存数据库竞态检查。
+
 原生使用官方构建清单固定的 Gradle 8.11.1、JDK 21.0.13+9、Android 35、Build Tools 35、NDK 29 beta4。下载校验按工程已有 build-materials 清单进行；工具链、缓存、local.properties 没有提交。
 
 可重跑命令（在 `projects/xiaoke-android/source`，自行配置已批准工具链路径）：

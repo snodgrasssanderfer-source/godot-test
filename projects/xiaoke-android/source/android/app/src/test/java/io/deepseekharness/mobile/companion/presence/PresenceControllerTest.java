@@ -65,6 +65,21 @@ public final class PresenceControllerTest {
             check(effects.stream().anyMatch(e -> e instanceof Finished), "terminal event skipped");
             check("effect-StopPlayback".equals(c.lastPortFailure()), "physical stop failure hidden");
         });
+        test("context reset rejects old generation while allowing the continuing session", () -> {
+            List<String> failures = new ArrayList<>(); List<Effect> effects = new ArrayList<>();
+            PresenceEventController c = new PresenceEventController(Runnable::run, () -> 0, (e, s) -> effects.add(e), listener(failures));
+            c.start("before-delete", Policy.disabled()); c.userText("synthetic old question");
+            TurnToken old = c.snapshot().turn;
+            c.stop(); c.start("after-delete", Policy.disabled()); c.userText("new question");
+            TurnToken next = c.snapshot().turn;
+            effects.clear();
+            c.dispatch(new GeneratedSentence(old, new Sentence("late deleted answer")));
+            c.dispatch(new GenerationComplete(old));
+            check(effects.stream().noneMatch(e -> e instanceof Synthesize), "old answer revived");
+            c.dispatch(new GeneratedSentence(next, new Sentence("new answer")));
+            check(effects.stream().anyMatch(e -> e instanceof Synthesize), "new session blocked");
+            check(failures.isEmpty(), "reset failed");
+        });
         System.out.println("RESULT " + passed + " tests passed");
     }
 }

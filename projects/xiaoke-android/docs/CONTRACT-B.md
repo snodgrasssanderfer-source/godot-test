@@ -18,6 +18,7 @@
 5. `control.stop` 必须可独立于占用动作线程的请求执行，不能排在长任务后面。它不等待主线程、不取消陪聊或模型任务。浮球和通知直接进入同一输入安全入口。
 6. 消费 `moduleState` 时重新 snapshot；`control.stopped`、`action.completed` 携带 scope/sourceId/data，不含原始图像或 PCM。宿主 emit 应非阻塞。
 7. snapshot 的 `capture.preview` 是本机短期内存画面。不要写入日志、数据库、同步或备份。
+8. 接入 `integration/device-context.patch` 的三处钩子：用 A 的 `contextSnapshot/current epoch/commitContext(epoch,sourceRefs)` 安装 `presence.PresenceContexts.access`；将 `life.contentChanged` 在 UI 通知前交给 `device.onEvent`；宿主音频请求检查 `contextEpoch`。补丁依据主线 `fe93ac83599633a5fc04a2b51104f879071a0914`，没有直接修改主线文件。A/根接线完成前，陪伴仍能交流，但不读取旧记忆、不开放事件保存，不伪造已保存。
 
 ## 入口和载荷
 
@@ -63,7 +64,15 @@
 
 start/resume 尚无控制 session，省略 controlSessionId/contentDigest。只有 allowed=true 才继续；执行器仍独立检查白名单、窗口、敏感页面、授权时效与动作代际。群消息无法形成主人确认。浮球按钮使用原先宿主提供的本机主人身份，不从消息构造身份。
 
-音频分析通过唯一的宿主模型通道：`scope="owner:local",lane="owner",purpose="audio_understanding",prompt,parts,maxOutputTokens=1024`。parts 按 mic/playback 分别附来源说明与 `inlineData{mimeType:"audio/wav",data}`。需要 HostPorts 的 completed.text 提供完整可见结果；failed/cancelled 明确回报。模块不读取密钥、不自建 Gemini/中转客户端、不绕过主人的独立额度。parts 只授权本次推理，不授权长期保存原音。完成后向 observation.summary 发带来源和 kind=inference 的可见摘要，供生命/记忆模块按自身规则处理，不把模型推断冒充事实。
+音频分析通过唯一的宿主模型通道：`scope="owner:local",lane="owner",purpose="audio_understanding",prompt,parts,maxOutputTokens=1024,contextEpoch`。parts 按 mic/playback 分别附来源说明与 `inlineData{mimeType:"audio/wav",data}`。需要 HostPorts 的 completed.text 提供完整可见结果；failed/cancelled 明确回报。模块不读取密钥、不自建 Gemini/中转客户端、不绕过主人的独立额度。parts 只授权本次推理，不授权长期保存原音。完成后向 observation.summary 发带来源、contextEpoch/sourceRefs 和 kind=inference 的可见摘要。这个通知尚不是已保存经历：A 需要真实同域 observation 记录，当前 B 不设置 meaningful、不将原音自动持久化。若主集成要转为长期记忆，必须先在 `commitContext` 事务中保存摘要来源，再发同一 sourceId；不能仅见通知就声称记忆闭环完成。
+
+### 删除与忘记传播
+
+A 当前事件载荷为 `{contentEpoch,action}`，主线转换成 `ModuleEvent("life.contentChanged","owner:local","content:<epoch>",data)`。contentEpoch 是全局代际，所以即使删除发生在另一会话，也保守清除当前临时陪伴上下文；重复 / 更旧代际不会重复重启。
+
+设备模块取消音频分析、清除临时 PCM / 画面，并调用 `CompanionPresenceHost.invalidateContext()`。原生陪伴立即提高本地代际，取消旧模型 / TTS / ASR、清除 recent、字幕、lastReply、截图、候选及缓存音频；在仍有效的会话期限内重建输入票据，保留模式、静音与收听设置。正在听的旧识别结果不能带入新会话。这个隐私操作与 `control.stop` 没有关联；输入急停仍只停止点击输入。
+
+每次自然陪伴模型请求取得同一份记忆快照和来源票据，并继承临时上下文的已保存祖先。即使删除事件尚未送达，数据库 epoch 已变化也会拒绝旧回应、候选保存和下一轮混用旧 recent。只有显式保存时才在同一个 `commitContext(epoch,sourceRefs)` 事务中创建 observation + memory；模型回应标为 inference。保存事件只留文字依据，原截图仍是临时数据。此处原子性依赖主线真实事务适配，不由 JVM 假存储测试替代。
 
 ## 状态
 

@@ -1,0 +1,51 @@
+--- a/projects/xiaoke-android/source/android/app/src/main/java/io/deepseekharness/mobile/companion/CompanionEngine.kt
++++ b/projects/xiaoke-android/source/android/app/src/main/java/io/deepseekharness/mobile/companion/CompanionEngine.kt
+@@ -27,7 +27,16 @@
+     @Volatile private var activeOwner = true
+     @Volatile var activeTask: String? = null
+         private set
+-    init { store.recoverJobs() }
++    init {
++        store.recoverJobs()
++        io.deepseekharness.mobile.companion.presence.PresenceContexts.access = object : io.deepseekharness.mobile.companion.presence.PresenceContextAccess {
++            override fun snapshot(query: String) = store.contextSnapshot(CompanionPolicy.OWNER, query)
++            override fun current(epoch: Long) = epoch == store.contentEpoch()
++            override fun commit(ticket: JSONObject, mutation: () -> Unit) {
++                store.commitContext(ticket.getLong("epoch"), ticket.getJSONArray("sourceRefs"), mutation)
++            }
++        }
++    }
+ 
+     fun submit(scope: String, text: String, source: String = "本机主人", observationId: String = ""): JSONObject {
+         CompanionPolicy.scope(scope)
+@@ -151,7 +160,11 @@
+                 val contents = JSONArray().put(JSONObject().put("role", "user").put("parts", parts))
+                 val estimate = CompanionContext.cost(system) + CompanionContext.cost(prompt) + (parts.length() - 1) * 4096
+                 check(estimate + profile.getInt("maxOutputTokens") <= profile.optInt("contextBudget", 65536)) { "请求资料超过当前模型上下文预算" }
+-                fun checkCurrent() { model.checkCancelled(); check(!cancelled.get()) { "任务已取消" } }
++                fun checkCurrent() {
++                    model.checkCancelled(); check(!cancelled.get()) { "任务已取消" }
++                    val contextEpoch = request.optLong("contextEpoch", -1)
++                    check(contextEpoch < 0 || contextEpoch == store.contentEpoch()) { "请求上下文已被纠正、忘掉或删除" }
++                }
+                 val billing = accounting(scope, lane, request.optString("purpose", "module"), ::checkCurrent)
+                 val reply = model.generate(settings, profile, contents, system, JSONArray(), progress = {},
+                     beforeRequest = billing::beforeRequest,
+--- a/projects/xiaoke-android/source/android/app/src/main/java/io/deepseekharness/mobile/companion/iteration/CompanionModuleHost.kt
++++ b/projects/xiaoke-android/source/android/app/src/main/java/io/deepseekharness/mobile/companion/iteration/CompanionModuleHost.kt
+@@ -51,6 +51,15 @@
+         return CommandPrincipal(if (verified) conversation!!.optString("targetId") else "unresolved", channel, scope, owner)
+     }
+     override fun emit(topic: String, payload: JSONObject) {
++        if (topic == "life.contentChanged") {
++            val epoch = payload.optLong("contentEpoch", store.contentEpoch())
++            val event = ModuleEvent(topic, CompanionPolicy.OWNER, "content:$epoch", JSONObject(payload.toString()))
++            // Fence native replies before reporting the deletion/correction to UI.
++            device.onEvent(event)
++            eventWorker.execute { router.event(event) }
++            router.signal("all", topic)
++            return
++        }
+         router.signal(payload.optString("domain", "all"), topic)
+         val eventTopic = when (topic) {
+             "experience", "social.event" -> payload.optString("type")

@@ -13,6 +13,8 @@ import io.deepseekharness.mobile.companion.CompanionDevice
 import io.deepseekharness.mobile.companion.CompanionOverlayService
 import io.deepseekharness.mobile.companion.CompanionPresenceHost
 import io.deepseekharness.mobile.companion.iteration.*
+import io.deepseekharness.mobile.companion.presence.PresenceContextGate
+import io.deepseekharness.mobile.companion.presence.PresenceContexts
 import io.deepseekharness.mobile.companion.sha256
 import org.json.JSONArray
 import org.json.JSONObject
@@ -36,6 +38,9 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
     @Volatile private var analysis = JSONObject().put("state", "idle").toString()
     @Volatile private var analysisGeneration = ""
     @Volatile private var analysisRequest = ""
+    private val analysisLock = Any()
+    private val analysisContext = PresenceContextGate { PresenceContexts.access }
+    private val lastContentEpoch = AtomicLong(-1)
     @Volatile private var closed = false
     private val preferences = app.getSharedPreferences("companion-device-v2", Context.MODE_PRIVATE)
     @Volatile private var surfacePrincipal: CommandPrincipal? = null
@@ -111,9 +116,10 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
         val generation = captureEpoch.incrementAndGet()
         val job = UUID.randomUUID().toString()
         capturePackage = pkg; captureSession = UUID.randomUUID().toString(); captureDeadline = SystemClock.elapsedRealtime() + 10 * 60_000
+        val permissionSession = captureSession
         capture = JSONObject().put("state", "queued").put("jobId", job).put("packageName", pkg).toString()
         main.postDelayed({
-            if (captureEpoch.get() == generation && !closed) {
+            if (captureSession == permissionSession && !closed) {
                 captureEpoch.incrementAndGet(); captureDeadline = 0; capturePackage = ""
                 synchronized(frames) { frames.clear() }; capture = JSONObject().put("state", "expired").toString(); changed()
             }
@@ -152,14 +158,17 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
         val frame = ControlFrame(id, captureSession, pkg, capturedAt, after.getInt("windowId"), rotation,
             bounds.getInt(0), bounds.getInt(1), bounds.getInt(2), bounds.getInt(3), after.getJSONArray("nodes").toString().toByteArray().sha256(), bytes.sha256())
         check(frame.right > frame.left && frame.bottom > frame.top)
-        check(generation == captureEpoch.get() && !closed) { "旧观察会话已经取消" }
-        synchronized(frames) { frames[id] = frame; while (frames.size > 6) frames.remove(frames.keys.first()) }
         val result = JSONObject().put("state", "ready").put("frameId", id).put("captureSession", captureSession).put("packageName", pkg)
             .put("screenHash", frame.screenHash).put("capturedAtMs", frame.atMs).put("rotation", frame.rotation).put("left", frame.left).put("top", frame.top)
             .put("width", frame.right - frame.left).put("height", frame.bottom - frame.top).put("windowId", frame.windowId)
             .put("preview", "data:image/jpeg;base64," + Base64.encodeToString(bytes, Base64.NO_WRAP))
             .put("coverage", "当前应用窗口的单帧；尚未判断游戏目标是否完成")
-        capture = result.toString(); changed(); return JSONObject(result.toString())
+        synchronized(frames) {
+            check(generation == captureEpoch.get() && !closed) { "旧观察会话已经取消" }
+            frames[id] = frame; while (frames.size > 6) frames.remove(frames.keys.first())
+            capture = result.toString()
+        }
+        changed(); return JSONObject(result.toString())
     }
     private fun perform(kind: String, data: JSONObject, principal: CommandPrincipal): JSONObject {
         val frame = synchronized(frames) { frames[data.getString("frameId")] } ?: error("观察帧已失效，请重新观察")
@@ -196,28 +205,42 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
             parts.put(JSONObject().put("inlineData", JSONObject().put("mimeType", "audio/wav").put("data", Base64.encodeToString(wave, Base64.NO_WRAP))))
         }
         check(parts.length() > 0)
-        val token = UUID.randomUUID().toString(); analysisGeneration = token
-        analysis = JSONObject().put("state", "queued").put("captureSession", session).toString(); changed()
+        val context = analysisContext.snapshot("")
+        val token = UUID.randomUUID().toString()
+        synchronized(analysisLock) {
+            check(analysisContext.current(context) && DeviceAudioSession.state().optString("captureSession") == session) { "录音或上下文已经更新" }
+            analysisGeneration = token
+            analysis = JSONObject().put("state", "queued").put("captureSession", session).toString()
+        }
+        changed()
         val request = try { ports.requestModel(JSONObject().put("scope", OWNER).put("lane", "owner").put("purpose", "audio_understanding")
+            .put("contextEpoch", context.epoch)
             .put("prompt", data.optString("prompt", "结合两路实际采到的音频和我交流；缺失、静音或无法分辨时说明，不编造。 ").take(4000))
             .put("parts", parts).put("maxOutputTokens", 1024)) { event ->
-            if (!closed && token == analysisGeneration) {
+            synchronized(analysisLock) { if (!closed && token == analysisGeneration && analysisContext.current(context)) {
                 val type = event.optString("type")
                 analysis = JSONObject(event.toString()).put("state", if (type == "delta") "streaming" else type).put("captureSession", session).toString()
                 if (type == "completed" && event.optString("text").isNotBlank()) {
                     ports.emit("observation.summary", JSONObject().put("scope", OWNER).put("sourceId", "audio:$session:$token")
                         .put("data", JSONObject().put("text", event.getString("text")).put("summary", event.getString("text"))
                             .put("kind", "inference").put("source", "本次已授权的临时音频片段")
-                            .put("captureSession", session).put("trackMetadata", tracks).put("createdAt", System.currentTimeMillis())))
+                            .put("captureSession", session).put("trackMetadata", tracks).put("contextEpoch", context.epoch)
+                            .put("sourceRefs", context.value.optJSONArray("sourceRefs")).put("createdAt", System.currentTimeMillis())))
                 }
                 changed()
-            }
+            } }
         }
         } catch (e: Exception) {
-            analysis = JSONObject().put("state", "failed").put("error", e.message?.take(200)).toString(); changed(); throw e
+            synchronized(analysisLock) { if (token == analysisGeneration && analysisContext.current(context))
+                analysis = JSONObject().put("state", "failed").put("error", e.message?.take(200)).toString() }
+            changed(); throw e
         }
-        analysisRequest = request
-        return JSONObject().put("jobId", request).put("state", "queued")
+        val cancelLateRequest = synchronized(analysisLock) {
+            if (closed || token != analysisGeneration || !analysisContext.current(context)) true
+            else { analysisRequest = request; false }
+        }
+        if (cancelLateRequest) ports.cancelModel(request)
+        return JSONObject().put("jobId", request).put("state", if (cancelLateRequest) "cancelled" else JSONObject(analysis).optString("state", "queued"))
     }
     private fun authorize(p: CommandPrincipal, pkg: String, requestId: String, session: String?, digest: String? = null) {
         val effect = JSONObject().put("type", "phone_input").put("target", pkg).put("scope", OWNER).put("requestId", requestId)
@@ -256,9 +279,28 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
         ports.emit("control.stopped", JSONObject().put("scope", OWNER).put("sourceId", "input:${it.optLong("inputEpoch")}").put("data", it))
     }
     private fun changed() { if (!closed) runCatching { ports.emit("moduleState", JSONObject().put("domain", domain)) } }
-    private fun cancelAnalysis() { analysisGeneration = ""; analysisRequest.takeIf { it.isNotEmpty() }?.let(ports::cancelModel); analysisRequest = ""; analysis = JSONObject().put("state", "idle").toString() }
+    private fun cancelAnalysis() {
+        analysisContext.invalidate()
+        val request = synchronized(analysisLock) {
+            analysisGeneration = ""; analysis = JSONObject().put("state", "idle").toString()
+            analysisRequest.also { analysisRequest = "" }
+        }
+        request.takeIf { it.isNotEmpty() }?.let(ports::cancelModel)
+    }
     override fun onEvent(event: ModuleEvent) {
         if (event.type == "connectivity.changed" && !event.data.optBoolean("online", true)) stopInput("connection_lost")
+        if (event.type == "life.contentChanged" || event.type == "data.deleted") {
+            val epoch = event.data.optLong("contentEpoch", -1)
+            if (epoch >= 0 && lastContentEpoch.getAndUpdate { maxOf(it, epoch) } >= epoch) return
+            cancelAnalysis(); analysis = JSONObject().put("state", "cleared").toString()
+            DeviceAudioSession.clear()
+            synchronized(frames) {
+                captureEpoch.incrementAndGet(); frames.clear()
+                capture = JSONObject().put("state", "cleared").put("packageName", capturePackage).put("detail", "上下文已更新，请重新观察").toString()
+            }
+            CompanionPresenceHost.invalidateContext()
+            changed()
+        }
     }
     override fun close() {
         if (closed) return
