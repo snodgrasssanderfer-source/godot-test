@@ -27,7 +27,7 @@
 `lane` 仅为 `owner|activity`。`maximum` 是本次最坏情况上界；次数模式必须为 1。相同 `requestId`、范围、用途、通道、上界和价格状态返回原预留，不重复扣减；同 ID 改参数报错。金额已知时由宿主按输入及最大输出计算上界；未知金额只能使用不超过主人配置的 `unknownPriceCeiling`，不能把估计说成真实账单。
 
 返回：`{"reservationId":"phone-task-42-round-1","state":"reserved","duplicate":false,"reservation":{...},"budgets":{...}}`。
-**准备发 HTTP 前再次传同样载荷并添加 `submitted:true`**，原子变为 `sent`；必须先存在预留。第一次创建返回的 `duplicate=false` 才允许启动新执行器；重复点击拿到旧 ID 不得重复发送。
+**准备发 HTTP 前再次传同样载荷并添加 `submitted:true`**，原子变为 `sent`；必须先存在预留。返回的 `sendAuthorized=true` 仅出现一次，只有此次领取者可以开始 HTTP，重复领取返回 false。第一次创建返回的 `duplicate=false` 才允许启动新执行器；重复点击拿到旧 ID 不得重复发送。
 
 `budget.settle`：
 ```json
@@ -53,7 +53,7 @@
 
 ## 接线约束
 
-Engine 在构造上下文时取得 `store.contentEpoch()`，保存模型输出前使用 `store.commitContext(epoch) { ... }`；删除/忘掉发生后旧上下文必须取消或重新生成，不能落库/发送。所有模型历史改用 `store.contextMessages(scope, limit)`，避免忘掉的来源从历史重新进入上下文。`memoriesFor` 将自动过滤忘掉/失效数据。
+Engine 用 `store.contextSnapshot(scope, query)` 一次取得 `epoch/messages/memories/sourceRefs`，保存模型输出及工具派生结果前使用 `store.commitContext(ticket.getLong("epoch"), ticket.getJSONArray("sourceRefs")) { ... }`；该方法自动把本轮来源附到内部保存的派生记录。不要只检查代际而丢掉来源。删除/忘掉发生后旧上下文必须取消或重新生成，不能落库/发送。所有模型历史改用 `store.contextMessages(scope, limit)`，避免忘掉的来源从历史重新进入上下文。`memoriesFor` 将自动过滤忘掉/失效数据。
 
 `onEvent` 使用 `type+sourceId` 去重。`observation.summary` 可带 `meaningful:true,summary,sourceKind:"observation"`，`conversation.message` 可带 `meaningful:true,memory:{text,kind,factKey},sourceKind:"message"`；必须有同范围实际来源才能保存。`action.completed` 要求实际任务状态为 `done`，形成来源关联的第一人称日记。所有内容必须符合公开/私密边界，不传隐藏推理。
 
@@ -63,4 +63,15 @@ Engine 在构造上下文时取得 `store.contentEpoch()`，保存模型输出�
 - 只读参考 [Graphiti 删除实现](https://github.com/getzep/graphiti/blob/72b5c59c06607e09ea855be61b6ff5a3446fc951/graphiti_core/graphiti.py#L2174)，Apache-2.0：独立实现同步删除闭包与代际屏蔽，未复制或安装其代码。
 - 只读参考 [LiteLLM 预算预留](https://github.com/BerriAI/litellm/blob/b7da9a275581ccec82538428dfd0b84bbc4fb6fc/litellm/proxy/spend_tracking/budget_reservation.py#L231)，该路径 MIT：独立实现端侧整数预留与未知费用保留，未复制或安装框架。
 
-当前：接口已固定；实现和验证进行中。尚未声明 Android 构建、模拟器、真机或真实模型调用通过。
+当前：原生 LifeModule/存储/预算/删除/备份已实现，22 项核心 JVM 测试通过；原生源码编译通过。独立 LifePanel 已实现，前端类型及交互验证进行中。Android SQLite 集成测试源码已补充但本执行器未运行；尚未声明 APK 构建、模拟器、真机或真实模型调用通过。
+
+## 主线可立即使用的接线结果
+
+- 构造一次 `LifeModule(context, engine.store, hostPorts)`，把插件 `module` 的 life 域路由到它；只把宿主生成的 principal 传入。
+- `snapshot(principal)` 已返回正式五类数据。`memory.search/diary.list/interest.list` 返回 `{items:[...]}`，其余更新动作返回实际已保存对象。
+- 每轮请求 `reserve` → 同载荷加 `submitted:true`，仅 `sendAuthorized:true` 可发送 → 完成可信结算；取消前未发出可 release，发送后未知保留。
+- 模型上下文必须使用 `contextSnapshot`，写回复/模型记忆必须放入带 sourceRefs 的 `commitContext`。监听 `life.contentChanged` 取消受影响的旧请求；任何外发还要在提交前再次核对代际。
+- 忙碌/安静时宿主读取 `attention.status.mayInterruptOrdinary=false`，普通提醒留在待办；`maxBackgroundTasks` 供宿主活动队列限流。急停和隐藏浮球不写 attention。
+- 本轮不包含独立语义抽取模型。沿用已有 remember 工具，并接收明确有来源、标记 meaningful 的事件自动保存；所有自动总结标为 unverified 或 inference。
+- 共享概要须由主人填 `shareSummary` 和 `shareWithScopes:[明确会话或"*"]`。跨会话检索只返回 `{id,summary}`；没有授权概要时返回空数组。
+- UI 入口可导入 `LifePanel` 并传 `{state: snapshot.modules.life, run:(action,data)=>command("module",{domain:"life",action,data}), available:nativeCompanion}`。主线需在动作完成及 moduleState 通知后刷新快照。

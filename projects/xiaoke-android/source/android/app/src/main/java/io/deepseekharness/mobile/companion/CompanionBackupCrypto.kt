@@ -18,9 +18,11 @@ object CompanionBackupCrypto {
         finally { spec.clearPassword() }
     }
     fun encrypt(data: JSONObject, password: String): String {
+        val plain = data.toString().toByteArray(Charsets.UTF_8)
+        require(plain.size <= 11 * 1024 * 1024) { "备份内容超过当前 11 MB 加密导出上限；未导出不完整备份" }
         val salt = ByteArray(16).also(SecureRandom()::nextBytes)
         val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.ENCRYPT_MODE, derive(password, salt)) }
-        val body = cipher.doFinal(data.toString().toByteArray(Charsets.UTF_8))
+        val body = try { cipher.doFinal(plain) } finally { plain.fill(0) }
         return JSONObject().put("format", "dsh-companion-encrypted").put("version", 1).put("iterations", ITERATIONS)
             .put("salt", b64(salt)).put("iv", b64(cipher.iv)).put("data", b64(body)).toString()
     }
@@ -36,7 +38,7 @@ object CompanionBackupCrypto {
                 init(Cipher.DECRYPT_MODE, derive(password, salt), GCMParameterSpec(128, iv))
                 doFinal(Base64.getDecoder().decode(value.getString("data")))
             }
-            JSONObject(String(plain, Charsets.UTF_8))
+            try { JSONObject(String(plain, Charsets.UTF_8)) } finally { plain.fill(0) }
         } catch (_: javax.crypto.AEADBadTagException) { error("备份口令错误或文件已损坏") }
     }
     private fun b64(data: ByteArray) = Base64.getEncoder().encodeToString(data)

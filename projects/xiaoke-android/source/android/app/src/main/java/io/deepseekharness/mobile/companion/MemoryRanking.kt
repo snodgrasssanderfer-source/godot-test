@@ -19,6 +19,7 @@ object MemoryRanking {
     fun rank(records: JSONArray, query: String, limit: Int = 80): JSONArray {
         val q = terms(query)
         val values = (0 until records.length()).map(records::getJSONObject)
+            .filter { io.deepseekharness.mobile.companion.life.LifePolicy.visible(it) }
         val tokens = values.associateWith { terms(it.optString("text")) }
         val frequencies = q.associateWith { term -> tokens.values.count { term in it } }
         val ranked = values.sortedWith(compareByDescending<JSONObject> { if (it.optBoolean("pinned")) 1 else 0 }

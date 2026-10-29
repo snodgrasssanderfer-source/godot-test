@@ -6,6 +6,9 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import org.json.JSONArray
 import org.json.JSONObject
+import io.deepseekharness.mobile.companion.life.BudgetLedger
+import io.deepseekharness.mobile.companion.life.LifePolicy
+import io.deepseekharness.mobile.companion.life.RecordRef
 
 /**
  * Android adaptation of mem0 SQLiteManager's scoped messages and transactional history.
@@ -13,21 +16,163 @@ import org.json.JSONObject
  * Changes: Android SQLite, mandatory scope, source links, tombstones, job recovery;
  * no automatic deletion of all but the last ten messages, no embedding/cloud dependency.
  */
-class CompanionStore(private val context: Context) : SQLiteOpenHelper(context, "companion.db", null, 1) {
+class CompanionStore(private val context: Context, databaseName: String = "companion.db") : SQLiteOpenHelper(context, databaseName, null, 2) {
     private var lastSocialPrune = 0L
     private val temporaryObservations = TemporaryObservations()
+    private val committingSources = ThreadLocal<List<RecordRef>?>()
     override fun onConfigure(db: SQLiteDatabase) { db.setForeignKeyConstraintsEnabled(true); db.execSQL("PRAGMA secure_delete=ON") }
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE records(kind TEXT NOT NULL,id TEXT NOT NULL,scope TEXT NOT NULL,json TEXT NOT NULL,updated INTEGER NOT NULL,deleted INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(kind,id))")
         db.execSQL("CREATE INDEX scoped_records ON records(kind,scope,deleted,updated)")
         db.execSQL("CREATE TABLE memory_history(id INTEGER PRIMARY KEY AUTOINCREMENT,memory_id TEXT NOT NULL,scope TEXT NOT NULL,previous_value TEXT,new_value TEXT,action TEXT NOT NULL,created_at INTEGER NOT NULL,is_deleted INTEGER NOT NULL DEFAULT 0)")
         db.execSQL("CREATE INDEX memory_revisions ON memory_history(scope,memory_id,id)")
+        createLifeSchema(db)
     }
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        error("未知数据库升级版本，保留原数据并停止升级")
+        check(oldVersion == 1 && newVersion == 2) { "未知数据库升级版本，保留原数据并停止升级" }
+        createLifeSchema(db)
+        db.execSQL("INSERT OR IGNORE INTO life_tombstones(kind,id,scope,deleted_at,epoch,media_pending) SELECT kind,id,scope,updated,1,0 FROM records WHERE deleted=1")
+    }
+    private fun createLifeSchema(db: SQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS life_tombstones(kind TEXT NOT NULL,id TEXT NOT NULL,scope TEXT NOT NULL,deleted_at INTEGER NOT NULL,epoch INTEGER NOT NULL,media_pending INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(kind,id))")
+        db.execSQL("CREATE TABLE IF NOT EXISTS life_revisions(kind TEXT NOT NULL,id TEXT NOT NULL,revision INTEGER NOT NULL,scope TEXT NOT NULL,json TEXT NOT NULL,PRIMARY KEY(kind,id,revision))")
+    }
+
+    /** Every ledger read-modify-write uses one SQLite transaction, including calls from other threads. */
+    @Synchronized fun <T> lifeTransaction(block: () -> T): T {
+        val db = writableDatabase
+        if (db.inTransaction()) return block()
+        db.beginTransaction()
+        try { return block().also { db.setTransactionSuccessful() } }
+        finally { db.endTransaction() }
+    }
+    @Synchronized fun lifeState(id: String): JSONObject = get("lifeState", id) ?: JSONObject().put("id", id).put("scope", CompanionPolicy.OWNER)
+    @Synchronized fun saveLifeState(id: String, value: JSONObject): JSONObject = put("lifeState", JSONObject(value.toString()).put("id", id).put("scope", CompanionPolicy.OWNER))
+    @Synchronized fun contentEpoch(): Long = lifeState("contentEpoch").optLong("value", 1)
+    @Synchronized fun <T> commitContext(epoch: Long, block: () -> T): T = lifeTransaction {
+        check(epoch == contentEpoch()) { "上下文已被纠正、忘掉或删除，请重新生成" }
+        block()
+    }
+    @Synchronized fun <T> commitContext(epoch: Long, sources: JSONArray, block: () -> T): T = commitContext(epoch) {
+        val refs = (0 until sources.length()).map { RecordRef.parse(sources.getJSONObject(it)) }
+        refs.forEach { check(get(it.kind, it.id)?.getString("scope") == it.scope) { "上下文来源已失效" } }
+        val previous = committingSources.get()
+        committingSources.set(refs)
+        try { block() } finally { committingSources.set(previous) }
+    }
+    /** Keep this ticket with the actual provider request, then commit with its epoch and sourceRefs. */
+    @Synchronized fun contextSnapshot(scope: String, query: String = ""): JSONObject = lifeTransaction {
+        val messages = contextMessages(scope)
+        val memories = memoriesFor(scope, query)
+        val refs = JSONArray()
+        for ((kind, rows) in listOf("message" to messages, "memory" to memories)) {
+            for (i in 0 until rows.length()) refs.put(LifePolicy.reference(kind, rows.getJSONObject(i)).json())
+        }
+        JSONObject().put("epoch", contentEpoch()).put("messages", messages).put("memories", memories).put("sourceRefs", refs)
+    }
+    @Synchronized fun bumpContentEpoch(): Long = lifeTransaction {
+        val next = Math.addExact(contentEpoch(), 1L)
+        saveLifeState("contentEpoch", JSONObject().put("value", next)); next
+    }
+    @Synchronized fun isDeleted(kind: String, id: String): Boolean = readableDatabase.rawQuery(
+        "SELECT 1 FROM life_tombstones WHERE kind=? AND id=?", arrayOf(kind, id)
+    ).use { it.moveToFirst() }
+
+    @Synchronized fun tombstones(): JSONArray = JSONArray().also { out ->
+        readableDatabase.rawQuery("SELECT kind,id,scope,deleted_at,epoch,media_pending FROM life_tombstones ORDER BY epoch", null).use { c ->
+            while (c.moveToNext()) out.put(JSONObject().put("kind", c.getString(0)).put("id", c.getString(1)).put("scope", c.getString(2))
+                .put("deletedAt", c.getLong(3)).put("epoch", c.getLong(4)).put("mediaPending", c.getInt(5) != 0))
+        }
+    }
+
+    @Synchronized fun contentRecords(): List<Pair<String, JSONObject>> = buildList {
+        readableDatabase.rawQuery("SELECT kind,json FROM records WHERE deleted=0", null).use { c ->
+            while (c.moveToNext()) if (c.getString(0) in RecordRef.kinds) add(c.getString(0) to JSONObject(c.getString(1)))
+        }
+        temporaryObservations.list(null).forEach { add("observation" to it) }
+    }
+
+    @Synchronized fun recordRevision(kind: String, old: JSONObject) {
+        val values = ContentValues().apply {
+            put("kind", kind); put("id", old.getString("id")); put("scope", old.getString("scope"))
+            put("revision", old.optInt("revision", 1)); put("json", old.toString())
+        }
+        writableDatabase.insertWithOnConflict("life_revisions", null, values, SQLiteDatabase.CONFLICT_IGNORE)
+    }
+    @Synchronized fun lifeHistory(kind: String, scope: String, id: String): JSONArray = JSONArray().also { out ->
+        val current = get(kind, id) ?: return@also
+        check(current.getString("scope") == scope)
+        readableDatabase.rawQuery("SELECT json FROM life_revisions WHERE kind=? AND id=? AND scope=? ORDER BY revision", arrayOf(kind, id, scope)).use { c ->
+            while (c.moveToNext()) out.put(JSONObject(c.getString(0)))
+        }
+        out.put(current)
+    }
+
+    /** Source removal is conservative: whole source messages and every derivative are erased together. */
+    @Synchronized fun deleteContent(roots: Set<RecordRef>): JSONObject = lifeTransaction {
+        val deleted = LifePolicy.descendants(roots, contentRecords())
+        if (deleted.isEmpty()) return@lifeTransaction JSONObject().put("deleted", JSONArray()).put("contentEpoch", contentEpoch())
+        val epoch = bumpContentEpoch()
+        for (ref in deleted) {
+            val values = ContentValues().apply {
+                put("kind", ref.kind); put("id", ref.id); put("scope", ref.scope); put("deleted_at", System.currentTimeMillis())
+                put("epoch", epoch); put("media_pending", if (ref.kind == "observation") 1 else 0)
+            }
+            writableDatabase.insertWithOnConflict("life_tombstones", null, values, SQLiteDatabase.CONFLICT_IGNORE)
+            writableDatabase.delete("records", "kind=? AND id=?", arrayOf(ref.kind, ref.id))
+            writableDatabase.delete("life_revisions", "kind=? AND id=?", arrayOf(ref.kind, ref.id))
+            if (ref.kind == "memory") writableDatabase.delete("memory_history", "memory_id=?", arrayOf(ref.id))
+            if (ref.kind == "observation") temporaryObservations.remove(ref.id)
+        }
+        // Durable tombstones are also the cleanup queue. Read/output exclusion does not wait for filesystem cleanup.
+        purgeDeletedMedia()
+        JSONObject().put("deleted", JSONArray().also { a -> deleted.forEach { a.put(it.json()) } }).put("contentEpoch", epoch)
+    }
+
+    @Synchronized fun purgeDeletedMedia() {
+        val pending = mutableListOf<String>()
+        readableDatabase.rawQuery("SELECT id FROM life_tombstones WHERE kind='observation' AND media_pending=1", null).use { c ->
+            while (c.moveToNext()) pending.add(c.getString(0))
+        }
+        for (id in pending) {
+            val file = java.io.File(context.filesDir, "companion-media/${CompanionPolicy.digest(id)}.json")
+            val temporary = java.io.File(file.parentFile, file.name + ".tmp")
+            val gone = (!file.exists() || file.delete()) && (!temporary.exists() || temporary.delete())
+            if (gone) writableDatabase.execSQL("UPDATE life_tombstones SET media_pending=0 WHERE kind='observation' AND id=?", arrayOf(id))
+        }
+    }
+
+    @Synchronized fun forgetMemory(scope: String, id: String, forgotten: Boolean): JSONObject = lifeTransaction {
+        val memory = get("memory", id) ?: error("记忆不存在")
+        check(memory.getString("scope") == CompanionPolicy.scope(scope))
+        val records = contentRecords()
+        val root = LifePolicy.reference("memory", memory)
+        val sameFact = records.filter { it.first == "memory" && it.second.getString("scope") == scope &&
+            memory.optString("factKey").isNotBlank() && it.second.optString("factKey") == memory.optString("factKey") }.map { it.second }
+        val roots = setOf(root) + LifePolicy.sources(memory) + sameFact.flatMap { listOf(LifePolicy.reference("memory", it)) + LifePolicy.sources(it) }
+        val targets = LifePolicy.descendants(roots, records).map { it.key }.toSet()
+        for ((kind, value) in records) {
+            val key = LifePolicy.reference(kind, value).key
+            val ids = value.optJSONArray("suppressedBy") ?: JSONArray()
+            val causes = (0 until ids.length()).map(ids::getString).toMutableSet()
+            if (forgotten && key in targets) causes.add(id) else if (!forgotten) causes.remove(id)
+            if (key in targets || id in (0 until ids.length()).map(ids::getString)) {
+                if (key == root.key) value.put("forgotten", forgotten)
+                value.put("suppressedBy", JSONArray(causes.toList())).put("suppressed", causes.isNotEmpty())
+                put(kind, value)
+            }
+        }
+        bumpContentEpoch()
+        get("memory", id)!!
+    }
+
+    @Synchronized fun contextMessages(scope: String, limit: Int = 10000): JSONArray {
+        val all = list("message", scope, limit)
+        return JSONArray().also { out -> for (i in 0 until all.length()) all.getJSONObject(i).let { if (LifePolicy.visible(it)) out.put(it) } }
     }
 
     @Synchronized fun get(kind: String, id: String): JSONObject? {
+        if (kind in RecordRef.kinds && isDeleted(kind, id)) return null
         if (kind == "observation") temporaryObservations.get(id)?.let { return it }
         return readableDatabase.rawQuery(
         "SELECT json FROM records WHERE kind=? AND id=? AND deleted=0", arrayOf(kind, id)
@@ -52,6 +197,16 @@ class CompanionStore(private val context: Context) : SQLiteOpenHelper(context, "
         val id = value.optString("id").ifEmpty { CompanionPolicy.id() }
         require(id.length in 1..160)
         val scope = CompanionPolicy.scope(value.optString("scope", CompanionPolicy.OWNER))
+        if (kind in RecordRef.kinds && committingSources.get() != null) {
+            val refs = (LifePolicy.sources(value) + committingSources.get().orEmpty()).distinctBy { it.key }
+                .filter { it.key != "$kind\u0000$id" }
+            value.put("sourceRefs", JSONArray().also { a -> refs.forEach { a.put(it.json()) } })
+                .put("contextEpoch", contentEpoch())
+        }
+        check(!isDeleted(kind, id)) { "记录已被删除，不能重新写入" }
+        val existing = get(kind, id)
+        check(existing == null || existing.getString("scope") == scope) { "不能更换已有记录的会话身份" }
+        LifePolicy.sources(value).forEach { ref -> check(!isDeleted(ref.kind, ref.id)) { "来源已被删除，拒绝保存旧结果" } }
         if (kind == "observation" && value.optBoolean("temporary")) return temporaryObservations.put(value
             .put("id", id).put("scope", scope).put("updatedAt", System.currentTimeMillis()))
         if (kind == "observation" && value.has("parts")) {
@@ -69,7 +224,7 @@ class CompanionStore(private val context: Context) : SQLiteOpenHelper(context, "
             put("kind", kind); put("id", id); put("scope", scope); put("json", value.toString())
             put("updated", value.getLong("updatedAt")); put("deleted", 0)
         }
-        writableDatabase.insertWithOnConflict("records", null, values, SQLiteDatabase.CONFLICT_REPLACE)
+        check(writableDatabase.insertWithOnConflict("records", null, values, SQLiteDatabase.CONFLICT_REPLACE) != -1L) { "保存失败" }
         return value
     }
 
@@ -106,62 +261,23 @@ class CompanionStore(private val context: Context) : SQLiteOpenHelper(context, "
         return put("message", value)
     }
 
-    @Synchronized fun saveMemory(scope: String, input: JSONObject, fromModel: Boolean = false, sourceScope: String = scope): JSONObject {
-        CompanionPolicy.scope(scope)
-        val id = input.optString("id").ifBlank { CompanionPolicy.id() }
-        val old = get("memory", id)
-        require(old == null || old.getString("scope") == scope) { "不能跨会话修改记忆" }
-        val kind = input.optString("kind", "fact")
-        require(kind in CompanionPolicy.memoryKinds)
-        val content = CompanionPolicy.text(input.getString("text"), 8000)
-        if (fromModel) {
-            check(old == null) { "模型只能新增待确认记忆，不能覆盖主人已编辑的记录" }
-            val existing = list("memory", scope, 10000)
-            val normalized = content.replace(Regex("\\s+"), "").lowercase()
-            for (i in 0 until existing.length()) {
-                val memory = existing.getJSONObject(i)
-                if (memory.optString("text").replace(Regex("\\s+"), "").lowercase() == normalized) return memory
-            }
-        }
-        val sourceId = input.optString("sourceId")
-        if (fromModel) {
-            val source = get("message", sourceId) ?: error("模型记忆必须指向已有消息")
-            require(source.getString("scope") == sourceScope) { "记忆来源不属于本会话" }
-        }
-        val value = JSONObject().put("id", id).put("scope", scope).put("kind", kind).put("text", content)
-            .put("sourceId", sourceId).put("source", input.optString("source", "主人编辑").take(1000))
-            .put("sourceScope", sourceScope)
-            .put("status", if (fromModel) "unverified" else "confirmed")
-            .put("pinned", !fromModel && input.optBoolean("pinned"))
-            .put("createdAt", old?.optLong("createdAt") ?: System.currentTimeMillis())
-        writableDatabase.beginTransaction()
-        try {
-            val saved = put("memory", value)
-            writableDatabase.execSQL("INSERT INTO memory_history(memory_id,scope,previous_value,new_value,action,created_at) VALUES(?,?,?,?,?,?)",
-                arrayOf(id, scope, old?.optString("text"), content, if (old == null) "ADD" else "UPDATE", System.currentTimeMillis()))
-            writableDatabase.setTransactionSuccessful()
-            return saved
-        } finally { writableDatabase.endTransaction() }
+    @Synchronized fun saveMemory(scope: String, input: JSONObject, fromModel: Boolean = false, sourceScope: String = scope): JSONObject =
+        io.deepseekharness.mobile.companion.life.LifeMemoryRepository(this).upsertMemory(scope, input, fromModel, sourceScope)
+
+    @Synchronized fun appendMemoryHistory(scope: String, id: String, before: String?, after: String) {
+        writableDatabase.execSQL("INSERT INTO memory_history(memory_id,scope,previous_value,new_value,action,created_at) VALUES(?,?,?,?,?,?)",
+            arrayOf(id, scope, before, after, if (before == null) "ADD" else "UPDATE", System.currentTimeMillis()))
     }
 
     @Synchronized fun deleteMemory(scope: String, id: String) {
-        val old = get("memory", id) ?: return
-        require(old.getString("scope") == CompanionPolicy.scope(scope))
-        writableDatabase.beginTransaction()
-        try {
-            // Explicit delete removes old content too; retaining revision text would defeat deletion.
-            writableDatabase.delete("memory_history", "memory_id=? AND scope=?", arrayOf(id, scope))
-            writableDatabase.execSQL("UPDATE records SET json=?,deleted=1,updated=? WHERE kind='memory' AND id=? AND scope=?",
-                arrayOf(JSONObject().put("id", id).put("scope", scope).put("deleted", true).toString(), System.currentTimeMillis(), id, scope))
-            writableDatabase.setTransactionSuccessful()
-        } finally { writableDatabase.endTransaction() }
+        io.deepseekharness.mobile.companion.life.LifeMemoryRepository(this).delete("memory", CompanionPolicy.scope(scope), id)
     }
 
     fun memoriesFor(scope: String, query: String = ""): JSONArray {
         return MemoryRanking.rank(list("memory", scope, 10000), query)
     }
 
-    fun observationParts(id: String): JSONArray {
+    @Synchronized fun observationParts(id: String): JSONArray {
         val record = get("observation", id) ?: error("观察资料不存在")
         record.optJSONArray("parts")?.let { return it }
         val file = java.io.File(context.filesDir, "companion-media/${CompanionPolicy.digest(id)}.json")
@@ -169,9 +285,8 @@ class CompanionStore(private val context: Context) : SQLiteOpenHelper(context, "
         return JSONArray(file.readText(Charsets.UTF_8))
     }
     @Synchronized fun deleteObservation(id: String) {
-        temporaryObservations.remove(id)
-        java.io.File(context.filesDir, "companion-media/${CompanionPolicy.digest(id)}.json").delete()
-        writableDatabase.delete("records", "kind='observation' AND id=?", arrayOf(id))
+        val record = get("observation", id) ?: return
+        deleteContent(setOf(LifePolicy.reference("observation", record)))
     }
     @Synchronized fun saveTemporaryObservation(id: String): JSONObject {
         val value = temporaryObservations.get(id) ?: error("临时画面已过期或会话已结束")
@@ -182,17 +297,12 @@ class CompanionStore(private val context: Context) : SQLiteOpenHelper(context, "
     }
     fun clearTemporaryObservations() { temporaryObservations.clear() }
 
-    @Synchronized fun clearConversation(scope: String) {
+    @Synchronized fun clearConversation(scope: String) = lifeTransaction {
         require(scope.startsWith("qq:")); CompanionPolicy.scope(scope)
-        val media = list("observation", scope, 10000)
-        for (i in 0 until media.length()) deleteObservation(media.getJSONObject(i).getString("id"))
-        writableDatabase.beginTransaction()
-        try {
-            writableDatabase.delete("memory_history", "scope=?", arrayOf(scope))
-            writableDatabase.delete("records", "scope=? AND kind IN ('memory','message','task')", arrayOf(scope))
-            get("conversation", scope)?.let { put("conversation", it.put("captureEnabled", false).put("autoReply", false).put("mode", "quiet")) }
-            writableDatabase.setTransactionSuccessful()
-        } finally { writableDatabase.endTransaction() }
+        val roots = contentRecords().filter { it.second.getString("scope") == scope }.map { LifePolicy.reference(it.first, it.second) }.toSet()
+        deleteContent(roots)
+        get("conversation", scope)?.let { put("conversation", it.put("captureEnabled", false).put("autoReply", false).put("mode", "quiet")) }
+        Unit
     }
 
     @Synchronized fun pruneSocialHistory(now: Long = System.currentTimeMillis()) {
@@ -297,48 +407,78 @@ class CompanionStore(private val context: Context) : SQLiteOpenHelper(context, "
         ).use { c -> while(c.moveToNext()) out.put(JSONObject().put("before", c.getString(0)).put("after", c.getString(1)).put("action", c.getString(2)).put("at", c.getLong(3))) } }
     }
 
-    @Synchronized fun exportData(): JSONObject = JSONObject().put("format", "dsh-companion-backup").put("version", 1)
-        .put("createdAt", System.currentTimeMillis()).also { out ->
+    @Synchronized fun exportData(): JSONObject = lifeTransaction {
+        JSONObject().put("format", "dsh-companion-backup").put("version", 2).put("createdAt", System.currentTimeMillis()).also { out ->
             BACKUP_KINDS.forEach { kind ->
-                val all = list(kind, limit = 10000)
-                val values = JSONArray().also { rows -> for (i in 0 until all.length()) all.getJSONObject(i).let { if (!it.optBoolean("temporary")) rows.put(it) } }
-                for (i in 0 until values.length()) {
-                    val value = values.getJSONObject(i)
-                    if (kind == "message") value.remove("wire")
-                    if (kind == "observation") { value.remove("parts"); value.put("mediaStored", false) }
-                    if (kind == "task") value.removeGrant()
+                val values = JSONArray()
+                readableDatabase.rawQuery("SELECT json FROM records WHERE kind=? AND deleted=0 ORDER BY updated,id", arrayOf(kind)).use { c ->
+                    while (c.moveToNext()) {
+                        val value = JSONObject(c.getString(0))
+                        if (!value.optBoolean("temporary")) values.put(io.deepseekharness.mobile.companion.life.LifeBackup.sanitize(kind, value))
+                    }
                 }
                 out.put(kind, values)
             }
+            out.put("tombstones", tombstones())
+            out.put("revisions", JSONArray().also { all ->
+                readableDatabase.rawQuery("SELECT kind,json FROM life_revisions ORDER BY kind,id,revision", null).use { c ->
+                    while (c.moveToNext()) all.put(JSONObject(c.getString(1)).put("recordKind", c.getString(0)))
+                }
+            })
+            out.put("memoryHistory", JSONArray().also { all ->
+                readableDatabase.rawQuery("SELECT memory_id,scope,previous_value,new_value,action,created_at FROM memory_history ORDER BY id", null).use { c ->
+                    while (c.moveToNext()) all.put(JSONObject().put("id", c.getString(0)).put("scope", c.getString(1)).put("before", c.getString(2))
+                        .put("after", c.getString(3)).put("action", c.getString(4)).put("at", c.getLong(5)))
+                }
+            })
         }
+    }
 
-    @Synchronized fun restoreData(data: JSONObject) {
-        temporaryObservations.clear()
-        require(data.getString("format") == "dsh-companion-backup" && data.getInt("version") == 1) { "备份格式不受支持" }
-        // Validate all rows before any write. Credentials, network/owner grants are never restored.
-        val rows = BACKUP_KINDS.flatMap { kind ->
-            val a = data.optJSONArray(kind) ?: JSONArray()
-            require(a.length() <= 10000)
-            (0 until a.length()).map { i -> kind to JSONObject(a.getJSONObject(i).toString()).also {
-                CompanionPolicy.scope(it.getString("scope")); require(it.getString("id").length in 1..160)
-                if (kind == "task") it.put("state", "waiting").removeGrant()
-                if (kind == "message") it.remove("wire")
-                if (kind == "observation") { it.remove("parts"); it.put("mediaStored", false) }
-            } }
+    @Synchronized fun restoreData(data: JSONObject) = lifeTransaction {
+        val plan = io.deepseekharness.mobile.companion.life.LifeBackup.plan(exportData(), data)
+        val history = data.optJSONArray("memoryHistory") ?: JSONArray()
+        // Validate before mutation. Restore merges with newer local data; tombstones always win.
+        for (i in 0 until history.length()) {
+            val row = history.getJSONObject(i)
+            CompanionPolicy.scope(row.getString("scope")); require(row.getString("id").length in 1..160)
         }
-        writableDatabase.beginTransaction()
-        try {
-            BACKUP_KINDS.forEach { writableDatabase.delete("records", "kind=?", arrayOf(it)) }
-            writableDatabase.delete("memory_history", null, null)
-            rows.forEach { (kind, value) -> put(kind, value) }
-            java.io.File(context.filesDir, "companion-media").listFiles()?.forEach { it.delete() }
-            saveSettings(settings().put("networkEnabled", false).put("paused", true).put("oneBotEnabled", false))
-            writableDatabase.setTransactionSuccessful()
-        } finally { writableDatabase.endTransaction() }
+        val epoch = bumpContentEpoch()
+        plan.tombstones.forEach { row ->
+            val ref = RecordRef.parse(row)
+            val values = ContentValues().apply {
+                put("kind", ref.kind); put("id", ref.id); put("scope", ref.scope); put("deleted_at", row.optLong("deletedAt"))
+                put("epoch", epoch); put("media_pending", if (ref.kind == "observation") 1 else 0)
+            }
+            writableDatabase.insertWithOnConflict("life_tombstones", null, values, SQLiteDatabase.CONFLICT_IGNORE)
+            writableDatabase.delete("records", "kind=? AND id=?", arrayOf(ref.kind, ref.id))
+            writableDatabase.delete("life_revisions", "kind=? AND id=?", arrayOf(ref.kind, ref.id))
+            if (ref.kind == "memory") writableDatabase.delete("memory_history", "memory_id=?", arrayOf(ref.id))
+        }
+        for ((kind, value) in plan.rows) {
+            if (kind == "lifeState" && value.getString("id") == "contentEpoch") continue
+            if (!isDeleted(kind, value.getString("id"))) put(kind, io.deepseekharness.mobile.companion.life.LifeBackup.sanitize(kind, value))
+        }
+        plan.revisions.forEach { row ->
+            val kind = row.getString("recordKind"); row.remove("recordKind")
+            recordRevision(kind, row)
+        }
+        for (i in 0 until history.length()) {
+            val row = history.getJSONObject(i)
+            val memory = get("memory", row.getString("id")) ?: continue
+            check(memory.getString("scope") == row.getString("scope"))
+            val found = readableDatabase.rawQuery("SELECT 1 FROM memory_history WHERE memory_id=? AND scope=? AND created_at=? AND new_value=?",
+                arrayOf(row.getString("id"), row.getString("scope"), row.getLong("at").toString(), row.optString("after"))).use { it.moveToFirst() }
+            if (!found) writableDatabase.execSQL("INSERT INTO memory_history(memory_id,scope,previous_value,new_value,action,created_at) VALUES(?,?,?,?,?,?)",
+                arrayOf(row.getString("id"), row.getString("scope"), row.optString("before"), row.optString("after"), row.optString("action"), row.getLong("at")))
+        }
+        temporaryObservations.clear()
+        purgeDeletedMedia()
+        saveSettings(settings().put("networkEnabled", false).put("paused", true).put("oneBotEnabled", false))
+        Unit
     }
 
     companion object {
-        private val BACKUP_KINDS = listOf("persona", "personaVersion", "memory", "message", "observation", "task")
+        private val BACKUP_KINDS = listOf("persona", "personaVersion", "memory", "message", "observation", "task", "diary", "interest", "lifeEvent", "lifeState")
         private val KINDS = BACKUP_KINDS + listOf("settings", "conversation", "usage")
     }
 }
