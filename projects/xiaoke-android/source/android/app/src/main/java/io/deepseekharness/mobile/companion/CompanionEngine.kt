@@ -44,6 +44,8 @@ class CompanionEngine private constructor(private val context: Context) {
 
     fun submit(scope: String, text: String, source: String = "本机主人", observationId: String = "", actorId: String = ""): JSONObject {
         CompanionPolicy.scope(scope)
+        if (scope == CompanionPolicy.OWNER && io.deepseekharness.mobile.companion.devicev2.EmergencyHold.isContinue(text))
+            io.deepseekharness.mobile.companion.devicev2.DeviceModule.continueAfterHold()
         val userMessage = store.message(scope, "user", CompanionPolicy.text(text), source).let { message ->
             store.put("message", message.put("actorId", if (scope == CompanionPolicy.OWNER) "local-device-owner" else actorId))
         }
@@ -264,6 +266,10 @@ class CompanionEngine private constructor(private val context: Context) {
             val memoryBudget = (budget / 4).coerceAtMost(6000)
             val persona = store.persona()
             val remembered = recallMemories(scope, all[end].optString("text"))
+            // Pending review items are mentioned once, in passing, the next time the owner talks to her.
+            val pendingReview = if (scope == CompanionPolicy.OWNER) runCatching { modules.pendingApprovals() }.getOrDefault(emptyList()) else emptyList()
+            val mentioned = store.lifeState("approvalMention").optJSONArray("ids") ?: JSONArray()
+            val unmentioned = pendingReview.filter { id -> (0 until mentioned.length()).none { mentioned.getString(it) == id } }
             val memories = CompanionContext.memories(remembered, memoryBudget)
             for (i in 0 until memories.length()) memories.getJSONObject(i).let {
                 sources.put(JSONObject().put("kind", "memory").put("id", it.getString("id")).put("scope", it.getString("scope")))
@@ -281,6 +287,7 @@ class CompanionEngine private constructor(private val context: Context) {
                     append("当前设备会话状态（只反映授权，不是游戏内容）：${device.optJSONObject("control")}；观察目标：${device.optJSONObject("capture")?.optString("packageName")}。")
                     append("需要画面时先调用 capture.refresh，输入工具仅在主人本次已开启控制且符合他当时意愿时使用；观察和商量不要求点击。动画变化或画面过期拒绝输入时，应说明并等待稳定画面，不连续盲重试。每次系统手势完成不等于游戏胜利。\n")
                 }
+                if (unmentioned.isNotEmpty()) append("待审清单里有 ${pendingReview.size} 项等主人看（外发评论、资料保存等）。在回答里自然地顺口提一句即可，不催促、不逐项展开；之后不再重复提。\n")
                 append("当前记忆：$memories\n")
                 append("早期对话可能未全部放入上下文；需要时使用 recall 查询，不编造历史。发送和评论只能形成草稿，宿主负责授权与提交。")
             }
@@ -332,6 +339,7 @@ class CompanionEngine private constructor(private val context: Context) {
                             store.put("observation", it.put("analysis", text).put("analyzed", true))
                         }
                         update(id, "done", if (reply.optString("finishReason") == "MAX_TOKENS") "已到本轮输出预算；回答可能不完整" else "完成")
+                        if (unmentioned.isNotEmpty()) store.saveLifeState("approvalMention", JSONObject().put("ids", JSONArray(pendingReview)))
                         saved
                     }
                     modules.router.event(ModuleEvent("conversation.message", scope, message.getString("id"), JSONObject(message.toString()).apply { remove("wire") }))

@@ -23,6 +23,7 @@ import io.deepseekharness.mobile.overlay.OverlayBallPolicy
 import io.deepseekharness.mobile.companion.presence.CompanionPresenceController
 import org.json.JSONObject
 import io.deepseekharness.mobile.companion.devicev2.DeviceModule
+import io.deepseekharness.mobile.companion.devicev2.EmergencyHold
 import io.deepseekharness.mobile.companion.devicev2.FiveSecondHold
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
@@ -36,6 +37,10 @@ class CompanionOverlayService : Service() {
     private val busy = AtomicBoolean(false)
     private lateinit var windows: WindowManager
     private var bubble: View? = null
+    private var bubbleLabel: TextView? = null
+    private var bubbleBadge: TextView? = null
+    private var pendingCount = 0
+    private var badgeCheckedAt = 0L
     private var characterWeb: WebView? = null
     private var characterReady = false
     private var presence: CompanionPresenceController? = null
@@ -139,7 +144,8 @@ class CompanionOverlayService : Service() {
             val visible = !locked && !hidden && visibleByOwner
             bubble?.visibility = if (visible) View.VISIBLE else View.GONE
             panel?.visibility = if (visible) View.VISIBLE else View.GONE
-            (bubble as? TextView)?.text = if (DeviceModule.controlState().optString("state") == "authorized") "操作中" else "小克"
+            bubbleLabel?.text = if (DeviceModule.controlState().optString("state") == "authorized") "操作中" else "小克"
+            refreshBubble()
             val presenceState = presence?.state()
             if (presenceState != null) updateCharacter(presenceState)
             stateText?.text = "${if (engine.store.settings().optBoolean("paused")) "已暂停" else "剩余 ${(deadline - SystemClock.elapsedRealtime()) / 60000 + 1} 分钟"} · $localStatus" +
@@ -152,22 +158,51 @@ class CompanionOverlayService : Service() {
             main.postDelayed(this, 1000)
         }
     }
-    private fun background() = GradientDrawable().apply { setColor(Color.rgb(246, 249, 239)); cornerRadius = dp(18).toFloat(); setStroke(dp(1), Color.rgb(161, 181, 155)) }
+    private fun background(fill: Int = Color.rgb(246, 249, 239)) = GradientDrawable().apply { setColor(fill); cornerRadius = dp(18).toFloat(); setStroke(dp(1), Color.rgb(161, 181, 155)) }
+    /** Hold colour (red while input is held, amber while only sensitive effects are) and the pending-approval badge. */
+    private fun refreshBubble() {
+        val fill = when {
+            EmergencyHold.ordinaryHeld -> Color.rgb(239, 154, 154)
+            EmergencyHold.sensitiveHeld -> Color.rgb(255, 213, 128)
+            else -> Color.rgb(246, 249, 239)
+        }
+        bubbleLabel?.background = background(fill)
+        val now = SystemClock.elapsedRealtime()
+        if (now - badgeCheckedAt >= 5_000) { badgeCheckedAt = now; pendingCount = runCatching { engine.modules.pendingApprovals().size }.getOrDefault(0) }
+        val pending = pendingCount
+        bubbleBadge?.text = if (pending > 99) "99+" else pending.toString()
+        bubbleBadge?.visibility = if (pending > 0) View.VISIBLE else View.GONE
+    }
     @SuppressLint("ClickableViewAccessibility")
     private fun showBubble() {
         if (bubble?.isAttachedToWindow == true) return
         val size = dp(52)
+        // WATCH_OUTSIDE_TOUCH lets an owner touch on the game hand control back during delegated input.
         val params = WindowManager.LayoutParams(size, size, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT).apply { gravity = Gravity.TOP or Gravity.START; x = 0; y = dp(180) }
-        val view: View = TextView(theme).apply { text = "小克"; gravity = Gravity.CENTER; textSize = 15f; background = background() }
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH, PixelFormat.TRANSLUCENT).apply { gravity = Gravity.TOP or Gravity.START; x = 0; y = dp(180) }
+        val view = FrameLayout(theme)
+        val label = TextView(theme).apply { text = "小克"; gravity = Gravity.CENTER; textSize = 15f; background = background() }
+        val badge = TextView(theme).apply {
+            textSize = 10f; gravity = Gravity.CENTER; setTextColor(Color.WHITE); minWidth = dp(18); setPadding(dp(4), 0, dp(4), 0); visibility = View.GONE
+            background = GradientDrawable().apply { setColor(Color.rgb(211, 47, 47)); cornerRadius = dp(9).toFloat() }
+        }
+        view.addView(label, FrameLayout.LayoutParams(-1, -1))
+        view.addView(badge, FrameLayout.LayoutParams(-2, dp(18), Gravity.TOP or Gravity.END))
+        bubbleLabel = label; bubbleBadge = badge
         view.contentDescription = "打开小克悬浮对话，可拖动；在球上按住五秒仅停止输入"
         view.setOnClickListener { if (panel == null) showPanel() else closePanel() }
         var downX = 0f; var downY = 0f; var startX = 0; var startY = 0
         var fired = false; var cancelled = false
         val hold = FiveSecondHold(SystemClock::elapsedRealtime, ViewConfiguration.get(this).scaledTouchSlop.toFloat())
-        val timer = Runnable { if (hold.fire()) { fired = true; DeviceModule.stopInputFromSurface(); localStatus = "输入已停止；陪聊与观察继续"; view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS) } }
+        val timer = Runnable { if (hold.fire()) {
+            fired = true; DeviceModule.emergencyHoldFromSurface(); refreshBubble()
+            localStatus = "已急停点击和输入；语音与文字对话继续。说「继续」恢复普通操作，外发等敏感操作需点恢复按钮"
+            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        } }
         cancelHold = { hold.cancel(); main.removeCallbacks(timer) }
         view.setOnTouchListener { _, e -> when (e.actionMasked) {
+            // Our own panel taps are not a takeover; the controller ignores the echo of its own gestures.
+            MotionEvent.ACTION_OUTSIDE -> { if (panel == null) DeviceModule.yieldToOwnerTouch(); false }
             MotionEvent.ACTION_DOWN -> { fired = false; cancelled = false; downX = e.rawX; downY = e.rawY; startX = params.x; startY = params.y; hold.down(e.rawX, e.rawY); main.postDelayed(timer, 5000); true }
             MotionEvent.ACTION_POINTER_DOWN, MotionEvent.ACTION_CANCEL -> { cancelled = true; cancelHold?.invoke(); true }
             MotionEvent.ACTION_MOVE -> {
@@ -220,6 +255,9 @@ class CompanionOverlayService : Service() {
         stateText = label(localStatus); box.addView(stateText)
         box.addView(button("收起，继续使用当前应用") { closePanel() })
         box.addView(button("仅停止输入，继续陪聊") { DeviceModule.stopInputFromSurface(); localStatus = "输入已停止；观察、收音与陪聊不受影响" })
+        if (EmergencyHold.anyHeld) box.addView(button("恢复全部操作（含外发、凭证、删除、支付）") {
+            EmergencyHold.releaseAll(); DeviceModule.continueAfterHold(); refreshBubble(); localStatus = "急停已解除"; closePanel(); showPanel()
+        })
         box.addView(button("隐藏浮球，保留本次陪伴") { applyVisibility(false) })
         val deviceFrame = DeviceModule.surfaceFrame()
         if (deviceFrame.optString("packageName").isNotEmpty()) {
@@ -355,7 +393,7 @@ class CompanionOverlayService : Service() {
         running = false; DeviceModule.overlayChanged(); deadline = 0; allowedPackage = ""; main.removeCallbacksAndMessages(null)
         if (taskId.isNotBlank()) engine.store.get("task", taskId)?.let { if (it.optString("state") in setOf("draft", "approved")) engine.cancel(taskId) }
         engine.store.clearTemporaryObservations()
-        closePanel(); bubble?.let { runCatching { windows.removeView(it) } }; bubble = null
+        closePanel(); bubble?.let { runCatching { windows.removeView(it) } }; bubble = null; bubbleLabel = null; bubbleBadge = null
         worker.shutdownNow(); super.onDestroy()
     }
     override fun onBind(intent: Intent?): IBinder? = null

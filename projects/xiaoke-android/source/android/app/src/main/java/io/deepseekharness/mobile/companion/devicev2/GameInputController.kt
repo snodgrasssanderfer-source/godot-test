@@ -23,6 +23,8 @@ data class ControlFrame(val id: String, val session: String, val packageName: St
 /** Short, continued gesture segments bound stop latency without injecting a replacement tap. */
 class GameInputController(private val context: Context, private val changed: () -> Unit) {
     val fence = InputFence(SystemClock::elapsedRealtime)
+    /** Lets the owner-touch watcher ignore the echo of our own injected gesture. */
+    @Volatile var lastGestureEndedAt = 0L; private set
     private val main = Handler(Looper.getMainLooper())
     fun stop(reason: String = "owner_stop"): JSONObject {
         fence.stop(reason); changed(); return state()
@@ -62,7 +64,7 @@ class GameInputController(private val context: Context, private val changed: () 
         val pieces = segments.size
         var previous: GestureDescription.StrokeDescription? = null
         var lastX = x; var lastY = y
-        fun complete(state: String, detail: String = "") { fence.finish(id, state, detail); finished.countDown(); changed() }
+        fun complete(state: String, detail: String = "") { lastGestureEndedAt = SystemClock.elapsedRealtime(); fence.finish(id, state, detail); finished.countDown(); changed() }
         fun release() {
             val stroke = previous
             if (stroke == null) { complete("stopped"); return }

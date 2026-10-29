@@ -95,6 +95,20 @@ object LifePolicy {
         }.map { reference(it.first, it.second) }.toSet()
     }
 
+    /** Fails closed: unreadable lineage counts as private. */
+    fun touchesPrivate(record: JSONObject, isPrivate: (String) -> Boolean): Boolean = isPrivate(record.optString("scope")) ||
+        isPrivate(record.optString("sourceScope")) || runCatching { sources(record).any { isPrivate(it.scope) } }.getOrDefault(true)
+
+    /** Share flags never override the owner private domain; such records yield nothing to any requester. */
+    fun shareSummaries(records: List<JSONObject>, requesterScope: String, query: String, isPrivate: (String) -> Boolean): JSONArray = JSONArray().also { out ->
+        records.filter { value ->
+            val audiences = value.optJSONArray("shareWithScopes") ?: JSONArray()
+            (0 until audiences.length()).map(audiences::getString).any { it == "*" || it == requesterScope } && visible(value) &&
+                value.optString("shareSummary").isNotBlank() && value.getString("shareSummary").contains(query, ignoreCase = true) &&
+                !touchesPrivate(value, isPrivate)
+        }.forEach { out.put(JSONObject().put("id", it.getString("id")).put("summary", it.getString("shareSummary"))) }
+    }
+
     fun visible(record: JSONObject, proactive: Boolean = true): Boolean = !record.optBoolean("deleted") &&
         (!proactive || (!record.optBoolean("forgotten") && !record.optBoolean("suppressed") && !record.optBoolean("superseded")))
 }

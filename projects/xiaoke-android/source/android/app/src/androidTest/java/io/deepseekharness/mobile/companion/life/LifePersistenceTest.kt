@@ -141,16 +141,15 @@ class LifePersistenceTest {
         assertEquals(10L, action("budget.status").getJSONObject("owner").getLong("remaining"))
     }
 
-    @Test fun groupCannotRewriteRulesAndSharingReturnsOnlyApprovedSummary() {
+    @Test fun groupCannotRewriteRulesOrReadOwnerPrivateSummaries() {
         val friend = CommandPrincipal("fixture-friend", "group_qq", "qq:group:fixture", true)
         assertThrows(IllegalStateException::class.java) { module.execute("budget.configure", JSONObject(), friend) }
         assertThrows(IllegalStateException::class.java) { module.execute("memory.search", JSONObject().put("scope", scope), friend) }
-        val saved = action("memory.upsert", JSONObject().put("text", "private fixture source").put("shareSummary", "approved summary")
+        action("memory.upsert", JSONObject().put("text", "private fixture source").put("shareSummary", "approved summary")
             .put("shareWithScopes", JSONArray().put(friend.scope)))
+        // The owner private domain never shares, even with an explicit audience.
         val result = module.execute("memory.search", JSONObject().put("scope", scope).put("shareSummary", true), friend).getJSONArray("items")
-        assertEquals(saved.getString("id"), result.getJSONObject(0).getString("id"))
-        assertEquals("approved summary", result.getJSONObject(0).getString("summary"))
-        assertFalse(result.toString().contains("private fixture")); assertFalse(result.getJSONObject(0).has("sourceRefs"))
+        assertEquals(0, result.length())
     }
 
     @Test fun groupFactSlotsUseStableSourceActorInsteadOfSharedDisplayName() {

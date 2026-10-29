@@ -19,6 +19,7 @@ class SocialRuntime(
     private val targetAllowed: (JSONObject) -> Boolean = { true },
     private val networkAllowed: () -> Boolean = { true },
     private val platformState: (String) -> JSONObject = { accountState() },
+    private val ownerPrivate: (String) -> Boolean = { it == "owner:local" },
 ) {
     @Volatile private var closed = false
     @Volatile private var online = true
@@ -44,6 +45,10 @@ class SocialRuntime(
             .put("scheduled", JSONArray(jobs)).put("media", if (owner) JSONArray(values(rows(root, "media"))) else JSONArray())
             .put("sync", if (owner) syncStatus(root) else JSONObject().put("enabled", false))
             .put("service", JSONObject().put("online", online && networkAllowed()).put("closed", closed).put("config", if (owner) root.optJSONObject("config") ?: JSONObject() else JSONObject()))
+    }
+    /** Items waiting in the owner's review list (outbound expression, saves, platform requests). */
+    fun pendingApprovalIds(): List<String> = ledger.read { root ->
+        values(rows(root, "actions")).filter { it.optString("state") == "pending" && it.optLong("expiresAt") > clock() }.map { it.getString("id") }
     }
     private fun syncStatus(root: JSONObject): JSONObject = copy(root.optJSONObject("sync") ?: JSONObject()).also { result ->
         result.put("pending", values(rows(root, "events")).count { it.optBoolean("pendingSync") })
@@ -181,9 +186,10 @@ class SocialRuntime(
             rows(root, "actions").put(item.getString("id"), item); item
         }
     }
+    // Nothing from the owner private domain can ground autonomous public expression, even if marked shareable.
     private fun safeSources(root: JSONObject, sources: List<String>) = sources.isNotEmpty() && sources.all { source ->
         values(rows(root, "events")).any { it.optString("sourceId") == source && it.optString("type") == "observation.summary" &&
-            it.optJSONObject("data")?.optBoolean("shareable") == true && !SocialRules.blocked(root, it) }
+            it.optJSONObject("data")?.optBoolean("shareable") == true && !ownerPrivate(it.optString("scope")) && !SocialRules.blocked(root, it) }
     }
     private fun approve(input: JSONObject, principal: CommandPrincipal): JSONObject {
         SocialRules.owner(principal)

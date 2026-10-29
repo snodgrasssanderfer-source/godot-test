@@ -7,6 +7,8 @@ import io.deepseekharness.mobile.companion.OneBotBridge
 import io.deepseekharness.mobile.companion.QqNotificationBridge
 import io.deepseekharness.mobile.companion.CompanionPolicy
 import io.deepseekharness.mobile.companion.BilibiliReader
+import io.deepseekharness.mobile.companion.NightQuiet
+import io.deepseekharness.mobile.companion.life.BudgetLedger
 import io.deepseekharness.mobile.companion.iteration.CommandPrincipal
 import io.deepseekharness.mobile.companion.iteration.HostPorts
 import io.deepseekharness.mobile.companion.iteration.ModuleEndpoint
@@ -44,7 +46,8 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
                 conversation.optString("targetId") == action.optString("target") && conversation.optString("targetType") == action.getJSONObject("payload").optString("targetType") &&
                 conversation.optBoolean("captureEnabled") && conversation.optString("route") == "onebot" && conversation.optBoolean("reliable")
         } else true
-    }, networkAllowed = ::networkPermitted, platformState = { platform -> if (platform == "bilibili") biliState() else bridge.state() })
+    }, networkAllowed = ::networkPermitted, platformState = { platform -> if (platform == "bilibili") biliState() else bridge.state() },
+        ownerPrivate = store::ownerPrivate)
     private val timer = Executors.newSingleThreadScheduledExecutor { runnable -> Thread(runnable, "xiaoke-social-background").apply { isDaemon = true } }
     private val effectWorker = Executors.newSingleThreadScheduledExecutor { runnable -> Thread(runnable, "xiaoke-social-effects").apply { isDaemon = true } }
     private val syncWorker = Executors.newSingleThreadScheduledExecutor { runnable -> Thread(runnable, "xiaoke-event-sync").apply { isDaemon = true } }
@@ -75,7 +78,10 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
             }
                 .onFailure { lastError = "部分社交事件未入账，请检查本机存储" }
         }
-        timer.scheduleWithFixedDelay({ runCatching { runtime.tick(processEffects = false) }.onFailure { lastError = "后台处理暂未完成，请查看任务状态" } }, 1, 5, TimeUnit.SECONDS)
+        timer.scheduleWithFixedDelay({
+            runCatching { NightQuiet.evaluate(app, store) }
+            runCatching { runtime.tick(processEffects = false) }.onFailure { lastError = "后台处理暂未完成，请查看任务状态" }
+        }, 1, 5, TimeUnit.SECONDS)
         effectWorker.scheduleWithFixedDelay({ runCatching { runtime.tickEffects() }.onFailure { lastError = "社交动作暂未完成，请查看记录" } }, 1, 5, TimeUnit.SECONDS)
         syncWorker.scheduleWithFixedDelay({
             if (canSync()) runCatching { runSync() }
@@ -172,6 +178,15 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
     }
     private fun inspectBilibili(data: JSONObject, principal: CommandPrincipal): JSONObject {
         platformPrincipal(principal); check(networkPermitted()) { "联网已关闭" }
+        if (runCatching { SocialRules.owner(principal) }.isFailure) {
+            // Autonomous browsing: never at night or on an empty activity pool, and only topics grounded in chat or recorded interests.
+            check(!NightQuiet.active(store)) { "夜间安静，不浏览B站" }
+            check(!BudgetLedger(store.lifeState("budget")).status().optBoolean("stopActivity")) { "活动额度已停，暂停浏览" }
+            val topics = data.optJSONArray("sourceIds") ?: JSONArray()
+            check(topics.length() > 0 && (0 until topics.length()).all { i ->
+                store.get("message", topics.getString(i))?.optString("scope") == CompanionPolicy.OWNER || store.get("interest", topics.getString(i)) != null
+            }) { "只浏览聊天中提到的话题或已记录的兴趣，不从首页推荐自由探索" }
+        }
         val videoId = BilibiliActions.videoId(data.getString("videoId"))
         val info = biliReader.video(videoId)
         val key = "bili-resource-" + hash(listOf(info.getString("videoId"), info.getString("aid"), info.getLong("cid"), info.getString("upMid")).joinToString(":"))
@@ -293,5 +308,6 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
         values(rows(root, "media")).forEach { it.remove("blobId"); it.put("status", "bytes_not_in_backup") }
     }
     fun restoreBackup(data: JSONObject, principal: CommandPrincipal): JSONObject = runtime.restoreBackup(data, principal)
+    fun pendingApprovalIds(): List<String> = runtime.pendingApprovalIds()
     override fun close() { closing = true; timer.shutdownNow(); effectWorker.shutdownNow(); syncWorker.shutdownNow(); syncTransport?.cancel(); biliActions.cancel(); biliDownload.cancel(); bridge.setModuleListener(null); bridge.setEffectGate(null); QqNotificationBridge.setEffectGate(null); runtime.close() }
 }

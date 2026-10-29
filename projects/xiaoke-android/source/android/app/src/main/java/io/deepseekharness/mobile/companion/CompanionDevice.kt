@@ -198,6 +198,7 @@ class CompanionDevice(private val context: Context) {
     /** Final UI submission is a separate, host-authorized operation, never a model tool. */
     fun sendUsingUi(task: JSONObject): JSONObject {
         check(CompanionPolicy.canSend(task, System.currentTimeMillis())) { "草稿授权已失效，请重新确认正文和目标" }
+        check(!io.deepseekharness.mobile.companion.devicev2.EmergencyHold.sensitiveHeld) { "急停中：外发需先点悬浮球上的恢复按钮" }
         val tree = observe()
         val packageName = task.getString("package")
         check(tree.getString("packageName") == packageName) { "当前不是授权目标应用" }

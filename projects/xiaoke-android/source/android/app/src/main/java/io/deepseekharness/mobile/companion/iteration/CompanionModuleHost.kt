@@ -16,7 +16,6 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
     private val eventWorker = java.util.concurrent.Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "companion-events").apply { isDaemon = true } }
     private val seenEvents = linkedSetOf<String>()
     private val lastContentEpoch = java.util.concurrent.atomic.AtomicLong(-1)
-    private val activityBudgetWarned = java.util.concurrent.atomic.AtomicBoolean(false)
     val localOwner = CommandPrincipal("local-device-owner", "owner_ui", CompanionPolicy.OWNER, true)
     val life = io.deepseekharness.mobile.companion.life.LifeModule(context, store, this)
     val device = io.deepseekharness.mobile.companion.devicev2.DeviceModule(context, this)
@@ -70,9 +69,15 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
         router.signal(payload.optString("domain", "all"), topic)
         if (topic == "life.contentChanged") { contentChanged(); return }
         if (topic == "budget.changed") {
+            // Group chat and browsing pause on their own; the owner hears about it at most once a day, never during night quiet.
             val stopped = payload.optBoolean("configured") && payload.optBoolean("stopActivity")
-            if (stopped && !activityBudgetWarned.getAndSet(true)) store.message(CompanionPolicy.OWNER, "notice", "活动额度已接近或达到停止线，后续收费活动不会开始。主人交流额度独立；已预留请求按真实结果核账。", "本机预算账本")
-            if (!stopped) activityBudgetWarned.set(false)
+            val today = java.time.LocalDate.now().toString()
+            if (stopped && !io.deepseekharness.mobile.companion.NightQuiet.active(store)) store.lifeTransaction {
+                if (store.lifeState("activityBudgetNotice").optString("date") != today) {
+                    store.saveLifeState("activityBudgetNotice", JSONObject().put("date", today))
+                    store.message(CompanionPolicy.OWNER, "notice", "活动额度见底了，群聊和浏览先停下，和你聊天不受影响。", "本机预算账本")
+                }
+            }
             return
         }
         if (topic == "social.reminder" || topic == "social.job.completed") {
@@ -181,6 +186,14 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
         }
         router.signal("all", "job.outcome")
     }
+    /** Owner review list: social actions awaiting approval plus legacy send drafts. Used for the ball badge and one mention. */
+    fun pendingApprovals(): List<String> {
+        val drafts = store.list("task")
+        return social.pendingApprovalIds() + (0 until drafts.length()).map(drafts::getJSONObject)
+            .filter { it.optString("type") == "send" && it.optString("state") == "draft" }.map { it.getString("id") }
+    }
+    fun activityStopped(): Boolean = io.deepseekharness.mobile.companion.life.BudgetLedger(store.lifeState("budget")).status().optBoolean("stopActivity")
+
     override fun requestModel(request: JSONObject, onEvent: (JSONObject) -> Unit): String = engine.enqueueModuleRequest(request, onEvent)
     override fun cancelModel(requestId: String) = engine.cancelModuleRequest(requestId)
 
@@ -202,6 +215,9 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
         if (type !in setOf("social_send", "public_post", "public_comment", "add_friend", "join_group", "download", "like", "follow", "block", "leave_group"))
             return decision(false, "未知外部动作")
         if (!settings.optBoolean("networkEnabled") || settings.optBoolean("paused")) return decision(false, "联网关闭或助手已暂停")
+        if (io.deepseekharness.mobile.companion.devicev2.EmergencyHold.sensitiveHeld) return decision(false, "急停中：外发需主人先点悬浮球上的恢复按钮")
+        val groupOrPublic = effect.optString("scope", principal.scope).startsWith("qq:group:") || type !in setOf("social_send", "add_friend", "block")
+        if (!principal.owner && groupOrPublic && io.deepseekharness.mobile.companion.NightQuiet.active(store)) return decision(false, "夜间安静：不在群里发言或浏览B站")
         if (type == "social_send") {
             if (!settings.optBoolean("oneBotEnabled")) return decision(false, "QQ 独立通道未启用")
         } else if (!settings.optBoolean("activityEnabled")) return decision(false, "外部活动尚未由主人开启")

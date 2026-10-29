@@ -129,17 +129,7 @@ class LifeModule(@Suppress("UNUSED_PARAMETER") context: Context, private val sto
         val requested = CompanionPolicy.scope(data.optString("scope", principal.scope))
         if (data.optBoolean("shareSummary")) {
             val all = store.list("memory", requested, 10000)
-            return@lifeTransaction JSONArray().also { out ->
-                for (i in 0 until all.length()) {
-                    val value = all.getJSONObject(i)
-                    val audiences = value.optJSONArray("shareWithScopes") ?: JSONArray()
-                    val allowed = (0 until audiences.length()).map(audiences::getString).any { it == "*" || it == principal.scope }
-                    if (allowed && LifePolicy.visible(value) && value.optString("shareSummary").isNotBlank() &&
-                        value.getString("shareSummary").contains(data.optString("query"), ignoreCase = true)) {
-                        out.put(JSONObject().put("id", value.getString("id")).put("summary", value.getString("shareSummary")))
-                    }
-                }
-            }
+            return@lifeTransaction LifePolicy.shareSummaries((0 until all.length()).map(all::getJSONObject), principal.scope, data.optString("query"), store::ownerPrivate)
         }
         val scope = LifePolicy.scope(data, principal)
         val hidden = data.optBoolean("includeForgotten")

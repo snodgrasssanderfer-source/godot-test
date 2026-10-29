@@ -277,8 +277,15 @@ class CompanionStore(private val context: Context, databaseName: String = "compa
         io.deepseekharness.mobile.companion.life.LifeMemoryRepository(this).delete("memory", CompanionPolicy.scope(scope), id)
     }
 
+    fun ownerPrivate(scope: String): Boolean = scope.isNotBlank() && CompanionPolicy.ownerPrivate(scope, get("conversation", scope), settings())
+
     fun memoriesFor(scope: String, query: String = ""): JSONArray {
-        return withEvidenceStatus(MemoryRanking.rank(list("memory", scope, 10000), query)).also { rows ->
+        val rows = list("memory", scope, 10000)
+        // Outside the owner private domain, drop anything derived from it before ranking or model context.
+        val readable = if (ownerPrivate(scope)) rows else JSONArray().also { out ->
+            for (i in 0 until rows.length()) rows.getJSONObject(i).let { if (!LifePolicy.touchesPrivate(it, ::ownerPrivate)) out.put(it) }
+        }
+        return withEvidenceStatus(MemoryRanking.rank(readable, query)).also { rows ->
             // The model gets concise provenance; complete lineage remains in the owner review/store.
             for (i in 0 until rows.length()) { rows.getJSONObject(i).remove("sourceRefs"); rows.getJSONObject(i).remove("suppressedBy") }
         }

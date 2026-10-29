@@ -95,6 +95,11 @@ object CompanionPolicy {
 
     fun mayReadMemory(requestScope: String, recordScope: String) = scope(requestScope) == scope(recordScope)
 
+    /** Owner private domain: the local owner session and the owner's own QQ private chat. Its content never reaches another scope. */
+    fun ownerPrivate(scope: String, conversation: JSONObject?, settings: JSONObject): Boolean = scope == OWNER ||
+        (scope.startsWith("qq:private:") && conversation != null && conversation.optString("targetType") == "private" &&
+            settings.optString("ownerQqId").isNotBlank() && conversation.optString("targetId") == settings.optString("ownerQqId"))
+
     /** Host opt-in applies only to an account-verified OneBot private chat with the owner ID. */
     fun sharesOwnerMemory(conversation: JSONObject?, settings: JSONObject): Boolean = conversation != null &&
         settings.optBoolean("shareOwnerMemoryWithQq") && conversation.optString("route") == "onebot" &&

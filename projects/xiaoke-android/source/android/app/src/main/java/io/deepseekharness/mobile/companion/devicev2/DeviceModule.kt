@@ -49,6 +49,7 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
     init {
         check(active == null) { "设备模块已存在" }
         active = this; DeviceAudioSession.onChanged = ::changed
+        EmergencyHold.attach(app)
     }
     override fun snapshot(principal: CommandPrincipal): JSONObject {
         requireOwner(principal)
@@ -75,7 +76,10 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
                 val info = app.packageManager.getApplicationInfo(pkg, 0)
                 check(info.flags and ApplicationInfo.FLAG_SYSTEM == 0 && pkg !in setOf(app.packageName, "com.tencent.mobileqq", "tv.danmaku.bili")) { "此入口仅用于主人选定的单机游戏" }
                 authorize(principal, pkg, data.optString("requestId"), null)
-                input.start(pkg, data.optInt("durationSeconds", 120), data.getLong("expectedInputEpoch"))
+                input.start(pkg, data.optInt("durationSeconds", 120), data.getLong("expectedInputEpoch")).also {
+                    // An explicit owner start in the control panel is at least as strong as saying "继续".
+                    EmergencyHold.releaseOrdinary(); resumable = null
+                }
             }
             "control.stop" -> stopInput("owner_stop")
             "control.status" -> input.state()
@@ -275,6 +279,23 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
         check(principal.owner && principal.channel == "owner_ui" && principal.scope == OWNER) { "设备权限只接受本机主人界面操作" }
     }
     private fun permits(pkg: String) = !closed && pkg == capturePackage && SystemClock.elapsedRealtime() < captureDeadline
+    @Volatile private var resumable: Pair<String, Long>? = null
+    /** Remember the running lease so an ordinary resume restarts it for its remaining time. */
+    private fun holdInput(reason: String) {
+        val state = input.state()
+        if (state.optString("state") == "authorized") resumable = state.getString("packageName") to state.getLong("expiresAtMs") - SystemClock.elapsedRealtime()
+        stopInput(reason)
+    }
+    private fun resumeInput() {
+        val (pkg, remaining) = resumable ?: return
+        resumable = null
+        val principal = surfacePrincipal ?: return
+        if (!permits(pkg)) return
+        runCatching {
+            authorize(principal, pkg, UUID.randomUUID().toString(), null)
+            input.start(pkg, (remaining / 1000).toInt().coerceIn(10, 300), input.state().getLong("inputEpoch"))
+        }
+    }
     private fun stopInput(reason: String): JSONObject = input.stop(reason).also {
         ports.emit("control.stopped", JSONObject().put("scope", OWNER).put("sourceId", "input:${it.optLong("inputEpoch")}").put("data", it))
     }
@@ -312,6 +333,22 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
         @Volatile private var active: DeviceModule? = null
         fun permitsObservation(pkg: String) = active?.permits(pkg) == true
         fun stopInputFromSurface() { active?.stopInput("owner_emergency_stop") }
+        /** Five-second hold on the ball. */
+        fun emergencyHoldFromSurface() { EmergencyHold.engage(); active?.holdInput("owner_emergency_stop") }
+        /** The owner touched the screen outside our windows while we held control: yield silently. */
+        fun yieldToOwnerTouch() {
+            val owner = active ?: return
+            val control = owner.input.state()
+            if (control.optString("state") != "authorized" || control.optBoolean("releasePending")) return
+            if (SystemClock.elapsedRealtime() - owner.input.lastGestureEndedAt < 500) return
+            owner.holdInput("owner_touch")
+        }
+        /** Owner said "继续" or pressed recovery. Ordinary input only; the sensitive hold is cleared by the button alone. */
+        fun continueAfterHold() {
+            val owner = active ?: return
+            if (EmergencyHold.ordinaryHeld) EmergencyHold.releaseOrdinary()
+            owner.worker.execute { owner.resumeInput() }
+        }
         fun overlayChanged() { active?.changed() }
         fun surfaceFrame(): JSONObject = active?.let { JSONObject(it.capture) } ?: JSONObject()
         fun captureFromSurface(): JSONObject {

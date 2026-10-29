@@ -19,7 +19,9 @@ object CompanionRouting {
         val count = conversation.optInt("messagesSinceReply") + 1
         conversation.put("messagesSinceReply", count)
         val score = ReplyLikelihood.estimate(listOf(text), mentioned, 0.0, 1, since.toDouble())
-        val eligible = conversation.optBoolean("reliable") && !settings.optBoolean("paused") && settings.optBoolean("networkEnabled") &&
+        // Night quiet and an exhausted activity pool both keep her out of group chats; messages are still recorded.
+        val groupPaused = scope.startsWith("qq:group:") && (NightQuiet.active(store) || engine.modules.activityStopped())
+        val eligible = !groupPaused && conversation.optBoolean("reliable") && !settings.optBoolean("paused") && settings.optBoolean("networkEnabled") &&
             ParticipationPolicy.nightAllows(conversation, settings, mentioned, senderId, java.time.LocalTime.now().hour) &&
             now - conversation.optLong("humanActivityAt") > 120000 &&
             (mentioned || conversation.optString("mode") != "natural" || count >= conversation.optInt("naturalEveryMessages", 24)) &&

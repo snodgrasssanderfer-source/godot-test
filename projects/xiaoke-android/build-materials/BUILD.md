@@ -5,8 +5,9 @@
 1. 用 download-inputs.py 下载并验证 toolchain 与 release 输入到私有工作目录；不要提交下载缓存。NDK 解包保留 Unix 符号链接和执行位。
 2. PRoot 构建脚本 build_android_tools_wsl.sh、补丁 termux-proot-operit-android.patch 及 proot-rebuild-status.json 固定对应来源；使用官方 corresponding-source.tar.gz 内 Operit2/Termux/talloc 对应源码，NDK r29-beta4，仅 arm64-v8a / proot。DSH_LOADER_INFO_PY 指向 source/scripts/proot-loader-info.py。原生回传参考提交 4a493c504d33017d414e00748be34aca3ba573a4。不要运行 rootfs 里的主机不兼容程序。
 3. 将 liboperit_proot.so / liboperit_loader.so 分别复制为 source/android/app/src/main/jniLibs/arm64-v8a/libdsh_proot.so / libdsh_proot_loader.so。将固定 rootfs.bundle、runtime-manifest.json 放到 source/android/app/src/main/assets/runtime/。
-4. JAVA_HOME / ANDROID_HOME / ANDROID_SDK_ROOT / ANDROID_NDK_HOME / ANDROID_USER_HOME / GRADLE_USER_HOME 使用本机路径；source/android/local.properties 配置 sdk.dir、ndk.dir。代理和 CA 按环境配置，保留 TLS 验证，不提交凭据。
-5. 在 source 执行 pnpm install --frozen-lockfile、pnpm run build、pnpm exec cap sync android。首次私有签名可运行 scripts/create-companion-signing.py；已有安装包必须继续使用相同签名，不能覆盖不同签名或通过卸载丢掉数据。签名私钥绝不入库。
-6. 设置 GRADLE_BIN 后运行 scripts/build-companion-private.sh，或从 android 执行 Gradle :app:lintRelease :app:testDebugUnitTest :app:assembleRelease。输出 app/build/outputs/apk/release/app-release.apk。编译不是运行验收。
+4. Linux 构建必须使用 UTF-8 语言环境：执行 Gradle 前设置 `LANG=C.UTF-8` 与 `LC_ALL=C.UTF-8`。原因：单元测试用中文命名（如 `ApplicationSearchTest` 内的中文测试名），Kotlin 编译会生成含中文的 .class 文件名；容器默认的 POSIX 语言环境下 JVM 的 `sun.jnu.encoding` 不是 UTF-8，`:app:compileDebugUnitTestKotlin` 会以 `InvalidPathException: Malformed input or input contains unmappable characters` 失败。这是环境问题，不需要改代码。Maven Central 偶发 429 时用 `--max-workers=2` 重试即可。
+5. JAVA_HOME / ANDROID_HOME / ANDROID_SDK_ROOT / ANDROID_NDK_HOME / ANDROID_USER_HOME / GRADLE_USER_HOME 使用本机路径；source/android/local.properties 配置 sdk.dir、ndk.dir。代理和 CA 按环境配置，保留 TLS 验证，不提交凭据。
+6. 在 source 执行 pnpm install --frozen-lockfile、pnpm run build、pnpm exec cap sync android。首次私有签名可运行 scripts/create-companion-signing.py；已有安装包必须继续使用相同签名，不能覆盖不同签名或通过卸载丢掉数据。签名私钥绝不入库。
+7. 设置 GRADLE_BIN 后运行 scripts/build-companion-private.sh，或从 android 执行 Gradle :app:lintRelease :app:testDebugUnitTest :app:assembleRelease。输出 app/build/outputs/apk/release/app-release.apk。编译不是运行验收。
 
 原源码文件清单与 verify-source.py 是历史静态交接基线；本轮新增文件不适用那个旧摘要集合。新 APK/源码的最终摘要及真实测试记录由本轮集成后更新。无硬件加速的 Android16 首启已经失败，不要重复该路径消耗资源；仪器测试保留供授权真机/加速环境运行。
