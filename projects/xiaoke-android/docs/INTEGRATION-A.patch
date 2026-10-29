@@ -1,0 +1,66 @@
+--- a/projects/xiaoke-android/source/src/companion/bridge.ts
++++ b/projects/xiaoke-android/source/src/companion/bridge.ts
+@@ -1,3 +1,4 @@
++import type { ModuleSnapshot } from './iteration/contracts'
+ import type { PresenceState } from './presence/contract'
+ import { Capacitor, registerPlugin } from '@capacitor/core'
+
+@@ -17,6 +18,7 @@
+ export interface Entry { id: string; scope: string; [field: string]: unknown }
+ export interface Persona { name: string; text: string; version: number; source?: string }
+ export interface Snapshot {
++  modules?: ModuleSnapshot
+   settings: Settings; keyConfigured: boolean; persona: Persona; personaVersions: Entry[]
+   memories: Entry[]; conversations: Entry[]; tasks: Entry[]; messages: Entry[]; observations: Entry[]
+   presence?: PresenceState
+--- a/projects/xiaoke-android/source/src/companion/CompanionApp.tsx
++++ b/projects/xiaoke-android/source/src/companion/CompanionApp.tsx
+@@ -1,5 +1,6 @@
++import { LifePanel } from './life/LifePanel'
+ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+-import { ArrowLeft, BookOpen, Check, ChevronRight, Download, KeyRound, Loader2, MessageCircle, Pause, Play, Plus, Settings2, Shield, Smartphone, Sparkles, Trash2, Upload, X } from 'lucide-react'
++import { ArrowLeft, BookOpen, Check, ChevronRight, Download, KeyRound, Loader2, MessageCircle, Pause, Play, Plus, Settings2, Shield, Smartphone, Sparkles, Upload, X } from 'lucide-react'
+ import { App } from '../App'
+ import { command, companion, field, nativeCompanion, ownerScope, profile, type Entry, type Persona, type Settings, type Snapshot } from './bridge'
+ import './companion.css'
+@@ -11,7 +12,7 @@
+
+ type Tab = 'chat' | 'models' | 'persona' | 'memory' | 'tasks' | 'device'
+ type Run = (action: string, data?: object) => Promise<unknown>
+-const labels: Record<Tab, string> = {chat: '对话', models: '模型', persona: '角色', memory: '记忆', tasks: '任务', device: '设备'}
++const labels: Record<Tab, string> = {chat: '对话', models: '模型', persona: '角色', memory: '生活', tasks: '任务', device: '设备'}
+ const states: Record<string, string> = {queued:'排队', running:'处理中', waiting:'等待恢复', draft:'待审草稿', approved:'已授权', sending:'提交中', unknown:'待核对结果', done:'完成', failed:'失败', cancelled:'已取消'}
+
+ export function CompanionApp() {
+@@ -63,7 +64,7 @@
+       {!setupVisible && tab==='chat' && <Chat snapshot={snapshot} run={run} onSetup={() => setTab('models')}/>}
+       {!setupVisible && tab==='models' && <Models snapshot={snapshot} run={run}/>}
+       {!setupVisible && tab==='persona' && <PersonaEditor value={snapshot.persona} versions={snapshot.personaVersions} run={run}/>}
+-      {!setupVisible && tab==='memory' && <Memory snapshot={snapshot} run={run}/>}
++      {!setupVisible && tab==='memory' && <LifePanel state={snapshot.modules?.life ?? {}} available={nativeCompanion && Boolean(snapshot.modules?.life)} run={(action, data) => run('module', {domain:'life', action, data: data ?? {}})} saveFile={(name, text) => run('saveDocument', {name, text})}/>}
+       {!setupVisible && tab==='tasks' && <Tasks snapshot={snapshot} run={run}/>}
+       {!setupVisible && tab==='device' && <Device snapshot={snapshot} run={run}/>}
+     </main>
+@@ -119,22 +120,6 @@
+   </section>
+ }
+
+-function Memory({snapshot,run}:{snapshot:Snapshot;run:Run}) {
+-  const [scope,setScope]=useState(ownerScope),[search,setSearch]=useState(''),[id,setId]=useState(''),[kind,setKind]=useState('fact'),[text,setText]=useState(''),[source,setSource]=useState('主人编辑'),[sourceId,setSourceId]=useState(''),[pinned,setPinned]=useState(false)
+-  const [password,setPassword]=useState(''),[note,setNote]=useState(''),[history,setHistory]=useState<unknown[]>([]);const restoreFile=useRef<HTMLInputElement>(null)
+-  const scopes=Array.from(new Set([ownerScope,...snapshot.conversations.map(c=>c.scope),...snapshot.memories.map(m=>m.scope)]))
+-  const filtered=snapshot.memories.filter(m=>m.scope===scope && field(m,'text').includes(search))
+-  function clear(){setId('');setText('');setSourceId('');setSource('主人编辑');setPinned(false)}
+-  async function backup(){try{const result=await run('backup',{password}) as {text:string};if(nativeCompanion)await run('saveDocument',{name:'小克加密备份.json',text:result.text});else downloadText('小克预览备份.json',result.text);setNote('已导出。请保管备份口令；密钥、账号凭据和原始媒体不在备份中。');setPassword('')}catch{/* shown */}}
+-  async function restore(file:File){if(file.size>16*1024*1024){setNote('备份不能超过 16 MB');return}if(!confirm('恢复会替换当前角色、记忆、消息与任务记录。请先导出当前备份。继续？'))return;try{await run('restoreBackup',{password,text:await file.text()});setNote('已恢复；联网与发送授权不会随备份恢复。');setPassword('');clear()}catch{/* shown */}}
+-  return <section className="content-panel"><Heading title="记得清楚，也能更正" text="主人私聊、每个 QQ 会话与公共内容分别保存。每条记忆有来源，模型提取项须经你确认。"/>
+-    <div className="stack"><div className="card"><div className="form-grid"><label>记忆范围<select value={scope} onChange={e=>{setScope(e.target.value);clear()}}>{scopes.map(s=><option key={s} value={s}>{s===ownerScope?'主人 · 本机私聊':field(snapshot.conversations.find(c=>c.scope===s)??{id:'',scope:s},'title')||s}</option>)}</select></label><label>搜索<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="记忆中的词句"/></label></div>
+-      <div className="form-actions"><button onClick={()=>void run('maintainMemory',{scope}).catch(()=>undefined)} disabled={!snapshot.settings.networkEnabled}>请模型整理此会话记忆</button><small>会调用所选模型；新增项待你确认，不覆盖已有事实。</small></div>{filtered.length===0?<p className="subtle">这个范围还没有记忆。</p>:filtered.map(m=><article key={m.id} className="memory-record"><div className="section-row"><span className="pill">{{fact:'事实',relationship:'关系',event:'事件',task:'任务'}[field(m,'kind')]??'记忆'} · {m.status==='confirmed'?'已确认':'模型提取待确认'}{m.pinned?' · 固定':''}</span><div className="inline-actions"><button onClick={()=>{setId(m.id);setKind(field(m,'kind'));setText(field(m,'text'));setSource(field(m,'source'));setSourceId(field(m,'sourceId'));setPinned(Boolean(m.pinned))}}>编辑</button><button onClick={()=>void run('memoryHistory',{scope,id:m.id}).then(v=>setHistory(v as unknown[])).catch(()=>undefined)}>修订</button><button aria-label="删除记忆" onClick={()=>{if(confirm('删除此记忆及其旧修订内容？原会话消息仍单独保留。'))void run('deleteMemory',{scope,id:m.id}).catch(()=>undefined)}}><Trash2 size={15}/></button></div></div><p>{field(m,'text')}</p><small>来源：{field(m,'source')}{m.sourceId?` · 消息 ${field(m,'sourceId')}`:''}</small></article>)}
+-    </div>{history.length>0&&<div className="card"><div className="section-row"><h2>记忆修订</h2><button onClick={()=>setHistory([])}>关闭</button></div><pre className="operation-result">{JSON.stringify(history,null,2)}</pre></div>}<form className="card" onSubmit={e=>{e.preventDefault();void run('memory',{...(id?{id}:{}),scope,kind,text,source,sourceId,pinned}).then(clear).catch(()=>undefined)}}><h2>{id?'更正并确认记忆':'添加记忆'}</h2><div className="form-grid"><label>类别<select value={kind} onChange={e=>setKind(e.target.value)}><option value="fact">事实</option><option value="relationship">关系</option><option value="event">事件</option><option value="task">任务</option></select></label><label>来源说明<input value={source} maxLength={1000} onChange={e=>setSource(e.target.value)}/></label></div><label>内容<textarea rows={4} value={text} maxLength={8000} required onChange={e=>setText(e.target.value)}/></label><label className="check-row"><input type="checkbox" checked={pinned} onChange={e=>setPinned(e.target.checked)}/>优先放入模型上下文</label><div className="form-actions"><button className="primary" type="submit">保存并确认</button>{id&&<button type="button" onClick={clear}>取消编辑</button>}</div></form>
+-    <div className="card"><h2>加密备份与恢复</h2><p>备份角色版本、长期记忆、会话记录、观察摘要和任务状态；不包含 API 密钥、原始图片/视频或可继续发送的授权。</p><label>备份口令<input type="password" autoComplete="new-password" minLength={8} maxLength={256} value={password} onChange={e=>setPassword(e.target.value)} placeholder="至少 8 个字符，遗失后无法解密"/></label><div className="form-actions"><button onClick={()=>void backup()} disabled={password.length<8}><Download size={16}/> 导出备份</button><button onClick={()=>restoreFile.current?.click()} disabled={password.length<8}><Upload size={16}/> 选择备份恢复</button></div><input ref={restoreFile} hidden type="file" accept=".json,application/json" onChange={e=>{const f=e.target.files?.[0];if(f)void restore(f);e.target.value=''}}/>{note&&<p role="status" className="subtle">{note}</p>}</div></div>
+-  </section>
+-}
+-
+ function Tasks({snapshot,run}:{snapshot:Snapshot;run:Run}) {
+   const [filter,setFilter]=useState('pending')
+   const tasks=snapshot.tasks.slice().reverse().filter(t=>filter==='all'||!['done','cancelled'].includes(field(t,'state')))

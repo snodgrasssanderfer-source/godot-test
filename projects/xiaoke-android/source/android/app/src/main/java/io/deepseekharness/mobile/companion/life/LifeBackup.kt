@@ -68,10 +68,22 @@ object LifeBackup {
             }
         }
         val content = merged.values.filter { it.first in RecordRef.kinds }
-        val closure = LifePolicy.descendants(deleted.values.map(RecordRef::parse).toSet(), content)
+        val roots = deleted.values.map(RecordRef::parse).toSet()
+        val closure = LifePolicy.descendants(roots + LifePolicy.legacyOutputs(roots, content), content)
         for (ref in closure) {
             merged.remove(ref.key)
             if (ref.key !in deleted) deleted[ref.key] = ref.json().put("deletedAt", System.currentTimeMillis()).put("epoch", 1)
+        }
+        // An old backup may carry a source which is no longer present locally. Forget still follows its lineage.
+        val remainingContent = merged.values.filter { it.first in RecordRef.kinds }
+        for ((kind, memory) in remainingContent.filter { it.first == "memory" && it.second.optBoolean("forgotten") }) {
+            val roots = setOf(LifePolicy.reference(kind, memory)) + LifePolicy.sources(memory)
+            val suppressed = LifePolicy.descendants(roots + LifePolicy.legacyOutputs(roots, remainingContent), remainingContent).map { it.key }.toSet()
+            for ((type, value) in remainingContent) if (LifePolicy.reference(type, value).key in suppressed) {
+                val old = value.optJSONArray("suppressedBy") ?: JSONArray()
+                val causes = (0 until old.length()).map(old::getString).toMutableSet().apply { add(memory.getString("id")) }
+                value.put("suppressedBy", JSONArray(causes.toList())).put("suppressed", true)
+            }
         }
         // Revisions are data, never a route for resurrecting removed source material.
         val revisions = linkedMapOf<String, JSONObject>()
