@@ -22,6 +22,8 @@ import io.deepseekharness.mobile.MainActivity
 import io.deepseekharness.mobile.overlay.OverlayBallPolicy
 import io.deepseekharness.mobile.companion.presence.CompanionPresenceController
 import org.json.JSONObject
+import io.deepseekharness.mobile.companion.devicev2.DeviceModule
+import io.deepseekharness.mobile.companion.devicev2.FiveSecondHold
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -48,15 +50,19 @@ class CompanionOverlayService : Service() {
     private var lastObservationId = ""
     private var localStatus = "按需观察尚未开始"
     private var hidden = false
+    private var visibleByOwner = true
+    private var cancelHold: (() -> Unit)? = null
     private val engine get() = CompanionEngine.get(this)
     private fun dp(n: Int) = (resources.displayMetrics.density * n).toInt()
     private val theme by lazy { ContextThemeWrapper(this, android.R.style.Theme_Material_Light_NoActionBar) }
 
     override fun onCreate() {
-        super.onCreate(); windows = getSystemService(WindowManager::class.java)
+        super.onCreate(); activeService = this; windows = getSystemService(WindowManager::class.java)
         getSystemService(NotificationManager::class.java).createNotificationChannel(NotificationChannel("companion-overlay", "小克悬浮陪伴", NotificationManager.IMPORTANCE_LOW))
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == "stop_input") { DeviceModule.stopInputFromSurface(); return START_NOT_STICKY }
+        if (intent?.action == "visibility") { applyVisibility(intent.getBooleanExtra("visible", true)); return START_NOT_STICKY }
         if (intent?.action == "stop") { stopSelf(); return START_NOT_STICKY }
         if (!Settings.canDrawOverlays(this)) { stopSelf(); return START_NOT_STICKY }
         val config = intent?.getStringExtra("presenceConfig")?.let(::JSONObject)
@@ -85,10 +91,11 @@ class CompanionOverlayService : Service() {
     }
     private fun updateForeground(continuous: Boolean) {
         val stop = PendingIntent.getService(this, 821, Intent(this, CompanionOverlayService::class.java).setAction("stop"), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val inputStop = PendingIntent.getService(this, 823, Intent(this, CompanionOverlayService::class.java).setAction("stop_input"), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val open = PendingIntent.getActivity(this, 822, Intent(this, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val notification = Notification.Builder(this, "companion-overlay").setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("小克悬浮陪伴 · 本次限时会话").setContentText(if (continuous) "按本次设置感知与交流；点停止立即结束" else "只在点击后看一次画面；点停止结束本次会话")
-            .setContentIntent(open).setOngoing(true).addAction(Notification.Action.Builder(null, "停止", stop).build()).build()
+            .setContentIntent(open).setOngoing(true).addAction(Notification.Action.Builder(null, "仅停止输入", inputStop).build()).addAction(Notification.Action.Builder(null, "停止", stop).build()).build()
         var types = if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0
         if (continuous && Build.VERSION.SDK_INT >= 29) types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
         if (microphoneForeground && Build.VERSION.SDK_INT >= 30) types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
@@ -107,6 +114,12 @@ class CompanionOverlayService : Service() {
         }
     }
     fun endPresence() { presence?.stop() }
+    fun externalMicrophone(busy: Boolean) { presence?.externalMicrophone(busy) }
+    private fun applyVisibility(visible: Boolean) {
+        visibleByOwner = visible
+        if (!visible) { cancelHold?.invoke(); closePanel() }
+        bubble?.visibility = if (visible && !hidden) View.VISIBLE else View.GONE
+    }
     private fun updateCharacter(event: JSONObject) {
         if (characterReady) {
             val artwork = CompanionCharacterStore.metadata(this)
@@ -121,9 +134,10 @@ class CompanionOverlayService : Service() {
             val locked = getSystemService(KeyguardManager::class.java).isKeyguardLocked || !getSystemService(PowerManager::class.java).isInteractive
             if (locked) { stopSelf(); return }
             if (presence != null && !presence!!.state().optBoolean("running")) { stopSelf(); return }
-            val visible = !locked && !hidden
+            val visible = !locked && !hidden && visibleByOwner
             bubble?.visibility = if (visible) View.VISIBLE else View.GONE
             panel?.visibility = if (visible) View.VISIBLE else View.GONE
+            (bubble as? TextView)?.text = if (DeviceModule.controlState().optString("state") == "authorized") "操作中" else "小克"
             val presenceState = presence?.state()
             if (presenceState != null) updateCharacter(presenceState)
             stateText?.text = "${if (engine.store.settings().optBoolean("paused")) "已暂停" else "剩余 ${(deadline - SystemClock.elapsedRealtime()) / 60000 + 1} 分钟"} · $localStatus" +
@@ -140,17 +154,29 @@ class CompanionOverlayService : Service() {
     @SuppressLint("ClickableViewAccessibility")
     private fun showBubble() {
         if (bubble?.isAttachedToWindow == true) return
-        val size = if (presence != null) dp(96) else dp(52)
-        val params = WindowManager.LayoutParams(size, if (presence != null) dp(136) else size, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+        val size = dp(52)
+        val params = WindowManager.LayoutParams(size, size, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT).apply { gravity = Gravity.TOP or Gravity.START; x = 0; y = dp(180) }
-        val view: View = if (presence != null) createCharacterView() else TextView(theme).apply { text = "小克"; gravity = Gravity.CENTER; textSize = 15f; background = background() }
-        view.contentDescription = "打开小克悬浮对话，可拖动"
+        val view: View = TextView(theme).apply { text = "小克"; gravity = Gravity.CENTER; textSize = 15f; background = background() }
+        view.contentDescription = "打开小克悬浮对话，可拖动；在球上按住五秒仅停止输入"
         view.setOnClickListener { if (panel == null) showPanel() else closePanel() }
         var downX = 0f; var downY = 0f; var startX = 0; var startY = 0
+        var fired = false; var cancelled = false
+        val hold = FiveSecondHold(SystemClock::elapsedRealtime, ViewConfiguration.get(this).scaledTouchSlop.toFloat())
+        val timer = Runnable { if (hold.fire()) { fired = true; DeviceModule.stopInputFromSurface(); localStatus = "输入已停止；陪聊与观察继续"; view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS) } }
+        cancelHold = { hold.cancel(); main.removeCallbacks(timer) }
         view.setOnTouchListener { _, e -> when (e.actionMasked) {
-            MotionEvent.ACTION_DOWN -> { downX = e.rawX; downY = e.rawY; startX = params.x; startY = params.y; true }
-            MotionEvent.ACTION_MOVE -> { val metrics = resources.displayMetrics; val position = OverlayBallPolicy.clampPosition(startX + (e.rawX - downX).toInt(), startY + (e.rawY - downY).toInt(), metrics.widthPixels, metrics.heightPixels - (params.height - size), size); params.x = position.first; params.y = position.second; runCatching { windows.updateViewLayout(view, params) }; true }
-            MotionEvent.ACTION_UP -> { if (OverlayBallPolicy.isClick(e.rawX - downX, e.rawY - downY, ViewConfiguration.get(this).scaledTouchSlop)) view.performClick(); true }
+            MotionEvent.ACTION_DOWN -> { fired = false; cancelled = false; downX = e.rawX; downY = e.rawY; startX = params.x; startY = params.y; hold.down(e.rawX, e.rawY); main.postDelayed(timer, 5000); true }
+            MotionEvent.ACTION_POINTER_DOWN, MotionEvent.ACTION_CANCEL -> { cancelled = true; cancelHold?.invoke(); true }
+            MotionEvent.ACTION_MOVE -> {
+                hold.move(e.rawX, e.rawY, e.pointerCount)
+                if (!fired && !cancelled && e.pointerCount == 1) {
+                    val metrics = resources.displayMetrics
+                    val position = OverlayBallPolicy.clampPosition(startX + (e.rawX - downX).toInt(), startY + (e.rawY - downY).toInt(), metrics.widthPixels, metrics.heightPixels, size)
+                    params.x = position.first; params.y = position.second; runCatching { windows.updateViewLayout(view, params) }
+                }; true
+            }
+            MotionEvent.ACTION_UP -> { cancelHold?.invoke(); if (!fired && !cancelled && OverlayBallPolicy.isClick(e.rawX - downX, e.rawY - downY, ViewConfiguration.get(this).scaledTouchSlop)) view.performClick(); true }
             else -> true
         } }
         windows.addView(view, params); bubble = view
@@ -191,6 +217,49 @@ class CompanionOverlayService : Service() {
         box.addView(label(engine.store.persona().optString("name", "小克") + " · 悬浮对话"))
         stateText = label(localStatus); box.addView(stateText)
         box.addView(button("收起，继续使用当前应用") { closePanel() })
+        box.addView(button("仅停止输入，继续陪聊") { DeviceModule.stopInputFromSurface(); localStatus = "输入已停止；观察、收音与陪聊不受影响" })
+        box.addView(button("隐藏浮球，保留本次陪伴") { applyVisibility(false) })
+        val deviceFrame = DeviceModule.surfaceFrame()
+        if (deviceFrame.optString("packageName").isNotEmpty()) {
+            box.addView(label("单机游戏操作 · 授权与陪聊独立"))
+            box.addView(button("刷新游戏画面") { withoutWindow {
+                DeviceModule.captureFromSurface()
+                main.post { closePanel(); showPanel() }
+                "画面已刷新，请尽快选择位置"
+            } })
+            val preview = deviceFrame.optString("preview")
+            if (preview.startsWith("data:image/jpeg;base64,")) {
+                val bytes = android.util.Base64.decode(preview.substringAfter(','), android.util.Base64.DEFAULT)
+                val bitmap = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                if (bitmap != null) {
+                    var pointX = -1f; var pointY = -1f
+                    val selected = label("点画面选位置；五秒内确认，过期请刷新")
+                    val image = ImageView(theme).apply {
+                        setImageBitmap(bitmap); scaleType = ImageView.ScaleType.FIT_XY
+                        contentDescription = "授权游戏画面，触摸选择坐标"
+                        layoutParams = LinearLayout.LayoutParams(dp(260), (dp(260) * bitmap.height.toFloat() / bitmap.width).toInt().coerceAtMost(dp(340)))
+                        setOnTouchListener { view, event ->
+                            if (event.actionMasked == MotionEvent.ACTION_UP) {
+                                pointX = deviceFrame.optInt("left") + event.x / view.width * deviceFrame.optInt("width")
+                                pointY = deviceFrame.optInt("top") + event.y / view.height * deviceFrame.optInt("height")
+                                selected.text = "选点：${pointX.toInt()}, ${pointY.toInt()}"; view.performClick()
+                            }; true
+                        }
+                    }
+                    box.addView(image); box.addView(selected)
+                    fun executePoint(kind: String) {
+                        if (pointX < 0 || pointY < 0) { localStatus = "请先在画面选择位置"; return }
+                        withoutWindow {
+                            val result = DeviceModule.inputFromSurface(kind, deviceFrame.optString("frameId"), pointX, pointY)
+                            main.post { closePanel(); showPanel() }
+                            result.optString("detail", result.optString("state"))
+                        }
+                    }
+                    box.addView(button("确认点击选点") { executePoint("tap") })
+                    box.addView(button("确认长按选点") { executePoint("longPress") })
+                }
+            }
+        }
         transcript = label(""); box.addView(transcript)
         composer = EditText(theme).apply { hint = "和我聊聊，或说明这次想看什么"; minLines = 2; maxLines = 4; setTextColor(Color.BLACK); filters = arrayOf(android.text.InputFilter.LengthFilter(12000)) }
         box.addView(composer)
@@ -278,6 +347,7 @@ class CompanionOverlayService : Service() {
     }
     private fun closePanel() { panel?.let { getSystemService(android.view.inputmethod.InputMethodManager::class.java).hideSoftInputFromWindow(it.windowToken, 0); runCatching { windows.removeView(it) } }; panel = null; content = null; transcript = null; stateText = null; composer = null }
     override fun onDestroy() {
+        cancelHold?.invoke(); cancelHold = null; if (activeService === this) activeService = null
         presence?.close(); presence = null; CompanionPresenceHost.detach(this)
         characterReady = false; characterWeb?.destroy(); characterWeb = null
         running = false; deadline = 0; allowedPackage = ""; main.removeCallbacksAndMessages(null)
@@ -288,11 +358,17 @@ class CompanionOverlayService : Service() {
     }
     override fun onBind(intent: Intent?): IBinder? = null
     companion object {
+        @Volatile private var activeService: CompanionOverlayService? = null
+        fun setVisible(context: Context, visible: Boolean) {
+            val owner = activeService
+            if (owner != null) owner.main.post { owner.applyVisibility(visible) }
+            else if (visible) start(context)
+        }
         @Volatile private var deadline = 0L
         @Volatile private var allowedPackage = ""
         @Volatile var running = false; private set
-        fun permits(pkg: String) = running && pkg == allowedPackage && SystemClock.elapsedRealtime() < deadline
-        fun state() = JSONObject().put("running", running).put("package", allowedPackage).put("remainingSeconds", ((deadline - SystemClock.elapsedRealtime()) / 1000).coerceAtLeast(0))
+        fun permits(pkg: String) = (running && pkg == allowedPackage && SystemClock.elapsedRealtime() < deadline) || DeviceModule.permitsObservation(pkg)
+        fun state() = JSONObject().put("visible", activeService?.visibleByOwner == true && running).put("running", running).put("package", allowedPackage).put("remainingSeconds", ((deadline - SystemClock.elapsedRealtime()) / 1000).coerceAtLeast(0))
         fun start(context: Context, packageName: String = "", minutes: Int = 15, taskId: String = "") {
             check(Settings.canDrawOverlays(context)) { "请先开启悬浮窗权限" }
             ContextCompat.startForegroundService(context, Intent(context, CompanionOverlayService::class.java).putExtra("package", packageName).putExtra("minutes", minutes).putExtra("taskId", taskId))

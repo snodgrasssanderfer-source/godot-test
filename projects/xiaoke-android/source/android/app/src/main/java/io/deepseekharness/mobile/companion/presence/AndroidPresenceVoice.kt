@@ -46,6 +46,7 @@ internal class AndroidPresenceVoice(
     private var microphoneRequested = false
     private var blockedUntil = 0L
     private var speakerActive = false
+    private var externalMicrophoneBusy = false
     private var headphoneBargeIn = false
     private var headphoneRoute = false
     private var tts: TextToSpeech? = null
@@ -74,7 +75,11 @@ internal class AndroidPresenceVoice(
         allowNetworkAsr = networkAsr; allowNetworkTts = networkTts; headphoneBargeIn = allowHeadphoneBargeIn
     }
     fun headphoneBargeInActive() = headphoneBargeIn && headphoneRoute && speakerActive
-    private fun canHearDuringPlayback() = !speakerActive || headphoneBargeInActive()
+    private fun canHearDuringPlayback() = !externalMicrophoneBusy && (!speakerActive || headphoneBargeInActive())
+    fun externalMicrophone(busy: Boolean) {
+        externalMicrophoneBusy = busy
+        if (busy) { main.removeCallbacks(rearm); destroyRecognizer() } else scheduleRecognition(0)
+    }
     private fun updateHeadphoneRoute(device: android.media.AudioDeviceInfo?) {
         val was = headphoneRoute
         headphoneRoute = device?.type in setOf(android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET,
@@ -237,7 +242,8 @@ internal class AndroidPresenceVoice(
             if (Build.VERSION.SDK_INT >= 28) p.addOnRoutingChangedListener({ routing -> updateHeadphoneRoute(routing.routedDevice) }, main)
             p.setAudioAttributes(audioAttributes); p.setDataSource(file.absolutePath)
             p.setOnPreparedListener {
-                if (playing !== request || !valid(request.turn)) { stopPlayback(request.turn); return@setOnPreparedListener }
+                if (playing !== request) return@setOnPreparedListener
+                if (!valid(request.turn)) { stopPlayback(request.turn); return@setOnPreparedListener }
                 try { p.start(); updateHeadphoneRoute(if (Build.VERSION.SDK_INT >= 28) p.routedDevice else null); started(request); emit(PlaybackStarted(request.turn, request.sequence)); main.post(mouthTick) }
                 catch (_: Exception) { stopPlayback(request.turn); emit(Failed(request.turn, "audio-start-failed")) }
             }
