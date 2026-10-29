@@ -16,6 +16,7 @@ class HttpsSyncTransport(endpoint: String, private val token: () -> String) : Sy
     private val url = validatedEndpoint(endpoint) + "/v1/sync"
     private val client = OkHttpClient.Builder().followRedirects(false).followSslRedirects(false)
         .connectTimeout(8, TimeUnit.SECONDS).readTimeout(20, TimeUnit.SECONDS).callTimeout(25, TimeUnit.SECONDS).build()
+    fun cancel() { client.dispatcher.cancelAll() }
     override fun exchange(request: JSONObject): JSONObject {
         val call = Request.Builder().url(url).header("Authorization", "Bearer ${token()}")
             .post(request.toString().toRequestBody("application/json".toMediaType())).build()
@@ -43,7 +44,8 @@ class SocialSync(private val runtime: SocialRuntime, private val cipher: SyncCip
         try {
             check(enabled()) { "同步未启用" }
             // An empty first exchange prevents stale offline content being reintroduced before deletion.
-            apply(transport.exchange(request(false)))
+            val pull = request(false)
+            apply(transport.exchange(pull), pull)
             check(enabled()) { "同步已停用" }
             val sent = request(true)
             apply(transport.exchange(sent), sent)
@@ -83,6 +85,8 @@ class SocialSync(private val runtime: SocialRuntime, private val cipher: SyncCip
         val sentIds = objects(sent?.optJSONArray("events") ?: JSONArray()).map { it.getString("id") }.toSet()
         require(acks.all { it in sentIds }) { "同步确认不属于本次提交" }
         val acknowledgedDeletes = strings(response.getJSONArray("ackDeletions"))
+        val sentDeletes = strings(sent?.optJSONArray("deletions")).toSet()
+        require(acknowledgedDeletes.all { it in sentDeletes }) { "删除确认不属于本次提交" }
         runtime.ledger.change { root ->
             val sync = rows(root, "sync")
             require(response.getLong("generation") >= sync.optLong("generation") && response.getLong("cursor") >= sync.optLong("cursor")) { "同步游标回退" }

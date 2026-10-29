@@ -113,6 +113,8 @@ class SocialRuntime(
         val ownerAuthored = runCatching { SocialRules.owner(principal) }.isSuccess
         require(ownerAuthored || principal.channel == "background" && principal.actorId == "companion") { "朋友请求不能直接创建外发授权" }
         val kind = input.getString("kind"); require(kind in SocialRules.effects)
+        val scope = if (ownerAuthored) input.optString("scope", principal.scope) else principal.scope
+        require(scope == "owner:local" || Regex("qq:(private|group):[A-Za-z0-9_-]{1,128}").matches(scope)) { "社交会话范围无效" }
         val account = SocialRules.numeric(input.getString("account"))
         val target = SocialRules.bounded(input.getString("target"), 160)
         if (kind != "comment") SocialRules.numeric(target)
@@ -128,7 +130,7 @@ class SocialRuntime(
         // Route parameters are rebuilt below; no arbitrary API action, local file or sender override.
         val item = JSONObject().put("id", "action-" + hash(principal.actorId + "\u0000" + token)).put("kind", kind)
             .put("effect", SocialRules.effects.getValue(kind)).put("account", account).put("target", target)
-            .put("scope", principal.scope).put("content", content).put("payload", payload).put("sourceIds", JSONArray(sources))
+            .put("scope", scope).put("content", content).put("payload", payload).put("sourceIds", JSONArray(sources))
             .put("expiresAt", expires).put("createdAt", now).put("ownerAuthored", ownerAuthored).put("motivation", input.optString("motivation").take(1000))
         item.put("digest", SocialRules.digest(item))
         return ledger.change { root ->
@@ -268,6 +270,7 @@ class SocialRuntime(
     /** Existing service/activity calls this; no all-day microphone or polling service is created. */
     fun tick() {
         if (closed) return
+        flushNotifications()
         expireMedia()
         val selected = ledger.change { root ->
             var capacity = 2 - values(rows(root, "jobs")).count { it.optString("state") == "running" }
@@ -280,10 +283,12 @@ class SocialRuntime(
         selected.forEach { job ->
             val jobId = job.getString("id"); val generation = job.getInt("generation")
             if (job.getString("kind") == "reminder") {
-                val emit = ledger.change { root -> rows(root, "jobs").getJSONObject(jobId).let { j ->
-                    if (j.optString("state") != "running" || SocialRules.blocked(root, j)) false else { j.put("state", "done").put("completedAt", clock()); true }
+                ledger.change { root -> rows(root, "jobs").getJSONObject(jobId).let { j ->
+                    if (j.optString("state") == "running" && !SocialRules.blocked(root, j)) {
+                        j.put("state", "done").put("completedAt", clock())
+                        queueNotification(root, "social.reminder", j)
+                    }
                 } }
-                if (emit) ports.emit("social.reminder", JSONObject().put("id", jobId).put("scope", job.getString("scope")).put("text", job.getString("text")))
             } else {
                 try {
                     val request = ports.requestModel(JSONObject().put("scope", job.getString("scope")).put("lane", "activity")
@@ -297,6 +302,7 @@ class SocialRuntime(
                 } catch (_: Exception) { modelResult(jobId, generation, JSONObject().put("type", "failed").put("error", "宿主未受理任务，请检查活动预算或联网配置")) }
             }
         }
+        flushNotifications()
         val ready = ledger.read { root -> values(rows(root, "actions")).firstOrNull { it.optString("state") in setOf("ready", "approved") }?.getString("id") }
         if (ready != null && online) runCatching { dispatchAction(ready) }
         if (selected.isNotEmpty()) changed()
@@ -312,9 +318,25 @@ class SocialRuntime(
                 "cancelled" -> job.put("state", "cancelled")
                 else -> return@change null
             }
+            queueNotification(root, "social.job.completed", job)
             copy(job)
         }
-        if (result != null) { ports.emit("social.job.completed", result); changed() }
+        if (result != null) { flushNotifications(); changed() }
+    }
+    private fun queueNotification(root: JSONObject, topic: String, payload: JSONObject) {
+        val key = "notice-" + hash(topic + payload.getString("id") + payload.optInt("generation"))
+        rows(root, "notifications").put(key, JSONObject().put("id", key).put("topic", topic).put("payload", copy(payload))
+            .put("sourceIds", JSONArray(strings(payload.optJSONArray("sourceIds")) + payload.getString("id"))))
+    }
+    private fun flushNotifications() {
+        val pending = ledger.read { root -> values(rows(root, "notifications")).filter { !SocialRules.blocked(root, it) }.map(::copy) }
+        pending.forEach { notice ->
+            // The host deduplicates this stable source ID; a crash after emit can cause a repeat wake-up.
+            try {
+                ports.emit(notice.getString("topic"), copy(notice.getJSONObject("payload")).put("sourceId", notice.getString("id")))
+                ledger.change { rows(it, "notifications").remove(notice.getString("id")) }
+            } catch (_: Exception) { /* Keep the durable notice for the next service wake-up. */ }
+        }
     }
     fun onEvent(event: ModuleEvent) {
         if (closed) return
@@ -357,14 +379,14 @@ class SocialRuntime(
             var expanded: Boolean
             do {
                 expanded = false
-                listOf("events", "jobs", "actions", "media").forEach { table ->
+                listOf("events", "jobs", "actions", "media", "notifications").forEach { table ->
                     values(rows(root, table)).filter { SocialRules.blocked(root, it) }.forEach { item ->
                         val itemHash = hash(item.getString("id"))
                         if (!tombstones.has(itemHash)) { tombstones.put(itemHash, JSONObject().put("id", itemHash).put("acked", false).put("at", clock())); expanded = true }
                     }
                 }
             } while (expanded)
-            listOf("events", "jobs", "actions", "media").forEach { table ->
+            listOf("events", "jobs", "actions", "media", "notifications").forEach { table ->
                 values(rows(root, table)).filter { SocialRules.blocked(root, it) }.forEach { item ->
                     if (item.optString("requestId").isNotBlank()) cancelled.add(item.getString("requestId"))
                     if (item.optString("blobId").isNotBlank()) blobs.add(item.getString("blobId"))
@@ -387,6 +409,42 @@ class SocialRuntime(
         ledger.change { root -> rows(root, "media").getJSONObject(mediaId).also { item ->
             check(!SocialRules.blocked(root, item)); item.put("blobId", blobId).put("bytes", bytes).put("mime", mime).put("status", "cached")
         } }; changed()
+    }
+    /** Merge portable records, preserve local deletion fences, never reactivate approvals or jobs. */
+    fun restoreBackup(input: JSONObject, principal: CommandPrincipal): JSONObject {
+        SocialRules.owner(principal)
+        require(input.getInt("version") == 1 && input.toString().toByteArray().size <= 32 * 1024 * 1024)
+        val incoming = copy(input)
+        val restoredTombstones = values(rows(incoming, "tombstones")).map { it.getString("id").also { key -> require(Regex("[a-f0-9]{64}").matches(key)) } }
+        // Validate all rows before cancelling work or mutating persistent state.
+        listOf("events", "jobs", "actions", "media").forEach { table -> values(rows(incoming, table)).forEach { item ->
+            SocialRules.bounded(item.getString("id"), 160)
+            if (table == "events") { SocialRules.bounded(item.getString("sourceId"), 256); item.getJSONObject("data") }
+            if (table == "jobs") { SocialRules.bounded(item.getString("scope"), 200); item.getString("kind") }
+            if (table == "actions") { require(item.getString("effect") in SocialRules.effects.values); item.getString("state") }
+        } }
+        val requests = ledger.read { root -> values(rows(root, "jobs")).filter { it.optString("state") == "running" }.map { it.optString("requestId") } }
+        val restored = ledger.change { root ->
+            var count = 0
+            restoredTombstones.forEach { key -> rows(root, "tombstones").put(key, JSONObject().put("id", key).put("acked", false).put("at", clock())) }
+            values(rows(root, "jobs")).filter { it.optString("state") == "running" }.forEach { it.put("state", "interrupted").put("generation", it.optInt("generation") + 1) }
+            listOf("events", "jobs", "actions", "media").forEach { table -> values(rows(incoming, table)).forEach { item ->
+                if (!rows(root, table).has(item.getString("id")) && !SocialRules.blocked(root, item)) {
+                    item.remove("grant"); item.remove("grantPrincipal"); item.remove("requestId"); item.remove("blobId")
+                    when (table) {
+                        "events" -> item.put("pendingSync", true)
+                        "jobs" -> { item.put("state", "interrupted"); item.put("generation", item.optInt("generation") + 1) }
+                        "actions" -> item.put("state", if (item.optString("state") in setOf("submitting", "outcome_unknown")) "outcome_unknown" else if (item.optString("state") == "done") "done" else "expired")
+                        "media" -> item.put("status", "bytes_not_in_backup")
+                    }
+                    rows(root, table).put(item.getString("id"), item); count++
+                }
+            } }
+            JSONObject().put("restored", count)
+        }
+        requests.filter { it.isNotBlank() }.forEach(ports::cancelModel)
+        deleteHashes(restoredTombstones, false)
+        changed(); return restored
     }
     private fun expireMedia() {
         val expired = ledger.change { root -> values(rows(root, "media")).filter { it.optString("retention") == "transient" && it.optString("status") != "expired" && it.optLong("expiresAt") <= clock() }

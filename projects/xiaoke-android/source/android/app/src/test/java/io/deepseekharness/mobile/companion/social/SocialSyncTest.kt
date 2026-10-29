@@ -63,4 +63,10 @@ class SocialSyncTest {
         repeat(10) { nested=JSONArray().put(JSONObject().put("type","node").put("data",JSONObject().put("content",nested))) }
         assertTrue(OneBotSegments.parse(nested,"10001").getBoolean("truncated"))
     }
+    @Test fun mediaFormatsDoNotRelabelSilkAndRejectLocalOrCredentialUrls() {
+        assertNull(MediaFormats.mime("#!SILK_V3-synthetic".toByteArray(),"record"))
+        assertEquals("audio/wav",MediaFormats.mime("RIFFxxxxWAVEdata".toByteArray(),"record"))
+        assertEquals("video/mp4",MediaFormats.mime("xxxxftypisom".toByteArray(),"video"))
+        listOf("file:///private/audio","https://127.0.0.1/a","https://user:pass@multimedia.nt.qq.com/a","https://multimedia.nt.qq.com.evil.test/a").forEach { assertNull(MediaFormats.remoteUrl(it)) }
+    }
 }

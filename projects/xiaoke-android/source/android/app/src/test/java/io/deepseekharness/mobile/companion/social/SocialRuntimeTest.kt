@@ -18,8 +18,8 @@ class SocialRuntimeTest {
     private class Host : HostPorts {
         val requests = mutableListOf<JSONObject>(); val callbacks = mutableListOf<(JSONObject) -> Unit>(); val cancelled = mutableListOf<String>()
         val emitted = mutableListOf<Pair<String, JSONObject>>()
-        var allowed = true; var beforeGate: (() -> Unit)? = null
-        override fun emit(topic: String, payload: JSONObject) { synchronized(emitted) { emitted.add(topic to copy(payload)) } }
+        var allowed = true; var beforeGate: (() -> Unit)? = null; var failReminder = false
+        override fun emit(topic: String, payload: JSONObject) { if (topic == "social.reminder" && failReminder) error("host unavailable"); synchronized(emitted) { emitted.add(topic to copy(payload)) } }
         override fun authorizeEffect(effect: JSONObject, principal: CommandPrincipal): JSONObject { beforeGate?.invoke(); return JSONObject().put("allowed", allowed) }
         override fun cancelModel(requestId: String) { cancelled.add(requestId) }
         override fun requestModel(request: JSONObject, onEvent: (JSONObject) -> Unit): String { requests.add(copy(request)); callbacks.add(onEvent); return "request-${requests.size}" }
@@ -148,5 +148,28 @@ class SocialRuntimeTest {
         rt.attachBlob(mediaId,"blob",42,"image/png");rt.execute("media.retain",JSONObject().put("id",mediaId).put("retention","curated"),owner)
         now+=2*24*60*60_000;rt.tick();assertTrue(deleted.isEmpty())
         rt.execute("media.delete",JSONObject().put("id",mediaId),owner);assertEquals(listOf("blob"),deleted)
+    }
+    @Test fun undeliveredReminderSurvivesRestartWithoutRepeatingItsTask() {
+        val ledger=SocialLedger();val host=Host().apply { failReminder=true };val rt=runtime(ledger,host)
+        rt.execute("jobs.create",job().put("kind","reminder"),owner);rt.tick()
+        assertEquals(1,ledger.read { rows(it,"notifications").length() })
+        val next=Host();val restarted=runtime(SocialLedger(ledger.exportEncryptedInput()),next);restarted.tick();restarted.tick()
+        assertEquals(1,next.emitted.count { it.first=="social.reminder" });assertTrue(next.requests.isEmpty())
+    }
+    @Test fun expiredApprovalCannotSendAndIdempotentTickDoesNotRewriteDisk() {
+        var now=1000L;var writes=0;val ledger=SocialLedger(persist={writes++});val calls=AtomicInteger()
+        val rt=runtime(ledger,send=SocialTransport { _,_,_->calls.incrementAndGet();ack() },now={now})
+        val a=rt.execute("social.plan",draft().put("expiresAt",2000),owner);approve(rt,a);now=3000
+        assertEquals("expired",rt.dispatchAction(a.getString("id")).getString("state"));assertEquals(0,calls.get())
+        rt.tick();val first=writes;rt.tick();assertEquals(first,writes)
+    }
+    @Test fun backupMergePreservesDeletionAndDoesNotRestoreExecutableGrants() {
+        val sourceLedger=SocialLedger();val sourceRuntime=runtime(sourceLedger);sourceRuntime.onEvent(event())
+        val action=sourceRuntime.execute("social.plan",draft(),owner);approve(sourceRuntime,action)
+        val targetLedger=SocialLedger();val targetRuntime=runtime(targetLedger);targetRuntime.deleteSources(listOf("source"))
+        targetRuntime.restoreBackup(sourceLedger.exportEncryptedInput(),owner)
+        assertEquals(0,targetLedger.read { rows(it,"events").length() })
+        val restored=targetRuntime.snapshot(owner).getJSONArray("activity").getJSONObject(0)
+        assertEquals("expired",restored.getString("state"));assertFalse(restored.has("grant"));assertFalse(restored.has("grantPrincipal"))
     }
 }

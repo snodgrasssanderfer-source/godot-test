@@ -29,6 +29,8 @@ class OneBotBridge private constructor(private val context: Context) {
     private val pending = ConcurrentHashMap<String, Pending>()
     @Volatile private var moduleListener: ((String, JSONObject) -> Unit)? = null
     fun setModuleListener(listener: ((String, JSONObject) -> Unit)?) { moduleListener = listener }
+    @Volatile private var effectGate: ((JSONObject) -> Boolean)? = null
+    fun setEffectGate(gate: ((JSONObject) -> Boolean)?) { effectGate = gate }
     fun state() = JSONObject().put("connected", verified).put("status", status)
         .put("tokenConfigured", CompanionSecrets(context, "onebot").configured())
     @Synchronized fun ensureStarted() { if (socket == null) runCatching { start() }.onFailure { status = "配置不完整，请重新连接" } }
@@ -74,6 +76,7 @@ class OneBotBridge private constructor(private val context: Context) {
                     if (value.optString("post_type") == "request" && value.optString("self_id") == account) {
                         val kind = value.optString("request_type")
                         if (kind !in setOf("friend", "group")) return
+                        if (kind == "group" && value.optString("sub_type") != "invite") return
                         val target = OneBotProtocol.numeric(value.optString(if (kind == "group") "group_id" else "user_id"))
                         val flag = value.optString("flag"); if (flag.isBlank() || flag.length > 512) return
                         val event = JSONObject().put("id", "qqreq-" + CompanionPolicy.digest("$account\u0000$kind\u0000$target\u0000$flag"))
@@ -174,6 +177,7 @@ class OneBotBridge private constructor(private val context: Context) {
         } finally { pending.remove(echo) }
     }
     fun send(task: JSONObject): JSONObject {
+        check(effectGate?.invoke(JSONObject(task.toString())) == true) { "宿主尚未授权此消息发送" }
         val store = engine.store
         val settings = store.settings()
         check(verified && settings.optBoolean("oneBotEnabled") && settings.optBoolean("networkEnabled") && !settings.optBoolean("paused")) { "消息桥未连接或助手已暂停" }

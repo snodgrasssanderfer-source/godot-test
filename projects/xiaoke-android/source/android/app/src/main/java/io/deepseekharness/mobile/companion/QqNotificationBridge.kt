@@ -67,11 +67,14 @@ class QqNotificationBridge : NotificationListenerService() {
     }
 
     companion object {
+        @Volatile private var effectGate: ((JSONObject) -> Boolean)? = null
+        fun setEffectGate(gate: ((JSONObject) -> Boolean)?) { effectGate = gate }
         private const val QQ = "com.tencent.mobileqq"
         private data class ReplyTarget(val intent: PendingIntent, val inputs: Array<RemoteInput>, val at: Long, val title: String)
         private val replies = ConcurrentHashMap<String, ReplyTarget>()
 
         fun send(context: Context, task: JSONObject): JSONObject {
+            check(effectGate?.invoke(JSONObject(task.toString())) == true) { "宿主尚未授权此通知回复" }
             check(CompanionPolicy.canSend(task, System.currentTimeMillis())) { "草稿授权已失效" }
             val target = replies[task.getString("scope")] ?: error("QQ 原生回复入口已过期；请等待此会话的新通知或使用界面路线")
             check(target.intent.creatorPackage == QQ && target.title == task.getString("target") && System.currentTimeMillis() - target.at < 600000) { "通知目标已变化，请重新核对" }
