@@ -85,7 +85,7 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
             if (stopped && !io.deepseekharness.mobile.companion.NightQuiet.active(store)) store.lifeTransaction {
                 if (store.lifeState("activityBudgetNotice").optString("date") != today) {
                     store.saveLifeState("activityBudgetNotice", JSONObject().put("date", today))
-                    store.message(CompanionPolicy.OWNER, "notice", "活动额度见底了，群聊和浏览先停下，和你聊天不受影响。", "本机预算账本")
+                    store.message(CompanionPolicy.OWNER, "notice", "今天的活动额度快见底了，我先把群聊和看视频停了，留着额度陪你。", "本机预算账本")
                 }
             }
             return

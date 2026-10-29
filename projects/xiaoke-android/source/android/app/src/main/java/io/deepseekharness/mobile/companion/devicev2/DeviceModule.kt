@@ -73,8 +73,7 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
             "control.start", "control.resume" -> {
                 check(data.optBoolean("singlePlayer")) { "只支持本机单人游戏，需主人明确确认" }
                 val pkg = packageName(data)
-                val info = app.packageManager.getApplicationInfo(pkg, 0)
-                check(info.flags and ApplicationInfo.FLAG_SYSTEM == 0 && pkg !in setOf(app.packageName, "com.tencent.mobileqq", "tv.danmaku.bili")) { "此入口仅用于主人选定的单机游戏" }
+                checkGame(pkg)
                 authorize(principal, pkg, data.optString("requestId"), null)
                 input.start(pkg, data.optInt("durationSeconds", 120), data.getLong("expectedInputEpoch")).also {
                     // An explicit owner start in the control panel is at least as strong as saying "继续".
@@ -278,6 +277,28 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
     private fun requireOwner(principal: CommandPrincipal) {
         check(principal.owner && principal.channel == "owner_ui" && principal.scope == OWNER) { "设备权限只接受本机主人界面操作" }
     }
+    private fun checkGame(pkg: String) {
+        val info = app.packageManager.getApplicationInfo(pkg, 0)
+        check(info.flags and ApplicationInfo.FLAG_SYSTEM == 0 && pkg !in setOf(app.packageName, "com.tencent.mobileqq", "tv.danmaku.bili")) { "此入口仅用于主人选定的单机游戏" }
+    }
+    /** The owner asked in chat to play a stretch for them: take over the game they are already letting her watch. Touching the screen takes it back. */
+    fun delegateFromChat(requested: String, seconds: Int): JSONObject {
+        check(!closed)
+        check(!EmergencyHold.ordinaryHeld) { "主人刚急停了点击和输入，要等主人说继续" }
+        val pkg = requested.ifBlank { capturePackage.ifBlank { CompanionOverlayService.observedPackage() } }
+        check(pkg.isNotBlank() && (permits(pkg) || CompanionOverlayService.permits(pkg))) { "现在没有在陪主人看游戏，先请主人打开伴玩" }
+        checkGame(pkg)
+        val principal = CommandPrincipal("local-device-owner", "owner_ui", OWNER, true).also { surfacePrincipal = it }
+        if (!permits(pkg)) {
+            // Watching through the floating ball already counts as the owner's consent to see this game; open a control frame session in place.
+            captureEpoch.incrementAndGet(); synchronized(frames) { frames.clear() }
+            capturePackage = pkg; captureSession = UUID.randomUUID().toString(); captureDeadline = SystemClock.elapsedRealtime() + 30 * 60_000
+            capture = JSONObject().put("state", "idle").put("packageName", pkg).toString()
+        }
+        authorize(principal, pkg, UUID.randomUUID().toString(), null)
+        resumable = null
+        return input.start(pkg, seconds.coerceIn(10, 1800), input.state().getLong("inputEpoch")).also { changed() }
+    }
     private fun permits(pkg: String) = !closed && pkg == capturePackage && SystemClock.elapsedRealtime() < captureDeadline
     @Volatile private var resumable: Pair<String, Long>? = null
     /** Remember the running lease so an ordinary resume restarts it for its remaining time. */
@@ -334,7 +355,10 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
         fun permitsObservation(pkg: String) = active?.permits(pkg) == true
         fun stopInputFromSurface() { active?.stopInput("owner_emergency_stop") }
         /** Five-second hold on the ball. */
-        fun emergencyHoldFromSurface() { EmergencyHold.engage(); active?.holdInput("owner_emergency_stop") }
+        fun emergencyHoldFromSurface() {
+            EmergencyHold.engage(); active?.holdInput("owner_emergency_stop")
+            runCatching { io.deepseekharness.mobile.accessibility.DeepSeekAccessibilityService.current()?.cancelAutomationTask() }
+        }
         /** The owner touched the screen outside our windows while we held control: yield silently. */
         fun yieldToOwnerTouch() {
             val owner = active ?: return

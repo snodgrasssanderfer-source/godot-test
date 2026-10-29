@@ -24,9 +24,10 @@ class BilibiliWatcher(context: Context, private val store: CompanionStore, priva
         check(settings.optBoolean("networkEnabled") && !settings.optBoolean("paused")) { "联网关闭或助手已暂停" }
         check(!NightQuiet.active(store)) { "夜间安静，不看B站" }
         check(!host.activityStopped()) { "活动额度已停，暂停浏览" }
-        // Only topics from the owner's chat or recorded interests, never free browsing of recommendations.
-        check(store.get("message", topicSourceId)?.optString("scope") == CompanionPolicy.OWNER || store.get("interest", topicSourceId) != null) {
-            "只看聊天中提到的话题或已记录的兴趣"
+        // Topics come from conversations (owner or group chats) or recorded interests, not from the recommendation feed.
+        val topicScope = store.get("message", topicSourceId)?.optString("scope").orEmpty()
+        check(topicScope == CompanionPolicy.OWNER || topicScope.startsWith("qq:group:") || store.get("interest", topicSourceId) != null) {
+            "只看聊天中聊到的话题或已记录的兴趣"
         }
         require(videoId.isBlank() || Regex("BV[0-9A-Za-z]{10}").matches(videoId)) { "BV 号格式无效" }
         require(videoId.isNotBlank() || query.isNotBlank()) { "需要 BV 号或话题关键词" }

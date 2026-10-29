@@ -10,7 +10,6 @@
 6. 在 source 执行 pnpm install --frozen-lockfile、pnpm run build、pnpm exec cap sync android。首次私有签名可运行 scripts/create-companion-signing.py；已有安装包必须继续使用相同签名，不能覆盖不同签名或通过卸载丢掉数据。签名私钥绝不入库。
 7. 设置 GRADLE_BIN 后运行 scripts/build-companion-private.sh，或从 android 执行 Gradle :app:lintRelease :app:testDebugUnitTest :app:assembleRelease。输出 app/build/outputs/apk/release/app-release.apk。编译不是运行验收。
 
-原源码文件清单与 verify-source.py 是历史静态交接基线；本轮新增文件不适用那个旧摘要集合。新 APK/源码的最终摘要及真实测试记录由本轮集成后更新。无硬件加速的 Android16 首启已经失败，不要重复该路径消耗资源；仪器测试保留供授权真机/加速环境运行。
 
 ## 签名
 交付给主人的包必须带固定签名，否则无法覆盖安装、会丢数据。构建前设置环境变量 `DSH_KEYSTORE_BASE64`、`DSH_KEYSTORE_PASSWORD`（别名固定 `dsh-mobile`，密钥密码与库密码相同）。build.gradle 会核对证书 SHA-256 `398EE6D99B4F31A2738D82FEC5EB3D0BEEB43EAAFA3B8359A5F0D30B609DA1C2`，不符即失败。构建后用 `apksigner verify --print-certs` 复核。

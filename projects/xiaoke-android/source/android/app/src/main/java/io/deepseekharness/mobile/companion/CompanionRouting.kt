@@ -21,7 +21,9 @@ object CompanionRouting {
         val score = ReplyLikelihood.estimate(listOf(text), mentioned, 0.0, 1, since.toDouble())
         // Night quiet and an exhausted activity pool both keep her out of group chats; messages are still recorded.
         val groupPaused = scope.startsWith("qq:group:") && (NightQuiet.active(store) || engine.modules.activityStopped())
-        val eligible = !groupPaused && conversation.optBoolean("reliable") && !settings.optBoolean("paused") && settings.optBoolean("networkEnabled") &&
+        val ownerChat = engine.modules.principal(scope).owner
+        val eligible = ownerChat && conversation.optBoolean("reliable") && !settings.optBoolean("paused") && settings.optBoolean("networkEnabled") ||
+            !groupPaused && conversation.optBoolean("reliable") && !settings.optBoolean("paused") && settings.optBoolean("networkEnabled") &&
             ParticipationPolicy.nightAllows(conversation, settings, mentioned, senderId, java.time.LocalTime.now().hour) &&
             now - conversation.optLong("humanActivityAt") > 120000 &&
             (mentioned || conversation.optString("mode") != "natural" || count >= conversation.optInt("naturalEveryMessages", 24)) &&
@@ -43,8 +45,11 @@ object CompanionRouting {
         if (conversation.optString("route") != "onebot") { QqNotificationBridge.maybeAutoSend(context, task); return }
         val settings = store.settings()
         if (!settings.optBoolean("networkEnabled") || settings.optBoolean("paused") || !settings.optBoolean("oneBotEnabled") ||
-            !conversation.optBoolean("captureEnabled") || !conversation.optBoolean("autoReply") || !conversation.optBoolean("reliable") || conversation.optString("mode") == "quiet" ||
-            System.currentTimeMillis() - conversation.optLong("humanActivityAt") <= 120000) return
+            !conversation.optBoolean("captureEnabled") || !conversation.optBoolean("reliable")) return
+        // The owner's own QQ chat is a conversation with the owner, not something to approve; others follow the conversation's settings.
+        val owner = CompanionEngine.get(context).modules.principal(task.getString("scope")).owner
+        if (!owner && (!conversation.optBoolean("autoReply") || conversation.optString("mode") == "quiet" ||
+            System.currentTimeMillis() - conversation.optLong("humanActivityAt") <= 120000)) return
         runCatching {
             val current = store.approveDraft(task.getString("id"), CompanionPolicy.draftDigest(task), automatic = true)
             OneBotBridge.get(context).send(current)

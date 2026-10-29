@@ -15,7 +15,7 @@ class InputFence(private val now: () -> Long) {
     @Synchronized fun start(packageName: String, seconds: Int, expectedEpoch: Long? = null): Lease {
         check(expectedEpoch == null || expectedEpoch == epoch) { "授权界面已过期，请重新确认恢复" }
         require(packageName.matches(Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+")))
-        require(seconds in 10..300)
+        require(seconds in 10..1800)
         check(active == null) { "上一个触点尚未释放" }
         stop("new_authorization")
         return Lease(UUID.randomUUID().toString(), ++epoch, packageName, now() + seconds * 1000L)

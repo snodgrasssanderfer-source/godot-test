@@ -18,7 +18,9 @@ class ModelAccounting(
     fun beforeRequest() {
         check(current == null) { "上一笔请求费用尚未处理" }
         val status = ledger("budget.status", JSONObject())
-        check(status.optBoolean("configured")) { "请先在生活页设置主人与活动各自的预算" }
+        // Talking with the owner never waits on budget setup; only her own activity needs a configured pool.
+        if (!status.optBoolean("configured") && lane == "owner") { legacyRequestGuard(); return }
+        check(status.optBoolean("configured")) { "活动额度还没设置，先不做自主活动" }
         unit = status.getString("unit")
         // This relay has no verified price/invoice contract. Never label a guessed token estimate known.
         val maximum = if (unit == "calls") 1L else {

@@ -70,8 +70,8 @@ Mobilerun 仅作为原有设备控制对照，不替换已运行的 DSH 权限�
 
 ## 本轮停止检查点的实际新增复用
 
-- A 已合入事务记忆、日记/兴趣、注意力、双账预算和 LifePanel。mem0 存储来源与 Graphiti/LiteLLM 只读设计参考的区别见 [CONTRACT-A](docs/CONTRACT-A.md)，后两者没有安装为框架。
-- B 复用既有 DSH 权限桥、AIRI 浮球/角色适配、Open-LLM-VTuber 语音链，新增分轨采样、输入租约和来源失效清理。实际文件/版本/许可及边界见 [CONTRACT-B](docs/CONTRACT-B.md)，没有另装总控。
-- C 沿用 AstrBot 衍生 OneBot 和 NapCat 协议互操作，增加后台队列、审批、密文同步；B站使用上述固定 MIT 项目的账号动作接口并作 Android/OkHttp 适配。见 [CONTRACT-C](docs/CONTRACT-C.md)、[C-SOCIAL-EXTENSION](docs/C-SOCIAL-EXTENSION.md)。aioqzone 仅比较阅读，未复制安装；NapCat 未打进 APK。
+- A 已合入事务记忆、日记/兴趣、注意力、双账预算和 LifePanel。mem0 存储来源与 Graphiti/LiteLLM 只读设计参考的区别见 [CONTRACT-A](archive/CONTRACT-A.md)，后两者没有安装为框架。
+- B 复用既有 DSH 权限桥、AIRI 浮球/角色适配、Open-LLM-VTuber 语音链，新增分轨采样、输入租约和来源失效清理。实际文件/版本/许可及边界见 [CONTRACT-B](archive/CONTRACT-B.md)，没有另装总控。
+- C 沿用 AstrBot 衍生 OneBot 和 NapCat 协议互操作，增加后台队列、审批、密文同步；B站使用上述固定 MIT 项目的账号动作接口并作 Android/OkHttp 适配。见 [CONTRACT-C](archive/CONTRACT-C.md)、[C-SOCIAL-EXTENSION](archive/C-SOCIAL-EXTENSION.md)。aioqzone 仅比较阅读，未复制安装；NapCat 未打进 APK。
 
 前面的候选列表保留检索入口，不表示全部采用。最终合并代码的验证缺口见交接文档，历史独立模块测试不能代替当前 APK 验收。

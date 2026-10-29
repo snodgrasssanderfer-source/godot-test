@@ -52,8 +52,7 @@ class GameInputController(private val context: Context, private val changed: () 
         val id = data.getString("requestId")
         val digest = listOf(kind, frame.id, data.getString("sessionId"), data.getLong("inputEpoch"), x, y, endX, endY, duration).joinToString("|").toByteArray().sha256()
         fence.receipt(id)?.let { check(it.digest == digest) { "重复编号的动作已更改" }; return receipt(it) }
-        validate(frame)
-        check(CompanionDevice(context).screenshot(frame.packageName).sha256() == frame.screenHash) { "画面像素已经变化，请重新观察后再操作" }
+        // Games animate constantly: same window, same rotation and a recent frame is enough. Pixel-exact rechecks refused nearly every tap.
         validate(frame)
         val token = fence.current() ?: error("输入已停止")
         check(token.packageName == frame.packageName) { "观察画面与控制范围不一致" }
@@ -110,11 +109,10 @@ class GameInputController(private val context: Context, private val changed: () 
     }
     private fun validate(frame: ControlFrame, enforceAge: Boolean = true) {
         val age = SystemClock.elapsedRealtime() - frame.atMs
-        if (enforceAge) check(age in 0..5_000) { "画面已过期，请重新观察" }
+        if (enforceAge) check(age in 0..15_000) { "画面已过期，请重新观察" }
         check(AccessibilityAutomationStore.packageAllowed(context, frame.packageName)) { "应用控制授权已撤回" }
         val tree = CompanionDevice(context).observe(frame.packageName)
         check(tree.optInt("windowId", -1) == frame.windowId && rotation(context) == frame.rotation) { "窗口或旋转已变化，请重新观察" }
-        if (enforceAge) check(tree.getJSONArray("nodes").toString().toByteArray().sha256() == frame.treeDigest) { "界面已变化，请重新观察" }
     }
     private fun receipt(r: InputFence.Receipt) = JSONObject().put("requestId", r.requestId).put("state", r.state).put("detail", r.detail)
     companion object {

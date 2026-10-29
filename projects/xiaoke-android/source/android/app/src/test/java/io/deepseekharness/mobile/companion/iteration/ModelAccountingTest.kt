@@ -33,6 +33,13 @@ class ModelAccountingTest {
         accounting.beforeRequest(); accounting.finished(GeminiClient.AttemptResult("unknown", JSONObject(), true, null))
         assertEquals(0, settled[0].getInt("actual")); assertEquals(1, settled[1].getInt("actual"))
     }
+    @Test fun unconfiguredBudgetNeverBlocksOwnerChatButStopsActivity() {
+        val calls = mutableListOf<String>()
+        val ledger: (String, JSONObject) -> JSONObject = { action, _ -> calls.add(action); JSONObject().put("configured", false) }
+        ModelAccounting(ledger, "owner:local", "owner", "chat", {}).apply { beforeRequest(); finished(GeminiClient.AttemptResult("ok", JSONObject(), true, null)) }
+        assertEquals(listOf("budget.status"), calls)
+        assertThrows(IllegalStateException::class.java) { ModelAccounting(ledger, "qq:group:g", "activity", "chat", {}).beforeRequest() }
+    }
     @Test fun dailyGuardReleasesOnlyTheUnsubmittedReservation() {
         val calls = mutableListOf<String>()
         val accounting = ModelAccounting({ action, _ ->

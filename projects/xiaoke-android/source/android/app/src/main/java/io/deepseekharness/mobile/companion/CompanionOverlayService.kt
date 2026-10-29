@@ -407,6 +407,7 @@ class CompanionOverlayService : Service() {
         @Volatile private var deadline = 0L
         @Volatile private var allowedPackage = ""
         @Volatile var running = false; private set
+        fun observedPackage() = if (running && SystemClock.elapsedRealtime() < deadline) allowedPackage else ""
         fun permits(pkg: String) = (running && pkg == allowedPackage && SystemClock.elapsedRealtime() < deadline) || DeviceModule.permitsObservation(pkg)
         fun state() = JSONObject().put("visible", activeService?.visibleByOwner == true && running).put("running", running).put("package", allowedPackage).put("remainingSeconds", ((deadline - SystemClock.elapsedRealtime()) / 1000).coerceAtLeast(0))
         fun start(context: Context, packageName: String = "", minutes: Int = 15, taskId: String = "") {

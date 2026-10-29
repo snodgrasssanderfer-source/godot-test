@@ -170,6 +170,10 @@ class DeepSeekAccessibilityService : AccessibilityService() {
     private fun executeChecked(command: String, param: String): DeviceCommandResult {
         val now = SystemClock.elapsedRealtime()
         if (isLockedOrScreenOff()) return failure("ACCESSIBILITY_DEVICE_LOCKED", "设备已锁定或屏幕未交互")
+        // 主人长按小克悬浮球五秒：所有点击和输入停住，读取不受影响；主人说“继续”后恢复。
+        if (io.deepseekharness.mobile.companion.devicev2.EmergencyHold.ordinaryHeld && command in setOf("accessibilityAction", "tap", "inputText")) {
+            return failure("ACCESSIBILITY_OWNER_HOLD", "主人按住了悬浮球，点击和输入已停；等主人说继续")
+        }
         if (now - lastActionAt < ACTION_INTERVAL_MS && command in setOf("accessibilityAction", "tap", "inputText")) {
             return failure("ACCESSIBILITY_RATE_LIMITED", "无障碍动作过于频繁，请稍后再试")
         }
