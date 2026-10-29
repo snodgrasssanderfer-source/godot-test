@@ -1,0 +1,14 @@
+# 公开仓库：构建产物、运行环境二进制、签名与本机配置一律不提交（见 CLAUDE.md）
+*.apk
+*.aab
+*.so
+rootfs.bundle
+*.rootfs
+runtime-manifest.json
+*.jks
+*.keystore
+*.p12
+keystore.properties
+local.properties
+.env
+.env.*

@@ -26,8 +26,17 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
         override fun onLost(network: Network) { refreshConnectivity() }
         override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) { refreshConnectivity() }
     }
+    private val proactiveShare = ProactiveShareRunner(store, this)
+    private val unlockWatcher = object : android.content.BroadcastReceiver() {
+        override fun onReceive(receiver: Context, intent: android.content.Intent) {
+            // The unlock that ends night quiet is evaluated first, so quiet hours never trigger a share.
+            eventWorker.execute { runCatching { io.deepseekharness.mobile.companion.NightQuiet.evaluate(receiver, store); proactiveShare.ownerReturned() } }
+        }
+    }
     init {
         router.register(life); router.register(device); router.register(social)
+        androidx.core.content.ContextCompat.registerReceiver(context.applicationContext, unlockWatcher,
+            android.content.IntentFilter(android.content.Intent.ACTION_USER_PRESENT), androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
         connectivity.registerDefaultNetworkCallback(connectionWatcher)
         refreshConnectivity()
         contentChanged()

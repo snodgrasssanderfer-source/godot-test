@@ -34,3 +34,11 @@
 - **构建**：BUILD.md 补充 Linux 必须使用 UTF-8 语言环境的原因。
 
 验证：`:app:compileDebugKotlin`、`:app:testDebugUnitTest`（163 套件 1580 项，0 失败/错误，3 项按设计跳过）、`:app:assembleDebug` 通过。未跑模拟器、真机和仪器测试。APK 不含 PRoot 原生库与 rootfs（分支未包含这些输入）。
+
+## 2026-10-29 接续：长期规则与主动分享（分支 claude/share-runtime-20261029）
+
+- 新增 CLAUDE.md 长期规则与项目级 .gitignore（APK、.so、rootfs、运行环境清单、签名与本机配置）。
+- 主动分享：主人解锁手机且距上次和她说话超过 2 小时，若有新待审项或她在自主活动中新记下的兴趣、观察，由模型按人设组织一条私聊消息；没有内容或模型判断不值得打扰则不发。每天最多 2 次，夜间安静不发，走主人通道。提过的待审项沿用“不重复提”标记。补 2 项单元测试（每日上限、夜间不发）。
+- 运行环境补齐未完成：下载旧 APK 的请求被执行环境的权限策略拦截，按要求停止；APK 仍不含 PRoot 与 rootfs。
+
+验证：compileDebugKotlin、compileDebugAndroidTestKotlin（只编译）、testDebugUnitTest（164 套件 1582 项，0 失败/错误，3 项按设计跳过）、assembleDebug 通过。
