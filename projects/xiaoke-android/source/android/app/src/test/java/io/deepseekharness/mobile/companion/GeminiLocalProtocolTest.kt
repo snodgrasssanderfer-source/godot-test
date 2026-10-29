@@ -84,6 +84,27 @@ class GeminiLocalProtocolTest {
         assertThrows(IllegalStateException::class.java) { generate { error("本机额度限制") } }
         assertEquals(0, requests.size)
     }
+    @Test fun cancellationAfterReservationReportsNotSentWithoutConsumingTransport() {
+        val outcomes = mutableListOf<GeminiClient.AttemptResult>()
+        assertThrows(IllegalStateException::class.java) {
+            client.generate(settings, CompanionPolicy.profile("gemini-3.8-flash"), JSONArray(), "fixture", JSONArray(), {},
+                beforeRequest = { client.cancel() }, onAttemptFinished = { outcomes.add(it) })
+        }
+        assertEquals(0, requests.size)
+        assertEquals("not_sent", outcomes.single().outcome)
+        assertFalse(outcomes.single().transmitted)
+    }
+    @Test fun incompleteStreamRetainsUnknownChargeInsteadOfClaimingFreeCancellation() {
+        replies = listOf(200 to "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"partial\"}]}}]}\n\n")
+        val outcomes = mutableListOf<GeminiClient.AttemptResult>()
+        assertThrows(IllegalStateException::class.java) {
+            client.generate(settings, CompanionPolicy.profile("gemini-3.8-flash"), JSONArray(), "fixture", JSONArray(), {},
+                onAttemptFinished = { outcomes.add(it) })
+        }
+        assertEquals(1, requests.size)
+        assertEquals("unknown", outcomes.single().outcome)
+        assertTrue(outcomes.single().transmitted)
+    }
     companion object {
         private lateinit var tls: SSLContext
         private lateinit var trust: X509TrustManager

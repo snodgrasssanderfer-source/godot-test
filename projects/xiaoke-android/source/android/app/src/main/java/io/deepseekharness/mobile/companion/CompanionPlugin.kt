@@ -27,8 +27,9 @@ class CompanionPlugin : Plugin() {
     private val executor = Executors.newFixedThreadPool(3)
     private val engine get() = CompanionEngine.get(context)
     private val presenceListener: (JSONObject) -> Unit = { event -> notifyListeners("presenceState", JSObject(event.toString())) }
-    override fun load() { super.load(); CompanionPresenceHost.subscribe(presenceListener) }
-    override fun handleOnDestroy() { CompanionPresenceHost.unsubscribe(presenceListener); executor.shutdownNow(); super.handleOnDestroy() }
+    private val moduleListener: (JSONObject) -> Unit = { event -> notifyListeners("moduleState", JSObject(event.toString())) }
+    override fun load() { super.load(); CompanionPresenceHost.subscribe(presenceListener); engine.modules.router.subscribe(moduleListener) }
+    override fun handleOnDestroy() { CompanionPresenceHost.unsubscribe(presenceListener); engine.modules.router.unsubscribe(moduleListener); executor.shutdownNow(); super.handleOnDestroy() }
 
     @PluginMethod fun state(call: PluginCall) {
         executor.execute {
@@ -61,6 +62,14 @@ class CompanionPlugin : Plugin() {
             }
             return
         }
+        if (action == "pickDocument") {
+            activity.runOnUiThread {
+                try { startActivityForResult(call, Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
+                    .setType("*/*").putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("text/*", "application/pdf", "application/json", "application/zip", "application/x-zip-compressed")), "documentPicked") }
+                catch (_: Exception) { call.reject("无法打开系统文件选择器") }
+            }
+            return
+        }
         if (action == "saveDocument") {
             val text = data.optString("text")
             if (text.toByteArray(Charsets.UTF_8).size > 16 * 1024 * 1024) return call.reject("导出文件超过 16 MB")
@@ -89,6 +98,8 @@ class CompanionPlugin : Plugin() {
                 }
                 val store = engine.store
                 val result: Any = when (action) {
+                    "module" -> engine.modules.router.execute(data.getString("domain"), data.getString("action"),
+                        data.optJSONObject("data") ?: JSONObject(), engine.modules.localOwner)
                     "settings" -> {
                         val previous = store.settings()
                         store.saveSettings(data).also {
@@ -362,10 +373,24 @@ class CompanionPlugin : Plugin() {
             } catch (_: Exception) { call.reject("文件保存失败，原数据保留，请重新选择位置") }
         }
     }
+    @ActivityCallback private fun documentPicked(call: PluginCall?, result: ActivityResult) {
+        if (call == null) return
+        val uri = result.data?.data
+        if (result.resultCode != Activity.RESULT_OK || uri == null) { call.reject("已取消选取资料，没有读取或上传内容"); return }
+        executor.execute {
+            try {
+                val data = call.getObject("data") ?: JSObject()
+                val value = io.deepseekharness.mobile.companion.documents.CompanionDocumentReader(context, engine.store)
+                    .read(uri, data.optInt("startPage", 1), data.optInt("pages", 12))
+                call.resolve(JSObject().put("result", thinObservation(value)))
+            } catch (e: Exception) { call.reject((e.message ?: "文件读取失败").take(240)) }
+        }
+    }
     private fun snapshot(): JSONObject {
         val store = engine.store
         store.pruneSocialHistory()
         return JSONObject().put("settings", store.settings()).put("keyConfigured", engine.secrets.configured())
+            .put("modules", engine.modules.router.snapshot(engine.modules.localOwner))
             .put("persona", store.persona()).put("personaVersions", store.list("personaVersion"))
             .put("character", CompanionCharacterStore.metadata(context))
             .put("memories", store.list("memory")).put("conversations", store.list("conversation"))

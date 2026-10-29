@@ -17,6 +17,8 @@ Root constructs `CommandPrincipal` from local UI or a verified transport account
 
 `ModuleEvent` examples: conversation.message, model.completed, observation.summary, action.completed, control.stopped, budget.changed, connectivity.changed. Data carries source IDs and visible evidence, never hidden reasoning. Deduplicate by sourceId plus event type. Raw frames and ordinary received media remain cache unless explicitly retained; meaningful grounded summaries may become memory automatically.
 
+Integration clarification: `emit("moduleState", payload)` refreshes UI only. Cross-module experiences/deletions use `emit("experience", {type,scope,sourceId,data})`; the host validates and deduplicates the envelope and delivers a `ModuleEvent` asynchronously. Durable producers must also persist their own outbox/tombstone before signalling: the in-process notification is not durable storage. `authorizeEffect` checks host activation and identity; it never creates a module approval. New non-QQ external activity additionally requires the local owner's `settings.activityEnabled`; QQ send requires `oneBotEnabled`. Modules retain exact content/target/expiry checks.
+
 ## A — life / memory / attention / budget
 
 Own new `.../companion/life/**`, corresponding unit/instrumentation tests under `.../companion/life/**`, and existing `CompanionStore.kt`, `CompanionBackupCrypto.kt`, `MemoryRanking.kt`. Preserve all existing public methods and snapshot fields; add backward-compatible migrations. Root will reconcile legacy behavior through adapters, so do not silently change old method semantics without documenting it.

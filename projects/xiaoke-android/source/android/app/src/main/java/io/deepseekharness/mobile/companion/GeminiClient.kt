@@ -77,6 +77,7 @@ object GeminiWire {
 }
 
 class GeminiClient internal constructor(private val readKey: () -> String, private val transport: OkHttpClient? = null) {
+    data class AttemptResult(val outcome: String, val usage: JSONObject, val transmitted: Boolean, val httpStatus: Int?)
     constructor(secrets: CompanionSecrets): this(secrets::read)
     @Volatile private var activeCall: Call? = null
     private val cancelled = AtomicBoolean(false)
@@ -85,7 +86,8 @@ class GeminiClient internal constructor(private val readKey: () -> String, priva
     fun checkCancelled() { check(!cancelled.get() && !Thread.currentThread().isInterrupted) { "任务已取消" } }
 
     fun generate(settings: JSONObject, profile: JSONObject, contents: JSONArray, system: String, tools: JSONArray,
-                 progress: (String) -> Unit, beforeRequest: () -> Unit = {}, onText: (String) -> Unit = {}): JSONObject {
+                 progress: (String) -> Unit, beforeRequest: () -> Unit = {}, onText: (String) -> Unit = {},
+                 onAttemptFinished: (AttemptResult) -> Unit = {}): JSONObject {
         check(settings.optBoolean("networkEnabled")) { "模型联网尚未启用，请在设置中明确开启" }
         checkCancelled()
         val base = CompanionPolicy.endpoint(settings.getString("endpoint"))
@@ -107,15 +109,19 @@ class GeminiClient internal constructor(private val readKey: () -> String, priva
             var completed = false
             for (attempt in 0..2) {
                 checkCancelled()
-                beforeRequest()
                 val request = Request.Builder().url("$base/models/$model:streamGenerateContent?alt=sse")
                     .header("x-goog-api-key", readKey()).header("Accept", "text/event-stream")
                     .post(body.toString().toRequestBody("application/json".toMediaType())).build()
+                beforeRequest()
                 val call = client.newCall(request)
                 activeCall = call
+                var transmitted = false
+                var httpStatus: Int? = null
                 try {
                     checkCancelled() // Close cancel-before-activeCall assignment race.
+                    transmitted = true
                     call.execute().use { response ->
+                        httpStatus = response.code
                         if (response.code == 429 || response.code in 500..599) {
                             if (attempt == 2) error("模型服务暂不可用（HTTP ${response.code}），请稍后重试")
                             val wait = response.header("Retry-After")?.toLongOrNull()?.coerceIn(1, 30) ?: (attempt + 1).toLong()
@@ -165,7 +171,12 @@ class GeminiClient internal constructor(private val readKey: () -> String, priva
                     checkCancelled()
                     // Do not replay a partially consumed stream or tool calls after uncertain network loss.
                     error("模型连接中断，已停止本轮；未执行尚未完成的工具结果，请手动重试")
-                } finally { activeCall = null }
+                } finally {
+                    activeCall = null
+                    onAttemptFinished(AttemptResult(
+                        when { !transmitted -> "not_sent"; completed -> "completed"; httpStatus != null && httpStatus !in 200..299 -> "rejected"; else -> "unknown" },
+                        JSONObject(one.usage.toString()), transmitted, httpStatus))
+                }
             }
             check(completed) { "模型请求未完成" }
             for (i in 0 until one.parts.length()) aggregate.parts.put(one.parts.getJSONObject(i))

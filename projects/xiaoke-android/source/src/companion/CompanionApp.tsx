@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { ArrowLeft, BookOpen, Check, ChevronRight, Download, KeyRound, Loader2, MessageCircle, Pause, Play, Plus, Settings2, Shield, Smartphone, Sparkles, Trash2, Upload, X } from 'lucide-react'
-import { App } from '../App'
 import { command, companion, field, nativeCompanion, ownerScope, profile, type Entry, type Persona, type Settings, type Snapshot } from './bridge'
 import './companion.css'
 import { downloadText, readCharacterCard } from './characterCard'
@@ -8,10 +7,12 @@ import { Connections } from './Connections'
 import { VideoPanel } from './VideoPanel'
 import { Onboarding } from './Onboarding'
 import { PresencePanel, subscribePresence, type PresenceState } from './presence'
+import { DocumentsPanel } from './iteration/DocumentsPanel'
+const AgentWorkbench = lazy(() => import('../App').then(module => ({default: module.App})))
 
 type Tab = 'chat' | 'models' | 'persona' | 'memory' | 'tasks' | 'device'
 type Run = (action: string, data?: object) => Promise<unknown>
-const labels: Record<Tab, string> = {chat: '对话', models: '模型', persona: '角色', memory: '记忆', tasks: '任务', device: '设备'}
+const labels: Record<Tab, string> = {chat: '陪伴', memory: '生活', tasks: '活动', device: '连接', persona: '角色', models: '设置'}
 const states: Record<string, string> = {queued:'排队', running:'处理中', waiting:'等待恢复', draft:'待审草稿', approved:'已授权', sending:'提交中', unknown:'待核对结果', done:'完成', failed:'失败', cancelled:'已取消'}
 
 export function CompanionApp() {
@@ -23,7 +24,12 @@ export function CompanionApp() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const jobs = useRef(0)
-  const reload = useCallback(async () => { setSnapshot(await companion.state()) }, [])
+  const loadSequence = useRef(0)
+  const reload = useCallback(async () => {
+    const sequence = ++loadSequence.current
+    const value = await companion.state()
+    if (sequence === loadSequence.current) setSnapshot(value)
+  }, [])
   useEffect(() => {
     void reload().catch(e => setError(String(e)))
     const timer = window.setInterval(() => { void reload().catch(() => undefined) }, 2500)
@@ -33,6 +39,16 @@ export function CompanionApp() {
     if (!nativeCompanion) return
     return subscribePresence(companion, setPresence, error => setError(error instanceof Error ? error.message : String(error)))
   }, [])
+  useEffect(() => {
+    if (!nativeCompanion) return
+    let disposed = false, timer: number | undefined
+    let subscription: {remove(): Promise<void>} | undefined
+    void companion.addListener('moduleState', () => {
+      if (disposed || timer !== undefined) return
+      timer = window.setTimeout(() => { timer = undefined; void reload().catch(() => undefined) }, 100)
+    }).then(value => { if (disposed) void value.remove(); else subscription = value }).catch(e => setError(String(e)))
+    return () => { disposed = true; window.clearTimeout(timer); void subscription?.remove() }
+  }, [reload])
   const run: Run = async (action, data = {}) => {
     jobs.current++; setBusy(true); setError('')
     try { const value = await command(action, data); await reload(); return value }
@@ -40,19 +56,19 @@ export function CompanionApp() {
     finally { if (--jobs.current === 0) setBusy(false) }
   }
   const quietRun: Run = (a,d) => run(a,d).catch(() => undefined)
-  if (workbench) return <><button className="companion-return" onClick={() => setWorkbench(false)}><ArrowLeft size={16}/> 返回助手</button><App /></>
+  if (workbench) return <><button className="companion-return" onClick={() => setWorkbench(false)}><ArrowLeft size={16}/> 返回助手</button><Suspense fallback={<div className="companion-loading"><Loader2 className="spin"/>正在打开工作台…</div>}><AgentWorkbench /></Suspense></>
   if (!snapshot) return <div className="companion-loading"><Loader2 className="spin"/><p>{error || '正在读取本机助手数据…'}</p><button onClick={() => void reload()}>重试</button></div>
   const setupVisible = setupOpen ?? !snapshot.settings.onboardingCompleted
   const pending = snapshot.tasks.filter(t => ['draft','unknown','failed','waiting'].includes(field(t,'state'))).length
   return <div className="companion-app">
     <aside className="companion-nav">
-      <div className="companion-brand"><span className="companion-mark">K</span><div><strong>{snapshot.persona.name || '小克'}</strong><small>你的安卓助手</small></div></div>
+      <div className="companion-brand"><span className="companion-mark">K</span><div><strong>{snapshot.persona.name || '小克'}</strong><small>陪你聊天，也一起行动</small></div></div>
       <nav aria-label="助手导航">{(Object.keys(labels) as Tab[]).map(name => <button key={name} className={tab===name?'selected':''} onClick={() => {setSetupOpen(false); setTab(name)}}>{name==='chat'?<MessageCircle/>:name==='models'?<Sparkles/>:name==='persona'?<BookOpen/>:name==='memory'?<Shield/>:name==='tasks'?<Check/>:<Smartphone/>}<span>{labels[name]}</span>{name==='tasks' && pending>0 && <b>{pending}</b>}</button>)}</nav>
       <button className="workbench-link" onClick={() => setWorkbench(true)}><Settings2 size={18}/> 原 DSH 工作台 <ChevronRight size={16}/></button>
       <small className="nav-foot">人格与记忆留在本机<br/>由你决定何时连接外界</small>
     </aside>
     <main className="companion-main">
-      <header className="companion-top"><div><span className={'status-dot '+(snapshot.settings.networkEnabled?'online':'')}/>{snapshot.settings.paused?'助手已暂停':snapshot.settings.networkEnabled?snapshot.settings.activeModel:'本机模式 · 尚未联网'}</div><button onClick={() => void quietRun('pause',{paused:!snapshot.settings.paused})}>{snapshot.settings.paused?<Play size={16}/>:<Pause size={16}/>} {snapshot.settings.paused?'继续':'暂停'}</button></header>
+      <header className="companion-top"><div><span className={'status-dot '+(snapshot.settings.networkEnabled?'online':'')}/>{snapshot.settings.paused?'助手已暂停':snapshot.settings.networkEnabled?snapshot.settings.activeModel:'本机模式 · 尚未联网'}</div><button title="暂停模型与外部任务；游戏输入急停在设备控制面板" onClick={() => void quietRun('pause',{paused:!snapshot.settings.paused})}>{snapshot.settings.paused?<Play size={16}/>:<Pause size={16}/>} {snapshot.settings.paused?'继续':'暂停活动'}</button></header>
       <button className="mobile-workbench" onClick={()=>setWorkbench(true)}><Settings2 size={15}/> 原 DSH 工作台 · 文件 / 终端 / 插件</button>
       <button className="setup-guide-link" onClick={() => setSetupOpen(true)}>安装与配置引导</button>
       {setupVisible && <Onboarding snapshot={snapshot} run={run} onClose={() => setSetupOpen(false)} onOpen={setTab}/>}
@@ -80,12 +96,13 @@ function Chat({snapshot,run,onSetup}:{snapshot:Snapshot;run:Run;onSetup:()=>void
   useEffect(()=>{end.current?.scrollIntoView({behavior:'smooth',block:'end'})},[messages.length])
   async function send(e:FormEvent){e.preventDefault();if(!draft.trim())return;try{await run('chat',{text:draft,observationId:observation});setDraft('');setObservation('')}catch{/* shown above */}}
   return <section className="chat-panel">
-    <Heading title="一起，把事情做好。" text="和主人私聊，或查看已授权会话。每段关系都有自己的记忆范围。"/>
+    <Heading title="我在这里。" text="聊刚才发生的事，也聊接下来想做什么。其他会话的经历与这里分别保存。"/>
     {!snapshot.keyConfigured && <button className="setup-banner" onClick={onSetup}><KeyRound/><span><strong>先连接你的 Gemini</strong><small>填写中转地址与本机密钥，选择使用模型</small></span><ChevronRight/></button>}
     <div className="chat-tools"><label>会话范围<select value={scope} onChange={e=>setScope(e.target.value)}><option value={ownerScope}>主人 · 本机私聊</option>{snapshot.conversations.map(c=><option key={c.id} value={c.scope}>{field(c,'title')} {c.reliable?'':'（待识别）'}</option>)}</select></label><span className="pill">{scope===ownerScope?'主人权限':'独立会话记忆'}</span></div>
     <div className="message-list">{messages.length===0?<div className="chat-empty"><span className="empty-mark"><MessageCircle size={28}/></span><h2>从一段对话开始</h2><p>你可以先和 Gemini 一起整理角色设定。<br/>角色正文目前留白，随时可在「角色」里修改和保存版本。</p></div>:messages.map(m=><article key={m.id} className={'chat-message '+field(m,'role')}><small>{field(m,'role')==='user'?'你 / 会话消息':snapshot.persona.name}<span>{field(m,'source')}</span></small><div>{field(m,'text')}</div></article>)}<div ref={end}/></div>
     {active && <div className="task-inline"><Loader2 className="spin" size={16}/>{field(active,'progress')}<button onClick={()=>void run('cancel',{id:active.id}).catch(()=>undefined)}>取消</button></div>}
     {active&&field(active,'partialText')&&<article className="chat-message assistant" aria-live="polite"><small>正在回复</small><div>{field(active,'partialText')}</div></article>}
+    {scope===ownerScope&&<DocumentsPanel run={run} onAttach={setObservation}/>}
     {scope===ownerScope?<form className="chat-compose" onSubmit={e=>void send(e)}><label className="sr-only" htmlFor="companion-message">发给助手的消息</label><textarea id="companion-message" placeholder="说点什么，或安排一个任务…" value={draft} onChange={e=>setDraft(e.target.value)} rows={3} maxLength={12000}/><div><select aria-label="附加观察资料" value={observation} onChange={e=>setObservation(e.target.value)}><option value="">不附加资料</option>{snapshot.observations.map(o=><option key={o.id} value={o.id}>{field(o,'videoId')||field(o,'source')} · {o.analyzed?'已分析':'待分析'}</option>)}</select><button className="primary" type="submit" disabled={!draft.trim()||Boolean(active)}>发送 <ChevronRight size={16}/></button></div></form>:<p className="subtle">这里查看该会话的历史；回复草稿与发送状态在「任务」中管理。</p>}
   </section>
 }

@@ -62,3 +62,8 @@ Mobilerun 仅作为原有设备控制对照，不替换已运行的 DSH 权限�
 - https://github.com/apache/tika — 新增采用与固定版本待所属模块核对。
 
 已知设计约束：Graphiti 删除摘要失败可能留下旧文本，必须统一 tombstone/删除屏蔽；LiteLLM 未知价格可能跳预留，不可只开 budget 便宣称严格金额限额。MaaFwApp 的特权依赖不自动授权提权。普通悬浮层不能保证任意位置全局五秒手势。Qzone 非官方协议需独立授权与故障边界；相关插件 GPL-3.0。不要将数套完整服务框架塞进手机。
+
+## 本轮主线追加采用
+
+- Apache Commons Compress 1.27.1（https://github.com/apache/commons-compress ，Apache-2.0）：沿用 DSH 已固定的库，实际调用 ZipArchiveInputStream/canReadEntryData 读取 ZIP；接入 companion/documents/DocumentText.kt。没有另装 Zip4j 或复制第二套解压引擎。小克新增 100 条目/16 MB 展开/单条 4 MB 限制、路径及符号链接拒绝、非文本覆盖标注；真实 ZIP 单测通过。
+- Android PdfRenderer.Page.getTextContents（https://developer.android.com/reference/android/graphics/pdf/PdfRenderer.Page ，API 35）：实际接入所选 PDF 页文字提取，最多 12 页/100000 字符；不声称 OCR 或图片理解。编译通过，系统文件选择与 PDF 真机运行未测。

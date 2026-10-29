@@ -13,3 +13,4 @@
 
 .presence-host{padding:12px 20px 0}
 @media(max-width:600px){.presence-host{padding:10px 12px 0}}
+.document-reader{border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:14px 0;font-size:13px;background:#f8faf5}.document-reader summary{display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600}.document-reader small{display:block;margin-top:10px}.document-result{padding-top:12px;margin-top:12px;border-top:1px solid var(--line);overflow-wrap:anywhere}

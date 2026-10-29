@@ -1,4 +1,5 @@
 import type { PresenceState } from './presence/contract'
+import type { ModuleSnapshot } from './iteration/contracts'
 import { Capacitor, registerPlugin } from '@capacitor/core'
 
 export interface Profile {
@@ -13,6 +14,7 @@ export interface Settings {
   oneBotEnabled?: boolean; oneBotUrl?: string; oneBotAccount?: string; qqAccountLabel?: string
   shareOwnerMemoryWithQq?: boolean; allowOwnerQqMute?: boolean
   onboardingCompleted?: boolean
+  activityEnabled?: boolean
 }
 export interface Entry { id: string; scope: string; [field: string]: unknown }
 export interface Persona { name: string; text: string; version: number; source?: string }
@@ -20,12 +22,18 @@ export interface Snapshot {
   settings: Settings; keyConfigured: boolean; persona: Persona; personaVersions: Entry[]
   memories: Entry[]; conversations: Entry[]; tasks: Entry[]; messages: Entry[]; observations: Entry[]
   presence?: PresenceState
+  modules?: ModuleSnapshot
   character?: {path?: string; version?: number; layout?: 'portrait'|'sprite-4x6'}
   overlaySession?: {running: boolean; package: string; remainingSeconds: number}
   messageBridge?: {connected: boolean; status: string; tokenConfigured: boolean}
   permissions: { accessibility: { serviceStatus: string; allowedPackages: string[] }; notificationAccess: boolean; overlay: boolean; microphone?: boolean; postNotifications?: boolean; onDeviceSpeech?: boolean; batteryExempt?: boolean; androidVersion: string; abis: string[] }
 }
-interface Bridge { addListener(eventName: 'presenceState', listener: (state: PresenceState) => void): Promise<{remove(): Promise<void>}>; state(): Promise<Snapshot>; command(options: {action: string; data: Record<string, unknown>}): Promise<{result: unknown}> }
+interface Bridge {
+  addListener(eventName: 'presenceState', listener: (state: PresenceState) => void): Promise<{remove(): Promise<void>}>
+  addListener(eventName: 'moduleState', listener: (state: Record<string, unknown>) => void): Promise<{remove(): Promise<void>}>
+  state(): Promise<Snapshot>
+  command(options: {action: string; data: Record<string, unknown>}): Promise<{result: unknown}>
+}
 export const nativeCompanion = Capacitor.isNativePlatform()
 export const companion = registerPlugin<Bridge>('Companion', { web: () => import('./browser').then(m => new m.CompanionBrowser()) })
 export const ownerScope = 'owner:local'

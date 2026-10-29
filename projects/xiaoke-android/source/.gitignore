@@ -1,5 +1,7 @@
 # Dependencies and generated web output
 node_modules/
+# Workspace builds may link the already installed pinned dependency tree.
+**/node_modules
 dist/
 harness-web/.dist-android/
 www/
