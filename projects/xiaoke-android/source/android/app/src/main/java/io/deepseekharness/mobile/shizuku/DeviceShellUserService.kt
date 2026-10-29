@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class DeviceShellUserService() : IDeviceShellService.Stub() {
     private val virtualScreen = io.deepseekharness.mobile.virtualscreen.ShellVirtualScreen()
+    private val gestures = ShellGestureInjector()
 
     // 特权操作以用户服务进程身份执行，权限由 Shizuku 与宿主授权共同控制。
     private fun <T> asService(operation: () -> T): T {
@@ -31,6 +32,9 @@ class DeviceShellUserService() : IDeviceShellService.Stub() {
     override fun virtualScreenSnapshot(sessionId: String): android.os.ParcelFileDescriptor = asService { virtualScreen.snapshot(sessionId) }
     override fun virtualScreenFrame(sessionId: String): VirtualScreenFrameHandle = asService { VirtualScreenFrameHandle(virtualScreen.frame(sessionId)) }
     override fun virtualScreenSnapshotEnvelope(sessionId: String): android.os.ParcelFileDescriptor = asService { virtualScreen.snapshotEnvelope(sessionId) }
+    override fun injectGesture(plan: String): String = asService { gestures.inject(plan) }
+    override fun cancelGesture() { gestures.cancel() }
+    override fun captureScreen(): android.os.ParcelFileDescriptor = asService { gestures.captureScreen() }
     @Suppress("UNUSED_PARAMETER")
     constructor(context: Context) : this()
 

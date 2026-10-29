@@ -95,3 +95,18 @@ Mobilerun 仅作为原有设备控制对照，不替换已运行的 DSH 权限�
 | 分段回复（句末切分、log 间隔） | 同上 `pipeline/result_decorate/stage.py`、`pipeline/respond/stage.py` | AGPL-3.0 | ReplySegmenter.kt、OneBotBridge.send |
 
 只移植机制，没有逐行翻译 Python。分段规则与 AstrBot 相反：短回复保持一条，较长的才拆，最多四段。学习只读 QQ 群里别人的发言，按群分开存，主人私聊和其他私聊不进入学习。
+
+## 2026-10-30 游戏代操作升级（`companion/devicev2/`、`shizuku/`）
+
+| 机制 | 来源（固定版本） | 许可证 | 本项目文件 |
+|---|---|---|---|
+| Shizuku 用户服务里进程内注入触摸（隐藏 `InputManager.injectInputEvent` + `setDisplayId`），主屏和副屏通用 | DSH v0.3.7 `virtualscreen/VirtualScreenInjector.kt`（本仓库底座） | MIT | ShellGestureInjector.kt、GestureTimeline.kt（多指时间线是新写的） |
+| 后台副屏：启动、截图、显示编号 | DSH v0.3.7 `virtualscreen/VirtualScreenService.kt`、`ShellVirtualScreen.kt` | MIT | ShizukuInput.kt 里的 BackgroundScreen |
+| 路线重放：每步先等画面回到录制时的状态再动手，对不上就交还给模型 | droidrun/mobilerun 11dcdebdec9ea99f172dd7e80af7ba1eadbeb6c8 `mobilerun/macro/replay.py`（wait_for_pre_state → replay_action → handoff） | MIT | DeviceModule.replay |
+
+只移植机制。mobilerun 用节点树比状态，游戏没有可用的节点树，这里改成画面指纹（64 位差值哈希）和标记模板。
+
+**MaaFramework 没有接入。** 评估对象是 MaaXYZ/MaaFramework a6532c30dbfc639cf63fc269991a523184f3babf（LGPL-3.0）和 Aliothmoon/MaaFwApp 7e2dc7d6c5de3d4ed8d822291d38748f5c26d193（AGPL-3.0）。不接的理由：
+- 它的识别和动作都由 Pipeline 资源驱动，资源要按 Project Interface V2 在构建时打进 APK（MaaFwApp 也是这样）。小克要玩的是主人临时说的任意游戏，没有现成资源，模型也不能在运行时写出可靠的 Pipeline。
+- 原生库要通过 JNI 桥和一个特权助手进程接入，依赖 OpenCV、ONNX Runtime 和 OCR 模型；体积没有实测，但会在已有约 300 MB 的包上再加一层原生依赖，而这些在没有真机的构建环境里无法验证。
+- 真正需要的“快眼”只有两件事：判断是不是同一个画面、在画面里找到一个按钮。用纯 Kotlin 做了（FrameMatcher.kt：灰度缩小到 320 宽，差值哈希判同屏，归一化互相关粗到细找模板），不需要原生库。OCR 仍交给多模态模型看图。

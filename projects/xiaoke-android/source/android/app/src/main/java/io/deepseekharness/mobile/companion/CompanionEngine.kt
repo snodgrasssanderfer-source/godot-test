@@ -318,7 +318,12 @@ class CompanionEngine private constructor(private val context: Context) {
                 if (scope == CompanionPolicy.OWNER) {
                     val device = modules.device.snapshot(modules.localOwner)
                     append("手机控制状态：${device.optJSONObject("control")}；正在看的应用：${device.optJSONObject("capture")?.optString("packageName")}。")
-                    append("主人请你代操作游戏时，用 device_action 的 control.start 接手，再用 capture.refresh 看画面后点击；主人一碰屏幕你就自动让出。点击成功不等于游戏里达成了目标，要看画面确认。\n")
+                    append("主人请你代操作游戏时，用 device_action 的 control.start 接手，再用 capture.refresh 看画面后操作；主人一碰屏幕你就自动让出。点击成功不等于游戏里达成了目标，要看画面确认。")
+                    append("主人让你自己在后台玩时，control.start 加 background=true，游戏开在副屏里，主人照常用手机。")
+                    append("重复的界面可以用 landmark.save 标记按钮，之后 landmark.tap / control.waitFor 不用每步都看图；一段操作走通了用 route.save 存成路线，下次 route.replay 会逐步核对画面，对不上就停下交还给你。")
+                    append("玩出了心得（关卡怎么过、哪里容易错）用 notes.add 记下来，主人能在记忆里看到。\n")
+                    val playing = device.optJSONObject("control")?.optString("packageName").orEmpty().ifBlank { device.optJSONObject("capture")?.optString("packageName").orEmpty() }
+                    if (playing.isNotBlank()) modules.device.notes.describe(playing).takeIf { it.isNotBlank() }?.let { append(it).append("\n") }
                     if (io.deepseekharness.mobile.companion.devicev2.EmergencyHold.ordinaryHeld)
                         append("主人刚长按悬浮球急停了你的点击和输入（对话不受影响）。先停手，问一句是你点错了还是主人有别的事；主人说继续才恢复。\n")
                 }
@@ -498,10 +503,11 @@ class CompanionEngine private constructor(private val context: Context) {
         "device_action" -> {
             check(scope == CompanionPolicy.OWNER) { "设备控制必须在本机主人会话内" }
             val action = args.getString("action")
-            require(action in setOf("control.start", "control.status", "control.tap", "control.swipe", "control.longPress", "capture.status", "capture.refresh")) { "不支持的设备动作" }
+            require(action in DEVICE_ACTIONS) { "不支持的设备动作" }
             val data = JSONObject((args.optJSONObject("data") ?: JSONObject()).toString())
-            if (action !in setOf("control.start", "control.status", "capture.status", "capture.refresh")) data.put("requestId", CompanionPolicy.digest("$sourceId\u0000$action\u0000${data}"))
-            if (action == "control.start") modules.device.delegateFromChat(data.optString("packageName"), data.optInt("durationSeconds", 600))
+            if (action !in setOf("control.start", "control.status", "capture.status", "capture.refresh", "notes.add")) data.put("requestId", CompanionPolicy.digest("$sourceId\u0000$action\u0000${data}"))
+            if (action == "control.start") modules.device.delegateFromChat(data.optString("packageName"), data.optInt("durationSeconds", 600), data.optBoolean("background"))
+            else if (action == "notes.add") addGameNote(sourceId, data.getString("text"))
             else if (action == "capture.refresh") {
                 val control = modules.device.execute("control.status", JSONObject(), modules.localOwner)
                 val capture = modules.device.execute("capture.status", JSONObject(), modules.localOwner)
@@ -551,6 +557,20 @@ class CompanionEngine private constructor(private val context: Context) {
         else -> error("工具不在当前允许范围")
     }
 
+    /** Her experience with a game: kept with the game for play, and as a memory the owner can read, edit or delete. */
+    private fun addGameNote(sourceId: String, text: String): JSONObject {
+        val pkg = modules.device.execute("control.status", JSONObject(), modules.localOwner).optString("packageName")
+            .ifBlank { modules.device.execute("capture.status", JSONObject(), modules.localOwner).optString("packageName") }
+        check(pkg.isNotBlank()) { "现在没有在玩的游戏" }
+        check(store.get("message", sourceId)?.optString("scope") == CompanionPolicy.OWNER) { "游戏经验要来自主人这边的对话" }
+        val label = runCatching { context.packageManager.let { pm -> pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString() } }.getOrDefault(pkg)
+        val memory = LifeMemoryRepository(store).upsertMemory(CompanionPolicy.OWNER, JSONObject().put("text", "玩《$label》的经验：${text.take(300)}").put("kind", "fact")
+            .put("sourceId", sourceId).put("source", "代玩游戏时自己总结")
+            .put("sourceRefs", JSONArray().put(JSONObject().put("kind", "message").put("id", sourceId).put("scope", CompanionPolicy.OWNER))), fromModel = true)
+        modules.device.notes.addNote(pkg, text, memory.optString("id"))
+        return JSONObject().put("state", "saved").put("game", label)
+    }
+
     private fun recallMemories(scope: String, query: String): JSONArray {
         val records = store.memoriesFor(scope, query)
         if (CompanionPolicy.sharesOwnerMemory(store.get("conversation", scope), store.settings())) {
@@ -593,9 +613,17 @@ class CompanionEngine private constructor(private val context: Context) {
                         fields("kind" to "STRING", "text" to "STRING", "dueAt" to "INTEGER", "condition" to "STRING")))
                 }
                 if (scope == CompanionPolicy.OWNER) {
-                    if (modules.router.available("device")) a.put(structured("device_action", "操作主人正在玩、并让你看着的单机游戏。主人请你代操作时先 control.start（可给 durationSeconds，默认 600）；然后 capture.refresh 取当前画面，用返回的 sessionId,inputEpoch,frameId 和屏幕像素 x,y 点击；swipe 加 toX,toY。每步看回执和新画面。急停时不能自己恢复。",
-                        fields("packageName" to "STRING", "sessionId" to "STRING", "inputEpoch" to "INTEGER", "frameId" to "STRING", "x" to "NUMBER", "y" to "NUMBER", "toX" to "NUMBER", "toY" to "NUMBER", "durationMs" to "INTEGER", "durationSeconds" to "INTEGER"),
-                        listOf("control.start", "control.status", "capture.status", "capture.refresh", "control.tap", "control.swipe", "control.longPress")))
+                    if (modules.router.available("device")) a.put(structured("device_action", "操作主人的单机游戏。control.start 接手（packageName 可写包名或应用名；durationSeconds 默认 600；background=true 在副屏后台玩，需要 Shizuku）；" +
+                        "capture.refresh 取画面，用返回的 sessionId,inputEpoch,frameId 和像素坐标 x,y 操作：tap；swipe 加 toX,toY；longPress/hold 给 durationMs（hold 可加 toX,toY,moveMs 当摇杆按住拖动）；" +
+                        "multi 给 pointers=[{x,y,toX,toY,startMs,durationMs}] 多指同时操作。有 Shizuku 时按住最长 10 秒（后台 30 秒），没有时 1.5 秒。" +
+                        "landmark.save 用 name 和屏幕区域 x,y,w,h 标记当前画面里的按钮；landmark.find / landmark.tap 按 name 找或点；control.waitFor 等 landmark 出现或画面变化（timeoutMs）。" +
+                        "route.save 把这次成功的操作存成 name 路线，route.replay 重放并逐步核对画面；notes.add 记 text 心得。每步看回执和新画面。急停时不能自己恢复。",
+                        fields("packageName" to "STRING", "sessionId" to "STRING", "inputEpoch" to "INTEGER", "frameId" to "STRING", "x" to "NUMBER", "y" to "NUMBER", "toX" to "NUMBER", "toY" to "NUMBER",
+                            "w" to "NUMBER", "h" to "NUMBER", "durationMs" to "INTEGER", "moveMs" to "INTEGER", "durationSeconds" to "INTEGER", "background" to "BOOLEAN",
+                            "name" to "STRING", "landmark" to "STRING", "timeoutMs" to "INTEGER", "text" to "STRING")
+                            .put("pointers", JSONObject().put("type", "ARRAY").put("items", JSONObject().put("type", "OBJECT")
+                                .put("properties", fields("x" to "NUMBER", "y" to "NUMBER", "toX" to "NUMBER", "toY" to "NUMBER", "startMs" to "INTEGER", "durationMs" to "INTEGER", "moveMs" to "INTEGER")))),
+                        DEVICE_ACTIONS.toList()))
                     a.put(decl("observe_screen", "读取主人已授权的当前 QQ/B站界面；不代表看过完整视频", emptyList()))
                     a.put(decl("open_app", "打开已授权的 QQ/B站；可提供 B站 BV 号。不会登录、发送或付款", listOf("package", "videoId"), listOf("package")))
                     a.put(decl("draft_comment", "依据本次已附加或先前已分析的视频资料形成评论草稿；analysis 必须说明实际读到的内容、时间覆盖与未读部分，供主人审阅。等待本机授权，不会发送", listOf("observationId", "analysis", "body")))
@@ -604,6 +632,8 @@ class CompanionEngine private constructor(private val context: Context) {
     }
 
     companion object {
+        private val DEVICE_ACTIONS = linkedSetOf("control.start", "control.status", "capture.status", "capture.refresh", "control.tap", "control.swipe", "control.longPress",
+            "control.hold", "control.multi", "control.waitFor", "landmark.save", "landmark.find", "landmark.tap", "landmark.forget", "route.save", "route.replay", "route.forget", "notes.add")
         @Volatile private var instance: CompanionEngine? = null
         fun get(context: Context): CompanionEngine = instance ?: synchronized(this) {
             instance ?: CompanionEngine(context.applicationContext).also { instance = it }

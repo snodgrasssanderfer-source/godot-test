@@ -18,7 +18,7 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
     private val lastContentEpoch = java.util.concurrent.atomic.AtomicLong(-1)
     val localOwner = CommandPrincipal("local-device-owner", "owner_ui", CompanionPolicy.OWNER, true)
     val life = io.deepseekharness.mobile.companion.life.LifeModule(context, store, this)
-    val device = io.deepseekharness.mobile.companion.devicev2.DeviceModule(context, this)
+    val device = io.deepseekharness.mobile.companion.devicev2.DeviceModule(context, this, store)
     val social = io.deepseekharness.mobile.companion.social.SocialModule(context, store, this)
     private val connectivity = context.getSystemService(ConnectivityManager::class.java)
     private val connectionWatcher = object : ConnectivityManager.NetworkCallback() {

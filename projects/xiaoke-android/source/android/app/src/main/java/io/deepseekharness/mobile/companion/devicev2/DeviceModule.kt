@@ -23,7 +23,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicLong
 
 /** Real native device endpoint. No model credentials, external accounts, persistent frames or PCM. */
-class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpoint {
+class DeviceModule(context: Context, private val ports: HostPorts, store: io.deepseekharness.mobile.companion.CompanionStore) : ModuleEndpoint {
     override val domain = "device"
     private val app = context.applicationContext
     private val main = Handler(Looper.getMainLooper())
@@ -31,6 +31,11 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
     private val captureEpoch = AtomicLong()
     private val input = GameInputController(app, ::changed)
     private val frames = linkedMapOf<String, ControlFrame>()
+    private val grays = linkedMapOf<String, FrameMatcher.Gray>()
+    val notes = GameNotes(store)
+    /** Successful steps since control started (or the last saved route), for route.save. */
+    private val recording = mutableListOf<JSONObject>()
+    @Volatile private var backgroundSession: BackgroundScreen.Session? = null
     @Volatile private var capture = JSONObject().put("state", "idle").toString()
     @Volatile private var capturePackage = ""
     @Volatile private var captureDeadline = 0L
@@ -67,7 +72,7 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
                 JSONObject().put("state", "requested").put("visible", visible)
             }
             "capture.request" -> requestCapture(data)
-            "capture.stop" -> { captureEpoch.incrementAndGet(); captureDeadline = 0; capturePackage = ""; synchronized(frames) { frames.clear() }
+            "capture.stop" -> { endBackground(); captureEpoch.incrementAndGet(); captureDeadline = 0; capturePackage = ""; synchronized(frames) { frames.clear(); grays.clear() }
                 capture = JSONObject().put("state", "stopped").toString(); changed(); JSONObject(capture) }
             "capture.status" -> JSONObject(capture)
             "control.start", "control.resume" -> {
@@ -82,7 +87,15 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
             }
             "control.stop" -> stopInput("owner_stop")
             "control.status" -> input.state()
-            "control.tap", "control.swipe", "control.longPress" -> perform(action.substringAfter('.'), data, principal)
+            "control.tap", "control.swipe", "control.longPress", "control.hold", "control.multi" -> perform(action.substringAfter('.'), data, principal)
+            "landmark.save" -> saveLandmark(data)
+            "landmark.find" -> findLandmark(data.getString("name"))
+            "landmark.tap" -> tapLandmark(data, principal)
+            "landmark.forget" -> notes.forget(currentGame(), "landmarks", data.getString("name"))
+            "control.waitFor" -> waitFor(data)
+            "route.save" -> saveRoute(data.getString("name"))
+            "route.replay" -> replay(data, principal)
+            "route.forget" -> notes.forget(currentGame(), "routes", data.getString("name"))
             "audio.configure" -> {
                 check(DeviceAudioSession.state().optString("state") !in setOf("awaiting_permission", "starting", "recording", "stopping")) { "请先结束当前收音" }
                 val c = decodeAudioConfig(data)
@@ -147,28 +160,57 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
         }
         changed(); return JSONObject().put("jobId", job).put("state", "queued")
     }
-    private fun captureFrame(pkg: String, generation: Long): JSONObject {
-        check(permits(pkg)) { "观察授权已结束" }
+    private class Shot(val jpeg: ByteArray, val gray: FrameMatcher.Gray, val windowId: Int, val rotation: Int, val left: Int, val top: Int,
+        val right: Int, val bottom: Int, val tree: String, val displayId: Int, val covers: String)
+
+    /** Background display first, then a Shizuku full-screen frame, then the accessibility window screenshot. */
+    private fun shoot(pkg: String): Shot {
+        backgroundSession?.let { session ->
+            check(BackgroundScreen.session(pkg)?.displayId == session.displayId) { "后台副屏已关闭" }
+            val bitmap = BackgroundScreen.frame(session)
+            try { return Shot(ShizukuInput.jpeg(bitmap), ShizukuInput.gray(bitmap), -1, 0, 0, 0, bitmap.width, bitmap.height, "", session.displayId, "virtual_display") }
+            finally { bitmap.recycle() }
+        }
         val device = CompanionDevice(app)
-        val capturedAt = SystemClock.elapsedRealtime()
         val rotation = GameInputController.rotation(app)
         val before = device.observe(pkg)
-        val bytes = device.screenshot(pkg)
+        val full = if (ShizukuInput.ready()) runCatching { ShizukuInput.screen(app) }.getOrNull() else null
+        val jpeg = if (full == null) device.screenshot(pkg) else null
         val after = device.observe(pkg)
         check(before.optInt("windowId") == after.optInt("windowId") && rotation == GameInputController.rotation(app) && before.getJSONArray("nodes").toString() == after.getJSONArray("nodes").toString()) { "截图期间窗口发生变化" }
         val bounds = after.getJSONArray("nodes").getJSONObject(0).getJSONArray("bounds")
+        val left = bounds.getInt(0); val top = bounds.getInt(1); val right = bounds.getInt(2); val bottom = bounds.getInt(3)
+        val tree = after.getJSONArray("nodes").toString().toByteArray().sha256()
+        if (full != null) try {
+            return Shot(ShizukuInput.jpeg(full), ShizukuInput.gray(full), after.getInt("windowId"), rotation, left, top, right, bottom, tree, 0, "display")
+        } finally { full.recycle() }
+        val bitmap = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg!!.size) ?: error("截图无法解码")
+        try { return Shot(jpeg, ShizukuInput.gray(bitmap, left, top, (right - left).toFloat() / bitmap.width), after.getInt("windowId"), rotation, left, top, right, bottom, tree, 0, "window") }
+        finally { bitmap.recycle() }
+    }
+
+    private fun captureFrame(pkg: String, generation: Long): JSONObject {
+        check(permits(pkg)) { "观察授权已结束" }
+        val capturedAt = SystemClock.elapsedRealtime()
+        val shot = shoot(pkg)
         val id = UUID.randomUUID().toString()
-        val frame = ControlFrame(id, captureSession, pkg, capturedAt, after.getInt("windowId"), rotation,
-            bounds.getInt(0), bounds.getInt(1), bounds.getInt(2), bounds.getInt(3), after.getJSONArray("nodes").toString().toByteArray().sha256(), bytes.sha256())
+        val frame = ControlFrame(id, captureSession, pkg, capturedAt, shot.windowId, shot.rotation, shot.left, shot.top, shot.right, shot.bottom,
+            shot.tree, shot.jpeg.sha256(), shot.displayId, FrameMatcher.fingerprint(shot.gray))
         check(frame.right > frame.left && frame.bottom > frame.top)
         val result = JSONObject().put("state", "ready").put("frameId", id).put("captureSession", captureSession).put("packageName", pkg)
             .put("screenHash", frame.screenHash).put("capturedAtMs", frame.atMs).put("rotation", frame.rotation).put("left", frame.left).put("top", frame.top)
             .put("width", frame.right - frame.left).put("height", frame.bottom - frame.top).put("windowId", frame.windowId)
-            .put("preview", "data:image/jpeg;base64," + Base64.encodeToString(bytes, Base64.NO_WRAP))
-            .put("coverage", "当前应用窗口的单帧；尚未判断游戏目标是否完成")
+            .put("image", when (shot.covers) {
+                "display" -> "整块屏幕；图片按比例缩小，坐标用屏幕像素（图片坐标 × 屏幕宽 / 图片宽）"
+                "virtual_display" -> "后台副屏；坐标用副屏像素（左上角为 0,0）"
+                else -> "游戏窗口；坐标用屏幕像素（left/top 加上按比例换算的图片坐标）"
+            })
+            .put("preview", "data:image/jpeg;base64," + Base64.encodeToString(shot.jpeg, Base64.NO_WRAP))
+            .put("coverage", "当前应用画面的单帧；尚未判断游戏目标是否完成")
         synchronized(frames) {
             check(generation == captureEpoch.get() && !closed) { "旧观察会话已经取消" }
             frames[id] = frame; while (frames.size > 6) frames.remove(frames.keys.first())
+            grays[id] = shot.gray; while (grays.size > 3) grays.remove(grays.keys.first())
             capture = result.toString()
         }
         changed(); return JSONObject(result.toString())
@@ -177,7 +219,7 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
         val frame = synchronized(frames) { frames[data.getString("frameId")] } ?: error("观察帧已失效，请重新观察")
         check(frame.session == captureSession && permits(frame.packageName)) { "观察会话已经结束" }
         authorize(principal, frame.packageName, data.getString("requestId"), data.getString("sessionId"), data.toString().toByteArray().sha256())
-        if (AppForeground.isForeground()) {
+        if (frame.displayId == 0 && AppForeground.isForeground()) {
             val target = app.packageManager.getLaunchIntentForPackage(frame.packageName) ?: error("无法打开目标应用")
             onMainAndWait {
                 val lease = input.fence.current()
@@ -188,6 +230,11 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
         }
         val result = input.perform(kind, data, frame)
         if (result.optString("state") == "completed") {
+            synchronized(recording) {
+                val step = JSONObject().put("kind", kind).put("before", frame.fingerprint.toString()).put("width", frame.right - frame.left).put("height", frame.bottom - frame.top)
+                for (key in listOf("x", "y", "toX", "toY", "durationMs", "moveMs", "pointers", "landmark")) if (data.has(key)) step.put(key, data.get(key))
+                recording.add(step); while (recording.size > 64) recording.removeAt(0)
+            }
             try { Thread.sleep(400); result.put("after", captureFrame(frame.packageName, captureEpoch.get())) }
             catch (e: Exception) { result.put("observationError", e.message?.take(160)).put("gameOutcome", "unknown") }
         }
@@ -282,10 +329,12 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
         check(info.flags and ApplicationInfo.FLAG_SYSTEM == 0 && pkg !in setOf(app.packageName, "com.tencent.mobileqq", "tv.danmaku.bili")) { "此入口仅用于主人选定的单机游戏" }
     }
     /** The owner asked in chat to play a stretch for them: take over the game they are already letting her watch. Touching the screen takes it back. */
-    fun delegateFromChat(requested: String, seconds: Int): JSONObject {
+    fun delegateFromChat(requested: String, seconds: Int, background: Boolean = false): JSONObject {
         check(!closed)
         check(!EmergencyHold.ordinaryHeld) { "主人刚急停了点击和输入，要等主人说继续" }
-        val pkg = requested.ifBlank { capturePackage.ifBlank { CompanionOverlayService.observedPackage() } }
+        if (background) return startBackground(resolvePackage(requested.ifBlank { capturePackage.ifBlank { CompanionOverlayService.observedPackage() } }), seconds)
+        endBackground()
+        val pkg = requested.ifBlank { capturePackage.ifBlank { CompanionOverlayService.observedPackage() } }.let { if (it.isBlank()) it else resolvePackage(it) }
         check(pkg.isNotBlank() && (permits(pkg) || CompanionOverlayService.permits(pkg))) { "现在没有在陪主人看游戏，先请主人打开伴玩" }
         checkGame(pkg)
         val principal = CommandPrincipal("local-device-owner", "owner_ui", OWNER, true).also { surfacePrincipal = it }
@@ -296,8 +345,149 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
             capture = JSONObject().put("state", "idle").put("packageName", pkg).toString()
         }
         authorize(principal, pkg, UUID.randomUUID().toString(), null)
-        resumable = null
+        resumable = null; synchronized(recording) { recording.clear() }
         return input.start(pkg, seconds.coerceIn(10, 1800), input.state().getLong("inputEpoch")).also { changed() }
+    }
+
+    /** The owner asked her to play on her own: the game moves to the virtual display and the phone stays the owner's. */
+    private fun startBackground(pkg: String, seconds: Int): JSONObject {
+        check(ShizukuInput.ready()) { "后台玩需要 Shizuku 已运行并授权" }
+        checkGame(pkg)
+        val principal = CommandPrincipal("local-device-owner", "owner_ui", OWNER, true).also { surfacePrincipal = it }
+        authorize(principal, pkg, UUID.randomUUID().toString(), null)
+        val session = BackgroundScreen.start(app, pkg)
+        captureEpoch.incrementAndGet(); synchronized(frames) { frames.clear(); grays.clear() }
+        val duration = seconds.coerceIn(10, 1800)
+        capturePackage = pkg; captureSession = UUID.randomUUID().toString(); captureDeadline = SystemClock.elapsedRealtime() + duration * 1000L + 60_000
+        capture = JSONObject().put("state", "idle").put("packageName", pkg).put("background", true).toString()
+        backgroundSession = session
+        resumable = null; synchronized(recording) { recording.clear() }
+        val state = input.start(pkg, duration, input.state().getLong("inputEpoch"), background = true)
+        val epoch = state.getLong("inputEpoch")
+        main.postDelayed({ if (input.background && input.state().optLong("inputEpoch") == epoch) worker.execute { endBackground() } }, duration * 1000L + 1000)
+        changed(); return state.put("displayId", session.displayId).put("width", session.width).put("height", session.height)
+    }
+
+    private fun endBackground() {
+        if (backgroundSession == null) return
+        backgroundSession = null
+        if (input.state().optString("state") == "authorized" && input.background) input.stop("background_ended")
+        BackgroundScreen.stop()
+    }
+
+    /** A package name, or an app's name as the owner says it. */
+    private fun resolvePackage(name: String): String {
+        val trimmed = name.trim()
+        require(trimmed.isNotBlank()) { "要玩哪个游戏？" }
+        if (trimmed.matches(Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+"))) return trimmed
+        val pm = app.packageManager
+        val apps = pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
+        return (apps.firstOrNull { it.loadLabel(pm).toString() == trimmed } ?: apps.firstOrNull { it.loadLabel(pm).toString().contains(trimmed, ignoreCase = true) })
+            ?.activityInfo?.packageName ?: error("没找到叫“$trimmed”的应用")
+    }
+
+    private fun currentGame(): String = input.state().optString("packageName").ifBlank { capturePackage }.also { check(it.isNotBlank()) { "现在没有在玩的游戏" } }
+
+    private fun freshFrame(): Pair<JSONObject, FrameMatcher.Gray> {
+        val pkg = currentGame()
+        val frame = captureFrame(pkg, captureEpoch.get())
+        val gray = synchronized(frames) { grays[frame.getString("frameId")] } ?: error("画面已失效")
+        return frame to gray
+    }
+
+    private fun saveLandmark(data: JSONObject): JSONObject {
+        val name = data.getString("name").trim().take(24).also { require(it.isNotBlank()) }
+        val frameId = data.optString("frameId").ifBlank { JSONObject(capture).optString("frameId") }
+        val (frame, gray) = synchronized(frames) { frames[frameId] to grays[frameId] }
+        check(frame != null && gray != null) { "画面已失效，请重新看一眼再标记" }
+        val gx = ((data.getDouble("x") - gray.originX) / gray.scale).toInt(); val gy = ((data.getDouble("y") - gray.originY) / gray.scale).toInt()
+        val gw = (data.getDouble("w") / gray.scale).toInt(); val gh = (data.getDouble("h") / gray.scale).toInt()
+        require(gw in 8..96 && gh in 8..96) { "标记区域太小或太大（约 ${(8 * gray.scale).toInt()} 到 ${(96 * gray.scale).toInt()} 像素见方）" }
+        notes.saveLandmark(frame.packageName, name, FrameMatcher.crop(gray, gx, gy, gw, gh))
+        return JSONObject().put("state", "saved").put("name", name)
+    }
+
+    private fun locate(name: String, gray: FrameMatcher.Gray): JSONObject {
+        val template = notes.landmark(currentGame(), name) ?: error("没有叫“$name”的标记")
+        val match = FrameMatcher.find(gray, template) ?: return JSONObject().put("found", false).put("score", 0)
+        val (x, y) = FrameMatcher.screenCenter(gray, match, template)
+        return JSONObject().put("found", match.score >= FrameMatcher.FOUND).put("score", "%.2f".format(match.score)).put("x", x).put("y", y)
+    }
+
+    private fun findLandmark(name: String): JSONObject {
+        val (frame, gray) = freshFrame()
+        return locate(name, gray).put("after", frame)
+    }
+
+    private fun tapLandmark(data: JSONObject, principal: CommandPrincipal): JSONObject {
+        val name = data.getString("name")
+        val (frame, gray) = freshFrame()
+        val spot = locate(name, gray)
+        if (!spot.getBoolean("found")) return spot.put("state", "not_found").put("after", frame)
+        val control = input.state()
+        return perform("tap", JSONObject().put("requestId", data.optString("requestId").ifBlank { UUID.randomUUID().toString() })
+            .put("sessionId", control.optString("sessionId")).put("inputEpoch", control.optLong("inputEpoch"))
+            .put("frameId", frame.getString("frameId")).put("x", spot.getInt("x")).put("y", spot.getInt("y")).put("landmark", name), principal).put("landmark", spot)
+    }
+
+    /** Waits on the device without spending model calls: until a landmark shows up, or (without one) until the screen changes. */
+    private fun waitFor(data: JSONObject): JSONObject {
+        val name = data.optString("landmark")
+        val deadline = SystemClock.elapsedRealtime() + data.optLong("timeoutMs", 8000).coerceIn(500, 20_000)
+        var (frame, gray) = freshFrame()
+        val first = FrameMatcher.fingerprint(gray)
+        while (true) {
+            if (name.isNotBlank()) { val spot = locate(name, gray); if (spot.getBoolean("found")) return spot.put("state", "found").put("after", frame) }
+            else if (FrameMatcher.distance(first, FrameMatcher.fingerprint(gray)) > FrameMatcher.SAME_SCREEN) return JSONObject().put("state", "changed").put("after", frame)
+            if (SystemClock.elapsedRealtime() >= deadline) return JSONObject().put("state", "timeout").put("after", frame)
+            Thread.sleep(350)
+            freshFrame().let { frame = it.first; gray = it.second }
+        }
+    }
+
+    private fun saveRoute(name: String): JSONObject {
+        val steps = synchronized(recording) { JSONArray(recording.map { JSONObject(it.toString()) }).also { recording.clear() } }
+        check(steps.length() > 0) { "这次还没有成功的操作可以存成路线" }
+        notes.saveRoute(currentGame(), name.trim().take(24), steps)
+        return JSONObject().put("state", "saved").put("name", name).put("steps", steps.length())
+    }
+
+    /**
+     * Replays a saved route step by step. Before each step the screen must look like it did when the step was
+     * recorded (or the step's landmark must be visible); otherwise it stops and hands back to her with the frame.
+     */
+    private fun replay(data: JSONObject, principal: CommandPrincipal): JSONObject {
+        val name = data.getString("name")
+        val steps = notes.route(currentGame(), name) ?: error("没有叫“$name”的路线")
+        var (frame, gray) = freshFrame()
+        for (i in 0 until steps.length()) {
+            val step = steps.getJSONObject(i)
+            if (step.optInt("width") != frame.optInt("width") || step.optInt("height") != frame.optInt("height"))
+                return JSONObject().put("state", "diverged").put("stoppedAt", i).put("reason", "画面尺寸和录制时不同").put("after", frame)
+            val deadline = SystemClock.elapsedRealtime() + 3000
+            var target: JSONObject? = null
+            while (true) {
+                if (EmergencyHold.ordinaryHeld || input.state().optString("state") != "authorized")
+                    return JSONObject().put("state", "stopped").put("stoppedAt", i).put("after", frame)
+                val landmark = step.optString("landmark")
+                if (landmark.isNotBlank()) { val spot = locate(landmark, gray); if (spot.getBoolean("found")) { target = spot; break } }
+                else if (FrameMatcher.distance(step.optString("before").toLong(), FrameMatcher.fingerprint(gray)) <= FrameMatcher.SAME_SCREEN) break
+                if (SystemClock.elapsedRealtime() >= deadline) return JSONObject().put("state", "diverged").put("stoppedAt", i)
+                    .put("reason", if (landmark.isNotBlank()) "没找到标记“$landmark”" else "画面和录制时对不上").put("after", frame)
+                Thread.sleep(300)
+                freshFrame().let { frame = it.first; gray = it.second }
+            }
+            val control = input.state()
+            val args = JSONObject(step.toString()).put("requestId", UUID.randomUUID().toString()).put("frameId", frame.getString("frameId"))
+                .put("sessionId", control.optString("sessionId")).put("inputEpoch", control.optLong("inputEpoch"))
+            target?.let { args.put("x", it.getInt("x")).put("y", it.getInt("y")) }
+            listOf("kind", "before", "width", "height").forEach(args::remove)
+            val result = perform(step.getString("kind"), args, principal)
+            if (result.optString("state") != "completed") return result.put("stoppedAt", i).put("state", "stopped")
+            result.optJSONObject("after")?.let { after -> synchronized(frames) { grays[after.getString("frameId")] }?.let { frame = after; gray = it } }
+                ?: freshFrame().let { frame = it.first; gray = it.second }
+        }
+        return JSONObject().put("state", "completed").put("steps", steps.length()).put("after", frame)
     }
     private fun permits(pkg: String) = !closed && pkg == capturePackage && SystemClock.elapsedRealtime() < captureDeadline
     @Volatile private var resumable: Pair<String, Long>? = null
@@ -314,10 +504,11 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
         if (!permits(pkg)) return
         runCatching {
             authorize(principal, pkg, UUID.randomUUID().toString(), null)
-            input.start(pkg, (remaining / 1000).toInt().coerceIn(10, 300), input.state().getLong("inputEpoch"))
+            input.start(pkg, (remaining / 1000).toInt().coerceIn(10, 300), input.state().getLong("inputEpoch"), background = backgroundSession != null)
         }
     }
     private fun stopInput(reason: String): JSONObject = input.stop(reason).also {
+        if (reason != "owner_emergency_stop") { if (backgroundSession != null) worker.execute { endBackground() }; ShizukuInput.release() }
         ports.emit("control.stopped", JSONObject().put("scope", OWNER).put("sourceId", "input:${it.optLong("inputEpoch")}").put("data", it))
     }
     private fun changed() { if (!closed) runCatching { ports.emit("moduleState", JSONObject().put("domain", domain)) } }
@@ -346,7 +537,7 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
     }
     override fun close() {
         if (closed) return
-        stopInput("module_closed"); cancelAnalysis(); closed = true; captureEpoch.incrementAndGet(); main.removeCallbacksAndMessages(null); worker.shutdownNow()
+        stopInput("module_closed"); BackgroundScreen.stop(); cancelAnalysis(); closed = true; captureEpoch.incrementAndGet(); main.removeCallbacksAndMessages(null); worker.shutdownNow()
         if (active === this) { DeviceAudioSession.stop(); DeviceAudioSession.onChanged = null; active = null }
     }
     companion object {
@@ -363,7 +554,7 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
         fun yieldToOwnerTouch() {
             val owner = active ?: return
             val control = owner.input.state()
-            if (control.optString("state") != "authorized" || control.optBoolean("releasePending")) return
+            if (control.optString("state") != "authorized" || control.optBoolean("releasePending") || owner.input.background) return
             if (SystemClock.elapsedRealtime() - owner.input.lastGestureEndedAt < 500) return
             owner.stopInput("owner_touch") // The owner took the game back; nothing to resume.
         }

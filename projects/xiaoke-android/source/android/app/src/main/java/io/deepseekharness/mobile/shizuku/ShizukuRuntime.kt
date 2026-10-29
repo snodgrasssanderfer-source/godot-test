@@ -504,6 +504,34 @@ class ShizukuRuntime(
         }
     }
 
+    /** True when Shizuku is running and granted; never binds or waits. */
+    fun ready(): Boolean = runCatching { tryPingBinder() && !Shizuku.isPreV11() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED }.getOrDefault(false)
+
+    fun injectGesture(plan: String): org.json.JSONObject {
+        requirePermission()
+        return org.json.JSONObject(requireService().injectGesture(plan))
+    }
+
+    /** Uses the live connection only: a cancel must never wait on a bind. */
+    fun cancelGesture() { runCatching { liveService()?.cancelGesture() } }
+
+    /** Raw `screencap` output: width, height, format (+ dataspace on newer Android), then RGBA rows. */
+    fun captureScreen(): ByteArray {
+        requirePermission()
+        val pipe = requireService().captureScreen()
+        return android.os.ParcelFileDescriptor.AutoCloseInputStream(pipe).use { input ->
+            val out = java.io.ByteArrayOutputStream(16 * 1024 * 1024)
+            val buffer = ByteArray(64 * 1024)
+            while (true) {
+                val n = input.read(buffer)
+                if (n < 0) break
+                check(out.size() + n <= 80 * 1024 * 1024) { "截屏过大" }
+                out.write(buffer, 0, n)
+            }
+            out.toByteArray()
+        }
+    }
+
     fun create(
         columns: Int,
         rows: Int,
@@ -874,7 +902,7 @@ class ShizukuRuntime(
         private const val BINDER_TIMEOUT_SECONDS = 8L
         private const val SERVICE_TIMEOUT_SECONDS = 10L
         private const val SERVICE_EXIT_TIMEOUT_SECONDS = 5L
-        private const val USER_SERVICE_VERSION = 6
+        private const val USER_SERVICE_VERSION = 7
         private const val MAX_SESSIONS = 4
 
         /**

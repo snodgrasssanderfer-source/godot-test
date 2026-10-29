@@ -17,6 +17,10 @@ interface IDeviceShellService {
     ParcelFileDescriptor virtualScreenSnapshot(String sessionId) = 8;
     VirtualScreenFrameHandle virtualScreenFrame(String sessionId) = 9;
     ParcelFileDescriptor virtualScreenSnapshotEnvelope(String sessionId) = 10;
+    // Companion game control: whole multi-finger gestures, their cancel, and a raw main-display frame.
+    String injectGesture(String plan) = 11;
+    void cancelGesture() = 12;
+    ParcelFileDescriptor captureScreen() = 13;
     // Shizuku reserves this transaction for removing a UserService.
     void destroy() = 16777114;
 }
