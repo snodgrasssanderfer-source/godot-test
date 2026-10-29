@@ -7,9 +7,9 @@ import java.util.UUID
 
 /** Bounded, separated tracks. Nothing is written to disk; a new session erases the old clip. */
 class PcmSession(private val now: () -> Long) {
-    data class Track(val samples: Int, val nonZero: Boolean, val firstAtMs: Long, val lastAtMs: Long)
+    data class Track(val samples: Int, val nonZero: Boolean, val firstAtMs: Long, val lastAtMs: Long, val sequence: Long)
     private data class Buffer(val bytes: ByteArrayOutputStream = ByteArrayOutputStream(), var nonZero: Boolean = false,
-        var first: Long = 0, var last: Long = 0)
+        var first: Long = 0, var last: Long = 0, var sequence: Long = 0)
     private val tracks = linkedMapOf<String, Buffer>()
     var id: String = ""; private set
     private var recording = false
@@ -30,14 +30,14 @@ class PcmSession(private val now: () -> Long) {
         val length = minOf(count, limit - b.bytes.size())
         if (length <= 0) return false
         if (b.bytes.size() == 0) b.first = now()
-        b.bytes.write(pcm, 0, length); b.last = now()
+        b.bytes.write(pcm, 0, length); b.last = now(); b.sequence++
         for (i in 0 until length) if (pcm[i].toInt() != 0) { b.nonZero = true; break }
         return length == count
     }
     @Synchronized fun stop(session: String) { check(session == id) { "录音会话已经更换" }; recording = false }
     @Synchronized fun metadata(): Map<String, Track> {
         expire()
-        return tracks.mapValues { (_, b) -> Track(b.bytes.size() / 2, b.nonZero, b.first, b.last) }
+        return tracks.mapValues { (_, b) -> Track(b.bytes.size() / 2, b.nonZero, b.first, b.last, b.sequence) }
     }
     @Synchronized fun wav(session: String, source: String): ByteArray {
         expire(); check(session == id) { "录音已过期或会话已经更换" }; check(!recording) { "请先结束录音" }

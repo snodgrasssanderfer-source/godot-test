@@ -57,7 +57,7 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
             "overlay.visibility" -> {
                 val visible = data.getBoolean("visible")
                 if (visible) check(Settings.canDrawOverlays(app)) { "请先开启悬浮窗权限" }
-                main.post { CompanionOverlayService.setVisible(app, visible) }
+                onMainAndWait { CompanionOverlayService.setVisible(app, visible) }
                 JSONObject().put("state", "requested").put("visible", visible)
             }
             "capture.request" -> requestCapture(data)
@@ -70,7 +70,7 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
                 val info = app.packageManager.getApplicationInfo(pkg, 0)
                 check(info.flags and ApplicationInfo.FLAG_SYSTEM == 0 && pkg !in setOf(app.packageName, "com.tencent.mobileqq", "tv.danmaku.bili")) { "此入口仅用于主人选定的单机游戏" }
                 authorize(principal, pkg, data.optString("requestId"), null)
-                input.start(pkg, data.optInt("durationSeconds", 120))
+                input.start(pkg, data.optInt("durationSeconds", 120), data.getLong("expectedInputEpoch"))
             }
             "control.stop" -> stopInput("owner_stop")
             "control.status" -> input.state()
@@ -112,7 +112,22 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
         val job = UUID.randomUUID().toString()
         capturePackage = pkg; captureSession = UUID.randomUUID().toString(); captureDeadline = SystemClock.elapsedRealtime() + 10 * 60_000
         capture = JSONObject().put("state", "queued").put("jobId", job).put("packageName", pkg).toString()
-        main.post { if (captureEpoch.get() == generation && !closed) { CompanionOverlayService.setVisible(app, true); app.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
+        main.postDelayed({
+            if (captureEpoch.get() == generation && !closed) {
+                captureEpoch.incrementAndGet(); captureDeadline = 0; capturePackage = ""
+                synchronized(frames) { frames.clear() }; capture = JSONObject().put("state", "expired").toString(); changed()
+            }
+        }, 10 * 60_000L)
+        main.post {
+            if (captureEpoch.get() == generation && !closed) runCatching {
+                CompanionOverlayService.setVisible(app, true); app.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            }.onFailure {
+                if (captureEpoch.compareAndSet(generation, generation + 1)) {
+                    captureDeadline = 0; capturePackage = ""
+                    capture = JSONObject().put("state", "error").put("jobId", job).put("error", "系统拒绝打开应用或悬浮球，请重新确认权限").toString(); changed()
+                }
+            }
+        }
         worker.execute {
             try {
                 Thread.sleep(900) // Allow the explicitly selected application to reach foreground.
@@ -135,12 +150,12 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
         val bounds = after.getJSONArray("nodes").getJSONObject(0).getJSONArray("bounds")
         val id = UUID.randomUUID().toString()
         val frame = ControlFrame(id, captureSession, pkg, capturedAt, after.getInt("windowId"), rotation,
-            bounds.getInt(0), bounds.getInt(1), bounds.getInt(2), bounds.getInt(3), after.getJSONArray("nodes").toString().toByteArray().sha256())
+            bounds.getInt(0), bounds.getInt(1), bounds.getInt(2), bounds.getInt(3), after.getJSONArray("nodes").toString().toByteArray().sha256(), bytes.sha256())
         check(frame.right > frame.left && frame.bottom > frame.top)
         check(generation == captureEpoch.get() && !closed) { "旧观察会话已经取消" }
         synchronized(frames) { frames[id] = frame; while (frames.size > 6) frames.remove(frames.keys.first()) }
         val result = JSONObject().put("state", "ready").put("frameId", id).put("captureSession", captureSession).put("packageName", pkg)
-            .put("capturedAtMs", frame.atMs).put("rotation", frame.rotation).put("left", frame.left).put("top", frame.top)
+            .put("screenHash", frame.screenHash).put("capturedAtMs", frame.atMs).put("rotation", frame.rotation).put("left", frame.left).put("top", frame.top)
             .put("width", frame.right - frame.left).put("height", frame.bottom - frame.top).put("windowId", frame.windowId)
             .put("preview", "data:image/jpeg;base64," + Base64.encodeToString(bytes, Base64.NO_WRAP))
             .put("coverage", "当前应用窗口的单帧；尚未判断游戏目标是否完成")
@@ -152,7 +167,11 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
         authorize(principal, frame.packageName, data.getString("requestId"), data.getString("sessionId"), data.toString().toByteArray().sha256())
         if (AppForeground.isForeground()) {
             val target = app.packageManager.getLaunchIntentForPackage(frame.packageName) ?: error("无法打开目标应用")
-            main.post { app.startActivity(target.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            onMainAndWait {
+                val lease = input.fence.current()
+                check(lease != null && lease.sessionId == data.getString("sessionId") && lease.epoch == data.getLong("inputEpoch")) { "输入授权已经失效" }
+                app.startActivity(target.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            }
             Thread.sleep(600)
         }
         val result = input.perform(kind, data, frame)
@@ -185,6 +204,12 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
             if (!closed && token == analysisGeneration) {
                 val type = event.optString("type")
                 analysis = JSONObject(event.toString()).put("state", if (type == "delta") "streaming" else type).put("captureSession", session).toString()
+                if (type == "completed" && event.optString("text").isNotBlank()) {
+                    ports.emit("observation.summary", JSONObject().put("scope", OWNER).put("sourceId", "audio:$session:$token")
+                        .put("data", JSONObject().put("text", event.getString("text")).put("summary", event.getString("text"))
+                            .put("kind", "inference").put("source", "本次已授权的临时音频片段")
+                            .put("captureSession", session).put("trackMetadata", tracks).put("createdAt", System.currentTimeMillis())))
+                }
                 changed()
             }
         }
@@ -200,6 +225,19 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
         if (digest != null) effect.put("contentDigest", digest)
         val decision = ports.authorizeEffect(effect, p)
         check(decision.optBoolean("allowed")) { decision.optString("reason", "宿主没有授权此次输入") }
+    }
+    private fun onMainAndWait(action: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) { action(); return }
+        val done = java.util.concurrent.CountDownLatch(1)
+        val failure = java.util.concurrent.atomic.AtomicReference<Exception?>()
+        val expired = java.util.concurrent.atomic.AtomicBoolean(false)
+        main.post {
+            try { if (!expired.get() && !closed) action() }
+            catch (e: Exception) { failure.set(e) }
+            finally { done.countDown() }
+        }
+        if (!done.await(3, java.util.concurrent.TimeUnit.SECONDS)) { expired.set(true); error("界面调度超时，操作未确认") }
+        failure.get()?.let { throw it }
     }
     private fun decodeAudioConfig(data: JSONObject): DeviceAudioSession.Config {
         val mic = data.optBoolean("microphone", true); val playback = data.optBoolean("playback", false)
@@ -224,7 +262,7 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
     }
     override fun close() {
         if (closed) return
-        stopInput("module_closed"); cancelAnalysis(); closed = true; captureEpoch.incrementAndGet(); worker.shutdownNow()
+        stopInput("module_closed"); cancelAnalysis(); closed = true; captureEpoch.incrementAndGet(); main.removeCallbacksAndMessages(null); worker.shutdownNow()
         if (active === this) { DeviceAudioSession.stop(); DeviceAudioSession.onChanged = null; active = null }
     }
     companion object {
@@ -232,6 +270,7 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
         @Volatile private var active: DeviceModule? = null
         fun permitsObservation(pkg: String) = active?.permits(pkg) == true
         fun stopInputFromSurface() { active?.stopInput("owner_emergency_stop") }
+        fun overlayChanged() { active?.changed() }
         fun surfaceFrame(): JSONObject = active?.let { JSONObject(it.capture) } ?: JSONObject()
         fun captureFromSurface(): JSONObject {
             val owner = active ?: error("设备模块未开启")

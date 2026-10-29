@@ -1,63 +1,99 @@
-# B 设备模块接口与进度
+# B 安卓音频、悬浮球与输入控制
 
-基线：`34290cab4eac3b75caf92c7c89711bf5727d302b`。分支：`companion/devicev2-20261029`。
-实现目录：`source/android/app/src/main/java/io/deepseekharness/mobile/companion/devicev2`；界面：`source/src/companion/devicev2/DevicePanel.tsx`。
+固定基线：`34290cab4eac3b75caf92c7c89711bf5727d302b`。独立分支：`companion/devicev2-20261029`。本文件描述实际接口；真机效果仍需后续验证。
 
-## 接线
+## 主集成接线
 
-`DeviceModule(context, ports)` 实现共享 `ModuleEndpoint`。所有授权只能由宿主创建的 `CommandPrincipal(owner=true,channel="owner_ui",scope="owner:local")` 发起。普通模型输出、群和远程会话不能自授设备控制。根插件通过既定 `command('module',{domain:'device',action,data})` 路由。`DevicePanel` 使用 `ModulePanelProps`。
+1. 按进程唯一创建 `devicev2.DeviceModule(context, ports)`，注册 `domain="device"`。不要每次 snapshot 创建；宿主生命周期结束时调用 close。
+2. 已有 `command('module',{domain:'device',action,data})` 路由到 execute。所有命令和 snapshot 仅接受宿主构造的 `owner=true,channel="owner_ui",scope="owner:local"`。不读取 JSON 中的 owner。
+3. 根界面挂 `DevicePanel`，传 `ModulePanelProps`。例如：
 
-新增 `DeviceConsentActivity` 负责运行时录音许可与每次 MediaProjection 同意；不要求根插件转发 Activity result。根 Manifest 需声明该 Activity（exported=false）及 `DeviceAudioService`（exported=false，microphone|mediaProjection）。具体补丁随实现交付，不修改根文件。
-
-## 动作载荷
-
-- `overlay.visibility {visible:boolean}`：显示/隐藏已有悬浮球；隐藏不停止陪聊或收音。
-- `capture.request {packageName:string}`：创建短时单应用观察范围、打开指定应用并异步获取一帧；返回 `{jobId,state:"queued"}`，真实结果在 snapshot.capture。
-- `capture.stop {}`：撤销设备模块自己的观察范围；不会结束原陪伴会话。
-- `capture.status {}`：当前帧元数据。原图为短期内存，不进备份。
-- `control.start` / `control.resume {packageName,singlePlayer:true,durationSeconds:120}`：要求本机主人明确确认、现有 DSH 应用白名单及宿主 `phone_input` 授权；返回新的 `{sessionId,inputEpoch,expiresAtMs}`。不接受联机或独立游戏账号方案。
-- `control.stop {}`：仅停本模块输入，撤销 lease、提高 epoch；保留观察、收音、陪聊。重复停止幂等。
-- `control.tap` / `control.longPress {requestId,sessionId,inputEpoch,frameId,x,y,durationMs?}`；`control.swipe` 另有 `toX,toY,durationMs`。坐标为原生屏幕像素。每个动作只允许一次，绑定新鲜画面、同应用/窗口/旋转，并逐次经过宿主授权。返回真实系统回执与后置观察；画面变化不等于游戏目标达成。
-- `control.status {}`：状态、停止原因、在途动作与释放状态。
-- `audio.configure {microphone:true,playback:true,durationSeconds:20,packageName}`：限时配置；内播限指定应用 UID，不采其它应用。
-- `audio.start {}`：返回等待系统授权的 jobId，只有实际 AudioRecord 启动后进入 recording。
-- `audio.stop {captureSession?}`：停止采集；提供 session 时不允许误停新会话。
-- `audio.read {captureSession,source:"mic"|"playback"}`：返回有界 WAV/元数据，仅从内存取出。无音量数据标注静音/不可捕获未知，不假称有声音。
-- `audio.analyze {captureSession,prompt}`：主人主动请求，将已采两路音频及来源标签交 HostPorts.requestModel；实际分析文本与 requestId 回写 snapshot。不存在直连 provider。
-- `speech.interrupt {}`：复用原 presence interrupt，取消当前语音回应；与 control.stop 分开。
-
-## 状态示例（字段示意，不是测试成功）
-
-```json
-{"capture":{"state":"ready","frameId":"…","captureSession":"…","packageName":"example.game","rotation":0,"capturedAtMs":123,"width":1080,"height":2400},"audio":{"state":"idle","captureSession":"","tracks":{},"mode":"bounded_capture"},"control":{"state":"stopped","inputEpoch":0,"releasePending":false,"reason":"not_authorized"},"overlay":{"running":false,"visible":false,"globalFiveSecondGesture":false}}
+```tsx
+<DevicePanel state={snapshot.modules.device}
+  available={nativeCompanion}
+  run={(action, data = {}) => command('module', {domain: 'device', action, data})} />
 ```
 
-`moduleState` 事件通知根界面刷新。`control.stopped`、`action.completed`、`observation.summary` 带 sourceId；原始 PCM/截图不广播。音频 raw clip 默认只在内存保留，限时过期或下一会话清除。
+4. 应用 `integration/device-manifest.patch`，注册 `DeviceConsentActivity`、`DeviceAudioService` 与 `FOREGROUND_SERVICE_MEDIA_PROJECTION`。基线已有 RECORD_AUDIO、MICROPHONE FGS 权限。没有新增依赖，不需要根 Activity 转发结果。
+5. `control.stop` 必须可独立于占用动作线程的请求执行，不能排在长任务后面。它不等待主线程、不取消陪聊或模型任务。浮球和通知直接进入同一输入安全入口。
+6. 消费 `moduleState` 时重新 snapshot；`control.stopped`、`action.completed` 携带 scope/sourceId/data，不含原始图像或 PCM。宿主 emit 应非阻塞。
+7. snapshot 的 `capture.preview` 是本机短期内存画面。不要写入日志、数据库、同步或备份。
 
-## 当前进度
+## 入口和载荷
 
-- 已读取正式协议并固定基线。
-- 实现中：独立输入代际、五秒长按、观察动作闭环、分轨采集与控制面板。
-- 尚未运行本分支代码测试或构建；未做模拟器、真机、收费模型与真实社交验证。
+| 动作 | 载荷与结果 |
+| --- | --- |
+| overlay.visibility | `{visible:boolean}`；显示或隐藏浮球，保留陪聊/收音。异步服务创建返回 requested，最终显示状态由 snapshot/事件反映。 |
+| capture.request | `{packageName}`；获得十分钟单应用观察范围，打开该应用，异步取一帧。返回 `{jobId,state:"queued"}`；实际结果在 capture。需要用户已授予悬浮权限和开启无障碍。 |
+| capture.stop / status | `{}`；stop 撤销设备模块自己的观察与临时画面，不结束另一路原 presence 会话。 |
+| control.start / resume | `{packageName,singlePlayer:true,durationSeconds:120,expectedInputEpoch}`；要求本机主人、现有 DSH 应用控制白名单及宿主 phone_input gate。有效期 10–300 秒。返回新 sessionId/inputEpoch/expiresAtMs。 |
+| control.stop / status | `{}`；stop 撤销 lease、提高 epoch、拒绝旧动作。重复停止不会重新授权，也不停止收音/观察/陪聊。 |
+| control.tap | `{requestId,sessionId,inputEpoch,frameId,x,y}`，屏幕原生像素坐标。 |
+| control.longPress | tap 载荷及 `durationMs`，500–1500ms。 |
+| control.swipe | tap 载荷及 `toX,toY,durationMs`，100–1500ms。 |
+| audio.configure | `{microphone:true,playback:true,durationSeconds:20,packageName}`；1–30 秒，两路至少选一路，内播限制到指定应用 UID。配置持久保存，原始声音不落盘。 |
+| audio.start | `{}`；要求助手在前台，通过自有 Activity 按次申请录音/投影。返回 awaiting_permission；实际 AudioRecord 启动后才变 recording。 |
+| audio.stop | `{captureSession?}`；带 session 时拒绝误停新会话；等待权限中的请求也能取消。 |
+| audio.read | `{captureSession,source:"mic"|"playback"}`；结束录音后返回 `{captureSession,source,mime:"audio/wav",base64}`。不上传。 |
+| audio.analyze | `{captureSession,prompt}`；主人主动将实际采到的片段交 HostPorts.requestModel，返回 jobId，文本/错误在 audio.analysis。 |
+| audio.cancelAnalysis | `{}`；只取消宿主模型分析，旧回调被代际隔离。客户端取消不保证服务端停止计费。 |
+| speech.interrupt | `{}`；复用原 presence interrupt，取消当前语音回应。与输入停止互不相连。 |
 
-## 诚实边界与依赖
+主人确认恢复示例（epoch 必须来自当前界面 snapshot；此前停止会使旧确认失效）：
 
-普通权限仅支持自有浮球/面板五秒长按。Android 手势没有无副作用的任意时刻取消 API；本实现将手势拆成短段，停止后仅允许释放已按住触点，系统调度延迟另计。不能把 gesture dispatch 成功称为游戏目标完成，也不声称通用 RPG 已验证。
+```json
+{"domain":"device","action":"control.resume","data":{"packageName":"example.game","singlePlayer":true,"durationSeconds":120,"expectedInputEpoch":4}}
+```
 
-复用 DSH 原生观察及 presence 音频控制器，原始上游 [DSH e9be0e4](https://github.com/dphmoblie/deepseek-harness-android/tree/e9be0e43629f8b744991c2cf9efd160ca7d41abc)，MIT。只读参考 [RootEncoder InternalAudioSource](https://github.com/pedroSG94/RootEncoder/blob/f1bbda7ca6fb92bb599206fda2b97745ac11b7f2/encoder/src/main/java/com/pedro/encoder/input/sources/audio/InternalAudioSource.kt)，Apache-2.0；不复制、打包或执行其框架。既有浮球可复用，不引入 FloatingX。无新增运行时依赖。
+单次动作示例：
 
-遵循 [Android 音频捕获](https://developer.android.com/media/platform/av-capture)、[前台服务类型](https://developer.android.com/develop/background-work/services/fgs/service-types) 及 [MediaProjection 生命周期](https://developer.android.com/media/grow/media-projection)。现有系统 ASR/TTS 默认外放时轮流听说；实验耳机抢话未验证，不称全双工。
+```json
+{"domain":"device","action":"control.tap","data":{"requestId":"unique-gesture-1","sessionId":"current-control-session","inputEpoch":6,"frameId":"observed-frame-id","x":540,"y":900}}
+```
 
-## 2026-10-29 实施检查点
+不能复用示例中的 session、epoch 或 frameId；它们仅说明结构。
 
-- 已实装 DeviceModule 与前端 DevicePanel，通过 HostPorts 发送音频分析；主集成还需构造模块并挂入根面板。
-- 浮球保持 52dp 小球；球上静止五秒、通知和面板均只停止输入。隐藏浮球保留已有 presence 会话。
-- 输入通过 DSH 已有敏感窗口、锁屏和应用检查；另需控制白名单。连续手势分段不超过约 80ms，停止后只允许释放最后触点；系统调度和释放回执尚待真机测量。
-- 每个动作绑定控制会话、epoch、请求编号和五秒内画面；重复请求不会重复手势。动作后重新采样；系统回执和游戏目标未混淆。
-- 分轨 AudioRecord、每次 MediaProjection、权限拒绝、会话撤销与采集上限均已接入。麦克风采样期间挂起现有系统 ASR，采样结束恢复原 ASR 意图；没有新增语音聊天循环。
-- `audio.cancelAnalysis {}` 是新增扩展动作，只取消宿主模型分析。不会触发输入停止；反向亦然。
-- 原生浮球面板提供刷新画面、选点、点击与长按；`control.swipe` 提供宿主可用的短时滑动原语。仍未完成具体游戏自动规划/实战。
-- 根 Manifest 集成补丁：`integration/device-manifest.patch`。不需要新增依赖、根 Activity 转发或修改现有 Plugin 的权限回调。
-- ModuleEndpoint 应由宿主按进程唯一持有，释放时调用 close；不要在每次 snapshot 创建新实例。模块原始画面 preview 为内存临时数据，宿主不应落库或备份。
-- 已执行：DevicePanel 4 项 Vitest 全通过；`pnpm exec tsc -b` 与该目录 ESLint 通过。
-- 原生 Kotlin 编译/JUnit 正在恢复工具链，结果待补；没有模拟器或真机结果。
+## 宿主授权和模型约定
+
+每次控制授权和动作均调用：
+
+```json
+{"type":"phone_input","target":"example.game","scope":"owner:local","requestId":"unique-gesture-1","controlSessionId":"current-control-session","contentDigest":"sha256-of-current-payload"}
+```
+
+start/resume 尚无控制 session，省略 controlSessionId/contentDigest。只有 allowed=true 才继续；执行器仍独立检查白名单、窗口、敏感页面、授权时效与动作代际。群消息无法形成主人确认。浮球按钮使用原先宿主提供的本机主人身份，不从消息构造身份。
+
+音频分析通过唯一的宿主模型通道：`scope="owner:local",lane="owner",purpose="audio_understanding",prompt,parts,maxOutputTokens=1024`。parts 按 mic/playback 分别附来源说明与 `inlineData{mimeType:"audio/wav",data}`。需要 HostPorts 的 completed.text 提供完整可见结果；failed/cancelled 明确回报。模块不读取密钥、不自建 Gemini/中转客户端、不绕过主人的独立额度。parts 只授权本次推理，不授权长期保存原音。完成后向 observation.summary 发带来源和 kind=inference 的可见摘要，供生命/记忆模块按自身规则处理，不把模型推断冒充事实。
+
+## 状态
+
+snapshot 包含 capture/audio/control/overlay，另附原 voice 状态。capture 有 frameId/captureSession/packageName/windowId/rotation/capturedAtMs/screenHash/left/top/width/height/preview。preview 是临时 JPEG；十分钟到期或 capture.stop 会清除。
+
+control 有 state/sessionId/inputEpoch/packageName/expiresAtMs/reason/activeRequestId/releasePending。收到系统手势回执前不会宣称完成；释放不确定时维持 releasePending 并拒绝恢复，不能自动重试。重新进入应用进程会使旧授权全部失效。
+
+audio 有 state/jobId/captureSession/detail/configuration/tracks/analysis。每个音轨有 samples、sequence、sampleRate=16000、channels=1、firstAtMs、lastAtMs、hasSignal。时间来自读取时 elapsedRealtime，不声称两路硬件时间已对齐。无信号可能是真静音或系统/目标应用限制，不伪造可捕获结论。临时 PCM 最多保留五分钟或到下次采集。
+
+## 已实现的行为与界限
+
+- 52dp 小球；隐藏只改变显示。球上静止五秒计时不依赖 MOVE 事件；移动越界、多指、取消、移除会取消计时。通知和面板提供立即“仅停止输入”。
+- 安卓无无副作用的任意时刻 gesture cancel。本实现将手势分为不超过 80ms 的连续片段，停止后只发送最后触点的释放，不注入替代点击。系统调度延迟、注入期间用户触摸取消和真实释放行为尚待设备测试。
+- 不宣称普通权限能监听任意屏幕位置的完整五秒手势。没有引入 /dev/input、Shizuku 或 root 扩权。
+- 动作绑定五秒内画面，并在派发前重取图像核对像素摘要、窗口、旋转和节点。像素变化会拒绝操作，因此动画画面可能无法执行；当前偏向静态/可暂停场景。需要后续目标语义定位，不声称通用 RPG 已验证。
+- 原生浮球面板能刷新游戏画面、选点、点击/长按；滑动原语供宿主调用。动作后重新观察，系统完成手势不等于游戏目标达成。自动游戏规划/连续实战尚未完成。
+- 实际 AudioRecord 分轨及 MediaProjection 生命周期已接入。权限拒绝、投影撤销、录音失败、取消和限时状态都明确返回。没有摄像头或受保护媒体绕过。
+- 沿用唯一 presence ASR/TTS 链。PCM 占用麦克风时挂起系统 ASR，完成后恢复原监听意图；耳机抢话仍是未验证实验，外放仍按轮流听说描述。麦克风可能包含助手外放回声，不提供身份/情绪识别保证。
+
+## 文件所有权与来源
+
+B 修改范围：`companion/devicev2/**`、对应原生测试、`src/companion/devicev2/**`、`CompanionOverlayService.kt`、`CompanionPresenceHost.kt`、`presence/AndroidPresenceVoice.kt`、`presence/CompanionPresenceController.kt`、本契约/证据/Manifest 补丁。未修改根 App、Plugin/Engine/Service、共享 schema、构建配置、依赖或 AIRI 渲染目录。
+
+| 来源 | 实际模块与使用方式 | 版本与许可 |
+| --- | --- | --- |
+| [当前项目固定基线](https://github.com/snodgrasssanderfer-source/godot-test/tree/34290cab4eac3b75caf92c7c89711bf5727d302b/projects/xiaoke-android/source/android/app/src/main/java/io/deepseekharness/mobile/companion) | 直接修改已有浮球和 AndroidPresenceVoice/Controller；保留单语音链，修复过时 MediaPlayer prepared 回调可能停止新播放的情况。 | 34290cab，保留工程许可与已有归属。 |
+| [DSH](https://github.com/dphmoblie/deepseek-harness-android/tree/e9be0e43629f8b744991c2cf9efd160ca7d41abc) | 调用既有 DeepSeekAccessibilityService、复用 OverlayBallPolicy；没有绕过敏感窗口/锁屏门控。 | v0.3.0 / e9be0e43629f8b744991c2cf9efd160ca7d41abc，MIT。 |
+| [RootEncoder InternalAudioSource.kt](https://github.com/pedroSG94/RootEncoder/blob/f1bbda7ca6fb92bb599206fda2b97745ac11b7f2/encoder/src/main/java/com/pedro/encoder/input/sources/audio/InternalAudioSource.kt) | 只读核对 AudioPlaybackCapture 的平台接线；没有复制、链接或执行 RootEncoder 模块。 | 2.8.1 / f1bbda7ca6fb92bb599206fda2b97745ac11b7f2，Apache-2.0。 |
+| [FloatingX FxControl.kt](https://github.com/Petterpx/FloatingX/blob/c307c380d43dd9dd652159c0e1412aa798e2caae/floatingx-core/src/main/kotlin/com/petterp/floatingx/core/FxControl.kt) | 只读评估后沿用已有浮球，未引入该库。 | 3.0.0 / c307c380d43dd9dd652159c0e1412aa798e2caae；报告标注 MIT，未作为分发依赖。 |
+
+平台依据：[音频捕获](https://developer.android.com/media/platform/av-capture)、[MediaProjection](https://developer.android.com/media/grow/media-projection)、[前台服务](https://developer.android.com/develop/background-work/services/fgs/service-types)、[无障碍手势 API](https://developer.android.com/reference/android/accessibilityservice/AccessibilityService#dispatchGesture(android.accessibilityservice.GestureDescription,%20android.accessibilityservice.AccessibilityService.GestureResultCallback,%20android.os.Handler))。
+
+完整命令和本轮测试边界见 `evidence/devicev2/VERIFICATION.md`。没有运行真机/模拟器、真实中转、QQ/B站账号动作，没有构建或分发 APK；主集成完成接线后构建新 APK。

@@ -56,7 +56,7 @@ export function DevicePanel({ state, run, available }: ModulePanelProps) {
       <label className="device-check"><input type="checkbox" checked={singlePlayer} onChange={e => setSinglePlayer(e.target.checked)} />我确认这是本机单人游戏，并允许本次在该应用内操作</label>
       <div className="device-actions">
         <button type="button" disabled={!packageName} onClick={() => void perform('capture.request', { packageName })}>打开应用并观察一帧</button>
-        <button type="button" disabled={!packageName || !singlePlayer || Boolean(control.releasePending)} onClick={() => void perform(control.state === 'stopped' ? 'control.resume' : 'control.start', { packageName, singlePlayer, durationSeconds: 120 })}>主人授权操作两分钟</button>
+        <button type="button" disabled={!packageName || !singlePlayer || Boolean(control.releasePending)} onClick={() => void perform(control.state === 'stopped' ? 'control.resume' : 'control.start', { packageName, singlePlayer, durationSeconds: 120, expectedInputEpoch: number(control.inputEpoch) })}>主人授权操作两分钟</button>
         <button type="button" onClick={() => void perform('capture.stop')}>结束设备观察</button>
       </div>
       <p role="status">输入：{control.state === 'authorized' ? '已授权' : '已停止'}{control.releasePending ? ' · 等待系统确认触点释放' : ''}；画面：{string(capture.state) || '未开始'}</p>
@@ -82,7 +82,7 @@ export function DevicePanel({ state, run, available }: ModulePanelProps) {
       <button type="button" disabled={recording || (!microphone && !playback) || (playback && !packageName)} onClick={() => void startAudio()}>系统授权后采集二十秒</button>
       <button type="button" disabled={!recording} onClick={() => void perform('audio.stop', audio.captureSession ? { captureSession: audio.captureSession } : {})}>停止收音</button>
       <p role="status">{string(audio.detail) || '尚未开始收音'}</p>
-      {Object.entries(tracks).map(([source, value]) => { const track = record(value); return <p key={source}>{source === 'mic' ? '麦克风' : '内播'}：{(number(track.samples) / 16000).toFixed(1)} 秒 · {track.hasSignal ? '收到信号' : '静音或目标应用不允许捕获'}</p> })}
+      {Object.entries(tracks).map(([source, value]) => { const track = record(value); return <p key={source}>{source === 'mic' ? '麦克风' : '内播'}：{(number(track.samples) / 16000).toFixed(1)} 秒 · {track.hasSignal ? '收到信号' : '未检测到信号，可能静音或系统限制'}</p> })}
       <label>附加给本次对话的说明<input value={prompt} onChange={e => setPrompt(e.target.value)} maxLength={4000} /></label>
       <button type="button" disabled={!canRead || ['queued', 'streaming'].includes(string(analysis.state))} onClick={() => void perform('audio.analyze', { captureSession: audio.captureSession, prompt })}>将片段交给模型理解</button>
       <button type="button" disabled={!['queued', 'streaming'].includes(string(analysis.state))} onClick={() => void perform('audio.cancelAnalysis')}>取消这段音频分析</button>

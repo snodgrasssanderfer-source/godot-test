@@ -15,11 +15,10 @@ import io.deepseekharness.mobile.companion.sha256
 import org.json.JSONObject
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
-import kotlin.math.ceil
 
 data class ControlFrame(val id: String, val session: String, val packageName: String, val atMs: Long,
     val windowId: Int, val rotation: Int, val left: Int, val top: Int, val right: Int, val bottom: Int,
-    val treeDigest: String)
+    val treeDigest: String, val screenHash: String)
 
 /** Short, continued gesture segments bound stop latency without injecting a replacement tap. */
 class GameInputController(private val context: Context, private val changed: () -> Unit) {
@@ -29,10 +28,10 @@ class GameInputController(private val context: Context, private val changed: () 
         fence.stop(reason); changed(); return state()
     }
     fun state() = JSONObject(fence.status())
-    fun start(packageName: String, seconds: Int): JSONObject {
+    fun start(packageName: String, seconds: Int, expectedEpoch: Long): JSONObject {
         check(AccessibilityAutomationStore.packageAllowed(context, packageName)) { "请先在 DSH 无障碍设置中授权目标应用" }
         check(DeepSeekAccessibilityService.current() != null) { "请先开启无障碍服务" }
-        fence.start(packageName, seconds); changed(); return state()
+        fence.start(packageName, seconds, expectedEpoch); changed(); return state()
     }
 
     fun perform(kind: String, data: JSONObject, frame: ControlFrame): JSONObject {
@@ -52,12 +51,15 @@ class GameInputController(private val context: Context, private val changed: () 
         val digest = listOf(kind, frame.id, data.getString("sessionId"), data.getLong("inputEpoch"), x, y, endX, endY, duration).joinToString("|").toByteArray().sha256()
         fence.receipt(id)?.let { check(it.digest == digest) { "重复编号的动作已更改" }; return receipt(it) }
         validate(frame)
+        check(CompanionDevice(context).screenshot(frame.packageName).sha256() == frame.screenHash) { "画面像素已经变化，请重新观察后再操作" }
+        validate(frame)
         val token = fence.current() ?: error("输入已停止")
         check(token.packageName == frame.packageName) { "观察画面与控制范围不一致" }
         val item = fence.enqueue(id, digest, data.getString("sessionId"), data.getLong("inputEpoch"))
         val service = DeepSeekAccessibilityService.current() ?: run { fence.finish(id, "refused", "无障碍已断开"); error("无障碍已断开") }
         val finished = CountDownLatch(1)
-        val pieces = ceil(duration / 80.0).toInt()
+        val segments = gestureSegments(duration)
+        val pieces = segments.size
         var previous: GestureDescription.StrokeDescription? = null
         var lastX = x; var lastY = y
         fun complete(state: String, detail: String = "") { fence.finish(id, state, detail); finished.countDown(); changed() }
@@ -81,14 +83,15 @@ class GameInputController(private val context: Context, private val changed: () 
             val nextY = y + (endY - y) * (index + 1) / pieces
             val path = Path().apply { moveTo(lastX, lastY); if (kind == "swipe") lineTo(nextX, nextY) }
             val more = index + 1 < pieces
-            val segmentMs = if (index + 1 == pieces) duration - (duration / pieces) * index else duration / pieces
+            val segmentMs = segments[index]
             val stroke = previous?.continueStroke(path, 0, segmentMs, more)
                 ?: GestureDescription.StrokeDescription(path, 0, segmentMs, more)
             val accepted = fence.dispatch(id) {
                 service.dispatchGesture(GestureDescription.Builder().addStroke(stroke).build(), object : AccessibilityService.GestureResultCallback() {
                     override fun onCompleted(gestureDescription: GestureDescription?) {
                         previous = if (more) stroke else null; lastX = nextX; lastY = nextY
-                        if (more) step(index + 1) else complete("completed", "系统已完成手势；游戏结果尚待后置画面核对")
+                        try { if (more) step(index + 1) else complete("completed", "系统已完成手势；游戏结果尚待后置画面核对") }
+                        catch (_: Exception) { stop("dispatch_failed"); release() }
                     }
                     override fun onCancelled(gestureDescription: GestureDescription?) { previous = null; complete("cancelled", "系统取消手势，不自动重试") }
                 }, main)
