@@ -33,29 +33,17 @@ object OneBotProtocol {
         // Array segments avoid interpreting somebody's text as a CQ send instruction.
         val segments = value.optJSONArray("message") ?: JSONArray().put(JSONObject().put("type", "text")
             .put("data", JSONObject().put("text", value.optString("raw_message", value.optString("message")))))
-        val text = StringBuilder()
-        val images = JSONArray()
-        var mentioned = false
-        for (i in 0 until segments.length().coerceAtMost(100)) {
-            val segment = segments.optJSONObject(i) ?: continue
-            val data = segment.optJSONObject("data") ?: JSONObject()
-            when (segment.optString("type")) {
-                "text" -> text.append(data.optString("text").take(8000))
-                "at" -> { val who = data.optString("qq"); mentioned = mentioned || who == expectedAccount; text.append(" @").append(who.take(24)).append(' ') }
-                "reply" -> text.append(" [回复消息]")
-                "image" -> { text.append(" [图片附件]"); if (images.length() < 3) images.put(JSONObject().put("url", data.optString("url").take(4096))) }
-                "record" -> text.append(" [语音未读取]")
-                "video" -> text.append(" [视频未读取]")
-                else -> text.append(" [附件未读取]")
-            }
-        }
-        if (text.isBlank()) return null
+        val parsed = io.deepseekharness.mobile.companion.social.OneBotSegments.parse(segments, expectedAccount)
+        if (parsed.getString("text").isBlank()) return null
         val scope = "qq:$type:${CompanionPolicy.digest("onebot\u0000$expectedAccount\u0000$target").take(40)}"
-        return JSONObject().put("id", messageId).put("scope", scope).put("account", expectedAccount)
+        return JSONObject().put("id", "qqmsg-" + CompanionPolicy.digest("$expectedAccount\u0000$scope\u0000$messageId"))
+            .put("platformMessageId", messageId).put("scope", scope).put("account", expectedAccount).put("actorId", "qq:$sender")
+            .put("occurredAt", value.optLong("time") * 1000).put("receivedAt", System.currentTimeMillis())
             .put("targetId", target).put("targetType", type).put("senderId", sender)
             .put("sender", value.optJSONObject("sender")?.optString("card")?.ifBlank { null }
                 ?: value.optJSONObject("sender")?.optString("nickname") ?: sender)
-            .put("text", text.toString().take(8000)).put("mentioned", mentioned).put("images", images)
+            .put("text", parsed.getString("text")).put("mentioned", parsed.getBoolean("mentioned")).put("images", parsed.getJSONArray("images"))
+            .put("attachments", parsed.getJSONArray("attachments")).put("truncated", parsed.getBoolean("truncated"))
     }
     /** No arbitrary sender URLs, local bridge paths, cookies, redirects or query logging. */
     fun imageUrl(raw: String): String? = runCatching {
