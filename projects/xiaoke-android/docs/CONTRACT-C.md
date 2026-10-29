@@ -9,6 +9,7 @@
 所有主人权限来自宿主构造的 `CommandPrincipal`，群消息内的 owner/actor/channel 字段不起作用。批量批准仅限 `owner_ui` 或宿主已验证的 `owner_qq` 私聊。
 
 - `social.configure {autonomousDailyPost:boolean, autonomousReplies:boolean}`：只设置低风险活动自主权。
+- B站追加 `bili.configure/inspect/plan` 与点赞/关注自主开关，已接入同一 SocialPanel 和审批箱；完整兼容载荷、流程、协议来源与主动 QQ 添加限制见 [C-SOCIAL-EXTENSION.md](C-SOCIAL-EXTENSION.md)。
 - `social.plan {idempotencyKey,kind,account,target,content,scope?,sourceIds?,payload?,expiresAt?}`：kind 为 reply/post/comment/add_friend/join_group/leave_group；target 为实际账号、群号或保存过的动态引用 ID。响应为持久化动作，含 `id,digest,state,effect,target,content,expiresAt`。自主 post/reply 仍经来源和宿主 authorizeEffect 检查。reply 的 payload 必须含 `targetType:'group'|'private'`；主人可指定已有会话 scope，后台 scope 只能取宿主身份的 scope；账号、scope、目标、会话采集授权必须一致。
 - `approvals.list {}`；`approvals.approveBatch {items:[{id,digest}]}`；`approvals.reject {id}`；批准精确绑定账号、目标、内容、参数、来源与过期时间，修改须重新规划；同一幂等键不能换内容。
 - `social.execute {id}`：发送前先持久化 submitting；返回回执 done/failed/outcome_unknown。结果未知不可重试；`social.resolve {id,delivered:boolean,evidence:string}` 仅供主人查证，未发出则终止旧动作。
@@ -45,7 +46,7 @@ NapCat 协议核对提交 https://github.com/NapNeko/NapCatQQ/tree/ba0a53dd372db
 
 Android 全项目 `:app:compileDebugKotlin` 已通过（包括 SocialModule、SocialVault 和桥接生产源码）；首次完整 Gradle 配置因 NDK 29 未安装/许可未初始化而停止。后续检查使用仓库外 init script 仅排除 CMake，JDK 21/Android 35/Gradle 8.11.1，没有修改项目构建文件。该证据只证明 Java/Kotlin 接线编译，不能代替 JNI/APK 构建。最终 APK 由主线集成构建。
 
-明确未实现：主动搜索并发起任意加好友/加群（本轮只处理实际收到的好友请求/群邀请）、B站新点赞/关注/下载适配器、SILK/AMR 解码、无限大小媒体处理、跨设备素材字节同步、系统进程被杀后的精确提醒。现有 B站公开读取和审批后 UI 评论流程保留。未执行：真实 QQ/B站登录、发送/点赞、付费模型、APK 安装、Android 真机验收。
+明确未实现：主动搜索并发起任意加好友/加群（已核对当前 NapCat 没有该协议，处理实际收到的好友请求/群邀请已经实现）、SILK/AMR 解码、无限大小媒体处理、跨设备素材字节同步、系统进程被杀后的精确提醒。B站点赞/关注/评论/公开单文件下载已追加原生适配与 UI；实际范围和新增验证见扩展文档。未执行：真实 QQ/B站登录、发送/点赞、付费模型、APK 安装、Android 真机验收。
 
 ## 主线立即可用的接线片段
 

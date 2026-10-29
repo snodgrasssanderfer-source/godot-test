@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import type { ModulePanelProps } from '../iteration/contracts'
 import './social.css'
+import { BilibiliPanel } from './BilibiliPanel'
 
 type Row = Record<string, unknown>
 const record = (value: unknown): Row => value && typeof value === 'object' && !Array.isArray(value) ? value as Row : {}
@@ -40,11 +41,12 @@ export function SocialPanel({ state, run, available }: ModulePanelProps) {
     {!available && <p role="status">此版本尚未接入社交模块，操作暂不可用。</p>}
     {error && <p role="alert" className="social-error">{error}</p>}{notice && <p role="status">{notice}</p>}
     {text(service, 'error') && <p role="status">{text(service, 'error')}</p>}
-    <article><h3>消息连接</h3>{accounts.map((a, index) => <p key={index}>QQ {text(a, 'account') || '尚未配置账号'} · {text(a, 'status') || '未连接'}</p>)}
+    <article><h3>消息连接</h3>{accounts.filter(a => text(a, 'route') !== 'bilibili').map((a, index) => <p key={index}>QQ {text(a, 'account') || '尚未配置账号'} · {text(a, 'status') || '未连接'}</p>)}
       <p>账号连接设置沿用设备页。通知入口只知道通知提供的内容；消息桥可提供稳定账号和分段附件。</p>
       <label><input type="checkbox" disabled={disabled} checked={config.autonomousDailyPost === true} onChange={e => void act('social.configure', { autonomousDailyPost: e.target.checked, autonomousReplies: config.autonomousReplies === true })}/>允许经过隐私检查的日常空间动态自主发布</label>
       <label><input type="checkbox" disabled={disabled} checked={config.autonomousReplies === true} onChange={e => void act('social.configure', { autonomousDailyPost: config.autonomousDailyPost === true, autonomousReplies: e.target.checked })}/>允许在已授权会话中自主回复</label>
       <p className="social-muted">评论、加好友和加群仍列入下方审批。发布结果不明时会停下等待查证。</p>
+      {text(record(service.qqActiveAdd), 'reason') && <p className="social-muted">{text(record(service.qqActiveAdd), 'reason')}。收到请求后可在这里统一核对。</p>}
       {list(service.conversations).map(c => <div className="social-row" key={text(c,'id')}><strong>{text(c,'title')}</strong>{(['images','audio','video'] as const).map((kind,index) => <label key={kind}><input type="checkbox" disabled={disabled} checked={c[kind] === true} onChange={e => void act('social.conversationMedia',{scope:c.id,images:c.images===true,audio:c.audio===true,video:c.video===true,[kind]:e.target.checked})}/>{['读取图片与表情','读取受支持的语音片段','读取受支持的短视频'][index]}</label>)}<small>每条消息最多读取三个；语音和视频每个不超过 2 MB。无法解码的附件会显示原因，原图不会自动长期保存。</small></div>)}
     </article>
     <article><h3>待你决定 <span>{approvals.length}</span></h3>
@@ -62,7 +64,7 @@ export function SocialPanel({ state, run, available }: ModulePanelProps) {
       <label>内容<textarea required maxLength={12000} value={jobText} onChange={e => setJobText(e.target.value)}/></label>
       <div className="social-grid"><label>开始时间（留空即现在）<input type="datetime-local" value={dueAt} onChange={e => setDueAt(e.target.value)}/></label>
         <label>等待条件<select value={condition} onChange={e => setCondition(e.target.value)}><option value="">无需等待</option><option value="online">有网络时</option><option value="manual">我点恢复后</option></select></label></div>
-      <button disabled={disabled || !jobText.trim()}>保存任务</button><small>整理资料使用活动额度；提醒依赖应用运行状态，系统休眠时可能延迟。</small>
+      <button disabled={disabled || !jobText.trim()}>保存任务</button><small>整理资料使用活动额度。重启助手后会接续等待中的任务并补交到期提醒；中断的收费任务需要点恢复。系统休眠可能延迟提醒。</small>
     </form>
       {jobs.map(job => <div className="social-row" key={text(job, 'id')}><strong>{labels[text(job, 'state')] ?? text(job, 'state')}</strong><p>{text(job, 'text')}</p>{text(job, 'result') && <blockquote>{text(job, 'result')}</blockquote>}{text(job, 'error') && <p>{text(job, 'error')}</p>}
         {['queued', 'running', 'waiting'].includes(text(job, 'state')) && <button disabled={disabled} onClick={() => void act('jobs.cancel', { id: job.id })}>取消任务</button>}
@@ -75,6 +77,7 @@ export function SocialPanel({ state, run, available }: ModulePanelProps) {
       {postKind === 'comment' && <><button type="button" disabled={disabled || !account} onClick={() => void act('social.feeds').then(value => setFeeds(list(record(value).items)))}>读取可评论动态</button><label>评论目标<select required value={feedId} onChange={e => setFeedId(e.target.value)}><option value="">选择已读取动态</option>{feeds.map(feed => <option key={text(feed, 'id')} value={text(feed, 'id')}>{text(feed, 'summary').slice(0,150)}</option>)}</select></label></>}
       <label>拟发内容<textarea required maxLength={4000} value={postText} onChange={e => setPostText(e.target.value)}/></label><button disabled={disabled || !account || !postText.trim() || postKind === 'comment' && !feedId}>生成具体提议</button>
     </form></article>
+    <BilibiliPanel state={record(state.bilibili)} config={config} disabled={disabled} act={act}/>
     <article><h3>表达素材</h3><label>导入后如何保存<select value={retention} onChange={e => setRetention(e.target.value)}><option value="transient">临时资料，24 小时后清缓存</option><option value="curated">我提供的表情／素材包</option><option value="explicit">明确长期保留原始文件</option></select></label>
       <input ref={importing} aria-label="导入表达素材" type="file" accept="image/jpeg,image/png,image/webp,image/gif,audio/mpeg,audio/wav,video/mp4,application/pdf" disabled={disabled} onChange={e => { const file = e.target.files?.[0]; if (file) void importFile(file).catch(() => setError('文件读取失败')); e.target.value = '' }}/>
       {media.map(item => <div className="social-row" key={text(item, 'id')}><strong>{text(item, 'name') || text(item, 'kind')}</strong><p>{text(item, 'status')} · {text(item, 'retention')}</p>
