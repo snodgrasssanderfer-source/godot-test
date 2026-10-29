@@ -98,8 +98,14 @@ class CompanionPlugin : Plugin() {
                 }
                 val store = engine.store
                 val result: Any = when (action) {
-                    "module" -> engine.modules.router.execute(data.getString("domain"), data.getString("action"),
-                        data.optJSONObject("data") ?: JSONObject(), engine.modules.localOwner)
+                    "module" -> {
+                        val domain = data.getString("domain")
+                        val moduleAction = data.getString("action")
+                        if (domain == "social" && moduleAction in setOf("jobs.create", "jobs.resume", "social.execute", "sync.run")) {
+                            CompanionService.beginOperation(context); foregroundOperation = true
+                        }
+                        engine.modules.router.execute(domain, moduleAction, data.optJSONObject("data") ?: JSONObject(), engine.modules.localOwner)
+                    }
                     "settings" -> {
                         val previous = store.settings()
                         store.saveSettings(data).also {

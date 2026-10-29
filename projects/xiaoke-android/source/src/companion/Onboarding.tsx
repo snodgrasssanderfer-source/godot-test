@@ -7,6 +7,8 @@ export function Onboarding({snapshot, run, onClose, onOpen}: {snapshot: Snapshot
   const [step, setStep] = useState(0), [endpoint, setEndpoint] = useState(snapshot.settings.endpoint)
   const [model, setModel] = useState(snapshot.settings.activeModel), [key, setKey] = useState('')
   const [online, setOnline] = useState(snapshot.settings.networkEnabled), [saving, setSaving] = useState(false), [note, setNote] = useState('')
+  const [ownerCalls,setOwnerCalls] = useState(80), [activityCalls,setActivityCalls] = useState(20)
+  const budget = snapshot.modules?.life.budgets as {configured?:boolean}|undefined
   const titles = ['先认识你的助手', '连接你的模型', '把角色交给你', '按需开启手机能力', '决定记忆和外发范围']
   const p = snapshot.permissions
   async function saveConnection() {
@@ -14,6 +16,9 @@ export function Onboarding({snapshot, run, onClose, onOpen}: {snapshot: Snapshot
     try {
       await run('settings', {...snapshot.settings, endpoint, activeModel: model, networkEnabled: online})
       if (key.trim()) { await run('saveKey', {key: key.trim()}); setKey('') }
+      if (nativeCompanion && snapshot.modules?.life.available && !budget?.configured) {
+        await run('module', {domain:'life',action:'budget.configure',data:{unit:'calls',currency:'',ownerLimit:ownerCalls,activityLimit:activityCalls,warningRemaining:2,allowUnknownPrice:true,unknownPriceCeiling:1}})
+      }
       setNote('已保存配置。没有自动调用模型，也没有验证中转能力。')
     } catch (e) { setNote(e instanceof Error ? e.message : String(e)) }
     finally { setSaving(false) }
@@ -34,6 +39,7 @@ export function Onboarding({snapshot, run, onClose, onOpen}: {snapshot: Snapshot
         <label>本机密钥<input type="password" autoComplete="new-password" value={key} disabled={!nativeCompanion} onChange={e => setKey(e.target.value)} placeholder={snapshot.keyConfigured ? '已安全保存，留空保持' : '安装后在这里填写，不需要发到聊天中'}/></label>
         <label className="check-row"><input type="checkbox" checked={online} disabled={!nativeCompanion} onChange={e => setOnline(e.target.checked)}/>允许助手按我的操作联网</label>
         <p className="subtle">地址、模型名及图片/工具能力需符合你的中转。保存不会发起测试请求；后续每次模型交互可能计费，日限额可在模型页设置。</p>
+        {!budget?.configured&&<><div className="form-grid"><label>主人交流保留请求数<input type="number" min={1} max={10000} value={ownerCalls} onChange={e=>setOwnerCalls(Number(e.target.value))}/></label><label>自主活动请求数<input type="number" min={0} max={10000} value={activityCalls} onChange={e=>setActivityCalls(Number(e.target.value))}/></label></div><small>保存连接时一并建立两份独立的次数额度，包含重试与续写。次数不等于金额保证，不会自动按天刷新；在「生活」中查看与调整。</small></>}
         <div className="form-actions"><button className="primary" disabled={saving} onClick={() => void saveConnection()}>保存连接配置</button><button onClick={() => open('models')}>更多模型设置</button></div></>}
       {step === 2 && <><h2>你和 Gemini 一起写小克</h2><p>人格正文保持可编辑，不在安装包写死性格或台词。你可以在连接模型后共同创作，也可以导入自己的角色卡。</p><p>角色版本和长期记忆分别保存；切换模型不会自动清空关系和偏好。资料中的设定只是参考，不能把角色卡当成设备权限。</p><button onClick={() => open('persona')}>打开角色编辑与导入</button></>}
       {step === 3 && <><h2>让你需要的能力可用</h2><p>仅聊天无需无障碍或屏幕权限。观察选定应用才开启无障碍和悬浮窗；语音需要麦克风；NapCat 不需要手机 QQ 的无障碍操作。</p><div className="permission-list">{[

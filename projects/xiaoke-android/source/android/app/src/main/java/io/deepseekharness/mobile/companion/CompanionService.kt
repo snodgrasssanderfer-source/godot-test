@@ -21,7 +21,7 @@ class CompanionService : Service() {
     private val sweep = object : Runnable {
         override fun run() {
             val engine = CompanionEngine.get(this@CompanionService)
-            if (!engine.store.settings().optBoolean("backgroundEnabled") && !engine.store.pendingWork() && !engine.store.settings().optBoolean("oneBotEnabled") && nativeOperations.get() == 0) {
+            if (!engine.store.settings().optBoolean("backgroundEnabled") && !engine.store.pendingWork() && engine.activeTask == null && !engine.store.settings().optBoolean("oneBotEnabled") && nativeOperations.get() == 0) {
                 stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); return
             }
             handler.postDelayed(this, 10000)
