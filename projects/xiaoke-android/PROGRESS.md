@@ -43,3 +43,12 @@
 
 验证：compileDebugKotlin、compileDebugAndroidTestKotlin（只编译）、testDebugUnitTest（164 套件 1582 项，0 失败/错误，3 项按设计跳过）、assembleDebug 通过。
 - 补记：旧参考 APK 改由用户上传到本仓库 Release 后取得（APK SHA-256 与发布说明一致）。取出的 libdsh_proot.so、libdsh_proot_loader.so、rootfs.bundle、runtime-manifest.json 四个文件哈希与 proot-rebuild-status.json / release-inputs.json 全部一致（loader 也一致）。放入构建位置后打出完整 debug APK（327,335,605 字节），包内四个文件哈希不变。这些文件和 APK 均未提交；BUILD.md 新增“从旧 APK 提取运行环境”一节。PRoot/Ubuntu 运行环境仍未在设备上运行验证。
+
+## 2026-10-29 接续：固定签名、常驻后的主动分享、自主看 B站（分支 claude/signing-share-bili-20261029）
+
+- 固定签名：生成主人保管的 RSA-4096 密钥（证书 SHA-256 398EE6D9…609DA1C2），build.gradle 核对指纹，不符即失败；缺密钥时 debug 包会告警。versionCode 3 / 0.3.0。私钥与密码不在仓库，经云环境变量 DSH_KEYSTORE_BASE64 / DSH_KEYSTORE_PASSWORD 提供。
+- 主动分享在进程被回收后仍有效：伴随悬浮球在锁屏时按设计结束，不是常驻；改由已有的常驻 CompanionService（START_STICKY）初始化模块宿主及其解锁监听，粘性重启拒绝前台时不再崩溃，并随开机恢复。需开启“后台常驻”。
+- 自主看 B站：新增 watch_bilibili 工具（仅主人聊天引出），后台读取公开字幕与关键帧（前 10 分钟窗口），活动额度付费，按人设写成她的观察；记录实际读到的字幕时段、关键帧时刻和未看部分（含音频）。什么都没读到就不记录。观察进入生活记忆/日记，并能触发主动分享。按关键词搜索为未登录公开接口，B站可能拒绝，拒绝即失败、不绕过。
+- 新增 INSTALL.md 安装说明。
+
+验证：compileDebugKotlin、compileDebugAndroidTestKotlin、testDebugUnitTest（165 套件 1584 项，0 失败/错误，3 项按设计跳过）、assembleDebug 通过；带完整运行环境的固定签名 debug 包约 312 MiB。未在真机运行。

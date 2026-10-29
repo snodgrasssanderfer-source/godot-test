@@ -27,6 +27,7 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
         override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) { refreshConnectivity() }
     }
     private val proactiveShare = ProactiveShareRunner(store, this)
+    val biliWatcher = io.deepseekharness.mobile.companion.BilibiliWatcher(context, store, this)
     private val unlockWatcher = object : android.content.BroadcastReceiver() {
         override fun onReceive(receiver: Context, intent: android.content.Intent) {
             // The unlock that ends night quiet is evaluated first, so quiet hours never trigger a share.

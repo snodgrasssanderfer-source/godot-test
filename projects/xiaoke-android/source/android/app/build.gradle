@@ -45,6 +45,20 @@ def loadTeamSigning() {
     return null
 }
 def teamSigning = loadTeamSigning()
+// 小克私用签名证书指纹（公开信息，不是私钥）。换了密钥就无法覆盖安装、会丢记忆，因此不匹配直接失败。
+def expectedSigningCertSha256 = '398EE6D99B4F31A2738D82FEC5EB3D0BEEB43EAAFA3B8359A5F0D30B609DA1C2'
+if (teamSigning != null) {
+    def keyStore = java.security.KeyStore.getInstance(java.security.KeyStore.getDefaultType()) // JDK 9+ 兼容读取 PKCS12 与 JKS
+    teamSigning.storeFile.withInputStream { keyStore.load(it, teamSigning.storePassword.toCharArray()) }
+    def certificate = keyStore.getCertificate(teamSigning.keyAlias)
+    if (certificate == null) throw new GradleException("签名密钥库中没有别名 ${teamSigning.keyAlias}")
+    def actual = java.security.MessageDigest.getInstance('SHA-256').digest(certificate.encoded).collect { String.format('%02X', it) }.join('')
+    if (actual != expectedSigningCertSha256) {
+        throw new GradleException("签名证书指纹不符（${actual}），这不是小克的固定签名；用它打的包无法覆盖安装旧版。")
+    }
+} else {
+    logger.warn('警告：未提供 DSH_KEYSTORE_BASE64 / DSH_KEYSTORE_PASSWORD，debug 包将使用本机临时签名，不能覆盖安装主人手机上的版本。')
+}
 // The emulator UI variant intentionally cannot run the ARM64 Ubuntu/PRoot bundle.
 // Release remains ARM64; this switch is only for native UI/persistence validation.
 def companionUiAbi = providers.gradleProperty('companionUiAbi').orNull
@@ -126,8 +140,9 @@ android {
         applicationId 'io.github.dshcompanion.mobile'
         minSdk 26
         targetSdk 35
-        versionCode 2
-        versionName '0.2.0-companion-private'
+        // 每次给主人安装的新版都把 versionCode 加一；Android 不允许降级覆盖。
+        versionCode 3
+        versionName '0.3.0-companion-private'
 
         buildConfigField 'String', 'DEFAULT_MANIFEST_URL', envBuildValue('DSH_RUNTIME_MANIFEST_URL')
         buildConfigField 'String', 'DEFAULT_MANIFEST_SHA256', envBuildValue('DSH_RUNTIME_MANIFEST_SHA256')

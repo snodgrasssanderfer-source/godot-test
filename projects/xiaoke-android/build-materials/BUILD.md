@@ -12,11 +12,14 @@
 
 原源码文件清单与 verify-source.py 是历史静态交接基线；本轮新增文件不适用那个旧摘要集合。新 APK/源码的最终摘要及真实测试记录由本轮集成后更新。无硬件加速的 Android16 首启已经失败，不要重复该路径消耗资源；仪器测试保留供授权真机/加速环境运行。
 
+## 签名
+交付给主人的包必须带固定签名，否则无法覆盖安装、会丢数据。构建前设置环境变量 `DSH_KEYSTORE_BASE64`、`DSH_KEYSTORE_PASSWORD`（别名固定 `dsh-mobile`，密钥密码与库密码相同）。build.gradle 会核对证书 SHA-256 `398EE6D99B4F31A2738D82FEC5EB3D0BEEB43EAAFA3B8359A5F0D30B609DA1C2`，不符即失败。构建后用 `apksigner verify --print-certs` 复核。
+
 ## 从旧 APK 提取运行环境
 
 没有自行重建 PRoot 时，可以从此前构建的旧 APK 中取出运行环境文件。旧 APK 和取出的文件都放在仓库目录之外的工作目录，**绝不提交**（已由 .gitignore 排除）。
 
-1. 先核对旧 APK 本身的 SHA-256 与其发布说明一致。只解包，不运行其中任何程序。
+1. 旧 APK 在本仓库 Release 标签 `xiaoke-old-reference-0.2.0-20261029` 的附件 `Xiaoke-0.2.0-arm64-old-reference.apk`（320531589 字节，SHA-256 `14c0bf968695596ed46d213a3a0e75dbb840be0bcfb77a8e9ecff6c100f5eadf`）。下载到仓库外，先核对 SHA-256。只解包，不运行其中任何程序。
 2. 取出以下四个文件，逐一核对 SHA-256：
 
 | APK 内路径 | 字节 | SHA-256 | 核对依据 |

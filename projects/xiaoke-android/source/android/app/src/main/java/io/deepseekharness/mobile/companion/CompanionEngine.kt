@@ -457,6 +457,10 @@ class CompanionEngine private constructor(private val context: Context) {
                 io.deepseekharness.mobile.companion.devicev2.DeviceModule.captureFromSurface()
             } else modules.router.execute("device", action, data, modules.localOwner)
         }
+        "watch_bilibili" -> {
+            check(scope == CompanionPolicy.OWNER) { "只有和主人的聊天能引出自主看视频" }
+            modules.biliWatcher.start(args.optString("videoId").trim(), args.optString("query").trim(), args.optString("reason"), sourceId)
+        }
         "observe_screen" -> {
             check(scope == CompanionPolicy.OWNER) { "当前聊天没有设备观察权限" }
             CompanionDevice(context).observe()
@@ -522,6 +526,7 @@ class CompanionEngine private constructor(private val context: Context) {
                     if (modules.router.available("device")) a.put(structured("device_action", "仅在主人已开启的单机应用控制会话中操作。先读取 control.status，用 capture.refresh 取得已授权目标的当前画面，再用返回的 sessionId,inputEpoch,frameId 和真实屏幕像素 x,y；swipe 加 toX,toY；每步查系统回执，不能自行恢复急停或扩大范围。",
                         fields("sessionId" to "STRING", "inputEpoch" to "INTEGER", "frameId" to "STRING", "x" to "NUMBER", "y" to "NUMBER", "toX" to "NUMBER", "toY" to "NUMBER", "durationMs" to "INTEGER"),
                         listOf("control.status", "capture.status", "capture.refresh", "control.tap", "control.swipe", "control.longPress")))
+                    a.put(decl("watch_bilibili", "之后自己去看一部和这次聊天话题或已记录兴趣有关的 B站公开视频（给 videoId=BV 号，或给 query 关键词搜索）。后台进行、走活动额度；只读字幕和关键帧，看完记成你自己的观察并注明实际看了哪部分。不点赞、不评论、不代表已完整看过", listOf("videoId", "query", "reason"), listOf("reason")))
                     a.put(decl("observe_screen", "读取主人已授权的当前 QQ/B站界面；不代表看过完整视频", emptyList()))
                     a.put(decl("open_app", "打开已授权的 QQ/B站；可提供 B站 BV 号。不会登录、发送或付款", listOf("package", "videoId"), listOf("package")))
                     a.put(decl("draft_comment", "依据本次已附加或先前已分析的视频资料形成评论草稿；analysis 必须说明实际读到的内容、时间覆盖与未读部分，供主人审阅。等待本机授权，不会发送", listOf("observationId", "analysis", "body")))

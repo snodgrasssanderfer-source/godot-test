@@ -76,6 +76,15 @@ class BilibiliReader {
         val url = VideoEvidence.publicVideoUrl(part.optString("url")) ?: error("下载地址不在公开视频域名范围")
         return JSONObject().put("url", url).put("size", part.optLong("size", -1)).put("quality", data.optInt("quality", 16))
     }
+    /** Public WBI video search for a chat topic or recorded interest. Without login B站 may refuse; that is reported, not bypassed. */
+    fun searchVideo(keyword: String): String {
+        require(keyword.isNotBlank() && keyword.length <= 100)
+        val result = signed("/x/web-interface/wbi/search/type", mapOf("search_type" to "video", "keyword" to keyword.trim(), "page" to "1"))
+        check(result.optInt("code", -1) == 0) { "B站未提供未登录搜索结果（${result.optInt("code", -1)}），没有绕过限制" }
+        val rows = result.optJSONObject("data")?.optJSONArray("result") ?: JSONArray()
+        return (0 until rows.length()).map(rows::getJSONObject).map { it.optString("bvid") }
+            .firstOrNull { Regex("BV[0-9A-Za-z]{10}").matches(it) } ?: error("没有找到相关公开视频")
+    }
     fun video(videoId: String, startSeconds: Double = 0.0, endSeconds: Double = 0.0): JSONObject {
         require(Regex("BV[0-9A-Za-z]{10}").matches(videoId))
         val metadata = read("https://api.bilibili.com/x/web-interface/view?bvid=$videoId")

@@ -38,8 +38,12 @@ class CompanionService : Service() {
         val notification = Notification.Builder(this, "companion-status").setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("小克助手").setContentText("任务与已授权会话处理中；可随时暂停")
             .setContentIntent(open).setOngoing(true).addAction(Notification.Action.Builder(null, "暂停", pause).build()).build()
-        ServiceCompat.startForeground(this, 810, notification, if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0)
+        // A sticky restart after the process was killed may be refused foreground status; never crash-loop on it.
+        try { ServiceCompat.startForeground(this, 810, notification, if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0) }
+        catch (_: Exception) { stopSelf(); return START_NOT_STICKY }
         val engine = CompanionEngine.get(this)
+        // This resident service is what keeps the process, and so the module host's unlock listener for proactive sharing, alive.
+        engine.modules
         if (intent?.action == "pause") {
             engine.store.saveSettings(engine.store.settings().put("paused", true))
             engine.activeTask?.let(engine::cancel)

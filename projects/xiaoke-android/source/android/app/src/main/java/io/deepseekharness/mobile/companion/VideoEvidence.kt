@@ -30,4 +30,25 @@ object VideoEvidence {
         return (0 until count).map { ((start + (last - start) * it / (count - 1)) * 1000).toLong() }
     }
     fun time(seconds: Double): String = "%02d:%02d".format(seconds.toInt() / 60, seconds.toInt() % 60)
+
+    /** What she actually took in. Subtitles cover words only, keyframes are single instants; everything else is listed as unseen. */
+    fun watched(lines: JSONArray, keyframesMs: List<Long>, durationSeconds: Double): JSONObject {
+        val unseen = JSONArray()
+        val result = JSONObject().put("durationSeconds", durationSeconds).put("subtitleLines", lines.length())
+            .put("keyframesMs", JSONArray(keyframesMs)).put("audio", false)
+        val words = if (lines.length() == 0) { unseen.put("全部台词与字幕"); "没有字幕" } else {
+            val from = lines.getJSONObject(0).optDouble("from"); val to = lines.getJSONObject(lines.length() - 1).optDouble("to")
+            result.put("subtitleFrom", from).put("subtitleTo", to)
+            if (from > 0.5) unseen.put("台词 00:00–${time(from)}")
+            if (to < durationSeconds - 0.5) unseen.put("台词 ${time(to)}–${time(durationSeconds)}")
+            "字幕 ${time(from)}–${time(to)}（${lines.length()} 行，只代表台词和字幕文字）"
+        }
+        val sights = if (keyframesMs.isEmpty()) { unseen.put("全部画面"); "没有画面" } else {
+            unseen.put("关键帧之间的画面与动作")
+            "关键帧 ${keyframesMs.joinToString("、") { time(it / 1000.0) }}（单帧，非连续画面）"
+        }
+        unseen.put("全部音频（未取音轨）")
+        return result.put("unseen", unseen).put("text", "$words；$sights；视频总长 ${time(durationSeconds)}；未看：" +
+            (0 until unseen.length()).joinToString("、") { unseen.getString(it) })
+    }
 }

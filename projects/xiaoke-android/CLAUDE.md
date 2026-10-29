@@ -14,6 +14,12 @@
 - Maven 遇到 429 时用 `--max-workers=2` 重试。
 - 工具链准备见 build-materials/BUILD.md。
 
+## 签名（覆盖安装、保留数据）
+- 固定签名证书 SHA-256：`398EE6D99B4F31A2738D82FEC5EB3D0BEEB43EAAFA3B8359A5F0D30B609DA1C2`，已写死在 app/build.gradle，换密钥会直接构建失败。
+- 私钥只由主人保管，通过云环境的环境变量提供：`DSH_KEYSTORE_BASE64`（密钥库 base64）与 `DSH_KEYSTORE_PASSWORD`。仓库里绝不出现私钥或密码。
+- 给主人安装的包必须在这两个变量存在时构建，并用 `apksigner verify --print-certs` 确认证书指纹；变量缺失时 debug 包会用临时签名（构建日志有警告），这种包不能交付。
+- 每个交付版本把 `versionCode` 加一。
+
 ## 分支
 每轮改动提交到新分支，不碰 main。
 

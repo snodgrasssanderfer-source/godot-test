@@ -43,6 +43,11 @@ class BootRecoveryReceiver : BroadcastReceiver() {
         if (store.keepRuntimeInBackground()) {
             HarnessKeepAliveService.startAfterBoot(appContext)
         }
+
+        // 小克后台常驻（含解锁后的主动分享）同样随开机恢复。
+        if (io.deepseekharness.mobile.companion.CompanionEngine.get(appContext).store.settings().optBoolean("backgroundEnabled")) {
+            io.deepseekharness.mobile.companion.CompanionService.start(appContext)
+        }
     }
 
     private companion object {
