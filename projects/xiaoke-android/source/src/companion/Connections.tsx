@@ -22,10 +22,10 @@ export function Connections({snapshot,run}:{snapshot:Snapshot;run:Run}) {
 export function QqConnection({snapshot,run}:{snapshot:Snapshot;run:Run}) {
   const s=snapshot.settings, bridge=snapshot.messageBridge
   const [url,setUrl]=useState(s.oneBotUrl??''),[token,setToken]=useState(''),[owner,setOwner]=useState(s.ownerQqId??''),[groups,setGroups]=useState((s.qqGroups??[]).join(' '))
-  const [note,setNote]=useState('')
+  const [note,setNote]=useState(''),[frequency,setFrequency]=useState(String(s.groupReplyFrequency??0.5))
   async function save(){
     try{
-      await run('configureQq',{url:url.trim(),token:token.trim(),ownerQqId:owner.trim(),groups:groups.split(/[\s,，、]+/).filter(Boolean)})
+      await run('configureQq',{url:url.trim(),token:token.trim(),ownerQqId:owner.trim(),groups:groups.split(/[\s,，、]+/).filter(Boolean),groupReplyFrequency:Number(frequency)})
       setToken(''); setNote('已保存，正在连接。')
     }catch(e){setNote(e instanceof Error?e.message:String(e))}
   }
@@ -34,6 +34,7 @@ export function QqConnection({snapshot,run}:{snapshot:Snapshot;run:Run}) {
     <label>Token<input type="password" value={token} onChange={e=>setToken(e.target.value)} autoComplete="new-password" placeholder={bridge?.tokenConfigured?'已保存，留空不变':'NapCat 里设置的访问令牌'}/></label>
     <label>你的 QQ 号<input value={owner} onChange={e=>setOwner(e.target.value)} inputMode="numeric" placeholder="她只认这个号是你"/></label>
     <label>允许她发言的群<textarea value={groups} onChange={e=>setGroups(e.target.value)} rows={2} placeholder="群号，用空格或逗号隔开"/></label>
+    <label>她在群里说话<select value={frequency} onChange={e=>setFrequency(e.target.value)}><option value="0.3">少一点</option><option value="0.5">适中</option><option value="0.8">多一点</option></select></label>
     <small>只有这里列出的群和你的私聊会被接收，其他会话她都不看。{bridge?.account?`她登录的 QQ：${bridge.account}`:'她自己的 QQ 号会在第一次连上时自动读出。'}</small>
     {bridge?.untrustedCertificate&&<div className="notice"><p>第一次连接这台服务器。请在服务器上运行 <code>openssl x509 -noout -fingerprint -sha256 -in 证书文件</code>，确认指纹和下面一致后再信任：</p><code style={{wordBreak:'break-all'}}>{bridge.untrustedCertificate}</code><button onClick={()=>void run('trustBridgeCert',{fingerprint:bridge.untrustedCertificate}).catch(()=>undefined)}>一致，信任这台服务器</button></div>}
     <div className="form-actions"><button className="primary" disabled={!nativeCompanion||!url.trim()} onClick={()=>void save()}>保存并连接</button><button disabled={!nativeCompanion} onClick={()=>void run('disconnectBridge').catch(()=>undefined)}>断开</button></div>

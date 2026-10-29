@@ -29,6 +29,7 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
     private val proactiveShare = ProactiveShareRunner(store, this)
     val biliWatcher = io.deepseekharness.mobile.companion.BilibiliWatcher(context, store, this)
     private val nightlyDiary = NightlyDiary(store, this)
+    val learner = io.deepseekharness.mobile.companion.chat.ChatLearner(store, this)
     private val clock = java.util.concurrent.Executors.newSingleThreadScheduledExecutor { runnable -> Thread(runnable, "companion-clock").apply { isDaemon = true } }
     private val unlockWatcher = object : android.content.BroadcastReceiver() {
         override fun onReceive(receiver: Context, intent: android.content.Intent) {

@@ -83,3 +83,15 @@ Mobilerun 仅作为原有设备控制对照，不替换已运行的 DSH 权限�
 - 网络安全配置没有跟随上游的“全局允许明文”，保持“默认禁止、只放行本机回环”，理由写在 `network_security_config.xml` 里；按上游 0.3.6 的分析，这份配置与 Shizuku 13.6.0 共进程时不会触发 `Found multiple conflicting per-domain rules`。
 - Ubuntu 运行环境改用上游 v0.3.7 发布的 rootfs（上游 CI 按 `scripts/build-embedded-runtime.py` 生成），哈希见 build-materials/BUILD.md；文件不入库。
 
+
+## 2026-10-30 群聊和私聊更像真人（`companion/chat/`）
+
+| 机制 | 来源（固定版本） | 许可证 | 本项目文件 |
+|---|---|---|---|
+| 消息防抖（安静/活跃开批、同人/换人续发、裸图 4 秒、整批 8 秒、@ 1 秒） | Mai-with-u/MaiBot 2a9af62cec37035d29237acbe2cf3adceb700b27 `src/chat/debounce/controller.py` | GPL-3.0 | MessageDebouncer.kt、ReplyScheduler.kt |
+| 动态回复频率（前馈 + 只收紧的反馈、40 秒虚拟轮次、离线阈值表） | 同上 `src/maisaka/turn_trigger/dynamic_gate.py`、`reply_likelihood.py` | GPL-3.0 | DynamicReplyGate.kt、ReplyLikelihood.kt（真实上下文特征） |
+| 表达与黑话学习（场景→说法、黑话候选与推断、按次数加权） | 同上 `src/learners/`、`prompts/zh-CN/learn_style.prompt`、`learn_jargon.prompt` | GPL-3.0 | ChatLearner.kt |
+| 追加消息合并 | AstrBotDevs/AstrBot abf683071952375ec36baa4cad6b6f3d9c9bb03f `astrbot/core/pipeline/process_stage/follow_up.py` | AGPL-3.0 | CompanionEngine.respond / runChat |
+| 分段回复（句末切分、log 间隔） | 同上 `pipeline/result_decorate/stage.py`、`pipeline/respond/stage.py` | AGPL-3.0 | ReplySegmenter.kt、OneBotBridge.send |
+
+只移植机制，没有逐行翻译 Python。分段规则与 AstrBot 相反：短回复保持一条，较长的才拆，最多四段。学习只读 QQ 群里别人的发言，按群分开存，主人私聊和其他私聊不进入学习。

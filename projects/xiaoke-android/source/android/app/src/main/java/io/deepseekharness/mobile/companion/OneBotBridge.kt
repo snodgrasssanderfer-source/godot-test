@@ -187,7 +187,7 @@ class OneBotBridge private constructor(private val context: Context) {
         fun open(type: String, target: String, title: String) {
             val scope = scopeOf(type, target)
             val c = store.get("conversation", scope) ?: JSONObject().put("id", scope).put("scope", scope).put("mode", "natural")
-                .put("cooldownSeconds", 60).put("hourlyLimit", 6).put("threshold", 0.65).put("nightQuiet", true).put("title", title)
+                .put("cooldownSeconds", 60).put("hourlyLimit", 20).put("threshold", 0.65).put("nightQuiet", true).put("title", title)
             store.put("conversation", c.put("account", account).put("targetId", target).put("targetType", type).put("route", "onebot")
                 .put("reliable", true).put("captureEnabled", true).put("autoReply", true).put("allowImages", c.optBoolean("allowImages", true)))
         }
@@ -227,26 +227,35 @@ class OneBotBridge private constructor(private val context: Context) {
         check(verified && settings.optBoolean("oneBotEnabled") && settings.optBoolean("networkEnabled") && !settings.optBoolean("paused")) { "消息桥未连接或助手已暂停" }
         val conversation = store.get("conversation", task.getString("scope")) ?: error("会话不存在")
         check(conversation.optString("route") == "onebot" && task.optString("account") == settings.optString("oneBotAccount") && conversation.optString("account") == task.optString("account")) { "账号或会话绑定已变化" }
-        val echo = CompanionPolicy.id()
-        val payload = OneBotProtocol.send(conversation, task.getString("body"), echo)
         store.claimSend(task.getString("id"), CompanionPolicy.draftDigest(task))
-        val wait = Pending(); pending[echo] = wait
+        // A longer reply goes out as a few messages with typing-like pauses (AstrBot's segmented reply).
+        val segments = io.deepseekharness.mobile.companion.chat.ReplySegmenter.split(task.getString("body"))
+        val ids = mutableListOf<String>()
         try {
-            check(socket?.send(payload.toString()) == true) { "连接未接受提交" }
-            wait.latch.await(15, TimeUnit.SECONDS)
-            val ack = wait.response
-            val state = when {
-                ack == null -> "unknown"
-                ack.optInt("retcode", -1) != 0 || ack.optString("status") != "ok" -> "failed"
-                ack.optJSONObject("data")?.optString("message_id").isNullOrBlank() -> "unknown"
-                else -> "done"
+            for ((index, segment) in segments.withIndex()) {
+                if (index > 0) Thread.sleep(io.deepseekharness.mobile.companion.chat.ReplySegmenter.pauseMs(segment))
+                check(verified && !store.settings().optBoolean("paused")) { "连接已断开或已暂停" }
+                val echo = CompanionPolicy.id()
+                val wait = Pending(); pending[echo] = wait
+                try {
+                    check(socket?.send(OneBotProtocol.send(conversation, segment, echo).toString()) == true) { "连接未接受提交" }
+                    wait.latch.await(15, TimeUnit.SECONDS)
+                } finally { pending.remove(echo) }
+                val ack = wait.response
+                val id = ack?.optJSONObject("data")?.optString("message_id").orEmpty()
+                if (ack == null || ack.optInt("retcode", -1) != 0 || ack.optString("status") != "ok" || id.isBlank()) {
+                    val state = if (ack != null && ids.isEmpty() && (ack.optInt("retcode", -1) != 0 || ack.optString("status") != "ok")) "failed" else "unknown"
+                    return store.transitionTask(task.getString("id"), setOf("sending", "unknown"), state,
+                        if (state == "failed") "桥明确拒绝提交，请检查桥状态" else "已发出 ${ids.size}/${segments.size} 段，后面的结果不确定，未自动重发",
+                        JSONObject().put("platformMessageIds", org.json.JSONArray(ids))) ?: error("任务状态已变化")
+                }
+                ids.add(id)
             }
-            return store.transitionTask(task.getString("id"), setOf("sending", "unknown"), state,
-                when(state) { "done" -> "桥已返回平台消息 ID（不等于对方已读）"; "failed" -> "桥明确拒绝提交，请检查桥状态"; else -> "没有收到明确提交结果，请核对平台，未自动重发" },
-                JSONObject().put("platformMessageId", ack?.optJSONObject("data")?.optString("message_id").orEmpty())) ?: error("任务状态已变化")
+            return store.transitionTask(task.getString("id"), setOf("sending", "unknown"), "done", "已发出 ${segments.size} 段（不等于对方已读）",
+                JSONObject().put("platformMessageId", ids.first()).put("platformMessageIds", org.json.JSONArray(ids))) ?: error("任务状态已变化")
         } catch (_: Exception) {
-            return store.transitionTask(task.getString("id"), setOf("sending"), "unknown", "提交过程被中断，请核对平台，不自动重发") ?: store.get("task", task.getString("id"))!!
-        } finally { pending.remove(echo) }
+            return store.transitionTask(task.getString("id"), setOf("sending"), "unknown", "提交过程被中断（已发出 ${ids.size}/${segments.size} 段），不自动重发") ?: store.get("task", task.getString("id"))!!
+        }
     }
     companion object {
         @Volatile private var instance: OneBotBridge? = null

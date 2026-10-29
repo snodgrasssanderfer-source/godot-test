@@ -14,7 +14,7 @@ export interface Settings {
   oneBotEnabled?: boolean; oneBotUrl?: string; oneBotAccount?: string; qqAccountLabel?: string
   shareOwnerMemoryWithQq?: boolean; allowOwnerQqMute?: boolean
   onboardingCompleted?: boolean
-  autostartConfirmed?: boolean; qqGroups?: string[]
+  autostartConfirmed?: boolean; qqGroups?: string[]; groupReplyFrequency?: number
   activityEnabled?: boolean
 }
 export interface Entry { id: string; scope: string; [field: string]: unknown }

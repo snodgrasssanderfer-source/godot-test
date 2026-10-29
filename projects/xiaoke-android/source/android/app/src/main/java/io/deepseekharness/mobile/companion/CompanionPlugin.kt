@@ -137,6 +137,7 @@ class CompanionPlugin : Plugin() {
                         val sameServer = previous.optString("oneBotUrl") == url
                         store.saveSettings(previous.put("oneBotEnabled", true).put("networkEnabled", true).put("oneBotUrl", url)
                             .put("ownerQqId", owner).put("shareOwnerMemoryWithQq", owner.isNotBlank()).put("qqGroups", JSONArray(groups))
+                            .put("groupReplyFrequency", data.optDouble("groupReplyFrequency", previous.optDouble("groupReplyFrequency", 0.5)).coerceIn(0.05, 1.0))
                             .put("oneBotAccount", if (sameServer) previous.optString("oneBotAccount") else "")
                             .put("oneBotCertPin", if (sameServer) previous.optString("oneBotCertPin") else ""))
                         CompanionService.start(context)
