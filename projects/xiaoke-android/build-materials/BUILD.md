@@ -14,6 +14,9 @@
 ## 签名
 交付给主人的包必须带固定签名，否则无法覆盖安装、会丢数据。构建前设置环境变量 `DSH_KEYSTORE_BASE64`、`DSH_KEYSTORE_PASSWORD`（别名固定 `dsh-mobile`，密钥密码与库密码相同）。build.gradle 会核对证书 SHA-256 `398EE6D99B4F31A2738D82FEC5EB3D0BEEB43EAAFA3B8359A5F0D30B609DA1C2`，不符即失败。构建后用 `apksigner verify --print-certs` 复核。
 
+## 人设
+构建时如果存在 `projects/xiaoke-android/private/persona.json` 或环境变量 `XIAOKE_PERSONA_BASE64`，会把人设打包进 APK（git-ignored，不入库）。缺少时构建只告警，装上的 App 没有默认人设。
+
 ## 从旧 APK 提取运行环境
 
 没有自行重建 PRoot 时，可以从此前构建的旧 APK 中取出运行环境文件。旧 APK 和取出的文件都放在仓库目录之外的工作目录，**绝不提交**（已由 .gitignore 排除）。

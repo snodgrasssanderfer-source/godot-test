@@ -12,3 +12,6 @@ keystore.properties
 local.properties
 .env
 .env.*
+
+# 主人的私人人设：只在构建时打包进 APK，绝不提交
+private/

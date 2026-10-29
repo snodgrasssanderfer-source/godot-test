@@ -246,7 +246,15 @@ class CompanionStore(private val context: Context, databaseName: String = "compa
         check(usage.optInt("count") < settings.optInt("dailyCalls", 100)) { "已到每日请求上限（包含重试与续写）" }
         put("usage", usage.put("count", usage.optInt("count") + 1))
     }
-    fun persona(): JSONObject = get("persona", "active") ?: JSONObject().put("name", "小克").put("text", "").put("version", 0)
+    fun persona(): JSONObject {
+        val saved = get("persona", "active")
+        if (saved != null && saved.optString("text").isNotBlank()) return saved
+        // Fresh install (or never given a persona): she starts as the persona bundled at build time.
+        val bundled = runCatching { JSONObject(context.assets.open("persona/default.json").bufferedReader(Charsets.UTF_8).use { it.readText() }) }.getOrNull()
+        if (bundled != null && bundled.optString("text").isNotBlank())
+            return savePersona(bundled.optString("name", "小克").take(40), bundled.getString("text").take(64000), "安装时自带的人设")
+        return saved ?: JSONObject().put("name", "小克").put("text", "").put("version", 0)
+    }
 
     @Synchronized fun savePersona(name: String, text: String, source: String): JSONObject {
         require(name.length in 1..40 && text.length <= 64000 && source.length <= 1000)

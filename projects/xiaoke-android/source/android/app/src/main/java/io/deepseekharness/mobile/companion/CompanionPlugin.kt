@@ -125,6 +125,26 @@ class CompanionPlugin : Plugin() {
                     }
                     "saveKey" -> { engine.secrets.save(data.getString("key")); store.credentialChanged(); JSONObject().put("configured", true) }
                     "clearKey" -> { engine.activeTask?.let(engine::cancel); engine.secrets.clear(); store.credentialChanged(); JSONObject().put("configured", false) }
+                    "configureQq" -> {
+                        val url = data.getString("url").trim()
+                        val uri = java.net.URI(url)
+                        require(uri.scheme == "wss" && !uri.host.isNullOrBlank() && uri.userInfo == null && uri.query == null && uri.fragment == null) { "地址要以 wss:// 开头，不带用户名和参数" }
+                        val owner = data.optString("ownerQqId").trim().also { if (it.isNotBlank()) OneBotProtocol.numeric(it) }
+                        val groups = (data.optJSONArray("groups") ?: JSONArray()).let { a -> (0 until a.length()).map { OneBotProtocol.numeric(a.getString(it).trim()) } }.distinct()
+                        require(groups.size <= 50) { "群太多了，先选最常聊的几个" }
+                        data.optString("token").trim().takeIf { it.isNotBlank() }?.let { CompanionSecrets(context, "onebot").save(it) }
+                        val previous = store.settings()
+                        val sameServer = previous.optString("oneBotUrl") == url
+                        store.saveSettings(previous.put("oneBotEnabled", true).put("networkEnabled", true).put("oneBotUrl", url)
+                            .put("ownerQqId", owner).put("shareOwnerMemoryWithQq", owner.isNotBlank()).put("qqGroups", JSONArray(groups))
+                            .put("oneBotAccount", if (sameServer) previous.optString("oneBotAccount") else "")
+                            .put("oneBotCertPin", if (sameServer) previous.optString("oneBotCertPin") else ""))
+                        CompanionService.start(context)
+                        val bridge = OneBotBridge.get(context)
+                        if (sameServer && bridge.state().optBoolean("connected")) bridge.applyTargets(store) else bridge.start()
+                        bridge.state()
+                    }
+                    "trustBridgeCert" -> { OneBotBridge.get(context).trustCertificate(data.getString("fingerprint")); OneBotBridge.get(context).state() }
                     "saveBridgeToken" -> { CompanionSecrets(context, "onebot").save(data.getString("token")); JSONObject().put("configured", true) }
                     "clearBridgeToken" -> { OneBotBridge.get(context).stop(); CompanionSecrets(context, "onebot").clear(); JSONObject().put("configured", false) }
                     "connectBridge" -> { CompanionService.start(context); OneBotBridge.get(context).start(); OneBotBridge.get(context).state() }
@@ -322,6 +342,16 @@ class CompanionPlugin : Plugin() {
                     "restoreBackup" -> io.deepseekharness.mobile.companion.iteration.CompanionBackupCoordinator(context, engine).restore(data.getString("text"), data.getString("password"))
                     "grantApps" -> AccessibilityAutomationStore.setAllowedPackages(context,
                         (AccessibilityAutomationStore.allowedPackages(context) + CompanionPolicy.packages).toList(), data.optString("password").ifEmpty { null }, true)
+                    "requestBatteryExemption" -> {
+                        // One system dialog: "allow this app to always run in the background?"
+                        val power = context.getSystemService(android.os.PowerManager::class.java)
+                        if (!power.isIgnoringBatteryOptimizations(context.packageName)) runCatching {
+                            context.startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        }.getOrElse { context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                        JSONObject().put("ok", true)
+                    }
+                    "openAutostart" -> JSONObject().put("opened", openVendorPage(AUTOSTART_PAGES))
+                    "openBackgroundPower" -> JSONObject().put("opened", openVendorPage(BACKGROUND_POWER_PAGES))
                     "openPermission" -> {
                         val intent = when (data.getString("kind")) {
                             "accessibility" -> Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
@@ -339,6 +369,16 @@ class CompanionPlugin : Plugin() {
             } catch (e: Exception) { call.reject((e.message ?: "操作失败").take(240)) }
             finally { if (foregroundOperation) CompanionService.endOperation() }
         }
+    }
+
+    /** Phone makers hide auto-start and background-power switches in their own managers; try the known pages, then the app's settings. */
+    private fun openVendorPage(pages: List<Pair<String, String>>): String {
+        for ((pkg, cls) in pages) {
+            val intent = Intent().setComponent(android.content.ComponentName(pkg, cls)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (runCatching { context.startActivity(intent) }.isSuccess) return "vendor"
+        }
+        context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        return "app_details"
     }
 
     @PermissionCallback private fun notificationResult(call: PluginCall) { call.resolve(JSObject().put("ok", true)) }
@@ -439,4 +479,24 @@ class CompanionPlugin : Plugin() {
             .put("overlaySession", CompanionOverlayService.state()).put("messageBridge", OneBotBridge.get(context).state())
     }
     private fun thinObservation(value: JSONObject) = JSONObject(value.toString()).apply { remove("parts"); remove("frames") }
+
+private val AUTOSTART_PAGES = listOf(
+    "com.vivo.permissionmanager" to "com.vivo.permissionmanager.activity.BgStartUpManagerActivity",
+    "com.iqoo.secure" to "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity",
+    "com.iqoo.secure" to "com.iqoo.secure.ui.phoneoptimize.BgStartUpManager",
+    "com.miui.securitycenter" to "com.miui.permcenter.autostart.AutoStartManagementActivity",
+    "com.huawei.systemmanager" to "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity",
+    "com.hihonor.systemmanager" to "com.hihonor.systemmanager.startupmgr.ui.StartupNormalAppListActivity",
+    "com.coloros.safecenter" to "com.coloros.safecenter.permission.startup.StartupAppListActivity",
+    "com.oplus.safecenter" to "com.oplus.safecenter.permission.startup.StartupAppListActivity",
+    "com.samsung.android.lool" to "com.samsung.android.sm.ui.battery.BatteryActivity",
+)
+private val BACKGROUND_POWER_PAGES = listOf(
+    "com.vivo.abe" to "com.vivo.applicationbehaviorengine.ui.ExcessivePowerManagerActivity",
+    "com.iqoo.powersaving" to "com.iqoo.powersaving.PowerSavingManagerActivity",
+    "com.miui.powerkeeper" to "com.miui.powerkeeper.ui.HiddenAppsConfigActivity",
+    "com.huawei.systemmanager" to "com.huawei.systemmanager.power.ui.HwPowerManagerActivity",
+    "com.coloros.oppoguardelf" to "com.coloros.powermanager.fuelgaue.PowerUsageModelActivity",
+)
+
 }

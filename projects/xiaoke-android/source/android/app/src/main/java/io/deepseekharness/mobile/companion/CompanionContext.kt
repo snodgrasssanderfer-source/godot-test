@@ -6,6 +6,15 @@ import kotlin.math.ceil
 
 /** Visible facts, persona and opaque provider state have independent retention and budgets. */
 object CompanionContext {
+    /** The one place her character enters a prompt. Every prompt builder adds only mechanics the persona does not already cover. */
+    fun persona(persona: JSONObject): String {
+        val name = persona.optString("name", "小克")
+        val text = persona.optString("text").trim()
+        return if (text.isNotBlank()) "你是$name。\n$text\n"
+        // Without a persona she still has a voice: honest about being an AI, talks like a friend, says only what she saw.
+        else "你是$name，主人的 AI 陪伴者，清楚自己是 AI。说话像给熟人发消息，简洁自然；只说看到的、做过的事。\n"
+    }
+
     fun cost(text: String) = ceil(text.toByteArray(Charsets.UTF_8).size / 3.0).toInt()
 
     data class SelectedHistory(val contents: JSONArray, val messageIds: Set<String>)

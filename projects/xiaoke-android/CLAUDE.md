@@ -27,6 +27,11 @@
 - 私钥由主人保管，通过环境变量 `DSH_KEYSTORE_BASE64` 和 `DSH_KEYSTORE_PASSWORD` 提供。没有这两个变量时打出的包，不能给主人装。
 - 每个给主人安装的版本，`versionCode` 都加一。
 
+## 人设
+- 小克的人设是私人内容，只放在 git-ignored 的 `private/persona.json`（`{"name","text"}`），或由环境变量 `XIAOKE_PERSONA_BASE64`（该 JSON 的 base64）提供。构建时打包进 APK，App 第一次启动（或还没有人设时）自动用它。
+- 新会话里没有这个文件时，请主人在云环境变量里配好 `XIAOKE_PERSONA_BASE64`；缺了构建日志会有警告，交付的包必须带人设。
+- 代码里的提示词只写人设没覆盖的机制（工具、会话范围、设备状态、记忆），人格和口吻都交给人设，统一经过 `CompanionContext.persona()`。
+
 ## 分支与验证
 - 每轮的改动推到新分支，不碰 main。
 - 每轮在 source/android 下跑这四项：`:app:compileDebugKotlin`、`:app:compileDebugAndroidTestKotlin`、`:app:testDebugUnitTest`、`:app:assembleDebug`。不跑模拟器，不做压力测试。

@@ -42,6 +42,7 @@ class BudgetLedger(encoded: JSONObject = JSONObject()) {
         state.put("version", 1).put("configured", true).put("unit", unit).put("currency", currency)
             .put("ownerLimit", ownerLimit).put("activityLimit", activityLimit).put("warningRemaining", warning)
             .put("allowUnknownPrice", input.optBoolean("allowUnknownPrice")).put("unknownPriceCeiling", ceiling)
+            .put("daily", input.optBoolean("daily", state.optBoolean("daily")))
         return status()
     }
 
@@ -75,7 +76,14 @@ class BudgetLedger(encoded: JSONObject = JSONObject()) {
         }
         require(!input.optBoolean("submitted")) { "必须先持久化预留再标记发送" }
         if (!known) check(state.optBoolean("allowUnknownPrice") && maximum <= state.getLong("unknownPriceCeiling")) { "价格未知，且未获得对应的保守上限" }
-        val current = status()
+        if (state.optBoolean("daily")) {
+            // Daily pools only need recent history; finished entries older than a few days can go.
+            holds.keys().asSequence().toList().forEach { key ->
+                val h = holds.getJSONObject(key)
+                if (h.getString("state") in setOf("settled", "released") && h.optLong("createdAt") < now - 3 * 86_400_000L) holds.remove(key)
+            }
+        }
+        val current = status(now)
         if (lane == "activity") check(!current.getBoolean("stopActivity")) { "活动额度将尽或已耗尽，已停止新收费活动" }
         if (lane == "owner") check(!current.getBoolean("stopOwner")) { "主人额度已耗尽或出现超额账单，请核对额度" }
         check(current.getJSONObject(lane).getLong("remaining") >= maximum) { "当前通道额度不足，包含在途预留" }
@@ -121,8 +129,11 @@ class BudgetLedger(encoded: JSONObject = JSONObject()) {
         holds.keys().asSequence().toList().forEach { id -> release(id, now) }
     }
 
-    @Synchronized fun status(): JSONObject {
+    /** With daily pools, finished spending counts only for the calendar day of [now]; anything still in flight always counts. */
+    @Synchronized fun status(now: Long = System.currentTimeMillis()): JSONObject {
         val configured = state.optBoolean("configured")
+        val daily = state.optBoolean("daily")
+        val today = day(now)
         val result = JSONObject().put("configured", configured).put("unit", state.optString("unit", "calls"))
             .put("currency", state.optString("currency")).put("monetaryGuarantee", false)
             .put("unknownPrice", JSONObject().put("allowed", state.optBoolean("allowUnknownPrice"))
@@ -134,7 +145,8 @@ class BudgetLedger(encoded: JSONObject = JSONObject()) {
             var overrun = false
             holds.keys().forEach { id ->
                 val h = holds.getJSONObject(id)
-                if (h.getString("lane") == lane) {
+                val counts = !daily || day(h.optLong("createdAt")) == today || h.getString("state") in setOf("reserved", "sent")
+                if (h.getString("lane") == lane && counts) {
                     if (h.getString("state") == "settled") spent = Math.addExact(spent, h.getLong("actual"))
                     if (h.getString("state") in setOf("reserved", "sent", "outcome_unknown")) held = Math.addExact(held, h.getLong("maximum"))
                     if (h.getString("state") == "outcome_unknown") unknown++
@@ -146,12 +158,14 @@ class BudgetLedger(encoded: JSONObject = JSONObject()) {
                 .put("remaining", limit - spent - held).put("unknownRequests", unknown).put("overrun", overrun))
         }
         val activity = result.getJSONObject("activity")
-        result.put("warningRemaining", state.optLong("warningRemaining"))
+        result.put("warningRemaining", state.optLong("warningRemaining")).put("daily", daily)
         result.put("stopActivity", !configured || activity.optBoolean("overrun") ||
             activity.getLong("remaining") <= state.optLong("warningRemaining"))
         result.put("stopOwner", !configured || result.getJSONObject("owner").optBoolean("overrun") || result.getJSONObject("owner").getLong("remaining") <= 0)
         return result
     }
+
+    private fun day(epochMs: Long) = java.time.Instant.ofEpochMilli(epochMs).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
 
     @Synchronized fun reservations(): JSONArray = JSONArray().also { out -> holds.keys().forEach { out.put(JSONObject(holds.getJSONObject(it).toString())) } }
 

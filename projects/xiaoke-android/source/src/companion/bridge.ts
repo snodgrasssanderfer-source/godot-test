@@ -14,6 +14,7 @@ export interface Settings {
   oneBotEnabled?: boolean; oneBotUrl?: string; oneBotAccount?: string; qqAccountLabel?: string
   shareOwnerMemoryWithQq?: boolean; allowOwnerQqMute?: boolean
   onboardingCompleted?: boolean
+  autostartConfirmed?: boolean; qqGroups?: string[]
   activityEnabled?: boolean
 }
 export interface Entry { id: string; scope: string; [field: string]: unknown }
@@ -25,7 +26,7 @@ export interface Snapshot {
   modules?: ModuleSnapshot
   character?: {path?: string; version?: number; layout?: 'portrait'|'sprite-4x6'}
   overlaySession?: {running: boolean; package: string; remainingSeconds: number}
-  messageBridge?: {connected: boolean; status: string; tokenConfigured: boolean}
+  messageBridge?: {connected: boolean; status: string; tokenConfigured: boolean; account?: string; untrustedCertificate?: string}
   permissions: { accessibility: { serviceStatus: string; allowedPackages: string[] }; notificationAccess: boolean; overlay: boolean; microphone?: boolean; postNotifications?: boolean; onDeviceSpeech?: boolean; batteryExempt?: boolean; androidVersion: string; abis: string[] }
 }
 interface Bridge {

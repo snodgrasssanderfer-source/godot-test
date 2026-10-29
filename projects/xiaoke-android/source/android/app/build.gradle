@@ -120,6 +120,24 @@ def generateLegalAssets = tasks.register('generateLegalAssets', Sync) {
     }
 }
 
+// 主人的私人人设，装上就是小克：来自 git-ignored 的 projects/xiaoke-android/private/persona.json，
+// 或环境变量 XIAOKE_PERSONA_BASE64（新会话没有本地文件时用）。仓库里永远没有人设正文。
+def personaFile = new File(appSourceRoot.parentFile, 'private/persona.json')
+def personaEnv = System.getenv('XIAOKE_PERSONA_BASE64') ?: ''
+def personaJson = personaEnv ? new String(Base64.decoder.decode(personaEnv.trim()), 'UTF-8') : (personaFile.isFile() ? personaFile.getText('UTF-8') : '')
+if (!personaJson) logger.warn('警告：没有找到人设（private/persona.json 或 XIAOKE_PERSONA_BASE64），新装的 App 不会自带小克的人设。')
+def generatedPersonaDirectory = layout.buildDirectory.dir('generated/assets/persona')
+def generatePersonaAsset = tasks.register('generatePersonaAsset') {
+    def target = generatedPersonaDirectory
+    inputs.property('persona', personaJson)
+    outputs.dir(target)
+    doLast {
+        def dir = target.get().asFile
+        project.delete(dir)
+        if (personaJson) new File(dir, 'persona/default.json').with { parentFile.mkdirs(); write(personaJson, 'UTF-8') } else dir.mkdirs()
+    }
+}
+
 android {
     namespace 'io.deepseekharness.mobile'
     compileSdk 35
@@ -141,8 +159,8 @@ android {
         minSdk 26
         targetSdk 35
         // 每次给主人安装的新版都把 versionCode 加一；Android 不允许降级覆盖。
-        versionCode 5
-        versionName '0.5.0-companion-private'
+        versionCode 6
+        versionName '0.6.0-companion-private'
 
         buildConfigField 'String', 'DEFAULT_MANIFEST_URL', envBuildValue('DSH_RUNTIME_MANIFEST_URL')
         buildConfigField 'String', 'DEFAULT_MANIFEST_SHA256', envBuildValue('DSH_RUNTIME_MANIFEST_SHA256')
@@ -169,6 +187,7 @@ android {
     sourceSets {
         main {
             assets.srcDir(generatedLegalAssetsDirectory)
+            assets.srcDir(generatedPersonaDirectory)
         }
     }
 
@@ -226,7 +245,7 @@ kotlin {
 }
 
 tasks.named('preBuild').configure {
-    dependsOn(generateLegalAssets)
+    dependsOn(generateLegalAssets, generatePersonaAsset)
 }
 
 tasks.configureEach { task ->

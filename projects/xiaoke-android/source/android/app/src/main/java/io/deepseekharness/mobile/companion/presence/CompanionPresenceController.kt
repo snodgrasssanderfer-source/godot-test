@@ -10,6 +10,7 @@ import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Base64
 import io.deepseekharness.mobile.companion.CompanionDevice
+import io.deepseekharness.mobile.companion.CompanionContext
 import io.deepseekharness.mobile.companion.CompanionEngine
 import io.deepseekharness.mobile.companion.CompanionOverlayService
 import io.deepseekharness.mobile.companion.devicev2.DeviceAudioSession
@@ -328,8 +329,8 @@ class CompanionPresenceController(context: Context, private val onEvent: (JSONOb
         if (!input.skipInputHistory) rememberEphemeral("user", input.text)
         val persona = engine.store.persona()
         val memories = context.memories.toString().take(4_000)
-        val system = "你是${persona.optString("name", "小克")}，清楚自己是 AI。主人写的人设：${persona.optString("text").take(8_000)}\n" +
-            "现在在悬浮窗里陪主人，说话简短自然，跟着主人的话长短走，通常一两句；不用客服腔，不播报自己的动作。" +
+        val system = CompanionContext.persona(persona) +
+            "现在在悬浮窗里陪主人，回复短，跟着主人的话长短走，通常一两句。" +
             (if (gameQuiet) "主人在玩游戏：平时安静，主人跟你说话时再接；自动画面检查只在结算或失败画面开口。"
                 else "可以随着当前画面和对话自然聊。") +
             (if (EmergencyHold.ordinaryHeld) "主人刚长按悬浮球急停了点击和输入（对话照常）。告诉主人你已经停手，问一句是你点错了还是主人有别的事。" else "") +

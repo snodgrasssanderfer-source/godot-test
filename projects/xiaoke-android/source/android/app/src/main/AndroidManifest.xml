@@ -13,6 +13,7 @@
          等既有类型，只用于维持本机运行时进程，因此使用 specialUse 并给出用途说明。
          POST_NOTIFICATIONS 仅影响 Android 13+ 是否显示通知，服务本身不依赖它。 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />

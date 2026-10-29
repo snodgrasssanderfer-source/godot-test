@@ -31,8 +31,11 @@ class OneBotBridge private constructor(private val context: Context) {
     fun setModuleListener(listener: ((String, JSONObject) -> Unit)?) { moduleListener = listener }
     @Volatile private var effectGate: ((JSONObject) -> Boolean)? = null
     fun setEffectGate(gate: ((JSONObject) -> Boolean)?) { effectGate = gate }
+    /** Fingerprint of a certificate the server presented that is not trusted yet; the owner confirms it once. */
+    @Volatile private var untrustedCertificate = ""
     fun state() = JSONObject().put("connected", verified).put("status", status)
         .put("tokenConfigured", CompanionSecrets(context, "onebot").configured())
+        .put("account", engine.store.settings().optString("oneBotAccount")).put("untrustedCertificate", untrustedCertificate)
     @Synchronized fun ensureStarted() { if (socket == null) runCatching { start() }.onFailure { status = "配置不完整，请重新连接" } }
 
     @Synchronized fun stop() {
@@ -48,13 +51,15 @@ class OneBotBridge private constructor(private val context: Context) {
         val endpoint = settings.optString("oneBotUrl")
         val uri = URI(endpoint)
         require(uri.scheme == "wss" && !uri.host.isNullOrBlank() && uri.userInfo == null && uri.query == null && uri.fragment == null) { "消息桥使用无凭据参数的 wss 地址" }
-        val account = OneBotProtocol.numeric(settings.optString("oneBotAccount"))
+        // Blank until the first connection: the bridge tells us which QQ account it is logged in as.
+        var account = settings.optString("oneBotAccount").also { if (it.isNotBlank()) OneBotProtocol.numeric(it) }
         val gen = generation
         status = "连接中，等待核对账号"
         val request = Request.Builder().url(endpoint)
         val secret = CompanionSecrets(context, "onebot")
         if (secret.configured()) request.header("Authorization", "Bearer ${secret.read()}")
-        socket = client.newWebSocket(request.build(), object : WebSocketListener() {
+        val trust = PinnedTls.Trust(settings.optString("oneBotCertPin"))
+        socket = PinnedTls.client(client, trust).newWebSocket(request.build(), object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 if (gen != generation) { webSocket.cancel(); return }
                 webSocket.send(JSONObject().put("action", "get_login_info").put("params", JSONObject()).put("echo", "verify-$gen").toString())
@@ -66,10 +71,14 @@ class OneBotBridge private constructor(private val context: Context) {
                     val value = JSONObject(text)
                     val echo = value.optString("echo")
                     if (echo == "verify-$gen") {
-                        if (value.optInt("retcode", -1) != 0 || value.optJSONObject("data")?.optString("user_id") != account) {
-                            status = "桥接账号与本机配置不符，已断开"; generation++; verified = false; webSocket.cancel(); return
+                        val loggedIn = value.optJSONObject("data")?.optString("user_id").orEmpty()
+                        if (value.optInt("retcode", -1) != 0 || loggedIn.isBlank() || (account.isNotBlank() && loggedIn != account)) {
+                            status = "桥上登录的 QQ 和之前连接的不是同一个，已断开"; generation++; verified = false; webSocket.cancel(); return
                         }
-                        verified = true; failures = 0; status = "已连接，账号已核对"; return
+                        if (account.isBlank()) { account = OneBotProtocol.numeric(loggedIn); engine.store.saveSettings(engine.store.settings().put("oneBotAccount", account)) }
+                        untrustedCertificate = ""
+                        verified = true; failures = 0; status = "已连接 · 小克的 QQ $account"
+                        applyTargets(engine.store); return
                     }
                     pending.remove(echo)?.let { it.response = value; it.latch.countDown(); return }
                     if (!verified || engine.store.settings().optBoolean("paused")) return
@@ -119,7 +128,14 @@ class OneBotBridge private constructor(private val context: Context) {
                     catch (_: java.util.concurrent.RejectedExecutionException) { status = "消息接收繁忙，部分消息未处理；没有自动补发" }
                 }
             }
-            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) { disconnected(gen) }
+            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                if (gen == generation && t is javax.net.ssl.SSLException && trust.presented.isNotBlank() && !trust.pinned) {
+                    // Self-signed server certificate: wait for the owner to confirm it instead of retrying.
+                    untrustedCertificate = trust.presented; verified = false; status = "第一次连接：请核对服务器证书指纹后信任"; return
+                }
+                if (gen == generation && (response?.code == 401 || response?.code == 403)) { status = "令牌不对，服务器拒绝了连接"; verified = false; return }
+                disconnected(gen)
+            }
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) { disconnected(gen) }
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, null) }
         })
@@ -154,6 +170,34 @@ class OneBotBridge private constructor(private val context: Context) {
         val summary = if (attachments.length() > 0) " [已读取 $read 个媒体片段；其余未读取，具体格式可能不受支持]" else ""
         CompanionRouting.receive(context, c, "${event.optString("sender")}（${event.getString("senderId")}）：${event.getString("text")}$summary",
             "OneBot 消息 ${event.getString("id")}", event.optBoolean("mentioned"), event.getString("senderId"), observationId)
+    }
+    /** Trust the certificate the owner just compared on the server, then reconnect. */
+    @Synchronized fun trustCertificate(fingerprint: String) {
+        check(fingerprint.isNotBlank() && fingerprint.equals(untrustedCertificate, ignoreCase = true)) { "证书指纹已变化，请重新连接后再核对" }
+        engine.store.saveSettings(engine.store.settings().put("oneBotCertPin", fingerprint.uppercase()))
+        untrustedCertificate = ""; start()
+    }
+
+    /** The owner's own chat and the groups she may talk in are open to her; every other conversation is ignored. */
+    fun applyTargets(store: CompanionStore) {
+        val settings = store.settings()
+        val account = settings.optString("oneBotAccount").takeIf { it.isNotBlank() } ?: return
+        val groups = settings.optJSONArray("qqGroups")?.let { a -> (0 until a.length()).map { a.getString(it) } }.orEmpty().toSet()
+        fun scopeOf(type: String, target: String) = "qq:$type:${CompanionPolicy.digest("onebot\u0000$account\u0000$target").take(40)}"
+        fun open(type: String, target: String, title: String) {
+            val scope = scopeOf(type, target)
+            val c = store.get("conversation", scope) ?: JSONObject().put("id", scope).put("scope", scope).put("mode", "natural")
+                .put("cooldownSeconds", 60).put("hourlyLimit", 6).put("threshold", 0.65).put("nightQuiet", true).put("title", title)
+            store.put("conversation", c.put("account", account).put("targetId", target).put("targetType", type).put("route", "onebot")
+                .put("reliable", true).put("captureEnabled", true).put("autoReply", true).put("allowImages", c.optBoolean("allowImages", true)))
+        }
+        groups.forEach { open("group", it, "QQ群 $it") }
+        settings.optString("ownerQqId").takeIf { it.isNotBlank() }?.let { open("private", it, "主人的 QQ") }
+        val all = store.list("conversation")
+        for (i in 0 until all.length()) all.getJSONObject(i).let { c ->
+            if (c.optString("route") == "onebot" && c.optString("targetType") == "group" && c.optString("targetId") !in groups && c.optBoolean("captureEnabled"))
+                store.put("conversation", c.put("captureEnabled", false).put("autoReply", false))
+        }
     }
     private fun disconnected(gen: Int) {
         if (gen != generation) return

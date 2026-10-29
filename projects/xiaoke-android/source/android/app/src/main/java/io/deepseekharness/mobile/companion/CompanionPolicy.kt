@@ -73,7 +73,7 @@ object CompanionPolicy {
         if (result.optBoolean("oneBotEnabled")) {
             val u = URI(result.optString("oneBotUrl"))
             require(u.scheme == "wss" && !u.host.isNullOrBlank() && u.userInfo == null && u.query == null && u.fragment == null) { "消息桥需要不含凭据参数的 wss 地址" }
-            OneBotProtocol.numeric(result.optString("oneBotAccount"))
+            result.optString("oneBotAccount").takeIf { it.isNotBlank() }?.let(OneBotProtocol::numeric) // Learned on first connection.
         }
         return result
     }
@@ -91,6 +91,16 @@ object CompanionPolicy {
         "sending" -> "unknown"
         "queued", "running", "approved" -> "waiting"
         else -> state
+    }
+
+    /** Everyday talk stays on the active (light) model; code, logs, long texts and requests for deep analysis go to the deep model. */
+    fun chooseModel(settings: JSONObject, text: String): String {
+        val active = settings.getString("activeModel")
+        val deep = settings.optString("deepModel", "gemini-4-argon")
+        val profiles = settings.getJSONArray("profiles")
+        if (deep == active || (0 until profiles.length()).none { profiles.getJSONObject(it).optString("model") == deep }) return active
+        val heavy = text.length > 800 || text.contains("```") || Regex("代码|报错|日志|堆栈|推理|证明|算法|长文|仔细分析|深入分析|帮我分析").containsMatchIn(text)
+        return if (heavy) deep else active
     }
 
     fun mayReadMemory(requestScope: String, recordScope: String) = scope(requestScope) == scope(recordScope)
