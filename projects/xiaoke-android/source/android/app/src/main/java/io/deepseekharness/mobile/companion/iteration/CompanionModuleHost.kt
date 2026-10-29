@@ -90,6 +90,16 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
         require(type.matches(Regex("[a-z][a-zA-Z0-9.]{0,79}")) && source.length in 1..160)
         val event = ModuleEvent(type, scope, source, JSONObject((payload.optJSONObject("data") ?: JSONObject()).toString()))
         if (type == "data.deleted") { applyDeletion(event.data); return }
+        if (topic == "observation.summary" && store.get("observation", source) == null && !store.isDeleted("observation", source)) {
+            val summary = event.data.optString("summary", event.data.optString("text")).take(24000)
+            if (summary.isNotBlank()) {
+                store.put("observation", JSONObject().put("id", source).put("scope", scope).put("summary", summary).put("analysis", summary)
+                    .put("analyzed", true).put("source", event.data.optString("source", "本次已授权观察的模型摘要"))
+                    .put("coverage", "已授权临时片段的模型理解，属于可更正推断；原始媒体未长期保存")
+                    .put("kind", "inference").put("createdAt", event.data.optLong("createdAt", System.currentTimeMillis())))
+                event.data.put("meaningful", true)
+            }
+        }
         if (type == "action.completed" && event.data.optString("state") == "completed" && store.get("task", source) == null && !store.isDeleted("task", source)) {
             store.put("task", JSONObject().put("id", source).put("scope", scope).put("type", "device_input").put("state", "done")
                 .put("progress", "系统确认完成本次已授权手势；游戏内目标结果尚待后续观察").put("deviceReceipt", event.data))

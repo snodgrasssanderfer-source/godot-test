@@ -1,5 +1,5 @@
 import type { PresenceState } from './contract'
-import { CharacterPresentation, Emotion, type CharacterSession, type PlaybackPresentation, type VoiceSample } from './presentation'
+import { type CharacterPresentation, Emotion, type CharacterSession, type PlaybackPresentation, type VoiceSample } from './presentation'
 import { EMOTION_VALUES } from './airi/emotions'
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -87,7 +87,7 @@ export class PresenceStateAdapter {
     }
     const expression = record(state.expression) ? state.expression : undefined
     const emotion = expression && EMOTION_VALUES.includes(expression.emotion as Emotion) ? expression.emotion as Emotion : state.phase === 'thinking' ? Emotion.Think : state.phase === 'observing' || state.phase === 'listening' ? Emotion.Curious : Emotion.Neutral
-    const cueKey = `${state.phase}:${emotion}:${expression?.intensity}`
+    const cueKey = `${state.phase}:${emotion}:${typeof expression?.intensity === 'number' ? expression.intensity : 0.65}`
     if (cueKey !== this.cueKey || this.lastPhase !== state.phase) {
       this.session.react({ emotion, intensity: typeof expression?.intensity === 'number' ? expression.intensity : 0.65, durationMs: 3000 })
       this.cueKey = cueKey

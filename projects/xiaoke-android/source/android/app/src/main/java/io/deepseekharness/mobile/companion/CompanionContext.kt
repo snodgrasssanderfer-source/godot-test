@@ -8,8 +8,11 @@ import kotlin.math.ceil
 object CompanionContext {
     fun cost(text: String) = ceil(text.toByteArray(Charsets.UTF_8).size / 3.0).toInt()
 
-    fun history(messages: JSONArray, fingerprint: String, budget: Int): JSONArray {
-        val turns = mutableListOf<List<JSONObject>>()
+    data class SelectedHistory(val contents: JSONArray, val messageIds: Set<String>)
+    fun history(messages: JSONArray, fingerprint: String, budget: Int): JSONArray = selectHistory(messages, fingerprint, budget).contents
+
+    fun selectHistory(messages: JSONArray, fingerprint: String, budget: Int): SelectedHistory {
+        val turns = mutableListOf<Pair<String, List<JSONObject>>>()
         var used = 0
         for (i in messages.length() - 1 downTo 0) {
             val message = messages.getJSONObject(i)
@@ -25,13 +28,14 @@ object CompanionContext {
                 check(turns.isNotEmpty()) { "最新消息超过本机上下文预算，请缩短内容或提高预算" }
                 break
             }
+            if (turns.size >= 256) break // Full durable history remains searchable; do not attach thousands of refs per delta.
             used += length
-            turns.add(group)
+            turns.add(message.optString("id") to group)
         }
-        val flattened = turns.asReversed().flatten().toMutableList()
+        val flattened = turns.asReversed().flatMap { it.second }.toMutableList()
         // Never begin a truncated conversation with an orphan model/tool response.
         while (flattened.isNotEmpty() && flattened.first().optString("role") != "user") flattened.removeAt(0)
-        return JSONArray().also { out -> flattened.forEach(out::put) }
+        return SelectedHistory(JSONArray().also { out -> flattened.forEach(out::put) }, turns.map { it.first }.filter { it.isNotBlank() }.toSet())
     }
 
     fun memories(records: JSONArray, budget: Int): JSONArray {

@@ -30,7 +30,7 @@ export function VideoPanel({run, networkEnabled}: {run: Run; networkEnabled: boo
     if (file.size > 12 * 1024 * 1024) { setResult('整段附件限 12 MB；较长视频请用“从本地视频取关键帧”，无需复制完整文件。'); return }
     try {
       const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader(); reader.onload = () => resolve(String(reader.result).split(',')[1]); reader.onerror = () => reject(new Error('文件读取失败')); reader.readAsDataURL(file)
+        const reader = new FileReader(); reader.onload = () => { if (typeof reader.result === 'string') resolve(reader.result.split(',')[1]); else reject(new Error('文件读取格式不正确')) }; reader.onerror = () => reject(new Error('文件读取失败')); reader.readAsDataURL(file)
       })
       await act('importMedia', {name: file.name, mime: file.type, base64})
     } catch (e) { setResult(String(e)) }

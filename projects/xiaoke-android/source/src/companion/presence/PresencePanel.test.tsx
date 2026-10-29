@@ -53,7 +53,7 @@ describe('PresencePanel host integration', () => {
     fireEvent.click(screen.getByRole('button', { name: '开启本次陪伴' }))
     fireEvent.click(screen.getByRole('button', { name: '结束陪伴' }))
     expect(command).toHaveBeenCalledWith('presenceStop', undefined)
-    await act(async () => { finish() })
+    await act(() => { finish(); return Promise.resolve() })
   })
 
   it('reports native rejection and allows a retry', async () => {

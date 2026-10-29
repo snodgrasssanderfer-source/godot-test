@@ -31,11 +31,22 @@ class CompanionEngine private constructor(private val context: Context) {
     @Volatile private var activeContextEpoch: Long? = null
     @Volatile var activeTask: String? = null
         private set
-    init { store.recoverJobs() }
+    init {
+        store.recoverJobs()
+        io.deepseekharness.mobile.companion.presence.PresenceContexts.access = object : io.deepseekharness.mobile.companion.presence.PresenceContextAccess {
+            override fun snapshot(query: String) = store.contextSnapshot(CompanionPolicy.OWNER, query)
+            override fun current(epoch: Long) = epoch == store.contentEpoch()
+            override fun commit(ticket: JSONObject, mutation: () -> Unit) {
+                store.commitContext(ticket.getLong("epoch"), ticket.getJSONArray("sourceRefs"), mutation)
+            }
+        }
+    }
 
-    fun submit(scope: String, text: String, source: String = "本机主人", observationId: String = ""): JSONObject {
+    fun submit(scope: String, text: String, source: String = "本机主人", observationId: String = "", actorId: String = ""): JSONObject {
         CompanionPolicy.scope(scope)
-        val userMessage = store.message(scope, "user", CompanionPolicy.text(text), source)
+        val userMessage = store.message(scope, "user", CompanionPolicy.text(text), source).let { message ->
+            store.put("message", message.put("actorId", if (scope == CompanionPolicy.OWNER) "local-device-owner" else actorId))
+        }
         val task = store.put("task", JSONObject().put("scope", scope).put("type", "chat").put("state", "queued")
             .put("messageId", userMessage.getString("id")).put("observationId", observationId).put("progress", "等待处理"))
         modules.router.event(ModuleEvent("conversation.message", scope, userMessage.getString("id"), JSONObject(userMessage.toString()).apply { remove("wire") }))
@@ -135,8 +146,9 @@ class CompanionEngine private constructor(private val context: Context) {
         require(lane != "owner" || modules.principal(scope).owner) { "此会话不能占用主人保留额度" }
         val id = CompanionPolicy.id()
         val cancelled = AtomicBoolean(false)
-        val ticket = store.contextSnapshot(scope)
-        val epoch = ticket.getLong("epoch")
+        val suppliedEpoch = request.optLong("contextEpoch", -1)
+        val epoch = if (suppliedEpoch >= 0) suppliedEpoch else store.contentEpoch()
+        checkEpoch(epoch)
         moduleRequests[id] = cancelled
         fun emit(type: String, text: String? = null, error: String? = null, usage: JSONObject? = null) {
             val event = JSONObject().put("requestId", id).put("type", type)
@@ -174,10 +186,10 @@ class CompanionEngine private constructor(private val context: Context) {
                 val billing = accounting(scope, lane, request.optString("purpose", "module"), ::checkCurrent)
                 val reply = model.generate(settings, profile, contents, system, JSONArray(), progress = {},
                     beforeRequest = billing::beforeRequest,
-                    onText = { text -> checkCurrent(); store.commitContext(epoch, ticket.getJSONArray("sourceRefs")) { emit("delta", text) } }, onAttemptFinished = billing::finished)
+                    onText = { text -> checkCurrent(); store.commitContext(epoch) { emit("delta", text) } }, onAttemptFinished = billing::finished)
                 checkCurrent()
                 check(GeminiWire.calls(reply.getJSONArray("parts")).isEmpty()) { "模块请求不能直接执行模型工具" }
-                store.commitContext(epoch, ticket.getJSONArray("sourceRefs")) { emit("completed", GeminiWire.text(reply.getJSONArray("parts")), usage = reply.optJSONObject("usageMetadata")) }
+                store.commitContext(epoch) { emit("completed", GeminiWire.text(reply.getJSONArray("parts")), usage = reply.optJSONObject("usageMetadata")) }
             } catch (e: Exception) {
                 emit(if (cancelled.get() || id in preempted) "cancelled" else "failed", error = when {
                     id in preempted -> "为主人交流暂停活动；费用待核对，不自动重放请求"
@@ -231,10 +243,10 @@ class CompanionEngine private constructor(private val context: Context) {
             val profile = (0 until profiles.length()).map(profiles::getJSONObject).first { it.getString("model") == settings.getString("activeModel") }
             val scope = task.getString("scope")
             val origin = store.get("message", task.getString("messageId")) ?: error("原消息已删除")
-            val ticket = store.contextSnapshot(scope, origin.optString("text"))
+            val ticket = store.contextSnapshot(scope, origin.optString("text"), 256)
             val epoch = ticket.getLong("epoch")
             activeContextEpoch = epoch
-            val sources = ticket.getJSONArray("sourceRefs")
+            val sources = JSONArray()
             fun checkCurrent() { checkTask(id); checkEpoch(epoch) }
             val history = ticket.getJSONArray("messages")
             // Bound the turn to its initiating message: later queued user messages belong to later tasks.
@@ -252,10 +264,10 @@ class CompanionEngine private constructor(private val context: Context) {
             val memoryBudget = (budget / 4).coerceAtMost(6000)
             val persona = store.persona()
             val remembered = recallMemories(scope, all[end].optString("text"))
-            for (i in 0 until remembered.length()) remembered.getJSONObject(i).let {
+            val memories = CompanionContext.memories(remembered, memoryBudget)
+            for (i in 0 until memories.length()) memories.getJSONObject(i).let {
                 sources.put(JSONObject().put("kind", "memory").put("id", it.getString("id")).put("scope", it.getString("scope")))
             }
-            val memories = CompanionContext.memories(remembered, memoryBudget)
             val system = buildString {
                 append("你是用户配置的 AI 助手。保持 AI 助手身份；名字：${persona.optString("name", "小克")}。\n")
                 append("人格正文由主人编辑，未填写时不要自行设定固定性格。正文：\n${persona.optString("text")}\n")
@@ -274,7 +286,9 @@ class CompanionEngine private constructor(private val context: Context) {
             }
             val textBudget = budget - CompanionContext.cost(system) - 1500
             check(textBudget >= 1024) { "人格或固定记忆占满上下文，请调整预算" }
-            val contents = CompanionContext.history(messages, fingerprint, textBudget)
+            val selection = CompanionContext.selectHistory(messages, fingerprint, textBudget)
+            val contents = selection.contents
+            selection.messageIds.forEach { sources.put(JSONObject().put("kind", "message").put("id", it).put("scope", scope)) }
             val turnHistory = JSONArray()
             val observationId = task.optString("observationId")
             if (observationId.isNotBlank()) {
@@ -287,14 +301,19 @@ class CompanionEngine private constructor(private val context: Context) {
                 parts.put(JSONObject().put("text", "观察来源：${observation.optString("source")}；覆盖范围：${observation.optString("coverage")}。时间：${observation.optLong("createdAt")}。只据这些材料判断，不可假称完整观看。"))
                 for (i in 0 until media.length()) parts.put(media.getJSONObject(i))
             }
-            update(id, "running", "正在连接 ${profile.getString("model")}")
+            store.commitContext(epoch, sources) { update(id, "running", "正在连接 ${profile.getString("model")}") }
+            var lastPartialAt = 0L
             for (round in 0 until 6) {
                 checkCurrent()
                 check(ProviderHistoryPrivacy.estimatedInput(contents) + CompanionContext.cost(system) + profile.getInt("maxOutputTokens") + 1024 <= profile.optInt("contextBudget", 65536)) { "新增资料超过当前模型上下文预算，请减少材料" }
                 val billing = accounting(scope, if (modules.principal(scope).owner) "owner" else "activity", "chat", ::checkCurrent)
                 val reply = model.generate(settings, profile, contents, system, declarations(scope),
                     progress = { update(id, "running", it) }, beforeRequest = billing::beforeRequest,
-                    onText = { text -> checkCurrent(); store.commitContext(epoch, sources) { store.transitionTask(id, setOf("running"), "running", "正在生成", JSONObject().put("partialText", text)) } },
+                    onText = { text ->
+                        checkCurrent()
+                        val now = android.os.SystemClock.elapsedRealtime()
+                        if (now - lastPartialAt >= 350) { lastPartialAt = now; store.commitContext(epoch) { store.transitionTask(id, setOf("running"), "running", "正在生成", JSONObject().put("partialText", text)) } }
+                    },
                     onAttemptFinished = billing::finished)
                 checkCurrent()
                 val parts = reply.getJSONArray("parts")
@@ -327,6 +346,22 @@ class CompanionEngine private constructor(private val context: Context) {
                     val result = try { store.commitContext(epoch, sources) { tool(scope, task.getString("messageId"), call.getString("name"), call.optJSONObject("args") ?: JSONObject()) } }
                     catch (e: IllegalArgumentException) { JSONObject().put("error", e.message?.take(180) ?: "参数不正确") }
                     catch (e: IllegalStateException) { JSONObject().put("error", e.message?.take(180) ?: "操作不可用") }
+                    if (call.optString("name") == "recall") {
+                        for ((key, kind) in listOf("memories" to "memory", "messages" to "message")) {
+                            val recalled = result.optJSONArray(key) ?: continue
+                            for (i in 0 until recalled.length()) recalled.getJSONObject(i).let { item ->
+                                sources.put(JSONObject().put("kind", kind).put("id", item.getString("id")).put("scope", item.optString("scope", scope)))
+                            }
+                        }
+                    }
+                    if (call.optString("name") == "life_action") {
+                        val action = call.optJSONObject("args")?.optString("action").orEmpty()
+                        val items = result.optJSONArray("items") ?: JSONArray()
+                        val kind = when (action) { "memory.search" -> "memory"; "diary.list" -> "diary"; "interest.list" -> "interest"; else -> "" }
+                        if (kind.isNotBlank()) for (i in 0 until items.length()) items.getJSONObject(i).let { item ->
+                            sources.put(JSONObject().put("kind", kind).put("id", item.getString("id")).put("scope", item.optString("scope", scope)))
+                        }
+                    }
                     responses.put(GeminiWire.toolResponse(call, result))
                     if (call.optString("name") == "device_action") {
                         val frame = if (result.has("preview")) result else result.optJSONObject("after")
@@ -451,7 +486,7 @@ class CompanionEngine private constructor(private val context: Context) {
         val all = store.contextMessages(scope, 10000)
         return JSONArray().also { result -> (0 until all.length()).map(all::getJSONObject)
             .filter { it.optString("text").contains(query, ignoreCase = true) }.takeLast(12).forEach {
-                result.put(JSONObject().put("id", it.getString("id")).put("text", it.optString("text").take(2000)).put("source", it.optString("source")))
+                result.put(JSONObject().put("id", it.getString("id")).put("scope", it.getString("scope")).put("text", it.optString("text").take(2000)).put("source", it.optString("source")))
             } }
     }
 

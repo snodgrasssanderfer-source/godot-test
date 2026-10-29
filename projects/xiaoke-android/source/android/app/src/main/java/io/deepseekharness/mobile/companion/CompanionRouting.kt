@@ -27,10 +27,10 @@ object CompanionRouting {
                 since, conversation.optInt("cooldownSeconds", 60), used, conversation.optInt("hourlyLimit", 6).coerceAtMost(if (scope.startsWith("qq:group:")) 6 else 60))
         if (eligible) {
             store.put("conversation", conversation.put("hour", hour).put("hourCount", used + 1).put("lastReplyAt", now).put("messagesSinceReply", 0))
-            engine.submit(scope, text, source, observationId)
+            engine.submit(scope, text, source, observationId, senderId)
         } else {
             store.put("conversation", conversation)
-            val message = store.message(scope, "user", text, source)
+            val message = store.message(scope, "user", text, source).let { store.put("message", it.put("actorId", senderId)) }
             if (observationId.isNotEmpty()) store.put("message", message.put("observationId", observationId))
         }
         }

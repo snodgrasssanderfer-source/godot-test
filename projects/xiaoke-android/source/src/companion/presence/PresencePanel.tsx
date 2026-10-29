@@ -39,6 +39,7 @@ export function PresencePanel({ state, onCommand }: PresencePanelProps) {
 
   useEffect(() => {
     alive.current = true
+    const generationRef = importGeneration
     const presentation = new CharacterPresentation()
     const binding = new PresenceStateAdapter(presentation)
     adapter.current = binding
@@ -48,7 +49,7 @@ export function PresencePanel({ state, onCommand }: PresencePanelProps) {
     } catch (cause) { setError(cause instanceof Error ? cause.message : '角色显示暂不可用。') }
     return () => {
       alive.current = false
-      importGeneration.current++
+      generationRef.current++
       view.current?.dispose()
       view.current = undefined
       binding.dispose()
@@ -113,7 +114,7 @@ export function PresencePanel({ state, onCommand }: PresencePanelProps) {
       setArtLabel(layout === 'sprite-4x6' ? '你的本地动作角色 · 示意动画' : '你的本地角色图 · 静态')
       if (state.characterStorage) {
         const encoded = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader(); reader.onload = () => resolve(String(reader.result).split(',')[1]); reader.onerror = () => reject(new Error('角色图片读取失败')); reader.readAsDataURL(file)
+          const reader = new FileReader(); reader.onload = () => { if (typeof reader.result === 'string') resolve(reader.result.split(',')[1]); else reject(new Error('文件读取格式不正确')) }; reader.onerror = () => reject(new Error('角色图片读取失败')); reader.readAsDataURL(file)
         })
         await onCommand('saveCharacter', {base64: encoded, layout})
       }

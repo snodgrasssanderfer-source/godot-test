@@ -1,4 +1,4 @@
-import type { CharacterFrame, CharacterPresentation } from './presentation'
+import { Emotion, type CharacterFrame, type CharacterPresentation } from './presentation'
 import { spriteFrame, type CharacterArtwork } from './character-art'
 import type { PresencePhase } from './contract'
 
@@ -123,15 +123,15 @@ function drawPlaceholder(ctx: CanvasRenderingContext2D, frame: CharacterFrame): 
     ctx.fill()
   }
   ctx.lineCap = 'round'
-  if (frame.emotion === 'happy') {
+  if (frame.emotion === Emotion.Happy) {
     ctx.strokeStyle = '#798ee1'
     for (const x of [-29, 29]) {
       ctx.beginPath(); ctx.moveTo(x - 3, 7); ctx.lineTo(x + 3, 7); ctx.stroke()
     }
   }
-  if (frame.emotion === 'sad' || frame.emotion === 'angry' || frame.emotion === 'think') {
+  if (frame.emotion === Emotion.Sad || frame.emotion === Emotion.Angry || frame.emotion === Emotion.Think) {
     ctx.strokeStyle = '#26334f'
-    const slope = frame.emotion === 'angry' ? 4 : -4
+    const slope = frame.emotion === Emotion.Angry ? 4 : -4
     for (const side of [-1, 1]) {
       ctx.beginPath(); ctx.moveTo(side * 24, -18); ctx.lineTo(side * 12, -18 + slope); ctx.stroke()
     }
@@ -144,7 +144,7 @@ function drawPlaceholder(ctx: CanvasRenderingContext2D, frame: CharacterFrame): 
     ctx.fill()
   } else {
     ctx.moveTo(-7, 17)
-    ctx.quadraticCurveTo(0, frame.emotion === 'sad' ? 13 : 23, 7, 17)
+    ctx.quadraticCurveTo(0, frame.emotion === Emotion.Sad ? 13 : 23, 7, 17)
     ctx.stroke()
   }
   ctx.restore()

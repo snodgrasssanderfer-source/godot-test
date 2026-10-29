@@ -233,6 +233,11 @@ class CompanionDevice(private val context: Context) {
             it.optBoolean("clickable") && (it.optString("text") in setOf("发送", "发布", "发表") || it.optString("contentDescription") in setOf("发送", "发布", "发表"))
         }
         check(buttons.size == 1 && buttons.single().optString("viewId").isNotBlank()) { "发送按钮不唯一，已停止，正文留在输入框供核对" }
+        val host = CompanionEngine.get(context).modules
+        val gate = host.authorizeEffect(JSONObject().put("type", if (task.optString("package") == "tv.danmaku.bili") "public_comment" else "social_send")
+            .put("scope", task.getString("scope")).put("target", task.getString("target"))
+            .put("contentDigest", CompanionPolicy.draftDigest(task)).put("requestId", task.getString("id")), host.localOwner)
+        check(gate.optBoolean("allowed")) { gate.optString("reason", "外部活动未启用") }
         store.claimSend(task.getString("id"), CompanionPolicy.draftDigest(task))
         action(buttons.single().getString("viewId"), "click")
         // UI click success is not delivery acknowledgement. Avoid duplicate sends on uncertain outcomes.

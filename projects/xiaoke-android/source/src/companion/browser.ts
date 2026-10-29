@@ -1,14 +1,15 @@
 import { WebPlugin } from '@capacitor/core'
 import { defaultSettings, ownerScope, type Entry, type Snapshot, type Settings } from './bridge'
 
+const string = (value: unknown, fallback = '') => typeof value === 'string' ? value : fallback
 const key = 'dsh-companion-preview-v1'
 const empty = (): Snapshot => ({ settings: defaultSettings(), keyConfigured: false, persona: { name: '小克', text: '', version: 0 }, personaVersions: [], memories: [], conversations: [], tasks: [], messages: [], observations: [], permissions: {accessibility: {serviceStatus: 'off', allowedPackages: []}, notificationAccess: false, overlay: false, androidVersion: '浏览器预览', abis: []} })
 
 /** Real browser persistence for UI validation. Never impersonates Android or model execution. */
 export class CompanionBrowser extends WebPlugin {
-  async state(): Promise<Snapshot> {
-    try { const value = localStorage.getItem(key); return value ? JSON.parse(value) as Snapshot : empty() }
-    catch { return empty() }
+  state(): Promise<Snapshot> {
+    try { const value = localStorage.getItem(key); return Promise.resolve(value ? JSON.parse(value) as Snapshot : empty()) }
+    catch { return Promise.resolve(empty()) }
   }
   async command({action, data}: {action: string; data: Record<string, unknown>}) {
     const state = await this.state()
@@ -17,7 +18,7 @@ export class CompanionBrowser extends WebPlugin {
     switch (action) {
       case 'settings': state.settings = {...data, networkEnabled: false, backgroundEnabled: false} as unknown as Settings; break
       case 'persona': {
-        const next = {name: String(data.name), text: String(data.text), source: String(data.source ?? '主人编辑'), version: state.persona.version + 1}
+        const next = {name: String(data.name), text: String(data.text), source: string(data.source, '主人编辑'), version: state.persona.version + 1}
         state.persona = next; state.personaVersions.push({...next, id, scope: ownerScope}); break
       }
       case 'restorePersona': {
@@ -26,7 +27,7 @@ export class CompanionBrowser extends WebPlugin {
         state.persona = {name: String(item.name), text: String(item.text), version: state.persona.version + 1}; break
       }
       case 'memory': {
-        const item = {...data, id, scope: String(data.scope ?? ownerScope), updatedAt: Date.now(), status: 'confirmed'} as Entry
+        const item = {...data, id, scope: string(data.scope, ownerScope), updatedAt: Date.now(), status: 'confirmed'} as Entry
         state.memories = state.memories.filter(x => x.id !== id).concat(item); break
       }
       case 'deleteMemory': state.memories = state.memories.filter(x => !(x.id === id && x.scope === data.scope)); break

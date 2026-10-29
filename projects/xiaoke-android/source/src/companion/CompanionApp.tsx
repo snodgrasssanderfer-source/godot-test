@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import { ArrowLeft, BookOpen, Check, ChevronRight, Download, KeyRound, Loader2, MessageCircle, Pause, Play, Plus, Settings2, Shield, Smartphone, Sparkles, Trash2, Upload, X } from 'lucide-react'
+import { ArrowLeft, BookOpen, Check, ChevronRight, Download, KeyRound, Loader2, MessageCircle, Pause, Play, Plus, Settings2, Shield, Smartphone, Sparkles, Upload, X } from 'lucide-react'
 import { command, companion, field, nativeCompanion, ownerScope, profile, type Entry, type Persona, type Settings, type Snapshot } from './bridge'
 import './companion.css'
 import { downloadText, readCharacterCard } from './characterCard'
@@ -11,6 +11,7 @@ import { DocumentsPanel } from './iteration/DocumentsPanel'
 import { GameSessionPanel } from './iteration/GameSessionPanel'
 import { DevicePanel } from './devicev2/DevicePanel'
 import { SocialPanel } from './social/SocialPanel'
+import { LifePanel } from './life/LifePanel'
 const AgentWorkbench = lazy(() => import('../App').then(module => ({default: module.App})))
 
 type Tab = 'chat' | 'models' | 'persona' | 'memory' | 'tasks' | 'device'
@@ -83,7 +84,7 @@ export function CompanionApp() {
       {!setupVisible && tab==='chat' && <Chat snapshot={snapshot} run={run} onSetup={() => setTab('models')}/>}
       {!setupVisible && tab==='models' && <Models snapshot={snapshot} run={run}/>}
       {!setupVisible && tab==='persona' && <PersonaEditor value={snapshot.persona} versions={snapshot.personaVersions} run={run}/>}
-      {!setupVisible && tab==='memory' && <Memory snapshot={snapshot} run={run}/>}
+      {!setupVisible && tab==='memory' && <LifePanel state={snapshot.modules?.life??{}} available={nativeCompanion&&snapshot.modules?.life.available===true} scopes={[{id:ownerScope,label:'主人 · 本机私聊'},...snapshot.conversations.map(c=>({id:c.scope,label:field(c,'title')||c.scope}))]} run={(action,data)=>run('module',{domain:'life',action,data:data??{}})} saveFile={(name,text)=>run('saveDocument',{name,text})}/>}
       {!setupVisible && tab==='tasks' && <><section className="content-panel"><div className="card activity-switch"><label className="check-row"><input type="checkbox" checked={snapshot.settings.activityEnabled===true} onChange={e=>void quietRun('settings',{...snapshot.settings,activityEnabled:e.target.checked})}/>启用按已设范围执行外部活动</label><small>需先配置账号与预算。评论、加好友和加群仍须具体审批，开关不会自动登录或替你授权任何目标。</small></div><SocialPanel state={snapshot.modules?.social??{}} available={nativeCompanion&&snapshot.modules?.social.available===true} run={(action,data)=>run('module',{domain:'social',action,data})}/></section><details className="legacy-task-details"><summary>聊天处理与原有发送草稿</summary><Tasks snapshot={snapshot} run={run}/></details></>}
       {!setupVisible && tab==='device' && <><section className="content-panel"><Heading title="手机陪伴与操作" text="观察、收音和输入控制分别开关，关闭浮球不会结束全部联系。"/><GameSessionPanel run={run} available={nativeCompanion&&snapshot.modules?.device.available===true}/><details><summary>设备观察、音频与手势详细控制</summary><DevicePanel state={snapshot.modules?.device??{}} available={nativeCompanion&&snapshot.modules?.device.available===true} run={(action,data)=>run('module',{domain:'device',action,data})}/></details></section><Device snapshot={snapshot} run={run}/></>}
     </main>
@@ -140,22 +141,6 @@ function PersonaEditor({value,versions,run}:{value:Persona;versions:Entry[];run:
   </section>
 }
 
-function Memory({snapshot,run}:{snapshot:Snapshot;run:Run}) {
-  const [scope,setScope]=useState(ownerScope),[search,setSearch]=useState(''),[id,setId]=useState(''),[kind,setKind]=useState('fact'),[text,setText]=useState(''),[source,setSource]=useState('主人编辑'),[sourceId,setSourceId]=useState(''),[pinned,setPinned]=useState(false)
-  const [password,setPassword]=useState(''),[note,setNote]=useState(''),[history,setHistory]=useState<unknown[]>([]);const restoreFile=useRef<HTMLInputElement>(null)
-  const scopes=Array.from(new Set([ownerScope,...snapshot.conversations.map(c=>c.scope),...snapshot.memories.map(m=>m.scope)]))
-  const filtered=snapshot.memories.filter(m=>m.scope===scope && field(m,'text').includes(search))
-  function clear(){setId('');setText('');setSourceId('');setSource('主人编辑');setPinned(false)}
-  async function backup(){try{const result=await run('backup',{password}) as {text:string};if(nativeCompanion)await run('saveDocument',{name:'小克加密备份.json',text:result.text});else downloadText('小克预览备份.json',result.text);setNote('已导出。请保管备份口令；密钥、账号凭据和原始媒体不在备份中。');setPassword('')}catch{/* shown */}}
-  async function restore(file:File){if(file.size>16*1024*1024){setNote('备份不能超过 16 MB');return}if(!confirm('恢复会替换当前角色、记忆、消息与任务记录。请先导出当前备份。继续？'))return;try{await run('restoreBackup',{password,text:await file.text()});setNote('已恢复；联网与发送授权不会随备份恢复。');setPassword('');clear()}catch{/* shown */}}
-  return <section className="content-panel"><Heading title="记得清楚，也能更正" text="主人私聊、每个 QQ 会话与公共内容分别保存。每条记忆有来源，模型提取项须经你确认。"/>
-    <div className="stack"><div className="card"><div className="form-grid"><label>记忆范围<select value={scope} onChange={e=>{setScope(e.target.value);clear()}}>{scopes.map(s=><option key={s} value={s}>{s===ownerScope?'主人 · 本机私聊':field(snapshot.conversations.find(c=>c.scope===s)??{id:'',scope:s},'title')||s}</option>)}</select></label><label>搜索<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="记忆中的词句"/></label></div>
-      <div className="form-actions"><button onClick={()=>void run('maintainMemory',{scope}).catch(()=>undefined)} disabled={!snapshot.settings.networkEnabled}>请模型整理此会话记忆</button><small>会调用所选模型；新增项带来源保存，事实与推断分开；可在生活页更正。</small></div>{filtered.length===0?<p className="subtle">这个范围还没有记忆。</p>:filtered.map(m=><article key={m.id} className="memory-record"><div className="section-row"><span className="pill">{{fact:'事实',relationship:'关系',event:'事件',task:'任务'}[field(m,'kind')]??'记忆'} · {m.status==='confirmed'?'主人确认':'自动来源记录'}{m.pinned?' · 固定':''}</span><div className="inline-actions"><button onClick={()=>{setId(m.id);setKind(field(m,'kind'));setText(field(m,'text'));setSource(field(m,'source'));setSourceId(field(m,'sourceId'));setPinned(Boolean(m.pinned))}}>编辑</button><button onClick={()=>void run('memoryHistory',{scope,id:m.id}).then(v=>setHistory(v as unknown[])).catch(()=>undefined)}>修订</button><button aria-label="删除记忆" onClick={()=>{if(confirm('删除此记忆、其受保护的原消息及全部派生记录？这会真正清理，不能靠旧备份恢复。'))void run('deleteMemory',{scope,id:m.id}).catch(()=>undefined)}}><Trash2 size={15}/></button></div></div><p>{field(m,'text')}</p><small>来源：{field(m,'source')}{m.sourceId?` · 消息 ${field(m,'sourceId')}`:''}</small></article>)}
-    </div>{history.length>0&&<div className="card"><div className="section-row"><h2>记忆修订</h2><button onClick={()=>setHistory([])}>关闭</button></div><pre className="operation-result">{JSON.stringify(history,null,2)}</pre></div>}<form className="card" onSubmit={e=>{e.preventDefault();void run('memory',{...(id?{id}:{}),scope,kind,text,source,sourceId,pinned}).then(clear).catch(()=>undefined)}}><h2>{id?'更正并确认记忆':'添加记忆'}</h2><div className="form-grid"><label>类别<select value={kind} onChange={e=>setKind(e.target.value)}><option value="fact">事实</option><option value="relationship">关系</option><option value="event">事件</option><option value="task">任务</option></select></label><label>来源说明<input value={source} maxLength={1000} onChange={e=>setSource(e.target.value)}/></label></div><label>内容<textarea rows={4} value={text} maxLength={8000} required onChange={e=>setText(e.target.value)}/></label><label className="check-row"><input type="checkbox" checked={pinned} onChange={e=>setPinned(e.target.checked)}/>优先放入模型上下文</label><div className="form-actions"><button className="primary" type="submit">保存并确认</button>{id&&<button type="button" onClick={clear}>取消编辑</button>}</div></form>
-    <div className="card"><h2>加密备份与恢复</h2><p>备份角色版本、记忆、日记、兴趣、会话、预算和社交任务；不包含密钥、原始媒体或可继续发送的授权。恢复后暂停联网与旧任务，删除记录优先。</p><label>备份口令<input type="password" autoComplete="new-password" minLength={8} maxLength={256} value={password} onChange={e=>setPassword(e.target.value)} placeholder="至少 8 个字符，遗失后无法解密"/></label><div className="form-actions"><button onClick={()=>void backup()} disabled={password.length<8}><Download size={16}/> 导出备份</button><button onClick={()=>restoreFile.current?.click()} disabled={password.length<8}><Upload size={16}/> 选择备份恢复</button></div><input ref={restoreFile} hidden type="file" accept=".json,application/json" onChange={e=>{const f=e.target.files?.[0];if(f)void restore(f);e.target.value=''}}/>{note&&<p role="status" className="subtle">{note}</p>}</div></div>
-  </section>
-}
-
 function Tasks({snapshot,run}:{snapshot:Snapshot;run:Run}) {
   const [filter,setFilter]=useState('pending')
   const tasks=snapshot.tasks.slice().reverse().filter(t=>filter==='all'||!['done','cancelled'].includes(field(t,'state')))
@@ -183,7 +168,7 @@ function TaskCard({task,run}:{task:Entry;run:Run}) {
 function Device({snapshot,run}:{snapshot:Snapshot;run:Run}) {
   const [status,setStatus]=useState(''),[password,setPassword]=useState('')
   const permissions=snapshot.permissions
-  const execute=(action:string,data:object={})=>void run(action,data).then(result=>setStatus(typeof result==='object'?JSON.stringify(result,null,2):String(result))).catch(()=>undefined)
+  const execute=(action:string,data:object={})=>void run(action,data).then(result=>setStatus(typeof result==='string'?result:JSON.stringify(result,null,2)??'操作完成')).catch(()=>undefined)
   return <section className="content-panel"><Heading title="让能力，接上你的手机" text="按需要开启权限。QQ 常态使用独立消息桥；B站和设备任务保留真实安卓操作。登录由你完成。"/>
     <div className="stack"><div className="card"><div className="section-row"><h2>权限与运行状态</h2><span className="pill">Android {permissions.androidVersion}</span></div><small>设备 ABI：{permissions.abis.join('、')||'浏览器不提供'}</small><div className="permission-list">{[
       ['accessibility','无障碍服务',permissions.accessibility.serviceStatus==='connected'||permissions.accessibility.serviceStatus==='enabled','读取界面、点击与短时截图'],

@@ -1,0 +1,154 @@
+{
+  "recorded": "2026-10-29",
+  "coverage": "Existing earlier results; not a verification of the final merged checkpoint",
+  "jvm_suites": [
+    {
+      "file": "TEST-io.deepseekharness.mobile.companion.CompanionScenariosTest.xml",
+      "suite": "io.deepseekharness.mobile.companion.CompanionScenariosTest",
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "3221cc1ec117887402d870ffc6d3857d1b8df26e6d056b691538cc6c2809d941"
+    },
+    {
+      "file": "TEST-io.deepseekharness.mobile.companion.GeminiLocalProtocolTest.xml",
+      "suite": "io.deepseekharness.mobile.companion.GeminiLocalProtocolTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "de3cb11f9e9007ccc405a335a5b99374297eece9b758ab29027113c506203534"
+    },
+    {
+      "file": "TEST-io.deepseekharness.mobile.companion.devicev2.InputFenceTest.xml",
+      "suite": "io.deepseekharness.mobile.companion.devicev2.InputFenceTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "e0d556f91cf789beb00524d912ed7e033b9fd1e45613f61e92870d7826d42eab"
+    },
+    {
+      "file": "TEST-io.deepseekharness.mobile.companion.devicev2.PcmSessionTest.xml",
+      "suite": "io.deepseekharness.mobile.companion.devicev2.PcmSessionTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "60550a7cf6f9047c76befb56b185bfb3347503b085dff0eef2b8a5e8f070769d"
+    },
+    {
+      "file": "TEST-io.deepseekharness.mobile.companion.documents.DocumentTextTest.xml",
+      "suite": "io.deepseekharness.mobile.companion.documents.DocumentTextTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "42c602bdcdfa94cccb68f638d67fd5d5c0bc4e7366e539854da35699381bf543"
+    },
+    {
+      "file": "TEST-io.deepseekharness.mobile.companion.iteration.ModelAccountingTest.xml",
+      "suite": "io.deepseekharness.mobile.companion.iteration.ModelAccountingTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "1e45a2ee4309ee85acd0e300b476ef564ea56e11dbf51c18401231b650bb453e"
+    },
+    {
+      "file": "TEST-io.deepseekharness.mobile.companion.iteration.ModelWorkQueueTest.xml",
+      "suite": "io.deepseekharness.mobile.companion.iteration.ModelWorkQueueTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "53ac6e9ffc3b2b48745dd8e3878eef651b1fac64cd7f4f5e3f5e60b2855d6224"
+    },
+    {
+      "file": "TEST-io.deepseekharness.mobile.companion.iteration.ModuleRouterTest.xml",
+      "suite": "io.deepseekharness.mobile.companion.iteration.ModuleRouterTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "d9e503d3a02d8c10339e9914a65be2e0c79f419d5096d4e08f777873c9e3d745"
+    },
+    {
+      "file": "TEST-io.deepseekharness.mobile.companion.iteration.ProviderHistoryPrivacyTest.xml",
+      "suite": "io.deepseekharness.mobile.companion.iteration.ProviderHistoryPrivacyTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "5be681197e15ddd8ce62bfeab13e1c01a4ce855a8e53c63f62f9dd1d960f70d6"
+    },
+    {
+      "file": "TEST-io.deepseekharness.mobile.companion.life.LifeCoreTest.xml",
+      "suite": "io.deepseekharness.mobile.companion.life.LifeCoreTest",
+      "tests": 22,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "8979ef6f552a8c29615240d09125282a8e269e4a0a6fd39515e7ac9154575503"
+    },
+    {
+      "file": "TEST-io.deepseekharness.mobile.companion.presence.PresenceModuleTest.xml",
+      "suite": "io.deepseekharness.mobile.companion.presence.PresenceModuleTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "278851eb3b36aa25498a83efaad69c2bdc98fc6f7474aaca0127cc46053c734c"
+    },
+    {
+      "file": "TEST-io.deepseekharness.mobile.companion.social.SocialDeliveryTest.xml",
+      "suite": "io.deepseekharness.mobile.companion.social.SocialDeliveryTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "219c633ca7ba5656f5cc6b14d7ce38c3acfdcb0a0311c99267e21758ba3b2a1c"
+    },
+    {
+      "file": "TEST-io.deepseekharness.mobile.companion.social.SocialRuntimeTest.xml",
+      "suite": "io.deepseekharness.mobile.companion.social.SocialRuntimeTest",
+      "tests": 19,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "590d2621b4aedc34a754d3f8556c9a7439b0f9bc97a61d63677996f526efe1cb"
+    },
+    {
+      "file": "TEST-io.deepseekharness.mobile.companion.social.SocialSyncTest.xml",
+      "suite": "io.deepseekharness.mobile.companion.social.SocialSyncTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "83223603f50b01c1f8fbc5854e8105996c559620c5084129709758f8c342e801"
+    }
+  ],
+  "logs": [
+    {
+      "file": "latest-wiring-tests.log",
+      "bytes": 11391,
+      "sha256": "a169f1b1dc312fc1eeb88ff1c709779b9a9a8c0ca4dcb2d28d2569057aa46edd"
+    },
+    {
+      "file": "integrated-react-tests.log",
+      "bytes": 1047,
+      "sha256": "cfba4099b6e08b9ba2ee031e3608d6b3e7346fce518aa6454f6ab166314017a0"
+    },
+    {
+      "file": "companion-eslint.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "integrated-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

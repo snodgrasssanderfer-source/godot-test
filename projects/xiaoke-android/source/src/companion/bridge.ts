@@ -37,7 +37,7 @@ interface Bridge {
 export const nativeCompanion = Capacitor.isNativePlatform()
 export const companion = registerPlugin<Bridge>('Companion', { web: () => import('./browser').then(m => new m.CompanionBrowser()) })
 export const ownerScope = 'owner:local'
-export const field = (record: Entry, key: string) => typeof record[key] === 'string' ? record[key] as string : ''
+export const field = (record: Entry, key: string) => typeof record[key] === 'string' ? record[key] : ''
 export async function command(action: string, data: object = {}) { return (await companion.command({ action, data: {...data} })).result }
 export const profile = (model: string): Profile => ({ id: model, model, thinking: 'low', thinkingMode: 'level', maxOutputTokens: 32768, contextBudget: 65536, maxHops: 4, timeoutSeconds: 180, images: true, video: true, audio: true, pdf: true, tools: true })
 export const defaultSettings = (): Settings => ({ endpoint: 'https://api.apikey.fan/v1beta', activeModel: 'gemini-3.8-flash', profiles: [profile('gemini-3.8-flash'), profile('gemini-4-argon')], networkEnabled: false, backgroundEnabled: false, qqEnabled: false, paused: false, dailyCalls: 100, ownerQqId: '', displayName: '小克' })

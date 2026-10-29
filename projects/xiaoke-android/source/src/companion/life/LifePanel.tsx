@@ -3,7 +3,7 @@ import type { ModulePanelProps } from '../iteration/contracts'
 import './life.css'
 
 type Entry = Record<string, unknown>
-interface LifePanelProps extends ModulePanelProps { saveFile?: (name: string, encryptedText: string) => Promise<unknown> }
+interface LifePanelProps extends ModulePanelProps { scopes?: {id:string;label:string}[]; saveFile?: (name: string, encryptedText: string) => Promise<unknown> }
 const object = (value: unknown): Entry => value && typeof value === 'object' && !Array.isArray(value) ? value as Entry : {}
 const entries = (value: unknown): Entry[] => Array.isArray(value) ? value.map(object) : []
 const text = (value: unknown) => typeof value === 'string' ? value : ''
@@ -11,7 +11,7 @@ const number = (value: unknown) => typeof value === 'number' ? value : 0
 const date = (value: unknown) => number(value) ? new Date(number(value)).toLocaleString() : '时间未记录'
 
 /** Real host commands only. Root imports this optional panel and reloads module state after changes. */
-export function LifePanel({ state, run, available, saveFile }: LifePanelProps) {
+export function LifePanel({ state, run, available, saveFile, scopes }: LifePanelProps) {
   const [tab, setTab] = useState<'memory' | 'diary' | 'interest' | 'budget' | 'attention' | 'backup'>('memory')
   const [query, setQuery] = useState('')
   const [scope, setScope] = useState('owner:local')
@@ -26,6 +26,7 @@ export function LifePanel({ state, run, available, saveFile }: LifePanelProps) {
   const [deleteId, setDeleteId] = useState('')
   const [busy, setBusy] = useState(false)
   const lock = useRef(false)
+  const importFile = useRef<HTMLInputElement>(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [unit, setUnit] = useState('calls')
@@ -108,7 +109,7 @@ export function LifePanel({ state, run, available, saveFile }: LifePanelProps) {
     <fieldset disabled={!available || busy}>
       {['memory', 'diary', 'interest'].includes(tab) && <>
         <form className="life-search" onSubmit={event => { event.preventDefault(); search() }}>
-          <label>会话范围<input aria-label="会话范围" value={scope} onChange={event => { setScope(event.target.value); setFound(null); setHistory(null); setEditing(null); setDraft('') }} /></label>
+          <label>会话范围{scopes ? <select aria-label="会话范围" value={scope} onChange={event => { setScope(event.target.value); setFound(null); setHistory(null); setEditing(null); setDraft('') }}>{scopes.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select> : <input aria-label="会话范围" value={scope} onChange={event => { setScope(event.target.value); setFound(null); setHistory(null); setEditing(null); setDraft('') }} />}</label>
           <label>搜索内容<input aria-label="搜索内容" value={query} onChange={event => setQuery(event.target.value)} /></label>
           <label className="life-check"><input type="checkbox" checked={showForgotten} onChange={event => setShowForgotten(event.target.checked)} />包含忘掉的记录</label>
           <label className="life-check"><input type="checkbox" checked={showHistory} onChange={event => setShowHistory(event.target.checked)} />包含已变化的事实</label>
@@ -168,6 +169,12 @@ export function LifePanel({ state, run, available, saveFile }: LifePanelProps) {
         <p>备份先在手机端加密。保存文件后自行保管口令；密钥和真实资料不进入源码仓库。旧备份文件本身不会因本机删除而改变；换设备时应使用带最新删除记录的备份。</p>
         <label>备份口令<input aria-label="备份口令" type="password" minLength={8} maxLength={256} value={password} onChange={event => setPassword(event.target.value)} autoComplete="off" /></label>
         <button disabled={password.length < 8} onClick={() => void act('backup.export', { password }, result => { setBackup(text(result.text)); setPassword('') })}>生成加密备份</button>
+        <button type="button" onClick={()=>importFile.current?.click()}>选择已有加密备份</button>
+        <input ref={importFile} type="file" accept=".json,application/json" hidden onChange={event=>{
+          const file=event.target.files?.[0];event.target.value='';if(!file)return
+          if(file.size>16*1024*1024){setError('备份超过 16 MB 限制');return}
+          void file.text().then(value=>{setBackup(value);setNotice('已读取加密备份，尚未恢复');setError('')}).catch(()=>setError('文件读取失败，原数据未更改'))
+        }}/>
         <label>加密备份内容<textarea aria-label="加密备份内容" value={backup} onChange={event => setBackup(event.target.value)} rows={7} /></label>
         <div className="life-row"><button disabled={!backup || !saveFile} onClick={() => void saveBackupFile()}>保存加密文件</button><button disabled={!backup || password.length < 8} onClick={() => setRestoreConfirm(true)}>恢复备份</button></div>
         {restoreConfirm && <div className="life-delete"><p>恢复会合并较新的资料、保留删除屏蔽与已用额度，并暂停联网。请先停止在途任务。</p><button onClick={() => void act('backup.restore', { text: backup, password }, () => { setRestoreConfirm(false); setPassword(''); setBackup('') })}>确认合并恢复</button><button onClick={() => setRestoreConfirm(false)}>取消</button></div>}

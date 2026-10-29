@@ -36,7 +36,7 @@ export async function readCharacterCard(file: File): Promise<Omit<Persona, 'vers
   const sections: [string, string][] = [
     ['description', '角色描述'], ['personality', '性格资料'], ['scenario', '情境'], ['mes_example', '对话示例'], ['creator_notes', '创作者说明'],
   ]
-  const text = typeof data.text === 'string' ? data.text : sections.filter(([key]) => typeof data[key] === 'string' && data[key]).map(([key, title]) => `${title}\n${data[key]}`).join('\n\n')
+  const text = typeof data.text === 'string' ? data.text : sections.filter(([key]) => typeof data[key] === 'string' && data[key]).map(([key, title]) => `${title}\n${typeof data[key] === 'string' ? data[key] : ''}`).join('\n\n')
   if (typeof data.name !== 'string' || !data.name.trim() || data.name.length > 40 || text.length > 64000) throw new Error('名称需为 1–40 字，正文不能超过 64000 字')
   return {name: data.name, text, source: `主人导入：${file.name.slice(0, 120)}；请自行确认来源与使用许可`}
 }
