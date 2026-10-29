@@ -17,7 +17,17 @@
 ## 人设
 构建时如果存在 `projects/xiaoke-android/private/persona.json` 或环境变量 `XIAOKE_PERSONA_BASE64`，会把人设打包进 APK（git-ignored，不入库）。缺少时构建只告警，装上的 App 没有默认人设。
 
-## 从旧 APK 提取运行环境
+## Ubuntu 运行环境（v0.3.7）
+从 0.7.0 起内嵌上游 DSH v0.3.7 的运行环境（上游 CI 按 `scripts/build-embedded-runtime.py` 生成，含构建工具与 Shizuku 插件更新）。两个文件放到 `source/android/app/src/main/assets/runtime/`，不入库：
+
+| 文件 | 来源 | 字节 | SHA-256 |
+|---|---|---|---|
+| runtime-manifest.json | https://github.com/dphmoblie/deepseek-harness-android/releases/download/v0.3.7/runtime-manifest.json | 1057 | be350fc22da35116a6bdc474e6e728b01b9d92f76969b5f66d1e35a6b4dcf6aa |
+| rootfs.bundle | 同一 Release 的 rootfs.bundle | 407862424 | 5714e1fa43596803dfdbbf76f9a8dba32aafaf2bb080b1ca1a9c5fb1cdc0daef |
+
+rootfs 的哈希与清单里的 `rootfs.sha256` 一致才能用。两个 PRoot .so 不变，仍按下一节从旧 APK 提取。
+
+## 从旧 APK 提取运行环境（PRoot .so；0.6.0 及以前的 rootfs）
 
 没有自行重建 PRoot 时，可以从此前构建的旧 APK 中取出运行环境文件。旧 APK 和取出的文件都放在仓库目录之外的工作目录，**绝不提交**（已由 .gitignore 排除）。
 

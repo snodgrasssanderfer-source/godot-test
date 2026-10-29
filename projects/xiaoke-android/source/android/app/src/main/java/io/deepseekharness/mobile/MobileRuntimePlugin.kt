@@ -16,6 +16,7 @@ import android.provider.Settings
 import android.util.DisplayMetrics
 import android.view.Display
 import android.view.WindowManager
+import android.webkit.MimeTypeMap
 import androidx.activity.result.ActivityResult
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
@@ -59,10 +60,14 @@ import io.deepseekharness.mobile.runtime.AppUpdateInstallPolicy
 import io.deepseekharness.mobile.runtime.AppUpdateProgressThrottle
 import io.deepseekharness.mobile.runtime.AppUpdateStorage
 import io.deepseekharness.mobile.runtime.HarnessKeepAlivePolicy
+import io.deepseekharness.mobile.runtime.HarnessWebAuth
 import io.deepseekharness.mobile.runtime.HarnessOutputTailSource
 import io.deepseekharness.mobile.runtime.clampHarnessTailBytes
 import io.deepseekharness.mobile.runtime.MailboxExportOutcome
+import io.deepseekharness.mobile.runtime.ModelCatalogProbe
 import io.deepseekharness.mobile.runtime.ModelConnectivityProbe
+import io.deepseekharness.mobile.runtime.draftOrSavedApi
+import io.deepseekharness.mobile.runtime.draftOrSavedBaseUrl
 import io.deepseekharness.mobile.runtime.MailboxDirectoryEntry
 import io.deepseekharness.mobile.runtime.MailboxDirectoryState
 import io.deepseekharness.mobile.runtime.TaskNotification
@@ -126,6 +131,7 @@ import io.deepseekharness.mobile.virtualscreen.VirtualScreenStart
 import io.deepseekharness.mobile.virtualscreen.VirtualScreenStartRequest
 import io.deepseekharness.mobile.virtualscreen.VirtualScreenTargetKind
 import io.deepseekharness.mobile.virtualscreen.putVirtualScreenStart
+import org.json.JSONArray
 import org.json.JSONObject
 import rikka.shizuku.Shizuku
 import java.util.concurrent.ExecutorService
@@ -152,6 +158,19 @@ internal fun optionalOverlayBallEnabled(data: JSONObject): Boolean? {
     if (!data.has("overlayBallEnabled")) return null
     val value = data.opt("overlayBallEnabled")
     if (value !is Boolean) throw RuntimeFailure("SETTINGS_INVALID", "悬浮球开关格式无效")
+    return value
+}
+
+/**
+ * 「打开应用时预启动服务」参数：省略 `null`，显式布尔才算修改。
+ *
+ * 与悬浮球同一条约定，理由也一样：这个开关是一次显式选择，不能让一次「只带了部分字段」
+ * 的保存把它悄悄改成关闭。非布尔直接拒绝，不猜、不转字符串。
+ */
+internal fun optionalPrewarmHarness(data: JSONObject): Boolean? {
+    if (!data.has("prewarmHarness")) return null
+    val value = data.opt("prewarmHarness")
+    if (value !is Boolean) throw RuntimeFailure("SETTINGS_INVALID", "预启动设置格式无效")
     return value
 }
 
@@ -303,8 +322,8 @@ class MobileRuntimePlugin : Plugin() {
         executor = executor,
         active = { !destroying.get() && ::controller.isInitialized },
         // 自动检测不能持有运行时生命周期锁：异常的 Shizuku Binder 不得卡住 Harness 启动。
-        connect = { current ->
-            controller.terminals.shizuku.connectIfAuthorized(permitted = { !destroying.get() }, current = current)
+        connect = { stillCurrent ->
+            controller.terminals.shizuku.connectIfAuthorized(permitted = { !destroying.get() }, stillCurrent = stillCurrent)
             Unit
         },
     )
@@ -355,26 +374,35 @@ class MobileRuntimePlugin : Plugin() {
 
     /** 权限：应用内桥接；校验语言白名单；仅返回保存结果，不返回私有配置。 */
     @PluginMethod
-    fun setAppLanguage(call: PluginCall) {        val language = call.getString("language").orEmpty()
+    fun setAppLanguage(call: PluginCall) {
+        val language = call.getString("language").orEmpty()
         if (language != "zh-CN" && language != "en") {
             call.reject("不支持的应用语言", "LANGUAGE_INVALID")
             return
         }
-        try {
-            // 先持久化应用语言，再尽力同步到已安装运行时；运行时未安装时该调用为空操作。
-            val saved = AppLanguage.save(context, language) &&
-                io.deepseekharness.mobile.runtime.RuntimeStore(context).syncHarnessLocale(language)
-            if (saved) {
-                OverlayBallService.refreshAppearance()
-                io.deepseekharness.mobile.virtualscreen.VirtualScreenService.refreshAppearance()
-                call.resolve()
+        /*
+         * 必须走 execute：这一句会落盘（`syncHarnessLocale` 里有 fsync + ATOMIC_MOVE），
+         * 而 Capacitor 的桥是单线程的——在桥线程上做 fsync，期间**所有**桥调用都在排队。
+         * 同时改用 controller 持有的那个 store：插件侧自建 RuntimeStore 会绕开
+         * lifecycleLock，与「安装/切换版本正在替换运行时根」的写操作失去互斥。
+         */
+        execute(call) {
+            try {
+                // 先持久化应用语言，再尽力同步到已安装运行时；运行时未安装时该调用为空操作。
+                val saved = AppLanguage.save(context, language) &&
+                    controller.store.syncHarnessLocale(language)
+                if (saved) {
+                    OverlayBallService.refreshAppearance()
+                    io.deepseekharness.mobile.virtualscreen.VirtualScreenService.refreshAppearance()
+                    null
+                } else throw RuntimeFailure("LANGUAGE_SAVE_FAILED", "无法保存应用语言")
+            } catch (failure: RuntimeFailure) {
+                // 受控错误码（如 LANGUAGE_INVALID / LANGUAGE_SYNC_FAILED）直接回传，便于前端区分提示。
+                throw failure
+            } catch (error: Exception) {
+                // 非受控异常不外泄原文：桥只需一个受控码，细节留给 logcat。
+                throw RuntimeFailure("LANGUAGE_SAVE_FAILED", "无法保存应用语言", error)
             }
-            else call.reject("无法保存应用语言", "LANGUAGE_SAVE_FAILED")
-        } catch (failure: RuntimeFailure) {
-            // 受控错误码（如 LANGUAGE_INVALID / LANGUAGE_SYNC_FAILED）直接回传，便于前端区分提示。
-            call.reject(failure.message ?: "无法同步 Harness 语言", failure.code)
-        } catch (_: Exception) {
-            call.reject("无法保存应用语言", "LANGUAGE_SAVE_FAILED")
         }
     }
 
@@ -410,6 +438,146 @@ class MobileRuntimePlugin : Plugin() {
         // 落盘成功后再改窗口；没有可用的 Activity（例如后台调用）不算失败，下次 onResume 会补上。
         (activity as? android.app.Activity)?.let { AppThemePreference.applySafely(it) }
         OverlayBallService.refreshAppearance()
+        call.resolve()
+    }
+
+    /**
+     * 把外壳主题同步给 DSH 页面（登记册 5.5）。
+     *
+     * 只接受固定字段：明暗模式、三个颜色、面板透明度。拒绝一切 CSS / JS / URL ——
+     * 这段内容最终会被拼进 `evaluateJavascript`，白名单是这里唯一的防线。
+     */
+    @PluginMethod
+    fun applyHarnessTheme(call: PluginCall) {
+        val theme = call.getObject("theme")
+        if (theme == null) {
+            call.reject("缺少主题配置", "THEME_INVALID")
+            return
+        }
+        if (!HarnessThemeBridge.save(context, theme)) {
+            call.reject("主题配置无效", "THEME_INVALID")
+            return
+        }
+        // 页面已经打开时不要求用户刷新：开关或背景改了就按新档位重放一次。
+        HarnessThemeBridge.refresh()
+        call.resolve()
+    }
+
+    /** 清除已同步的主题：DSH 页面回到它自己的默认外观。 */
+    @PluginMethod
+    fun clearHarnessTheme(call: PluginCall) {
+        if (!HarnessThemeBridge.clear(context)) {
+            call.reject("无法清除同步主题", "THEME_SAVE_FAILED")
+            return
+        }
+        HarnessThemeBridge.refresh()
+        call.resolve()
+    }
+
+    /**
+     * 「连背景一起同步」开关落盘（登记册 5.5）。
+     *
+     * 开关必须存在原生侧：外壳重启后要能读回上次的选择，只写在页面的内存状态里等于没有。
+     * 关掉时保留地址与持久授权，只停用显示——用户重新勾上不用再选一次文件。
+     */
+    @PluginMethod
+    fun setHarnessSyncBackground(call: PluginCall) {
+        val enabled = call.getBoolean("enabled")
+        if (enabled == null) {
+            call.reject("缺少背景同步开关", "THEME_INVALID")
+            return
+        }
+        if (!HarnessThemeBridge.setSyncBackground(context, enabled)) {
+            call.reject("无法保存背景同步开关", "THEME_SAVE_FAILED")
+            return
+        }
+        // 关掉后当前页面立刻清掉背景层，并收回自动播放权限。
+        HarnessThemeBridge.refresh()
+        call.resolve(JSObject().put("enabled", enabled))
+    }
+
+    /** 读回同步状态：开关、上次同步时间、已选背景（没有就是 null）。外壳启动时用它恢复界面。 */
+    @PluginMethod
+    fun harnessThemeState(call: PluginCall) {
+        call.resolve(JSObject.fromJSONObject(HarnessThemeBridge.state(context)))
+    }
+
+    /**
+     * 第二阶段：让用户挑一个背景文件，只留地址。
+     *
+     * 复制文件的上限、内存与过桥体积问题因此都不存在：视频多大都由 SAF 那边流式供给。
+     * 走 ACTION_OPEN_DOCUMENT 而不是 GET_CONTENT——只有前者能给可持久化的读授权，
+     * 应用重启后仍然解得开同一个地址。
+     */
+    @PluginMethod
+    fun pickHarnessBackground(call: PluginCall) {
+        val host = activity as? android.app.Activity
+        if (host == null) {
+            call.reject("当前没有可用的界面，无法打开文件选择器", "THEME_PICKER_UNAVAILABLE")
+            return
+        }
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("video/mp4", "video/webm", "image/jpeg", "image/png", "image/webp"))
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+        }
+        host.runOnUiThread {
+            try {
+                startActivityForResult(call, intent, "harnessBackgroundPicked")
+            } catch (_: Throwable) {
+                call.reject("设备上没有可用的文件选择器", "THEME_PICKER_UNAVAILABLE")
+            }
+        }
+    }
+
+    /**
+     * 背景文件选择回调。
+     *
+     * 只保留地址：拿到可持久化授权后立刻写进主题目录，并把 mime / 图片或视频类型一起记下。
+     * 拿不到持久授权就如实拒绝——否则重启后地址还在、权限没了，界面会一直停在黑背景上。
+     */
+    @ActivityCallback
+    private fun harnessBackgroundPicked(call: PluginCall?, result: ActivityResult) {
+        if (call == null) return
+        val uri = result.data?.data
+        if (result.resultCode != android.app.Activity.RESULT_OK || uri == null) {
+            call.reject("已取消选择背景", "THEME_CANCELLED")
+            return
+        }
+        val resolver = context.contentResolver
+        val mime = resolver.getType(uri).orEmpty()
+        val kind = HarnessThemeBridge.kindOf(mime)
+        if (kind == null) {
+            call.reject("只支持视频或图片作为背景", "THEME_INVALID")
+            return
+        }
+        val persisted = try {
+            resolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            true
+        } catch (_: Exception) {
+            false
+        }
+        if (!persisted) {
+            call.reject("这个文件不支持长期授权，请换一个来源再试", "THEME_PERMISSION_DENIED")
+            return
+        }
+        if (!HarnessThemeBridge.setBackgroundRef(context, uri.toString(), mime)) {
+            call.reject("无法保存背景地址", "THEME_SAVE_FAILED")
+            return
+        }
+        HarnessThemeBridge.refresh()
+        call.resolve(JSObject().put("uri", uri.toString()).put("mime", mime).put("kind", kind))
+    }
+
+    @PluginMethod
+    fun clearHarnessBackground(call: PluginCall) {
+        if (!HarnessThemeBridge.clearBackground(context)) {
+            call.reject("无法清除同步背景", "THEME_SAVE_FAILED")
+            return
+        }
+        HarnessThemeBridge.refresh()
         call.resolve()
     }
 
@@ -610,7 +778,8 @@ class MobileRuntimePlugin : Plugin() {
      */
     @PluginMethod
     fun runtimeVersions(call: PluginCall) {
-        resolveWhileActive(call) { controller.runtimeVersions().toJs() }
+        // 需要拿 lifecycleLock（与启停/安装共用），不能占着串行桥线程等它。
+        execute(call) { controller.runtimeVersions().toJs() }
     }
 
     /**
@@ -623,6 +792,29 @@ class MobileRuntimePlugin : Plugin() {
     @PluginMethod
     fun listRuntimeReleases(call: PluginCall) {
         execute(call) { JSObject().put("entries", RuntimeReleaseCatalog().list()) }
+    }
+
+    /** 应用内桥权限；目录来自固定 npm registry，只返回版本与受控标签。 */
+    @PluginMethod
+    fun listHarnessReleases(call: PluginCall) {
+        execute(call) {
+            JSObject().put("entries", org.json.JSONArray(io.deepseekharness.mobile.runtime.HarnessPackageCatalog.list().map { it.toJson() }))
+        }
+    }
+
+    /** 应用内桥权限；操作白名单与精确版本号由控制器复核，不回传路径、凭据或 npm 原始输出。 */
+    @PluginMethod
+    fun manageHarnessVersions(call: PluginCall) {
+        execute(call) {
+            val operation = call.getString("operation") ?: ""
+            if (operation == "list") JSObject(controller.manageHarnessVersions(operation, null).toString())
+            else audited(when (operation) {
+                "install" -> AuditEvent.RUNTIME_INSTALL
+                "select" -> AuditEvent.RUNTIME_VERSION_SWITCH
+                "delete" -> AuditEvent.RUNTIME_VERSION_DELETE
+                else -> throw RuntimeFailure("HARNESS_VERSION_INVALID", "Harness 版本操作无效")
+            }) { JSObject(controller.manageHarnessVersions(operation, call.getString("version")).toString()) }
+        }
     }
 
     /**
@@ -894,6 +1086,9 @@ class MobileRuntimePlugin : Plugin() {
                 allowedCustomIds,
             )
             val overlayBallEnabledUpdate = optionalOverlayBallEnabled(call.data)
+            // 字段缺失 = 这次保存不碰默认模型记录；显式空对象 = 用户清掉了最后一条。
+            val defaultModels = call.getObject("defaultModels")?.let(RuntimeValidation::defaultModelIds)
+            val prewarmHarnessUpdate = optionalPrewarmHarness(call.data)
             val settings = RuntimeValidation.settings(
                 call.getString("manifestUrl"),
                 call.getString("manifestSha256"),
@@ -902,6 +1097,8 @@ class MobileRuntimePlugin : Plugin() {
                 call.getBoolean("keepRuntimeInBackground", false) ?: false,
                 // 省略值只作为构造设置对象时的占位；是否写入由下面的可空更新参数决定。
                 overlayBallEnabledUpdate ?: false,
+                // 同上：占位值不参与写入，省略时保留原生侧已有选择。
+                prewarmHarnessUpdate ?: false,
             )
             val saved = controller.saveSettings(
                 settings,
@@ -911,6 +1108,8 @@ class MobileRuntimePlugin : Plugin() {
                 customProviderApiKeyUpdates,
                 clearedCustomProviderApiKeys,
                 overlayBallEnabledUpdate = overlayBallEnabledUpdate,
+                defaultModels = defaultModels,
+                prewarmHarnessUpdate = prewarmHarnessUpdate,
             )
             applyKeepScreenAwake(saved.keepScreenAwake)
             syncKeepAliveService(saved.keepRuntimeInBackground)
@@ -951,6 +1150,13 @@ class MobileRuntimePlugin : Plugin() {
         }
         val generation = harnessStartGeneration.get()
         val accepted = execute(call) {
+            /*
+             * 启动耗时从「接单」开始算，而不是从 `controller.startHarness()` 开始：
+             * 用户体感的是「点了按钮到能用」，中间还夹着设备桥检查与语言重放，
+             * 只测内核那段会把真实等待算少，优化就会盯着错的地方。
+             */
+            val startWatch = SystemClock.elapsedRealtime()
+            val elapsedMillis = { SystemClock.elapsedRealtime() - startWatch }
             try {
                 audited(AuditEvent.RUNTIME_START) {
                     if (generation != harnessStartGeneration.get()) return@audited controller.state().toJs()
@@ -965,15 +1171,26 @@ class MobileRuntimePlugin : Plugin() {
                             diagnostics()?.record(
                                 DiagnosticLevel.INFO,
                                 DiagnosticEvent.HARNESS_START,
-                                mapOf("result" to "ok", "phase" to snapshot.optString("phase")),
+                                mapOf(
+                                    "result" to "ok",
+                                    "phase" to snapshot.optString("phase"),
+                                    // 唯一的启动耗时客观口径：0 表示「没走到内核那段」，正常启动不会是 0。
+                                    "elapsed_ms" to elapsedMillis().toString(),
+                                ),
                             )
                         }
                     } catch (failure: Throwable) {
                         // 启动失败码是排障的核心线索：它是受控枚举，不含任何凭据或路径。
+                        // 失败也记耗时：120 秒超时与 200 毫秒就失败是两种完全不同的故障，
+                        // 只看失败码会把它们混成同一类。
                         diagnostics()?.record(
                             DiagnosticLevel.ERROR,
                             DiagnosticEvent.HARNESS_START,
-                            mapOf("result" to "failed", "code" to failureCode(failure)),
+                            mapOf(
+                                "result" to "failed",
+                                "code" to failureCode(failure),
+                                "elapsed_ms" to elapsedMillis().toString(),
+                            ),
                         )
                         throw failure
                     }
@@ -990,6 +1207,9 @@ class MobileRuntimePlugin : Plugin() {
         val request = harnessOpenRequests.accept()
         // 获取运行时访问凭据会等待生命周期锁，不能阻塞 Capacitor 的串行桥接线程。
         execute(call) {
+            // 打开前再跑一次 Shizuku 自动检测：应用可能刚经历过进程/运行环境重启，
+            // 只在 load/resume 时尝试会留下「已授权但未连接」的空窗，设备工具随即可用。
+            shizukuAutoConnect.request()
             val sessionId = try {
                 HarnessPageUrl.requireValidSessionId(call.getString("sessionId")?.trim())
             } catch (_: IllegalArgumentException) {
@@ -1022,22 +1242,72 @@ class MobileRuntimePlugin : Plugin() {
         }
     }
 
+    /**
+     * 把当前 Harness 交给外置浏览器（完整能力，不是只读预览）。
+     *
+     * URL 里只带**浏览器专用**的那枚令牌（不是 Basic 密码）。预载脚本把它换成 HttpOnly
+     * Cookie 后 302 去掉令牌，历史里只留下 `/`。回环地址让它出了设备即作废；没有令牌的
+     * 同机请求仍然进不来。浏览器里点开的链接与网站由用户自行判断。
+     */
+    @PluginMethod
+    fun openHarnessExternal(call: PluginCall) {
+        execute(call) {
+            // 与外置浏览器同理：用户可能只从设置页进入外置浏览器，resume 回调来不及覆盖
+            // 刚刚失效的 Shizuku 连接；打开动作本身再触发一次后台自动连接。
+            shizukuAutoConnect.request()
+            val access = controller.openHarnessAccess()
+            val browserToken = access.browserToken
+                ?: throw RuntimeFailure("HARNESS_BROWSER_HANDOFF_UNAVAILABLE", "当前运行周期不支持外置浏览器打开")
+            // 前端在会话切换时把 `dsh.sessions.current` 镜像到这条 Cookie；外置浏览器与
+            // WebView 不共享 localStorage，只能靠它把「当前会话」带过去。
+            val lastSession = runCatching {
+                android.webkit.CookieManager.getInstance().getCookie(access.url)
+            }.getOrNull().let(HarnessWebAuth::sessionFromCookieHeader)
+            val uri = HarnessWebAuth.browserLaunchUrl(access.url, browserToken, lastSession)
+                ?: throw RuntimeFailure("HARNESS_BROWSER_HANDOFF_INVALID", "外置浏览器入口地址无效")
+            val target = Intent(Intent.ACTION_VIEW, Uri.parse(uri.toASCIIString()))
+                .addCategory(Intent.CATEGORY_BROWSABLE)
+            // 交给系统选择器：用哪个浏览器打开由用户决定。选择器本身不需要 NEW_TASK，
+            // 目标 Activity 由系统在应用任务栈里启动。
+            try {
+                context.startActivity(Intent.createChooser(target, "选择浏览器打开 Harness").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            } catch (_: android.content.ActivityNotFoundException) {
+                throw RuntimeFailure("HARNESS_BROWSER_UNAVAILABLE", "没有可用的浏览器")
+            }
+            null
+        }
+    }
     @PluginMethod
     fun testModelConnectivity(call: PluginCall) {
         val providerId = call.getString("providerId")?.trim() ?: run {
             call.reject("供应商标识缺失")
             return
         }
+        try {
+            RuntimeValidation.requireModelProviderId(providerId)
+        } catch (error: RuntimeFailure) {
+            call.reject(error.message ?: "供应商标识格式无效")
+            return
+        }
         val baseUrl = call.getString("baseUrl")?.trim()
         val apiKey = call.getString("apiKey")?.trim()
         val api = call.getString("api")?.trim()
         execute(call) {
+            val customProvider = controller.store.settings().customModelProviders
+                .firstOrNull { it.id == providerId }
+            // A blank key means "keep the saved credential"; the user is still explicitly
+            // choosing the endpoint and protocol in the current form.
             val savedKey = controller.store.readModelCredential(providerId)
+            // A blank draft key may reuse the saved credential, but the endpoint and
+            // protocol must still come from the current form. Otherwise editing a
+            // provider and testing it silently probes the old saved endpoint.
+            val effectiveBaseUrl = draftOrSavedBaseUrl(baseUrl, customProvider)
+            val effectiveApi = draftOrSavedApi(api, customProvider)
             val result = ModelConnectivityProbe.probe(
                 providerId = providerId,
-                baseUrl = baseUrl,
+                baseUrl = effectiveBaseUrl,
                 apiKey = apiKey,
-                api = api,
+                api = effectiveApi,
                 savedApiKey = savedKey,
             )
             JSObject().apply {
@@ -1045,6 +1315,59 @@ class MobileRuntimePlugin : Plugin() {
                 put("status", result.status)
                 put("latencyMs", result.latencyMs)
                 put("message", result.message)
+            }
+        }
+    }
+
+    /**
+     * 读取供应商上游的可用模型列表（与 [testModelConnectivity] 探测同一个 `/models` 端点）。
+     *
+     * 密钥解析规则与连通性测试**完全一致**：草稿 URL/API 始终优先，API Key 留空时才回落到
+     * 已保存密钥。这样修改地址后不会静默请求旧端点；用户仍须明确把密钥发送到当前草稿地址。
+     */
+    @PluginMethod
+    fun listModelCatalog(call: PluginCall) {
+        val providerId = call.getString("providerId")?.trim() ?: run {
+            call.reject("供应商标识缺失")
+            return
+        }
+        try {
+            RuntimeValidation.requireModelProviderId(providerId)
+        } catch (error: RuntimeFailure) {
+            call.reject(error.message ?: "供应商标识格式无效")
+            return
+        }
+        val baseUrl = call.getString("baseUrl")?.trim()
+        val apiKey = call.getString("apiKey")?.trim()
+        val api = call.getString("api")?.trim()
+        execute(call) {
+            val customProvider = controller.store.settings().customModelProviders
+                .firstOrNull { it.id == providerId }
+            val savedKey = controller.store.readModelCredential(providerId)
+            val effectiveBaseUrl = draftOrSavedBaseUrl(baseUrl, customProvider)
+            val effectiveApi = draftOrSavedApi(api, customProvider)
+            val result = ModelCatalogProbe.list(
+                providerId = providerId,
+                baseUrl = effectiveBaseUrl,
+                apiKey = apiKey,
+                api = effectiveApi,
+                savedApiKey = savedKey,
+            )
+            JSObject().apply {
+                put("ok", result.ok)
+                put("status", result.status)
+                put("latencyMs", result.latencyMs)
+                put("message", result.message)
+                val models = JSONArray()
+                result.models.forEach { model ->
+                    models.put(
+                        JSObject().apply {
+                            put("id", model.id)
+                            put("name", model.name)
+                        },
+                    )
+                }
+                put("models", models)
             }
         }
     }
@@ -1103,7 +1426,12 @@ class MobileRuntimePlugin : Plugin() {
      */
     @PluginMethod
     fun getRuntimeCleanupState(call: PluginCall) {
-        resolveWhileActive(call) {
+        /*
+         * 这一读会统计三个缓存目录与最多 16 个插件的数据量（`Files.walkFileTree`，预算
+         * 25 万条目/次），在工作区/插件数据大时是秒级同步 I/O。放在桥线程上会把期间所有
+         * 桥调用一起堵住，因此交给后台执行器。
+         */
+        execute(call) {
             JSObject()
                 .put("runtimeRunning", controller.state().phase == RuntimePhase.RUNNING)
                 .put("cache", cacheCleanupState())
@@ -1340,7 +1668,8 @@ class MobileRuntimePlugin : Plugin() {
      */
     @PluginMethod
     fun getRuntimeSessionSnapshotState(call: PluginCall) {
-        resolveWhileActive(call) { JSObject(controller.sessionSnapshotState().toJs().toString()) }
+        // 与 sessionList 同一口径：读写共享同一把 lifecycleLock，就必须放到后台执行器上等。
+        execute(call) { JSObject(controller.sessionSnapshotState().toJs().toString()) }
     }
 
     /**
@@ -1751,6 +2080,8 @@ class MobileRuntimePlugin : Plugin() {
             if (Build.VERSION.SDK_INT < 29) throw RuntimeFailure("VIRTUAL_SCREEN_UNSUPPORTED", "副屏需要 Android 10 或更高版本")
             if (VirtualScreenService.current != null) throw RuntimeFailure("VIRTUAL_SCREEN_BUSY", "副屏已经在运行，先停止再启动")
             val request: VirtualScreenStartRequest = VirtualScreenPreferences.parseStart(JSONObject(data.toString()))
+            // 启动即落盘：用户改完设置常常直接点启动，不先点「保存设置」。
+            VirtualScreenPreferences.apply(context, VirtualScreenPreferences.updateFromStart(request))
             val component = virtualScreenComponent(request.target)
             val settings: VirtualScreenSettings = VirtualScreenPreferences.read(context)
             val (screenWidth, screenHeight, density) = virtualScreenScreenSize()
@@ -2214,6 +2545,56 @@ class MobileRuntimePlugin : Plugin() {
     @PluginMethod
     fun getDeviceShellAccess(call: PluginCall) {
         resolveWhileActive(call) { JSObject().put("enabled", io.deepseekharness.mobile.shizuku.DeviceShellAccess.enabled(context)) }
+    }
+
+    /**
+     * 权限：应用内桥接。
+     * 「用外部浏览器打开 Harness」可选的浏览器清单与当前选择。
+     *
+     * 只回包名与显示名，不含浏览历史或任何用户数据。`selected` 会被重新核对：
+     * 已保存的浏览器被卸载/禁用后回 `null`，让界面退回「每次询问系统选择器」，
+     * 而不是留一个指向不存在应用的下拉项。
+     *
+     * 一次包管理查询 + 至多 32 条结果，放在后台执行器上，避免占住串行桥线程。
+     */
+    @PluginMethod
+    fun getExternalBrowsers(call: PluginCall) {
+        execute(call) {
+            val browsers = ExternalBrowsers.list(context)
+            val selected = controller.store.externalBrowserPackage()
+            JSObject()
+                .put("browsers", ExternalBrowsers.toJson(browsers))
+                // 保存的包名不在当前清单里（已卸载/禁用）就当作未选择：打开时退回系统选择器。
+                .put(
+                    "selected",
+                    browsers.firstOrNull { it.packageName == selected }?.packageName ?: JSONObject.NULL,
+                )
+        }
+    }
+
+    /**
+     * 权限：应用内桥接。
+     * 保存「用哪个外部浏览器打开」，传 `null` 表示每次询问系统选择器。
+     *
+     * 包名必须在当前可处理网页的清单里——这个值最终会进显式 Intent 的 `setPackage`，
+     * 不能接受任意字符串。不在清单里就按契约错误拒绝，而不是静默存下一个打不开的值。
+     */
+    @PluginMethod
+    fun setExternalBrowser(call: PluginCall) {
+        execute(call) {
+            val requested = call.data.opt("packageName")
+            val packageName = when (requested) {
+                null, JSONObject.NULL -> null
+                is String -> requested
+                else -> throw RuntimeFailure("SETTINGS_INVALID", "外部浏览器标识格式无效")
+            }
+            if (packageName != null && ExternalBrowsers.select(context, packageName) == null) {
+                // 与清单同一份复核：既校验格式，也确认它现在真的能打开网页。
+                throw RuntimeFailure("EXTERNAL_BROWSER_UNAVAILABLE", "所选浏览器当前不可用，请重新选择")
+            }
+            controller.store.setExternalBrowserPackage(packageName)
+            null
+        }
     }
 
     /** 只允许壳内用户修改授权；设备桥不提供开启此开关的接口。 */
@@ -3133,27 +3514,35 @@ class MobileRuntimePlugin : Plugin() {
             call.reject("当前没有可用的界面，无法打开目录选择器", StorageDirCodes.PICKER_UNAVAILABLE)
             return
         }
-        try {
-            // 先判档位再弹选择器：让用户白点一次目录、回来才被告知「需要授权」是纯粹的浪费，
-            // 而判定规则仍然只有白名单门面那一份（这里不重复实现）。
-            storageDirs().requireReady()
-            controller.withStorageDirsMutation { Unit }
-        } catch (failure: RuntimeFailure) {
-            call.reject(failure.message ?: "存储目录白名单当前不可用", failure.code)
-            return
-        }
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-        }
-        // Capacitor 的插件方法运行在桥接线程上，而启动选择器必须从主线程发起（同 requestMediaPermission）。
-        currentActivity.runOnUiThread {
+        /*
+         * 前置判档要拿 lifecycleLock（`withStorageDirsMutation`），必须放到后台执行器：
+         * 冷启动/安装期间该锁最长被持有 120s，占着串行桥线程等它会让所有桥调用一起卡住。
+         * 选择器本身仍回到主线程发起（见下）。
+         */
+        execute(call) {
             try {
-                startActivityForResult(call, intent, "storageDirectoryPicked")
-            } catch (_: Throwable) {
-                // 部分精简 ROM 没有文件选择器：如实报「没有可用入口」，而不是静默什么都不发生。
-                call.reject("设备上没有可用的目录选择器", StorageDirCodes.PICKER_UNAVAILABLE)
+                // 先判档位再弹选择器：让用户白点一次目录、回来才被告知「需要授权」是纯粹的浪费，
+                // 而判定规则仍然只有白名单门面那一份（这里不重复实现）。
+                storageDirs().requireReady()
+                controller.withStorageDirsMutation { Unit }
+            } catch (failure: RuntimeFailure) {
+                throw failure
             }
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            }
+            // 启动选择器必须从主线程发起（同 requestMediaPermission）。
+            currentActivity.runOnUiThread {
+                try {
+                    startActivityForResult(call, intent, "storageDirectoryPicked")
+                } catch (_: Throwable) {
+                    // 部分精简 ROM 没有文件选择器：如实报「没有可用入口」，而不是静默什么都不发生。
+                    call.reject("设备上没有可用的目录选择器", StorageDirCodes.PICKER_UNAVAILABLE)
+                }
+            }
+            // 结果由 storageDirectoryPicked 回填：这里不能 resolve，否则前端会先收到一个空答复。
+            null
         }
     }
 
@@ -3240,6 +3629,67 @@ class MobileRuntimePlugin : Plugin() {
             val subdirectory = optionalStorageSubdirectory(call.data)
                 ?: throw RuntimeFailure(StorageDirCodes.PATH_INVALID, "存储目录新目录路径不能为空")
             storageDirs().createFolder(guestPath, subdirectory).toJs()
+        }
+    }
+
+    /**
+     * 权限：应用内桥接；把文件管理页当前目录中的一个普通文件交给系统。
+     *
+     * 宿主路径永远不从 JS 传入：mailbox 只接受固定 root，storage 只接受白名单 guestPath；
+     * 相对文件路径由同一套 NoFollow 目录浏览策略解析后复制到 cache，再通过 FileProvider 暴露。
+     */
+    @PluginMethod
+    fun externalFileAction(call: PluginCall) {
+        execute(call) {
+            val source = call.data.opt("source") as? String
+                ?: throw RuntimeFailure("EXTERNAL_FILE_INVALID", "外部文件来源缺失")
+            val action = call.data.opt("action") as? String
+                ?: throw RuntimeFailure("EXTERNAL_FILE_INVALID", "外部文件动作缺失")
+            if (source != "mailbox" && source != "storage") {
+                throw RuntimeFailure("EXTERNAL_FILE_INVALID", "外部文件来源无效")
+            }
+            if (action != "share" && action != "open") {
+                throw RuntimeFailure("EXTERNAL_FILE_INVALID", "外部文件动作无效")
+            }
+            val relative = call.data.opt("path") as? String
+                ?: throw RuntimeFailure("EXTERNAL_FILE_INVALID", "外部文件路径缺失")
+            val target = if (source == "mailbox") {
+                val root = call.data.opt("root") as? String
+                    ?: throw RuntimeFailure("MAILBOX_ROOT_INVALID", "投递区根目录缺失")
+                RuntimeMailbox(controller.store).copyFileForSharing(root, relative, context.cacheDir)
+            } else {
+                val guestPath = call.data.opt("guestPath") as? String
+                    ?: throw RuntimeFailure(StorageDirCodes.PATH_INVALID, "共享目录访客路径缺失")
+                storageDirs().copyFileForSharing(guestPath, relative, context.cacheDir)
+            }
+            try {
+                val mime = MimeTypeMap.getSingleton()
+                    .getMimeTypeFromExtension(relative.substringAfterLast('.', "").lowercase())
+                    ?: "application/octet-stream"
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.diagnostics", target)
+                val intent = Intent(if (action == "open") Intent.ACTION_VIEW else Intent.ACTION_SEND).apply {
+                    if (action == "open") setDataAndType(uri, mime) else {
+                        type = mime
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                    }
+                    clipData = ClipData.newRawUri(target.name, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                if (intent.resolveActivity(context.packageManager) == null) {
+                    throw RuntimeFailure("EXTERNAL_FILE_NO_HANDLER", "没有应用可以处理此文件")
+                }
+                context.startActivity(
+                    Intent.createChooser(intent, if (action == "open") "打开 DSH 文件" else "分享 DSH 文件")
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+            } catch (failure: RuntimeFailure) {
+                target.delete()
+                throw failure
+            } catch (error: Throwable) {
+                target.delete()
+                throw RuntimeFailure("EXTERNAL_FILE_ACTION_FAILED", "无法打开系统文件操作面板", error)
+            }
+            null
         }
     }
 
@@ -3718,6 +4168,12 @@ class MobileRuntimePlugin : Plugin() {
             if (!destroying.get()) notifyListeners("runtimeProgress", snapshot.toProgressJs())
         }
 
+        override fun onHarnessProgress(stage: String, percent: Int) {
+            if (!destroying.get()) {
+                notifyListeners("harnessProgress", JSObject().put("stage", stage).put("percent", percent))
+            }
+        }
+
         override fun onTerminalOutput(sessionId: String, dataBase64: String, suppressPublicOutput: Boolean) {
             dispatchTerminalOutput(
                 sessionId,
@@ -3765,6 +4221,7 @@ class MobileRuntimePlugin : Plugin() {
         .put("terminalFontSize", terminalFontSize)
         .put("configuredModelProviders", org.json.JSONArray(configuredModelProviders.map { it.wireValue }))
         .put("harnessConfiguredModelProviders", org.json.JSONArray(harnessConfiguredModelProviders.map { it.wireValue }))
+        .put("deepSeekAccountConfigured", deepSeekAccountConfigured)
         .put("customModelProviders", org.json.JSONArray().also { providers ->
             customModelProviders.forEach { provider ->
                 providers.put(JSObject()
@@ -3782,8 +4239,15 @@ class MobileRuntimePlugin : Plugin() {
         })
         .put("configuredCustomModelProviders", org.json.JSONArray(configuredCustomModelProviders))
         .put("harnessConfiguredCustomModelProviders", org.json.JSONArray(harnessConfiguredCustomModelProviders))
+        .put("defaultModels", JSObject().also { defaults ->
+            io.deepseekharness.mobile.runtime.ModelProvider.entries.forEach { provider ->
+                defaultModels[provider]?.let { defaults.put(provider.wireValue, it) }
+            }
+        })
         .put("keepRuntimeInBackground", keepRuntimeInBackground)
         .put("overlayBallEnabled", overlayBallEnabled)
+        // 前端据此决定应用启动后是否静默调用 startHarness；缺失时前端按 false 处理。
+        .put("prewarmHarness", prewarmHarness)
 
     private fun RuntimeKeepAliveSnapshot.toJs(): JSObject = JSObject()
         .put("keepRuntimeInBackground", keepRuntimeInBackground)

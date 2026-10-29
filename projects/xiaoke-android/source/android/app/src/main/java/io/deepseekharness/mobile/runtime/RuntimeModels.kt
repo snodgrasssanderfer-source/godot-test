@@ -87,9 +87,18 @@ data class RuntimeSettings(
     val configuredModelProviders: Set<ModelProvider> = emptySet(),
     /** Providers configured in Harness' own credential file; values never leave that file. */
     val harnessConfiguredModelProviders: Set<ModelProvider> = emptySet(),
+    /** Presence-only status for the official DeepSeek account grant. */
+    val deepSeekAccountConfigured: Boolean = false,
     val customModelProviders: List<CustomModelProvider> = emptyList(),
     val configuredCustomModelProviders: Set<String> = emptySet(),
     val harnessConfiguredCustomModelProviders: Set<String> = emptySet(),
+    /**
+     * 内置供应商的默认模型 id（每家一个）。
+     *
+     * 只是本机记录：它是「从上游列表自动选中 / 用户自己改过」的那一项，不写进 Harness
+     * 的配置，也不参与运行时启动。没有记录供应商不会出现在这张表里。
+     */
+    val defaultModels: Map<ModelProvider, String> = emptyMap(),
     /**
      * 后台保持 Harness：运行时启动后启用前台服务，提升本应用进程的存活优先级。
      * 默认 false，旧版本配置没有该键时同样按 false 处理。
@@ -103,6 +112,21 @@ data class RuntimeSettings(
      * 不想保持运行时，也可能反过来，因此不合并成一个开关。
      */
     val overlayBallEnabled: Boolean = false,
+    /**
+     * 「打开应用时后台预启动本机 Harness 服务」开关。
+     *
+     * 语义是**只把服务启动起来、不打开页面**：开启后前端可以在应用启动后静默调用
+     * startHarness，让用户再点「打开 Harness」时直接用上已经跑着的运行时；
+     * 它不改变打开页面的时机与方式（页面仍由 openHarness 决定）。
+     *
+     * 与 keepRuntimeInBackground 也是两件独立的事：那个开关只提升**正在运行**的进程的
+     * 存活优先级，这个开关决定**要不要提前把运行时拉起来**，因此不合并。
+     *
+     * 默认 false，旧版本配置没有该键时同样按 false 处理：预启动会让 Harness 常驻占用
+     * CPU、内存与前台服务通知位，属于用户显式选择的能力，不能因为升级就替用户悄悄打开；
+     * 关掉时行为与以前完全一致（只在实际启动时才拉起运行时）。
+     */
+    val prewarmHarness: Boolean = false,
 )
 
 data class RootfsArtifact(
@@ -338,6 +362,7 @@ object RuntimeValidation {
         terminalFontSize: Int,
         keepRuntimeInBackground: Boolean = false,
         overlayBallEnabled: Boolean = false,
+        prewarmHarness: Boolean = false,
     ): RuntimeSettings {
         val source = source(url, digest)
         if (terminalFontSize !in 11..24) {
@@ -350,6 +375,7 @@ object RuntimeValidation {
             terminalFontSize = terminalFontSize,
             keepRuntimeInBackground = keepRuntimeInBackground,
             overlayBallEnabled = overlayBallEnabled,
+            prewarmHarness = prewarmHarness,
         )
     }
 
@@ -394,6 +420,50 @@ object RuntimeValidation {
         return normalized
     }
 
+    /** 校验一个模型 id（内置供应商的默认模型也走这里）。 */
+    fun requireModelId(value: String): String {
+        val normalized = value.trim()
+        if (!customModelIdPattern.matches(normalized)) {
+            throw RuntimeFailure("SETTINGS_INVALID", "模型 id 格式无效")
+        }
+        return normalized
+    }
+
+    /**
+     * 解析「内置供应商默认模型」这张表。
+     *
+     * `null`（字段缺失）与「空对象」是两件事：前者表示这次保存不碰这份记录，后者表示
+     * 用户把唯一一条也清掉了。调用方用 `Map` 而不是 `Map?` 区分：这里永远返回表，
+     * 是否写入由插件层根据 `getObject` 是否为 null 决定。
+     */
+    fun defaultModelIds(value: JSONObject?): Map<ModelProvider, String> {
+        if (value == null) return emptyMap()
+        if (value.length() > ModelProvider.entries.size) {
+            throw RuntimeFailure("SETTINGS_INVALID", "默认模型数量无效")
+        }
+        val result = linkedMapOf<ModelProvider, String>()
+        val names = value.keys()
+        while (names.hasNext()) {
+            val name = names.next()
+            val provider = ModelProvider.parse(name)
+            val rawModel = value.opt(name)
+            if (rawModel !is String) throw RuntimeFailure("SETTINGS_INVALID", "默认模型必须是字符串")
+            result[provider] = requireModelId(rawModel)
+        }
+        return ModelProvider.entries.mapNotNull { provider -> result[provider]?.let { provider to it } }
+            .toMap(linkedMapOf())
+    }
+
+    /** Validates IDs received across the JavaScript/native bridge before they select a credential. */
+    fun requireModelProviderId(value: String): String {
+        val normalized = value.trim()
+        if (ModelProvider.entries.any { it.wireValue == normalized }) return normalized
+        return requireCustomProviderId(normalized)
+    }
+
+    /** Applies the same URL policy to an ad-hoc connectivity probe as to saved settings. */
+    fun requireProviderBaseUrl(value: String): String = requireProviderBaseUrlValue(value)
+
     fun customModelProviders(value: JSONArray?): List<CustomModelProvider> {
         if (value == null) return emptyList()
         if (value.length() > MAX_CUSTOM_PROVIDERS) throw RuntimeFailure("SETTINGS_INVALID", "最多可配置 16 个自定义供应商")
@@ -425,7 +495,7 @@ object RuntimeValidation {
                 id,
                 requireDisplayName(item.opt("name"), 80, "自定义供应商名称"),
                 CustomProviderApi.parse(item.optString("api")),
-                requireProviderBaseUrl(item.opt("baseUrl")),
+                requireProviderBaseUrlValue(item.opt("baseUrl")),
                 models,
             )
         }
@@ -481,7 +551,7 @@ object RuntimeValidation {
         return integer
     }
 
-    private fun requireProviderBaseUrl(value: Any?): String {
+    private fun requireProviderBaseUrlValue(value: Any?): String {
         val raw = (value as? String)?.trim().orEmpty()
         if (raw.isEmpty() || raw.length > RuntimeLimits.MAX_FIELD_CHARS || raw.any { it.isISOControl() || it == '\\' }) {
             throw RuntimeFailure("SETTINGS_INVALID", "自定义供应商 Base URL 包含非法字符或长度无效")
@@ -491,10 +561,9 @@ object RuntimeValidation {
         }
         val scheme = uri.scheme?.lowercase(Locale.ROOT)
         val host = uri.host?.lowercase(Locale.ROOT)
-        val loopback = host == "localhost" || host == "127.0.0.1" || host == "::1"
-        if ((scheme != "https" && !(scheme == "http" && loopback)) || host.isNullOrEmpty() ||
+        if ((scheme != "https" && scheme != "http") || host.isNullOrEmpty() ||
             uri.port !in -1..65535 || uri.port == 0 || uri.rawUserInfo != null || uri.rawQuery != null || uri.rawFragment != null
-        ) throw RuntimeFailure("SETTINGS_INVALID", "Base URL 必须使用 HTTPS（本机回环可用 HTTP），且不能包含凭据、查询参数或片段")
+        ) throw RuntimeFailure("SETTINGS_INVALID", "Base URL 必须使用 HTTP 或 HTTPS，且不能包含凭据、查询参数或片段")
         return uri.toASCIIString().removeSuffix("/")
     }
 

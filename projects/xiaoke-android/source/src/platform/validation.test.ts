@@ -35,6 +35,7 @@ import {
   validateMailboxImportResult,
   validateMailboxState,
   validateMediaPermissionResult,
+  validateModelCatalogResult,
   validateModelConnectivityResult,
   validateNotificationPermissionResult,
   validateOverlayBallState,
@@ -147,6 +148,26 @@ describe('runtime source validation', () => {
 })
 
 describe('settings validation', () => {
+  it('keeps the presence-only DeepSeek account status separate from API keys', () => {
+    const settings = validateSettings({
+      manifestUrl: '',
+      manifestSha256: '',
+      keepScreenAwake: false,
+      terminalFontSize: 14,
+      configuredModelProviders: [],
+      deepSeekAccountConfigured: true,
+    })
+    expect(settings.deepSeekAccountConfigured).toBe(true)
+    expect(() => validateSettings({
+      manifestUrl: '',
+      manifestSha256: '',
+      keepScreenAwake: false,
+      terminalFontSize: 14,
+      configuredModelProviders: [],
+      deepSeekAccountConfigured: 'yes' as never,
+    })).toThrow('账号状态')
+  })
+
   it('accepts only the explicit unconfigured stored-source state', () => {
     expect(validateStoredSettings({
       manifestUrl: '',
@@ -163,6 +184,8 @@ describe('settings validation', () => {
       keepRuntimeInBackground: false,
       // 同理：旧存储也没有悬浮球键，缺省按关闭处理。
       overlayBallEnabled: false,
+      // 预启动同样是新增键：老用户不会被静默打开。
+      prewarmHarness: false,
     })
     expect(() => validateStoredSettings({
       manifestUrl: '',
@@ -198,6 +221,8 @@ describe('settings validation', () => {
       keepRuntimeInBackground: false,
       // 缺省时回落 false：与原生侧「缺键按 false」一致，老用户不会突然多出一个悬浮球。
       overlayBallEnabled: false,
+      // 预启动默认关闭：它会常驻占用资源，必须由用户显式选择。
+      prewarmHarness: false,
     })
   })
 
@@ -238,6 +263,38 @@ describe('settings validation', () => {
     expect(() => validateSettings(invalid as never)).toThrow('后台保持')
     expect(() => validateStoredSettings(invalid)).toThrow('后台保持')
     expect(() => validateSettingsUpdate(invalid as never)).toThrow('后台保持')
+  })
+
+  it('预启动默认关闭，显式开启会被保留，非布尔被拒', () => {
+    const base = {
+      manifestUrl: '',
+      manifestSha256: '',
+      keepScreenAwake: false,
+      terminalFontSize: 14,
+      configuredModelProviders: [],
+    }
+    // 默认关闭：预启动会常驻占用资源，老用户升级后不应被静默打开。
+    expect(validateSettings(base).prewarmHarness).toBe(false)
+    expect(validateSettings({ ...base, prewarmHarness: true }).prewarmHarness).toBe(true)
+    expect(validateStoredSettings({ ...base, prewarmHarness: true }).prewarmHarness).toBe(true)
+    expect(() => validateSettings({ ...base, prewarmHarness: 'true' } as never)).toThrow('预启动')
+    expect(() => validateStoredSettings({ ...base, prewarmHarness: 1 })).toThrow('预启动')
+    expect(() => validateSettingsUpdate({ ...base, prewarmHarness: 'true' } as never)).toThrow('预启动')
+  })
+
+  it('更新设置时省略预启动字段表示「不改」，不会被补成关闭', () => {
+    const base = {
+      manifestUrl: '',
+      manifestSha256: '',
+      keepScreenAwake: false,
+      terminalFontSize: 14,
+      configuredModelProviders: [],
+    }
+    // 省略：字段必须真的消失，桥接才看得到「这次没提到它」。
+    expect('prewarmHarness' in validateSettingsUpdate(base)).toBe(false)
+    // 显式 false 才是「关掉」。
+    expect(validateSettingsUpdate({ ...base, prewarmHarness: false }).prewarmHarness).toBe(false)
+    expect(validateSettingsUpdate({ ...base, prewarmHarness: true }).prewarmHarness).toBe(true)
   })
 
   it('rejects non-boolean screen settings instead of silently coercing them', () => {
@@ -330,6 +387,7 @@ describe('settings validation', () => {
       configuredModelProviders: [],
       keepRuntimeInBackground: false,
       overlayBallEnabled: false,
+      prewarmHarness: false,
     }
     expect(validateStoredSettings({ ...base, defaultFrontend: 'workbench' })).toEqual(base)
     expect(() => validateSettingsUpdate({ ...base, providerApiKeys: { custom: 'key' } } as never)).toThrow('供应商')
@@ -2482,5 +2540,57 @@ describe('validateModelConnectivityResult', () => {
     expect(() => validateModelConnectivityResult({ ok: true, status: '200' })).toThrow('模型连通性状态码无效')
     expect(() => validateModelConnectivityResult({ ok: true, status: 200, latencyMs: -5 })).toThrow('模型连通性延迟无效')
     expect(() => validateModelConnectivityResult({ ok: true, status: 200, latencyMs: 50, message: 123 })).toThrow('模型连通性提示无效')
+  })
+})
+
+describe('上游模型列表校验', () => {
+  const base = { ok: true, status: 200, latencyMs: 120, message: '已获取 2 个模型 (120ms)' }
+
+  it('只保留 id 与显示名，重复 id 丢弃，缺显示名时用 id 兜底', () => {
+    expect(validateModelCatalogResult({
+      ...base,
+      models: [
+        { id: 'gpt-4o', name: 'GPT-4o' },
+        { id: 'gpt-4o', name: '重复条目' },
+        { id: 'plain' },
+      ],
+    })).toEqual({
+      ...base,
+      models: [{ id: 'gpt-4o', name: 'GPT-4o' }, { id: 'plain', name: 'plain' }],
+    })
+  })
+
+  it('缺省 models 字段按空列表处理，不影响连通性结论', () => {
+    expect(validateModelCatalogResult(base).models).toEqual([])
+  })
+
+  it('拒绝非法的模型 id、非数组载荷与超长列表', () => {
+    expect(() => validateModelCatalogResult({ ...base, models: [{ id: 'has space' }] })).toThrow('模型 id 格式无效')
+    expect(() => validateModelCatalogResult({ ...base, models: 'gpt-4o' })).toThrow('模型列表格式无效')
+    const many = Array.from({ length: 501 }, (_, index) => ({ id: `model-${index}` }))
+    expect(() => validateModelCatalogResult({ ...base, models: many })).toThrow('模型列表条目过多')
+  })
+
+  it('校验连通性字段本身', () => {
+    expect(() => validateModelCatalogResult({ ok: 'true', status: 200, latencyMs: 1, message: 'ok', models: [] })).toThrow('模型连通性状态')
+  })
+})
+
+describe('内置供应商默认模型校验', () => {
+  const base = { manifestUrl: '', manifestSha256: '', keepScreenAwake: false, terminalFontSize: 14, configuredModelProviders: [] }
+
+  it('按内置供应商白名单保序归一化，非法 id 直接拒绝', () => {
+    expect(validateSettings({
+      ...base,
+      defaultModels: { openai: 'gpt-4o', deepseek: 'deepseek-chat' },
+    }).defaultModels).toEqual({ deepseek: 'deepseek-chat', openai: 'gpt-4o' })
+    expect(() => validateSettings({ ...base, defaultModels: { 'not-a-provider': 'gpt-4o' } as never })).toThrow('模型供应商格式无效')
+    expect(() => validateSettings({ ...base, defaultModels: { openai: 'has space' } })).toThrow('默认模型 id')
+  })
+
+  it('显式空对象表示「整表替换为空」，省略表示这次保存不碰它', () => {
+    expect(validateSettingsUpdate({ ...base, defaultModels: {} }).defaultModels).toEqual({})
+    expect(validateSettingsUpdate({ ...base }).defaultModels).toBeUndefined()
+    expect(validateSettingsUpdate({ ...base, defaultModels: { openai: ' gpt-4o ' } }).defaultModels).toEqual({ openai: 'gpt-4o' })
   })
 })

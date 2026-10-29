@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <!--
+        Cleartext stays off app-wide; only loopback (the local Harness) may use HTTP.
+        Upstream 0.3.5–0.3.7 switched to cleartext-everywhere for remote HTTP model providers. We keep the
+        stricter policy: model, QQ (wss) and Bilibili traffic is all TLS, and the Harness inside PRoot is not
+        governed by this Java-level policy anyway.
+        Shizuku 13.6.0 crash (upstream 0.3.6 notes): AOSP throws "Found multiple conflicting per-domain rules"
+        only when two Applications in one process disagree on the process-wide cleartext policy *and* one has
+        per-domain rules. base-config=false matches the system default, so the shared UserService process
+        agrees with it; this is the 0.3.4 configuration upstream reports as unaffected.
+    -->
     <base-config cleartextTrafficPermitted="false" />
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="false">127.0.0.1</domain>

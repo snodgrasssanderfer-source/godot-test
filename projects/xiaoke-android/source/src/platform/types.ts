@@ -1,4 +1,5 @@
 import type { SelfCheckOperation, SelfCheckReport } from '../runtimeSelfCheck'
+import type { HarnessProgress, HarnessReleaseList, HarnessVersionOperation, HarnessVersionsState } from './harnessVersions'
 
 export type RuntimePhase =
   | 'not-installed'
@@ -53,7 +54,7 @@ export type ProviderApiKeys = Partial<Record<ModelProviderId, string>>
 export const CUSTOM_PROVIDER_APIS = ['openai-completions', 'openai-responses', 'anthropic-messages'] as const
 export type CustomProviderApi = typeof CUSTOM_PROVIDER_APIS[number]
 
-interface CustomProviderModel {
+export interface CustomProviderModel {
   id: string
   name: string
   contextWindow: number
@@ -78,6 +79,23 @@ export interface RuntimeState {
   runnerAvailable: boolean
   harnessUrl?: string
   errorCode?: string
+}
+
+/** 「用外部浏览器打开 Harness」可选的浏览器；只含包名与显示名，不含浏览记录。 */
+export interface ExternalBrowser {
+  packageName: string
+  label: string
+}
+
+/**
+ * 浏览器清单与当前选择。
+ *
+ * `selected` 为 `null` 表示每次询问系统选择器；已保存的浏览器被卸载后，
+ * 原生侧也会把它当 `null` 返回，界面不需要自己推断。
+ */
+export interface ExternalBrowserState {
+  browsers: ExternalBrowser[]
+  selected: string | null
 }
 
 /**
@@ -487,11 +505,21 @@ export interface RuntimeSettings extends RuntimeSource {
   configuredModelProviders: ModelProviderId[]
   /** Harness 网页凭据文件中已配置的供应商；只读状态，不可由管理端清除。 */
   harnessConfiguredModelProviders?: ModelProviderId[]
+  /** Official DeepSeek account grant presence; the grant itself never crosses the bridge. */
+  deepSeekAccountConfigured?: boolean
   /** 自定义供应商元数据；旧版桥接可缺省，保存的密钥绝不回传。 */
   customModelProviders?: CustomModelProvider[]
   configuredCustomModelProviders?: string[]
   /** Harness 网页凭据文件中已配置的自定义供应商；只读状态。 */
   harnessConfiguredCustomModelProviders?: string[]
+  /**
+   * 内置供应商的「默认模型」id，每家有值时才出现。
+   *
+   * 这是**本机记录**，不写进 Harness：应用投递给 Harness 的只有凭据文件，
+   * 没有「默认模型」这条通道。它记录用户从上游模型列表里自动选中（或自己改过）的那一个，
+   * Harness 内实际使用的模型仍以它自己的模型页为准。
+   */
+  defaultModels?: Partial<Record<ModelProviderId, string>>
   /** 旧版原生桥接兼容字段；校验后只迁移为 DeepSeek 的已配置状态。 */
   apiKey?: string
   /**
@@ -506,6 +534,14 @@ export interface RuntimeSettings extends RuntimeSource {
    * 与 keepRuntimeInBackground 是两件独立的事，界面不要合并成一个开关。
    */
   overlayBallEnabled?: boolean
+  /**
+   * 打开应用时后台预启动 Harness 服务（默认 false）。
+   *
+   * 预启动只把本机服务拉起来，**不打开对话页面**：开机后停在启动器首页这一点不变，
+   * 用户仍然要自己点「打开对话」。收益是点了之后几乎立刻进入，代价是服务在后台常驻
+   * （与「后台保持」是两件事，后者只提高进程存活优先级）。因此默认关闭，由用户显式选择。
+   */
+  prewarmHarness?: boolean
 }
 
 export interface RuntimeSettingsUpdate extends RuntimeSettings {
@@ -1154,6 +1190,9 @@ export interface VirtualScreenStartRequest {
   widthPx?: number
   heightPx?: number
   densityDpi?: number
+  /** 启动时一并写回偏好：用户改完档位直接点启动，重进页面不该回到旧值。 */
+  previewMode?: VirtualScreenPreviewMode
+  autoFollow?: VirtualScreenAutoFollow
 }
 
 /**
@@ -1527,12 +1566,22 @@ export interface ListenerHandle {
  */
 export type AppThemeMode = 'system' | 'light' | 'dark'
 
+/** 同步给 DSH 页面（访客 WebView）的受控主题：只有固定字段，没有 CSS / JS / URL。 */
+export type { SyncedTheme } from '../adaptiveAccent'
+export type { HarnessBackgroundRef, HarnessBackgroundState } from '../backgroundRef'
+import type { SyncedTheme } from '../adaptiveAccent'
+import type { HarnessBackgroundRef, HarnessBackgroundState } from '../backgroundRef'
+
 export interface RuntimeWorkspaceFileList {
   files: string[]
   truncated: boolean
 }
 
 export interface RuntimeBridge {
+  listHarnessReleases: () => Promise<HarnessReleaseList>
+  manageHarnessVersions: (operation: HarnessVersionOperation, version?: string) => Promise<HarnessVersionsState>
+  /** Harness 包安装的阶段进度；只有安装会上报，其它操作没有事件。 */
+  addHarnessProgressListener: (listener: (event: HarnessProgress) => void) => Promise<ListenerHandle>
   managePlugins: (request: PluginRequest) => Promise<PluginCatalog>
   /** 保存应用语言，仅接受简体中文和英语。 */
   setAppLanguage: (language: 'zh-CN' | 'en') => Promise<void>
@@ -1545,6 +1594,36 @@ export interface RuntimeBridge {
    * 传结论会把某一刻的取值固化成用户的显式选择，之后系统再切就不跟随了。
    */
   setAppTheme: (mode: AppThemeMode) => Promise<void>
+  /**
+   * 把外壳主题同步给 DSH 页面（登记册 5.5）。
+   *
+   * **为什么是显式按钮**：外壳与 DSH 是两个独立 WebView，localStorage 不共享。用户可能
+   * 只想调外壳外观，所以同步必须由用户主动触发，并且只传固定字段的颜色与明暗模式。
+   */
+  applyHarnessTheme: (theme: SyncedTheme) => Promise<void>
+  /** 清除已同步的主题，DSH 页面回到它自己的默认外观。 */
+  clearHarnessTheme: () => Promise<void>
+  /**
+   * 第二阶段：让用户挑一个背景文件，原生只记地址（`content://` + 持久读授权）。
+   *
+   * 不复制文件，所以视频没有大小上限；访客页面从 `/__shell/background` 同源取，
+   * 由原生按需从同一个地址流式转发。
+   */
+  pickHarnessBackground: () => Promise<HarnessBackgroundRef>
+  clearHarnessBackground: () => Promise<void>
+  /**
+   * 落盘「连背景一起同步」开关。
+   *
+   * 这个开关必须活在原生侧：外壳刷新、进程重启之后还要能读回上次的选择；
+   * 只写页面的内存状态，重启就会自己弹回未勾，看起来像背景被丢了。
+   */
+  setHarnessSyncBackground: (enabled: boolean) => Promise<void>
+  /**
+   * 读回同步状态（开关、上次同步时间、已选背景）。
+   *
+   * 外壳启动时用它恢复界面：勾选框、已选文件提示都从这一个返回值来。
+   */
+  harnessThemeState: () => Promise<HarnessBackgroundState>
   getState: () => Promise<RuntimeState>
   getSettings: () => Promise<RuntimeSettings>
   saveSettings: (settings: RuntimeSettingsUpdate) => Promise<RuntimeSettings>
@@ -1560,6 +1639,16 @@ export interface RuntimeBridge {
   install: (source?: RuntimeSource) => Promise<RuntimeInstallResult>
   startHarness: () => Promise<RuntimeState>
   openHarness: (sessionId?: string) => Promise<void>
+  /**
+   * 仅用于兼容性诊断：把当前 Harness 交给系统外部浏览器。
+   *
+   * 用户在设置里固定过浏览器时直接用它；否则交给系统选择器。
+   */
+  openHarnessExternal: () => Promise<void>
+  /** 读取可用浏览器清单与已保存的选择（只含包名与显示名）。 */
+  getExternalBrowsers: () => Promise<ExternalBrowserState>
+  /** 保存外置浏览器选择；传 `null` 表示每次询问系统选择器。 */
+  setExternalBrowser: (packageName: string | null) => Promise<void>
   stopRuntime: () => Promise<RuntimeState>
   reset: (confirmation: 'RESET_RUNTIME') => Promise<RuntimeState>
   createTerminal: (kind: TerminalKind, columns: number, rows: number) => Promise<{ sessionId: string }>
@@ -1858,6 +1947,14 @@ export interface RuntimeBridge {
   shareRuntimeWorkspaceFile: (path: string) => Promise<void>
   openRuntimeWorkspaceFile: (path: string) => Promise<void>
   deleteRuntimeWorkspaceFile: (path: string) => Promise<void>
+  /** 在系统分享面板分享或用其它应用打开文件管理页当前文件。 */
+  externalFileAction: (options: {
+    source: 'mailbox' | 'storage'
+    root?: MailboxRoot
+    guestPath?: string
+    path: string
+    action: 'share' | 'open'
+  }) => Promise<void>
   /** 清空全部诊断日志。 */
   clearDiagnosticLog: () => Promise<DiagnosticLogState>
   /**
@@ -2045,6 +2142,18 @@ export interface RuntimeBridge {
     apiKey?: string
     api?: CustomProviderApi
   }) => Promise<ModelConnectivityResult>
+  /**
+   * 读取上游供应商的模型列表（GET {base}/models）。
+   *
+   * 与 [testModelConnectivity] 共用同一套端点与鉴权解析：草稿密钥优先，未提供时回落到
+   * 本机已保存的凭据。返回的只是模型 id 与显示名，不含任何凭据，也不代表用户已经选定。
+   */
+  listModelCatalog: (options: {
+    providerId: string
+    baseUrl?: string
+    apiKey?: string
+    api?: CustomProviderApi
+  }) => Promise<ModelCatalogResult>
 }
 
 export interface ModelConnectivityResult {
@@ -2052,6 +2161,21 @@ export interface ModelConnectivityResult {
   status: number
   latencyMs: number
   message: string
+}
+
+export interface ModelCatalogEntry {
+  /** 上游模型 id（原样，不裁剪也不改名）。 */
+  id: string
+  /** 上游给的显示名；没有时与 id 相同。 */
+  name: string
+}
+
+export interface ModelCatalogResult {
+  ok: boolean
+  status: number
+  latencyMs: number
+  message: string
+  models: ModelCatalogEntry[]
 }
 
 export interface PluginPreservedInfo {

@@ -75,3 +75,11 @@ Mobilerun 仅作为原有设备控制对照，不替换已运行的 DSH 权限�
 - C 沿用 AstrBot 衍生 OneBot 和 NapCat 协议互操作，增加后台队列、审批、密文同步；B站使用上述固定 MIT 项目的账号动作接口并作 Android/OkHttp 适配。见 [CONTRACT-C](archive/CONTRACT-C.md)、[C-SOCIAL-EXTENSION](archive/C-SOCIAL-EXTENSION.md)。aioqzone 仅比较阅读，未复制安装；NapCat 未打进 APK。
 
 前面的候选列表保留检索入口，不表示全部采用。最终合并代码的验证缺口见交接文档，历史独立模块测试不能代替当前 APK 验收。
+
+## 2026-10-30 同步 DSH 上游
+
+- dphmoblie/deepseek-harness-android：从 v0.3.0（e9be0e43629f8b744991c2cf9efd160ca7d41abc）三方合并到 v0.3.7（c46af029d2e37f13aa5c1cb453deb1bf3cc74c31），MIT。199 个文件，2 处冲突（versionCode 保留本项目；gradlew.bat 取上游）。`promo/` 未合入。
+- harness-web（dphmoblie/deepseek-harness-mobile-support）：5cb43dbcbabddac391afd0f947b771fb899582a1 → abefc709ebdd4aada322cde573f2684327bd661b。
+- 网络安全配置没有跟随上游的“全局允许明文”，保持“默认禁止、只放行本机回环”，理由写在 `network_security_config.xml` 里；按上游 0.3.6 的分析，这份配置与 Shizuku 13.6.0 共进程时不会触发 `Found multiple conflicting per-domain rules`。
+- Ubuntu 运行环境改用上游 v0.3.7 发布的 rootfs（上游 CI 按 `scripts/build-embedded-runtime.py` 生成），哈希见 build-materials/BUILD.md；文件不入库。
+

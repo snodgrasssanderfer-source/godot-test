@@ -30,6 +30,7 @@ import type {
   DiagnosticLogExport,
   DiagnosticLogState,
   DiagnosticLogText,
+  ExternalBrowserState,
   HarnessLog,
   KeepAliveState,
   MailboxAvailability,
@@ -39,6 +40,8 @@ import type {
   MailboxRoot,
   MailboxState,
   MediaPermissionResult,
+  ModelCatalogEntry,
+  ModelCatalogResult,
   ModelConnectivityResult,
   ModelProviderId,
   NotificationPermission,
@@ -127,6 +130,10 @@ const MAX_IDENTIFIER_LENGTH = 96
 const MAX_ERROR_CODE_LENGTH = 96
 const MAX_TERMINAL_OUTPUT_BYTES = 96 * 1024
 const API_KEY_PATTERN = /^[\x21-\x7e]{1,200}$/
+/** 与原生 `RuntimeValidation.customModelIdPattern`、`src/platform/customProviders.ts` 的 MODEL_ID 同一套规则。 */
+const MODEL_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/+-]{0,199}$/
+/** 上游模型列表的条目上限；原生侧同样封顶，超出视为载荷不符合契约。 */
+const MAX_MODEL_CATALOG_ENTRIES = 500
 const MODEL_PROVIDER_ID_SET = new Set<string>(MODEL_PROVIDER_IDS)
 /** 投递区可用性档位（与原生 `MailboxAvailability` 一一对应）。 */
 const MAILBOX_AVAILABILITIES = new Set<MailboxAvailability>([
@@ -272,6 +279,31 @@ function configuredModelProviders(value: unknown, legacyApiKey: unknown): ModelP
   return MODEL_PROVIDER_IDS.filter(provider => providers.includes(provider))
 }
 
+/**
+ * 内置供应商的默认模型记录。
+ *
+ * 只接受内置供应商的 id 与合法模型 id：它是本机记录，不是通往 Harness 的配置通道，
+ * 因此宁可把不认识的内容整条丢掉，也不让一个来路不明的字符串进入「已保存设置」。
+ */
+function defaultModels(value: unknown): Partial<Record<ModelProviderId, string>> {
+  if (value === undefined) return {}
+  const record = asRecord(value, '默认模型设置')
+  const result: Partial<Record<ModelProviderId, string>> = {}
+  for (const [rawProvider, rawModel] of Object.entries(record)) {
+    const provider = modelProviderId(rawProvider)
+    if (typeof rawModel !== 'string') throw new Error('默认模型必须是字符串')
+    const model = rawModel.trim()
+    if (model === '') continue
+    if (!MODEL_ID_PATTERN.test(model)) throw new Error('默认模型 id 包含非法字符或长度无效')
+    result[provider] = model
+  }
+  return MODEL_PROVIDER_IDS.reduce<Partial<Record<ModelProviderId, string>>>((accumulator, provider) => {
+    const model = result[provider]
+    if (model !== undefined) accumulator[provider] = model
+    return accumulator
+  }, {})
+}
+
 function providerApiKeyUpdates(value: unknown): ProviderApiKeys {
   if (value === undefined) return {}
   const record = asRecord(value, '模型凭据更新')
@@ -383,6 +415,12 @@ export function validateSettings(settings: RuntimeSettings): RuntimeSettings {
   if (typeof keepRuntimeInBackground !== 'boolean') throw new Error('后台保持设置格式无效')
   const overlayBallEnabled = settings.overlayBallEnabled === undefined ? false : settings.overlayBallEnabled
   if (typeof overlayBallEnabled !== 'boolean') throw new Error('悬浮球设置格式无效')
+  const prewarmHarness = settings.prewarmHarness === undefined ? false : settings.prewarmHarness
+  if (typeof prewarmHarness !== 'boolean') throw new Error('预启动设置格式无效')
+  if (settings.deepSeekAccountConfigured !== undefined && typeof settings.deepSeekAccountConfigured !== 'boolean') {
+    throw new Error('DeepSeek 账号状态格式无效')
+  }
+  const defaults = defaultModels(settings.defaultModels)
   return {
     ...source,
     keepScreenAwake: settings.keepScreenAwake,
@@ -391,6 +429,9 @@ export function validateSettings(settings: RuntimeSettings): RuntimeSettings {
     ...(settings.harnessConfiguredModelProviders === undefined ? {} : {
       harnessConfiguredModelProviders: configuredModelProviders(settings.harnessConfiguredModelProviders, undefined),
     }),
+    ...(settings.deepSeekAccountConfigured === undefined ? {} : {
+      deepSeekAccountConfigured: settings.deepSeekAccountConfigured,
+    }),
     ...(settings.customModelProviders === undefined ? {} : { customModelProviders: validateCustomModelProviders(settings.customModelProviders) }),
     ...(settings.configuredCustomModelProviders === undefined ? {} : {
       configuredCustomModelProviders: validateCustomCredentialIds(settings.configuredCustomModelProviders, '自定义模型凭据状态'),
@@ -398,8 +439,12 @@ export function validateSettings(settings: RuntimeSettings): RuntimeSettings {
     ...(settings.harnessConfiguredCustomModelProviders === undefined ? {} : {
       harnessConfiguredCustomModelProviders: validateCustomCredentialIds(settings.harnessConfiguredCustomModelProviders, 'Harness 自定义模型凭据状态'),
     }),
+    // 缺省表示这次保存不碰默认模型记录；显式给出（哪怕是空对象）表示整表替换，
+    // 用户把最后一条清掉时也要能把「空」写进去。
+    ...(settings.defaultModels === undefined ? {} : { defaultModels: defaults }),
     keepRuntimeInBackground,
     overlayBallEnabled,
+    prewarmHarness,
   }
 }
 
@@ -422,6 +467,8 @@ export function validateSettingsUpdate(settings: RuntimeSettingsUpdate): Runtime
     ...(clearCustomProviderApiKeys.length === 0 ? {} : { clearCustomProviderApiKeys }),
   }
   if (settings.overlayBallEnabled === undefined) delete result.overlayBallEnabled
+  // 与悬浮球同一语义：省略表示「不改这一项」，不能因为校验层补了默认 false 就把它写成关闭。
+  if (settings.prewarmHarness === undefined) delete result.prewarmHarness
   return result
 }
 
@@ -442,10 +489,19 @@ export function validateStoredSettings(value: unknown): RuntimeSettings {
   }
   const overlayBallEnabled = settings.overlayBallEnabled === undefined ? false : settings.overlayBallEnabled
   if (typeof overlayBallEnabled !== 'boolean') throw new Error('悬浮球设置格式无效')
+  const prewarmHarness = settings.prewarmHarness === undefined ? false : settings.prewarmHarness
+  if (typeof prewarmHarness !== 'boolean') throw new Error('预启动设置格式无效')
+  if (settings.deepSeekAccountConfigured !== undefined && typeof settings.deepSeekAccountConfigured !== 'boolean') {
+    throw new Error('DeepSeek 账号状态格式无效')
+  }
   const configuredProviders = configuredModelProviders(settings.configuredModelProviders, settings.apiKey)
+  const storedDefaults = defaultModels(settings.defaultModels)
   const customSettings = {
     ...(settings.harnessConfiguredModelProviders === undefined ? {} : {
       harnessConfiguredModelProviders: configuredModelProviders(settings.harnessConfiguredModelProviders, undefined),
+    }),
+    ...(settings.deepSeekAccountConfigured === undefined ? {} : {
+      deepSeekAccountConfigured: settings.deepSeekAccountConfigured,
     }),
     ...(settings.customModelProviders === undefined ? {} : { customModelProviders: validateCustomModelProviders(settings.customModelProviders) }),
     ...(settings.configuredCustomModelProviders === undefined ? {} : {
@@ -454,6 +510,7 @@ export function validateStoredSettings(value: unknown): RuntimeSettings {
     ...(settings.harnessConfiguredCustomModelProviders === undefined ? {} : {
       harnessConfiguredCustomModelProviders: validateCustomCredentialIds(settings.harnessConfiguredCustomModelProviders, 'Harness 自定义模型凭据状态'),
     }),
+    ...(Object.keys(storedDefaults).length === 0 ? {} : { defaultModels: storedDefaults }),
   }
   if (settings.manifestUrl === '' && settings.manifestSha256 === '') {
     return {
@@ -465,6 +522,7 @@ export function validateStoredSettings(value: unknown): RuntimeSettings {
       ...customSettings,
       keepRuntimeInBackground,
       overlayBallEnabled,
+      prewarmHarness,
     }
   }
   const source = validateRuntimeSource({
@@ -479,6 +537,7 @@ export function validateStoredSettings(value: unknown): RuntimeSettings {
     ...customSettings,
     keepRuntimeInBackground,
     overlayBallEnabled,
+    prewarmHarness,
   }
 }
 
@@ -545,6 +604,33 @@ export function validateRuntimeState(value: unknown): RuntimeState {
     ...(harnessUrl === undefined ? {} : { harnessUrl }),
     ...(errorCode === undefined ? {} : { errorCode }),
   }
+}
+
+/**
+ * 外置浏览器清单与选择。
+ *
+ * 原生只应返回包名与显示名；这里再验一遍格式、去重，并确认 `selected`
+ * 仍在清单里，避免界面上出现一个指向未知应用的下拉项。
+ */
+export function validateExternalBrowserState(value: unknown): ExternalBrowserState {
+  const state = asRecord(value, '浏览器清单')
+  if (!Array.isArray(state.browsers) || state.browsers.length > 32) throw new Error('浏览器清单格式无效')
+  const browsers = state.browsers.map((raw: unknown) => {
+    const browser = asRecord(raw, '浏览器信息')
+    if (typeof browser.packageName !== 'string' || browser.packageName.length > 255 ||
+        !/^[A-Za-z][A-Za-z0-9_.]*$/u.test(browser.packageName) ||
+        typeof browser.label !== 'string' || browser.label.length === 0 || browser.label.length > 120 ||
+        [...browser.label].some(char => char.charCodeAt(0) < 0x20 || char.charCodeAt(0) === 0x7f)) {
+      throw new Error('浏览器信息格式无效')
+    }
+    return { packageName: browser.packageName, label: browser.label }
+  })
+  if (new Set(browsers.map(browser => browser.packageName)).size !== browsers.length) throw new Error('浏览器清单重复')
+  if (state.selected !== null && typeof state.selected !== 'string') throw new Error('浏览器选择格式无效')
+  if (typeof state.selected === 'string' && !browsers.some(browser => browser.packageName === state.selected)) {
+    throw new Error('浏览器选择不在清单内')
+  }
+  return { browsers, selected: state.selected ?? null }
 }
 
 /**
@@ -2563,6 +2649,8 @@ export function assertVirtualScreenStartRequest(value: unknown): VirtualScreenSt
   if (present(source.widthPx)) request.widthPx = virtualScreenEdge(source.widthPx)
   if (present(source.heightPx)) request.heightPx = virtualScreenEdge(source.heightPx)
   if (present(source.densityDpi)) request.densityDpi = virtualScreenDensity(source.densityDpi)
+  if (present(source.previewMode)) request.previewMode = virtualScreenPreviewMode(source.previewMode)
+  if (present(source.autoFollow)) request.autoFollow = virtualScreenAutoFollow(source.autoFollow)
   return request
 }
 
@@ -2824,4 +2912,36 @@ export function validateModelConnectivityResult(value: unknown): ModelConnectivi
     ? result.message
     : (() => { throw new Error('模型连通性提示无效') })()
   return { ok, status, latencyMs, message }
+}
+
+/**
+ * 校验上游模型列表。
+ *
+ * 条目只保留 id 与显示名：id 必须符合模型 id 规则、不得重复，列表长度有上限；
+ * 显示名可以缺省（用 id 补），但不得超长或包含控制字符。
+ */
+export function validateModelCatalogResult(value: unknown): ModelCatalogResult {
+  const result = asRecord(value, '模型列表结果')
+  const connectivity = validateModelConnectivityResult({
+    ok: result.ok,
+    status: result.status,
+    latencyMs: result.latencyMs,
+    message: result.message,
+  })
+  const rawModels = result.models === undefined ? [] : result.models
+  if (!Array.isArray(rawModels)) throw new Error('模型列表格式无效')
+  if (rawModels.length > MAX_MODEL_CATALOG_ENTRIES) throw new Error('模型列表条目过多')
+  const seen = new Set<string>()
+  const models: ModelCatalogEntry[] = []
+  for (const item of rawModels) {
+    const entry = asRecord(item, '模型条目')
+    const id = typeof entry.id === 'string' ? entry.id.trim() : ''
+    if (!MODEL_ID_PATTERN.test(id)) throw new Error('模型 id 格式无效')
+    if (seen.has(id)) continue
+    const rawName = typeof entry.name === 'string' ? entry.name.trim() : ''
+    const name = rawName === '' || rawName.length > 100 || containsControlCharacter(rawName) ? id : rawName
+    seen.add(id)
+    models.push({ id, name })
+  }
+  return { ...connectivity, models }
 }

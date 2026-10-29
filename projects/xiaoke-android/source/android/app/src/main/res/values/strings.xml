@@ -2,6 +2,10 @@
     <string name="app_name">小克助手</string>
     <string name="harness_title">Harness 对话</string>
     <string name="harness_back_to_app">返回应用</string>
+    <string name="harness_exit_confirm_title">退出 DSH</string>
+    <string name="harness_exit_confirm_message">确定返回应用吗？当前 DSH 页面会保留在后台。</string>
+    <string name="harness_exit_confirm_cancel">继续使用</string>
+    <string name="harness_exit_confirm_ok">返回应用</string>
     <string name="harness_open_management">打开管理设置</string>
     <string name="harness_workspace_files">工作区文件</string>
     <string name="harness_workspace_empty">工作区暂无可操作文件</string>
@@ -11,6 +15,8 @@
     <string name="harness_file_delete_confirm">确定删除“%1$s”吗？此操作无法撤销。</string>
     <string name="harness_file_deleted">文件已删除</string>
     <string name="harness_file_action_failed">文件操作失败</string>
+    <!-- 分享失败细分：地址解析通过但工作区里找不到文件（含路径口径不一致），与通用失败区分。 -->
+    <string name="harness_file_share_unavailable">工作区里找不到这个文件，无法分享</string>
     <string name="harness_session_failed">无法建立本机 Harness 会话</string>
     <string name="harness_page_failed">Harness 页面暂时无法打开，请在设置中重试</string>
     <string name="shizuku_missing">请先安装并启动 Shizuku</string>

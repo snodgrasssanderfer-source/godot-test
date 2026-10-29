@@ -150,6 +150,13 @@ class RuntimeStore(context: Context) {
     fun overlayBallEnabled(): Boolean = preferences.getBoolean(KEY_OVERLAY_BALL, false)
 
     /**
+     * 「打开应用时后台预启动 Harness」开关。
+     * 旧版本配置里没有该键，缺失时统一按 false 处理，与设置默认值保持一致：
+     * 升级不能替用户打开一个会常驻占用资源的预启动。
+     */
+    fun prewarmHarness(): Boolean = preferences.getBoolean(KEY_PREWARM_HARNESS, false)
+
+    /**
      * 由悬浮球菜单在原生侧直接关闭开关。
      *
      * 菜单是原生界面，没有前端调用栈可以回写设置，因此这里直接落盘。
@@ -159,6 +166,20 @@ class RuntimeStore(context: Context) {
      */
     fun setOverlayBallEnabled(enabled: Boolean) {
         preferences.edit().putBoolean(KEY_OVERLAY_BALL, enabled).apply()
+    }
+
+    /**
+     * 「用外部浏览器打开 Harness」固定的浏览器包名；null 表示每次询问系统选择器。
+     *
+     * 只保存包名，不保存 URL、令牌或浏览历史。打开前原生侧仍会核对这个包
+     * 当前是否还在可处理网页的清单里，卸载后自动退回选择器。
+     */
+    fun externalBrowserPackage(): String? = preferences.getString(KEY_EXTERNAL_BROWSER, null)
+
+    fun setExternalBrowserPackage(packageName: String?) {
+        preferences.edit().apply {
+            if (packageName == null) remove(KEY_EXTERNAL_BROWSER) else putString(KEY_EXTERNAL_BROWSER, packageName)
+        }.apply()
     }
 
     /**
@@ -300,14 +321,17 @@ class RuntimeStore(context: Context) {
             keepScreenAwake = keepScreenAwake(),
             keepRuntimeInBackground = keepRuntimeInBackground(),
             overlayBallEnabled = overlayBallEnabled(),
+            prewarmHarness = prewarmHarness(),
             terminalFontSize = preferences.getInt(KEY_FONT_SIZE, 14).coerceIn(11, 24),
             configuredModelProviders = ModelProvider.entries.filterTo(linkedSetOf()) { providerApiKeys.containsKey(it) },
             harnessConfiguredModelProviders = harnessCredentials.modelProviders,
+            deepSeekAccountConfigured = harnessCredentials.deepSeekAccountConfigured,
             customModelProviders = customProviders,
             configuredCustomModelProviders = customProviders.mapNotNullTo(linkedSetOf()) { provider ->
                 provider.id.takeIf(customProviderApiKeys::containsKey)
             },
             harnessConfiguredCustomModelProviders = harnessCredentials.customProviderIds,
+            defaultModels = defaultModelIdsLocked(),
         )
     }
 
@@ -320,6 +344,9 @@ class RuntimeStore(context: Context) {
         customProviderApiKeyUpdates: Map<String, String> = emptyMap(),
         clearedCustomProviderApiKeys: Set<String> = emptySet(),
         overlayBallEnabledUpdate: Boolean? = settings.overlayBallEnabled,
+        defaultModels: Map<ModelProvider, String>? = null,
+        // 省略即不改：预启动是一次显式选择，不能因为某次只带部分字段的保存被悄悄关掉。
+        prewarmHarnessUpdate: Boolean? = settings.prewarmHarness,
     ): RuntimeSettings {
         if (providerApiKeyUpdates.keys.any(clearedProviderApiKeys::contains)) {
             throw RuntimeFailure("SETTINGS_INVALID", "同一模型凭据不能同时更新和清除")
@@ -329,10 +356,22 @@ class RuntimeStore(context: Context) {
             customProviderApiKeyUpdates.keys.any { it !in allowedCustomIds } || clearedCustomProviderApiKeys.any { it !in allowedCustomIds }
         ) throw RuntimeFailure("SETTINGS_INVALID", "自定义模型凭据更新与供应商配置不一致")
         val providerApiKeys = providerApiKeysLocked().toMutableMap()
+        val clearedHarnessCredentialValues = linkedMapOf<String, String>()
+        clearedProviderApiKeys.forEach { provider ->
+            providerApiKeys[provider]?.let { clearedHarnessCredentialValues[provider.environmentVariable] = it }
+        }
         clearedProviderApiKeys.forEach(providerApiKeys::remove)
         providerApiKeys.putAll(providerApiKeyUpdates)
-        val storedCustomIds = customModelProvidersLocked().mapTo(linkedSetOf()) { it.id }
+        val storedCustomProviders = customModelProvidersLocked()
+        val storedCustomIds = storedCustomProviders.mapTo(linkedSetOf()) { it.id }
         val customProviderApiKeys = customProviderApiKeysLocked(storedCustomIds).toMutableMap()
+        val removedCustomIds = customProviderApiKeys.keys.filterTo(linkedSetOf()) { it !in allowedCustomIds }
+        (clearedCustomProviderApiKeys + removedCustomIds).forEach { providerId ->
+            val provider = storedCustomProviders.firstOrNull { it.id == providerId }
+            val environmentVariable = provider?.environmentVariable
+            val value = customProviderApiKeys[providerId]
+            if (environmentVariable != null && value != null) clearedHarnessCredentialValues[environmentVariable] = value
+        }
         customProviderApiKeys.keys.retainAll(allowedCustomIds)
         clearedCustomProviderApiKeys.forEach(customProviderApiKeys::remove)
         customProviderApiKeys.putAll(customProviderApiKeyUpdates)
@@ -350,24 +389,60 @@ class RuntimeStore(context: Context) {
             .remove(KEY_API_KEY)
             .remove("device_bridge_token")
         overlayBallEnabledUpdate?.let { editor.putBoolean(KEY_OVERLAY_BALL, it) }
+        defaultModels?.let { models ->
+            // 整表替换：传空表就是「用户把最后一条也清掉了」，不能与「这次不碰」混为一谈。
+            editor.putString(KEY_DEFAULT_MODELS, defaultModelsToJson(models).toString())
+        }
+        prewarmHarnessUpdate?.let { editor.putBoolean(KEY_PREWARM_HARNESS, it) }
         if (encryptedCredentials == null) editor.remove(KEY_PROVIDER_CREDENTIALS)
         else editor.putString(KEY_PROVIDER_CREDENTIALS, encryptedCredentials)
         if (encryptedCustomCredentials == null) editor.remove(KEY_CUSTOM_PROVIDER_CREDENTIALS)
         else editor.putString(KEY_CUSTOM_PROVIDER_CREDENTIALS, encryptedCustomCredentials)
+        if (clearedHarnessCredentialValues.isNotEmpty() && !removeHarnessCredentials(clearedHarnessCredentialValues)) {
+            throw RuntimeFailure("SETTINGS_WRITE_FAILED", "无法清理 Harness 中由 App 写入的模型凭据")
+        }
         val committed = editor.commit()
         if (!committed) throw RuntimeFailure("SETTINGS_WRITE_FAILED", "无法保存运行时设置")
         val harnessCredentials = harnessCredentialStatus(customProviders)
         return settings.copy(
             // Omitted updates are read after commit so a concurrent native-menu hide is preserved.
             overlayBallEnabled = overlayBallEnabledUpdate ?: overlayBallEnabled(),
+            prewarmHarness = prewarmHarnessUpdate ?: prewarmHarness(),
             configuredModelProviders = ModelProvider.entries.filterTo(linkedSetOf()) { providerApiKeys.containsKey(it) },
             harnessConfiguredModelProviders = harnessCredentials.modelProviders,
+            deepSeekAccountConfigured = harnessCredentials.deepSeekAccountConfigured,
             customModelProviders = customProviders,
             configuredCustomModelProviders = customProviders.mapNotNullTo(linkedSetOf()) { provider ->
                 provider.id.takeIf(customProviderApiKeys::containsKey)
             },
             harnessConfiguredCustomModelProviders = harnessCredentials.customProviderIds,
+            defaultModels = defaultModels ?: defaultModelIdsLocked(),
         )
+    }
+
+    /**
+     * 读取本机记下的「内置供应商默认模型」。
+     *
+     * 存储里可能有旧版本或手改留下的脏数据：单个条目读不出来就丢那一条，而不是让整份设置
+     * 读取失败 —— 这份记录只是本机备注，不该把用户挡在设置页之外。
+     */
+    private fun defaultModelIdsLocked(): Map<ModelProvider, String> {
+        val raw = preferences.getString(KEY_DEFAULT_MODELS, null) ?: return emptyMap()
+        val json = runCatching { JSONObject(raw) }.getOrNull() ?: return emptyMap()
+        val result = linkedMapOf<ModelProvider, String>()
+        for (provider in ModelProvider.entries) {
+            val model = json.optString(provider.wireValue).trim()
+            if (model.isEmpty()) continue
+            if (runCatching { RuntimeValidation.requireModelId(model) }.isFailure) continue
+            result[provider] = model
+        }
+        return result
+    }
+
+    private fun defaultModelsToJson(models: Map<ModelProvider, String>): JSONObject {
+        val json = JSONObject()
+        ModelProvider.entries.forEach { provider -> models[provider]?.let { json.put(provider.wireValue, it) } }
+        return json
     }
 
     private fun harnessCredentialStatus(customProviders: List<CustomModelProvider>): HarnessCredentialStatus =
@@ -411,10 +486,14 @@ class RuntimeStore(context: Context) {
     @Synchronized
     internal fun prepareRuntimeSecrets(
         harnessAuthToken: String?,
+        browserToken: String?,
         deviceBridgeAccess: DeviceBridgeAccess?,
     ): RuntimeSecretDelivery {
         if (harnessAuthToken != null && !RuntimeSecretPolicy.TOKEN_PATTERN.matches(harnessAuthToken)) {
             throw RuntimeFailure("HARNESS_AUTH_INVALID", "Harness 临时凭据无效")
+        }
+        if (browserToken != null && !RuntimeSecretPolicy.TOKEN_PATTERN.matches(browserToken)) {
+            throw RuntimeFailure("HARNESS_BROWSER_HANDOFF_INVALID", "外部浏览器接管凭据无效")
         }
         deviceBridgeAccess?.let { access ->
             if (access.port !in 1024..65535 || !RuntimeSecretPolicy.TOKEN_PATTERN.matches(access.token)) {
@@ -423,6 +502,7 @@ class RuntimeStore(context: Context) {
         }
         val ephemeralSecrets = linkedMapOf<String, String>().apply {
             harnessAuthToken?.let { put(MOBILE_AUTH_TOKEN_ENV, it) }
+            browserToken?.let { put(MOBILE_BROWSER_TOKEN_ENV, it) }
             deviceBridgeAccess?.let { put(DEVICE_BRIDGE_TOKEN_ENV, it.token) }
         }
         val modelCredentials = modelCredentialValues()
@@ -488,10 +568,27 @@ class RuntimeStore(context: Context) {
             is CredentialsDocument.Text -> document.text
             is CredentialsDocument.Untrusted -> return false
         }
-        val updated = HarnessCredentialsDocument.upsert(existing, values) ?: return false
+        val updated = HarnessCredentialsDocument.upsertManaged(existing, values) ?: return false
         // 文档已经承载全部凭据时一个字节都不动：避免与模型页/另一个实例的写入互相覆盖。
         if (updated == existing) return true
         return writePrivateFile(harnessCredentialsFile, updated.toByteArray(Charsets.UTF_8))
+    }
+
+    /** 只删除 App 归属仍然成立的 Harness 引用；用户在 Harness 中改过的值会被保留。 */
+    private fun removeHarnessCredentials(expectedValues: Map<String, String>): Boolean {
+        try {
+            val existing = when (val document = readCredentialsDocument()) {
+                is CredentialsDocument.Absent -> return true
+                is CredentialsDocument.Text -> document.text
+                is CredentialsDocument.Untrusted -> return false
+            }
+            val updated = HarnessCredentialsDocument.removeManaged(existing, expectedValues) ?: return false
+            if (updated == existing) return true
+            return writePrivateFile(harnessCredentialsFile, updated.toByteArray(Charsets.UTF_8))
+        } catch (_: Throwable) {
+            // 文档不可信或暂时不可写时不覆盖，避免误删用户在 Harness 中维护的凭据。
+            return false
+        }
     }
 
     /**
@@ -998,12 +1095,22 @@ class RuntimeStore(context: Context) {
     fun updateInstalledManifest(manifest: RuntimeManifest?) {
         manifestCache = manifest
         manifestCacheLoaded = true
+        // 安装、更新、版本切换与清空运行时最终都落到这里。
+        //
+        // 为什么要在这里清「自检已验证」缓存：`profileKey` 里已经含清单身份与 rootfs 摘要，
+        // 换版本本来就会失配；但**同版本的重新安装**（用户点「修复」）身份没变，而 rootfs
+        // 文件可能已经被换过一遍。此时继续信任上一次的启动结论属于「拿旧证据给新环境背书」，
+        // 所以宁可让下一次启动多付一次探测。安装失败同样会走到这里再回滚，
+        // 代价只是一次探测，方向始终是安全的。
+        RuntimeGuestVerification.from(appContext).invalidate()
     }
 
     @Synchronized
     fun invalidateInstalledManifest() {
         manifestCache = null
         manifestCacheLoaded = false
+        // 中断恢复会先让清单失效再重新读取：这一路径同样代表「磁盘上的运行时可能被换过」。
+        RuntimeGuestVerification.from(appContext).invalidate()
     }
 
     fun writeInstalledManifest(destination: File, manifest: RuntimeManifest) {
@@ -1524,6 +1631,10 @@ class RuntimeStore(context: Context) {
         private const val KEY_KEEP_AWAKE = "keep_screen_awake"
         private const val KEY_KEEP_BACKGROUND = "keep_runtime_in_background"
         private const val KEY_OVERLAY_BALL = "overlay_ball_enabled"
+        /** 外置浏览器包名；缺键或空值表示每次询问。 */
+        private const val KEY_EXTERNAL_BROWSER = "external_browser_package"
+        private const val KEY_DEFAULT_MODELS = "provider_default_models_v1"
+        private const val KEY_PREWARM_HARNESS = "prewarm_harness"
             // 运行时恢复记录：只保存运行意图、最近阶段与时间，绝不保存凭据。
         private const val KEY_RUNTIME_INTENT = "runtime_intent"
         private const val KEY_RUNTIME_PHASE = "runtime_last_phase"
@@ -1560,6 +1671,7 @@ class RuntimeStore(context: Context) {
         private const val PROVIDER_PATCH_FILENAME = "launcher-providers.patch.json"
         // 只经访客环境文件投递的两个临时令牌；取值每次启动重新生成，绝不进 .credentials.yaml。
         private const val MOBILE_AUTH_TOKEN_ENV = "DSH_MOBILE_AUTH_TOKEN"
+        private const val MOBILE_BROWSER_TOKEN_ENV = "DSH_MOBILE_BROWSER_TOKEN"
         private const val DEVICE_BRIDGE_TOKEN_ENV = "DSH_DEVICE_BRIDGE_TOKEN"
     }
 }

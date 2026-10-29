@@ -52,12 +52,21 @@ export const bridge = {
    * 表现成「找不到任何元素」，与真正的界面缺陷几乎无法区分。
    */
   setAppTheme: vi.fn(),
+  applyHarnessTheme: vi.fn(),
+  clearHarnessTheme: vi.fn(),
+  pickHarnessBackground: vi.fn(),
+  clearHarnessBackground: vi.fn(),
+  setHarnessSyncBackground: vi.fn(),
+  harnessThemeState: vi.fn(),
   getState: vi.fn(),
   getSettings: vi.fn(),
   saveSettings: vi.fn(),
   install: vi.fn(),
   startHarness: vi.fn(),
   openHarness: vi.fn(),
+  openHarnessExternal: vi.fn(),
+  getExternalBrowsers: vi.fn().mockResolvedValue({ browsers: [], selected: null }),
+  setExternalBrowser: vi.fn().mockResolvedValue(undefined),
   stopRuntime: vi.fn(),
   reset: vi.fn(),
   createTerminal: vi.fn(),
@@ -174,6 +183,8 @@ export const bridge = {
   listSessions: vi.fn(),
   // 更新：可用版本列表与应用自更新同样有默认桩——界面一进相关页面就会读一次，
   // 缺桩会让 effect 抛错并卸载整棵树（同上一条注释里的坑）。
+  listHarnessReleases: vi.fn(),
+  manageHarnessVersions: vi.fn(),
   listRuntimeReleases: vi.fn(),
   downloadRuntimeRelease: vi.fn(),
   getAppUpdateState: vi.fn(),
@@ -183,6 +194,7 @@ export const bridge = {
   openAppUpdateInstallSettings: vi.fn(),
   managePlugins: vi.fn(),
   testModelConnectivity: vi.fn(),
+  listModelCatalog: vi.fn(),
   getDiagnosticLogState: vi.fn(),
   readDiagnosticLog: vi.fn(),
   setDiagnosticLogSettings: vi.fn(),
@@ -192,8 +204,10 @@ export const bridge = {
   shareRuntimeWorkspaceFile: vi.fn(),
   openRuntimeWorkspaceFile: vi.fn(),
   deleteRuntimeWorkspaceFile: vi.fn(),
+  externalFileAction: vi.fn(),
   clearDiagnosticLog: vi.fn(),
   addRuntimeProgressListener: vi.fn(),
+  addHarnessProgressListener: vi.fn(),
   addAppUpdateProgressListener: vi.fn(),
   addTerminalOutputListener: vi.fn(),
   addTerminalExitListener: vi.fn(),
@@ -324,6 +338,13 @@ export function beforeEachAppTest(): void {
   vi.clearAllMocks()
   bridge.setAppLanguage.mockResolvedValue(undefined)
   bridge.setAppTheme.mockResolvedValue(undefined)
+  bridge.applyHarnessTheme.mockResolvedValue(undefined)
+  bridge.clearHarnessTheme.mockResolvedValue(undefined)
+  bridge.pickHarnessBackground.mockResolvedValue({ uri: 'content://test/background', mime: 'video/mp4', kind: 'video' })
+  bridge.clearHarnessBackground.mockResolvedValue(undefined)
+  bridge.setHarnessSyncBackground.mockResolvedValue(undefined)
+  // 默认「从没同步过」：与刚装好的应用一致；用例自己铺想要的回读结果。
+  bridge.harnessThemeState.mockResolvedValue({ syncBackground: false, syncedAt: 0, background: null })
   bridge.getState.mockResolvedValue({ ...readyState })
   bridge.getSettings.mockResolvedValue({ ...settings })
   bridge.getShizukuState.mockResolvedValue({ ...shizuku })
@@ -489,6 +510,7 @@ export function beforeEachAppTest(): void {
   bridge.getStorageDirectory.mockResolvedValue({ guestPath: '/mnt/user/1', path: undefined, entries: [], truncated: false })
   bridge.createStorageFolder.mockResolvedValue({ guestPath: '/mnt/user/1', path: undefined, entries: [], truncated: false })
   bridge.getStorageAccessState.mockResolvedValue({ ...storageAccess })
+  bridge.externalFileAction.mockResolvedValue(undefined)
   // 与「未授予所有文件访问」的真机初始状态一致：白名单为空、档位 T0、上限照实回 8。
   // 给默认值而不只是 vi.fn()，是为了让桩在**被调用**时也返回符合契约的形状——
   // 返回 undefined 会让界面侧的载荷校验抛错，那同样会整棵树卸载。
@@ -614,6 +636,8 @@ export function beforeEachAppTest(): void {
   bridge.listSessions.mockResolvedValue({ status: 'ready', sessions: [], truncated: false })
   // 默认空版本列表（没有可用版本可装）+ 未授权安装权限：多数用例只关心别的页面，
   // 真正关心更新的用例自己覆盖这几条桩。
+  bridge.listHarnessReleases.mockResolvedValue({ entries: [] })
+  bridge.manageHarnessVersions.mockResolvedValue({ active: 'bundled', bundledVersion: '0.2.0-rc.2', installed: [] })
   bridge.listRuntimeReleases.mockResolvedValue({ entries: [] })
   bridge.downloadRuntimeRelease.mockResolvedValue(undefined)
   bridge.getAppUpdateState.mockResolvedValue({
@@ -645,6 +669,7 @@ export function beforeEachAppTest(): void {
   bridge.clearDiagnosticLog.mockResolvedValue({ ...diagnostic })
   bridge.shareDiagnosticLog.mockResolvedValue({ ...diagnostic, fileName: 'dsh-diagnostic-20260912-102030.txt', exportedBytes: 512 })
   bridge.addRuntimeProgressListener.mockResolvedValue({ remove: vi.fn().mockResolvedValue(undefined) })
+  bridge.addHarnessProgressListener.mockResolvedValue({ remove: vi.fn().mockResolvedValue(undefined) })
   // 应用更新进度：订阅在挂载时就发生，所以这里必须给一个可用的默认取消句柄，
   // 否则界面一挂载就会在 `subscribeProgress(...).then` 上炸掉。
   bridge.addAppUpdateProgressListener.mockResolvedValue({ remove: vi.fn().mockResolvedValue(undefined) })
@@ -654,12 +679,18 @@ export function beforeEachAppTest(): void {
   bridge.install.mockResolvedValue({})
   bridge.startHarness.mockResolvedValue({ ...runningState })
   bridge.openHarness.mockResolvedValue(undefined)
+  bridge.openHarnessExternal.mockResolvedValue(undefined)
   bridge.stopRuntime.mockResolvedValue({ ...readyState })
   bridge.reset.mockResolvedValue({ ...notInstalledState })
   bridge.requestShizukuPermission.mockResolvedValue({ ...shizuku, permission: 'granted', connected: true })
   bridge.connectShizuku.mockResolvedValue({ ...shizuku, permission: 'granted', connected: true })
   bridge.openShizuku.mockResolvedValue(undefined)
   bridge.testModelConnectivity.mockResolvedValue({ ok: true, status: 200, latencyMs: 120, message: '✓ 连接成功 (120ms)' })
+  // 获取上游模型：默认回一组 OpenAI 风格条目，用例要别的结果就自己覆盖。
+  bridge.listModelCatalog.mockResolvedValue({
+    ok: true, status: 200, latencyMs: 120, message: '✓ 获取到 2 个模型 (120ms)',
+    models: [{ id: 'upstream-first', name: 'Upstream First' }, { id: 'upstream-second', name: 'Upstream Second' }],
+  })
 }
 
 /**
@@ -752,13 +783,28 @@ export async function arriveAtSettingsHome(): Promise<void> {
   await openSettingsHome()
 }
 
-export async function openSettingsPage(name: string): Promise<void> {
+/**
+ * 打开一个设置二级页；给了 [sub] 就再点进它里面的三级页。
+ *
+ * 三级页（自动化设置里的无障碍 / 副屏 / 自动参数）与二级页是同一条路由，
+ * 所以这里点的是二级页上那一行入口按钮，等待口径与二级页一致：先等按钮、再等标题。
+ */
+export async function openSettingsPage(name: string, sub?: string): Promise<void> {
   await openSettingsHome()
   const entry = await screen.findByRole('button', { name: new RegExp(name) }, {
     timeout: SETTINGS_NAV_TIMEOUT_MS,
   })
   fireEvent.click(entry)
   await screen.findByRole('heading', { name }, { timeout: SETTINGS_NAV_TIMEOUT_MS })
+  if (sub === undefined) return
+  // 先按「以 sub 开头」找：分组里可能同时有「背景」与「DSH 背景」两行，子串匹配会撞车。
+  const subEntry = screen.queryByRole('button', { name: new RegExp(`^${sub}`) })
+    ?? screen.queryByRole('button', { name: new RegExp(sub) })
+  // 有些分组的内容已经并入二级页（例如「后台」直接包含后台保持与设备连接），
+  // 这时没有三级页可进，停在二级页继续断言即可。
+  if (subEntry === null) return
+  fireEvent.click(subEntry)
+  await screen.findByRole('heading', { name: sub, level: 1 }, { timeout: SETTINGS_NAV_TIMEOUT_MS })
 }
 
 /**

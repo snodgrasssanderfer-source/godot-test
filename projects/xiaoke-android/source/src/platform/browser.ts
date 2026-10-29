@@ -1,4 +1,5 @@
 import { validatePluginRequest } from './plugins'
+import { readBackgroundState, saveBackgroundState } from '../backgroundRef'
 import type {
   AppUpdateChannel,
   AppUpdateState,
@@ -65,8 +66,11 @@ const DEFAULT_SETTINGS: RuntimeSettings = {
   keepScreenAwake: true,
   terminalFontSize: 14,
   configuredModelProviders: [],
+  deepSeekAccountConfigured: false,
   // 浏览器预览没有前台服务：保持关闭，避免给出错误的保活预期。
   keepRuntimeInBackground: false,
+  // 浏览器预览里没有真正的运行时可预启动，保持关闭。
+  prewarmHarness: false,
 }
 function listenerHandle(remove: () => void): ListenerHandle {
   return {
@@ -189,6 +193,21 @@ export function createBrowserBridge(): RuntimeBridge {
     setAppTheme: mode => mode === 'system' || mode === 'light' || mode === 'dark'
       ? Promise.resolve()
       : Promise.reject(new Error('不支持的主题模式')),
+    // 浏览器里没有 DSH 访客页面，也没有能持久化主题的原生层：如实拒绝，不要假装成功。
+    applyHarnessTheme: () => Promise.reject(new Error('浏览器模式下没有可同步的 DSH 页面')),
+    clearHarnessTheme: () => Promise.reject(new Error('浏览器模式下没有可同步的 DSH 页面')),
+    pickHarnessBackground: () => Promise.reject(new Error('浏览器模式下不能选择背景文件')),
+    clearHarnessBackground: () => Promise.reject(new Error('浏览器模式下没有可同步的 DSH 页面')),
+    // 开关本身与「有没有 DSH 页面」无关：浏览器预览里也要记得住上次的勾选，
+    // 否则同一份设置页在两个环境里行为不一致，测试也测不出持久化。
+    setHarnessSyncBackground: enabled => {
+      if (typeof enabled !== 'boolean') return Promise.reject(new Error('背景同步开关只能是布尔值'))
+      const state = readBackgroundState()
+      return saveBackgroundState({ ...state, syncBackground: enabled })
+        ? Promise.resolve()
+        : Promise.reject(new Error('浏览器模式下无法保存背景同步开关'))
+    },
+    harnessThemeState: () => Promise.resolve(readBackgroundState()),
     getState: () => Promise.resolve({ ...state }),
     getSettings: () => {
       const saved = localStorage.getItem(SETTINGS_KEY)
@@ -229,6 +248,10 @@ export function createBrowserBridge(): RuntimeBridge {
         overlayBallEnabled: settings.overlayBallEnabled === undefined
           ? currentSettings.overlayBallEnabled ?? false
           : validated.overlayBallEnabled,
+        // 预启动同理：与「后台保持」「悬浮球」互不相关的保存不该把它顺手关掉。
+        prewarmHarness: settings.prewarmHarness === undefined
+          ? currentSettings.prewarmHarness ?? false
+          : validated.prewarmHarness,
         configuredModelProviders: MODEL_PROVIDER_IDS.filter(provider => configuredProviders.has(provider)),
         configuredCustomModelProviders: [...configuredCustomProviders],
       })
@@ -271,6 +294,17 @@ export function createBrowserBridge(): RuntimeBridge {
       window.open(url.toString(), '_blank', 'noopener,noreferrer')
       return Promise.resolve()
     },
+    openHarnessExternal: () => {
+      if (state.phase !== 'running' || state.harnessUrl === undefined) throw new Error('Harness 尚未运行')
+      const url = new URL(state.harnessUrl)
+      url.pathname = '/__dsh/browser'
+      url.hash = '#token=' + 'A'.repeat(43)
+      window.open(url.toString(), '_blank', 'noopener,noreferrer')
+      return Promise.resolve()
+    },
+    // 浏览器预览没有系统浏览器选择器；返回空清单，界面据此隐藏「打开方式」。
+    getExternalBrowsers: () => Promise.resolve({ browsers: [], selected: null }),
+    setExternalBrowser: () => Promise.resolve(),
     stopRuntime: () => {
       state = { ...state, phase: state.installedVersion === undefined ? 'not-installed' : 'ready', harnessUrl: undefined }
       return Promise.resolve({ ...state })
@@ -701,6 +735,8 @@ export function createBrowserBridge(): RuntimeBridge {
       Promise.reject(new Error('浏览器模式下不能删除运行时会话快照')),
     // 浏览器预览里没有原生侧的更新渠道，也没有可下载安装的 APK：如实拒绝，
     // 不编造版本列表或更新状态，否则界面会把「预览里的假版本」当成真能装的东西。
+    listHarnessReleases: () => Promise.reject(new Error('浏览器模式下没有 Harness 版本目录')),
+    manageHarnessVersions: () => Promise.reject(new Error('浏览器模式下不能管理 Harness 版本')),
     listRuntimeReleases: (): Promise<RuntimeReleaseList> => Promise.reject(new Error('浏览器模式下没有更新渠道')),
     downloadRuntimeRelease: (): Promise<void> => Promise.reject(new Error('浏览器模式下不能下载运行时')),
     getAppUpdateState: (forceRefresh = false): Promise<AppUpdateState> => {
@@ -733,6 +769,7 @@ export function createBrowserBridge(): RuntimeBridge {
     shareRuntimeWorkspaceFile: () => Promise.reject(new Error('浏览器预览不支持分享运行时文件')),
     openRuntimeWorkspaceFile: () => Promise.reject(new Error('浏览器预览不支持打开运行时文件')),
     deleteRuntimeWorkspaceFile: () => Promise.reject(new Error('浏览器预览不支持删除运行时文件')),
+    externalFileAction: () => Promise.reject(new Error('浏览器预览不支持分享或打开外部文件')),
     clearDiagnosticLog: () => {
       diagnosticState = { ...diagnosticState, fileCount: 0, totalBytes: 0, lastEntryAtMillis: 0 }
       return Promise.resolve({ ...diagnosticState })
@@ -740,6 +777,7 @@ export function createBrowserBridge(): RuntimeBridge {
     // 浏览器预览里 downloadAppUpdate 直接拒绝（不能下载安装包），所以这条通道永远不会有事件；
     // 仍然返回一个可注销的句柄，让调用方的订阅/清理逻辑与真机保持一致。
     addAppUpdateProgressListener: () => Promise.resolve(listenerHandle(() => undefined)),
+  addHarnessProgressListener: () => Promise.resolve(listenerHandle(() => undefined)),
     addRuntimeProgressListener: listener => {
       progressListeners.add(listener)
       return Promise.resolve(listenerHandle(() => progressListeners.delete(listener)))
@@ -768,6 +806,31 @@ export function createBrowserBridge(): RuntimeBridge {
         status: 200,
         latencyMs: 95,
         message: '✓ 连接成功 (95ms)',
+      })
+    },
+    // 浏览器预览没有原生桥，也不该真的去请求各家上游（跨域、且会把密钥交给网页环境）。
+    // 返回固定示例并明说「示例」，让设置页的交互可以走通而不会被误认为真实模型清单。
+    listModelCatalog: options => {
+      const draftKey = options.apiKey?.trim()
+      const isSaved = configuredProviders.has(options.providerId as ModelProviderId) || configuredCustomProviders.has(options.providerId)
+      if (!draftKey && !isSaved) {
+        return Promise.resolve({
+          ok: false,
+          status: 0,
+          latencyMs: 0,
+          message: '未提供 API Key 且本机未保存该供应商凭据',
+          models: [],
+        })
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        latencyMs: 95,
+        message: '浏览器预览：示例模型列表（未访问上游）',
+        models: [
+          { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro' },
+          { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash' },
+        ],
       })
     },
   }

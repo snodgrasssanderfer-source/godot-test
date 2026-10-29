@@ -1,7 +1,10 @@
 import { validatePluginCatalog, validatePluginRequest } from './plugins'
+import { harnessVersionRequest, validateHarnessProgress, validateHarnessReleases, validateHarnessVersions, type HarnessProgress, type HarnessVersionOperation } from './harnessVersions'
 import { validateInstalledApplications } from './installedApplications'
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import type { PluginListenerHandle } from '@capacitor/core'
+import { validateSyncedTheme } from '../adaptiveAccent'
+import { validateBackgroundRef, validateBackgroundState } from '../backgroundRef'
 import { createBrowserBridge } from './browser'
 import { validateSelfCheckOperation, type SelfCheckOperation } from '../runtimeSelfCheck'
 import type {
@@ -69,6 +72,7 @@ import {
   validateDiagnosticLogExport,
   validateDiagnosticLogState,
   validateDiagnosticLogText,
+  validateExternalBrowserState,
   validateHarnessLog,
   validateKeepAliveState,
   validateMailboxExportResult,
@@ -76,6 +80,7 @@ import {
   validateMailboxDirectoryState,
   validateMailboxState,
   validateMediaPermissionResult,
+  validateModelCatalogResult,
   validateModelConnectivityResult,
   validateNotificationPermissionResult,
   validateOverlayBallState,
@@ -115,10 +120,21 @@ import {
 } from './validation'
 
 interface NativeRuntimePlugin {
+  listHarnessReleases(): Promise<unknown>
+  manageHarnessVersions(options: { operation: HarnessVersionOperation; version?: string }): Promise<unknown>
   managePlugins(options: PluginRequest): Promise<PluginCatalog>
   setAppLanguage(options: { language: 'zh-CN' | 'en' }): Promise<void>
   /** 同步主题模式给原生，由原生把它落到状态栏（登记册 5.4）。 */
   setAppTheme(options: { mode: AppThemeMode }): Promise<void>
+  /** 同步主题给 DSH 页面；原生侧只接受固定字段。 */
+  applyHarnessTheme(options: { theme: unknown }): Promise<void>
+  clearHarnessTheme(): Promise<void>
+  pickHarnessBackground(): Promise<{ uri: string, mime: string, kind: string }>
+  clearHarnessBackground(): Promise<void>
+  /** 落盘「连背景一起同步」开关；只接受布尔。 */
+  setHarnessSyncBackground(options: { enabled: boolean }): Promise<unknown>
+  /** 读回同步状态：开关、上次同步时间、已选背景（没有时是 null）。 */
+  harnessThemeState(): Promise<unknown>
   getState(): Promise<RuntimeState>
   getSettings(): Promise<RuntimeSettings>
   saveSettings(settings: RuntimeSettingsUpdate): Promise<RuntimeSettings>
@@ -131,7 +147,11 @@ interface NativeRuntimePlugin {
   deleteRuntimeSessionSnapshot(options: { id: string }): Promise<unknown>
   startHarness(): Promise<RuntimeState>
   openHarness(options?: { sessionId?: string }): Promise<void>
+  openHarnessExternal(): Promise<void>
+  getExternalBrowsers(): Promise<unknown>
+  setExternalBrowser(options: { packageName: string | null }): Promise<void>
   testModelConnectivity(options: { providerId: string; baseUrl?: string; apiKey?: string; api?: string }): Promise<unknown>
+  listModelCatalog(options: { providerId: string; baseUrl?: string; apiKey?: string; api?: string }): Promise<unknown>
   stopRuntime(): Promise<RuntimeState>
   reset(options: { confirmation: string }): Promise<RuntimeState>
   createTerminal(options: { kind: TerminalKind; columns: number; rows: number }): Promise<{ sessionId: string }>
@@ -254,11 +274,19 @@ interface NativeRuntimePlugin {
   shareRuntimeWorkspaceFile(options: { path: string }): Promise<void>
   openRuntimeWorkspaceFile(options: { path: string }): Promise<void>
   deleteRuntimeWorkspaceFile(options: { path: string }): Promise<void>
+  externalFileAction(options: {
+    source: 'mailbox' | 'storage'
+    root?: MailboxRoot
+    guestPath?: string
+    path: string
+    action: 'share' | 'open'
+  }): Promise<void>
   clearDiagnosticLog(): Promise<DiagnosticLogState>
   addListener(eventName: 'runtimeProgress', listener: (event: RuntimeProgress) => void): Promise<PluginListenerHandle>
   addListener(eventName: 'appUpdateProgress', listener: (event: AppUpdateProgress) => void): Promise<PluginListenerHandle>
   addListener(eventName: 'terminalOutput', listener: (event: TerminalChunk) => void): Promise<PluginListenerHandle>
   addListener(eventName: 'terminalExit', listener: (event: TerminalExit) => void): Promise<PluginListenerHandle>
+  addListener(eventName: 'harnessProgress', listener: (event: HarnessProgress) => void): Promise<PluginListenerHandle>
 }
 
 const MAX_TERMINAL_INPUT_BYTES = 256 * 1024
@@ -276,6 +304,8 @@ function validatedListener<T>(validator: (value: unknown) => T, listener: (event
 
 function createNativeBridge(): RuntimeBridge {
   return {
+    listHarnessReleases: () => NativeRuntime.listHarnessReleases().then(validateHarnessReleases),
+    manageHarnessVersions: (operation, version) => NativeRuntime.manageHarnessVersions(harnessVersionRequest(operation, version)).then(validateHarnessVersions),
     managePlugins: request => NativeRuntime.managePlugins(validatePluginRequest(request)).then(validatePluginCatalog),
     setAppLanguage: language => {
       if (language !== 'zh-CN' && language !== 'en') return Promise.reject(new Error('不支持的应用语言'))
@@ -288,6 +318,18 @@ function createNativeBridge(): RuntimeBridge {
       }
       return NativeRuntime.setAppTheme({ mode })
     },
+    applyHarnessTheme: theme => {
+      // 与原生侧同一套校验：非法配置在过桥之前就拒掉，原生不负责猜测。
+      const checked = validateSyncedTheme(theme)
+      return NativeRuntime.applyHarnessTheme({ theme: checked })
+    },
+    clearHarnessTheme: () => NativeRuntime.clearHarnessTheme(),
+    pickHarnessBackground: async () => validateBackgroundRef(await NativeRuntime.pickHarnessBackground()),
+    clearHarnessBackground: () => NativeRuntime.clearHarnessBackground(),
+    setHarnessSyncBackground: enabled => typeof enabled === 'boolean'
+      ? NativeRuntime.setHarnessSyncBackground({ enabled }).then(() => undefined)
+      : Promise.reject(new Error('背景同步开关只能是布尔值')),
+    harnessThemeState: async () => validateBackgroundState(await NativeRuntime.harnessThemeState()),
     getState: () => NativeRuntime.getState().then(validateRuntimeState),
     getSettings: () => NativeRuntime.getSettings().then(validateStoredSettings),
     saveSettings: settings => NativeRuntime.saveSettings(validateSettingsUpdate(settings)).then(validateSettings),
@@ -296,6 +338,15 @@ function createNativeBridge(): RuntimeBridge {
       .then(validateRuntimeInstallResult),
     startHarness: () => NativeRuntime.startHarness().then(validateRuntimeState),
     openHarness: (sessionId?: string) => NativeRuntime.openHarness(sessionId ? { sessionId } : undefined),
+    openHarnessExternal: () => NativeRuntime.openHarnessExternal(),
+    getExternalBrowsers: async () => validateExternalBrowserState(await NativeRuntime.getExternalBrowsers()),
+    setExternalBrowser: packageName => {
+      if (packageName !== null && (typeof packageName !== 'string' || packageName.length > 255 ||
+          !/^[A-Za-z][A-Za-z0-9_.]*$/u.test(packageName))) {
+        return Promise.reject(new Error('浏览器包名无效'))
+      }
+      return NativeRuntime.setExternalBrowser({ packageName }).then(() => undefined)
+    },
     stopRuntime: () => NativeRuntime.stopRuntime().then(validateRuntimeState),
     reset: confirmation => {
       if (confirmation !== 'RESET_RUNTIME') return Promise.reject(new Error('重置确认无效'))
@@ -619,12 +670,25 @@ function createNativeBridge(): RuntimeBridge {
     shareRuntimeWorkspaceFile: path => NativeRuntime.shareRuntimeWorkspaceFile({ path: validateRuntimeWorkspaceFilePath(path) }),
     openRuntimeWorkspaceFile: path => NativeRuntime.openRuntimeWorkspaceFile({ path: validateRuntimeWorkspaceFilePath(path) }),
     deleteRuntimeWorkspaceFile: path => NativeRuntime.deleteRuntimeWorkspaceFile({ path: validateRuntimeWorkspaceFilePath(path) }),
+    externalFileAction: options => {
+      if (options.source !== 'mailbox' && options.source !== 'storage') return Promise.reject(new Error('外部文件来源无效'))
+      if (options.action !== 'share' && options.action !== 'open') return Promise.reject(new Error('外部文件动作无效'))
+      const path = validateRuntimeWorkspaceFilePath(options.path)
+      if (options.source === 'mailbox') {
+        if (options.root !== 'inbox' && options.root !== 'outbox') return Promise.reject(new Error('投递区根目录无效'))
+        return NativeRuntime.externalFileAction({ source: options.source, root: options.root, path, action: options.action })
+      }
+      if (typeof options.guestPath !== 'string' || !/^\/mnt\/user\/[1-9]\d*$/.test(options.guestPath)) return Promise.reject(new Error('共享目录路径无效'))
+      return NativeRuntime.externalFileAction({ source: options.source, guestPath: options.guestPath, path, action: options.action })
+    },
     clearDiagnosticLog: () => NativeRuntime.clearDiagnosticLog().then(validateDiagnosticLogState),
     addRuntimeProgressListener: listener => NativeRuntime.addListener('runtimeProgress', validatedListener(validateRuntimeProgress, listener)),
+  addHarnessProgressListener: listener => NativeRuntime.addListener('harnessProgress', validatedListener(validateHarnessProgress, listener)),
     addAppUpdateProgressListener: listener => NativeRuntime.addListener('appUpdateProgress', validatedListener(validateAppUpdateProgress, listener)),
     addTerminalOutputListener: listener => NativeRuntime.addListener('terminalOutput', validatedListener(validateTerminalChunk, listener)),
     addTerminalExitListener: listener => NativeRuntime.addListener('terminalExit', validatedListener(validateTerminalExit, listener)),
     testModelConnectivity: options => NativeRuntime.testModelConnectivity(options).then(validateModelConnectivityResult),
+    listModelCatalog: options => NativeRuntime.listModelCatalog(options).then(validateModelCatalogResult),
   }
 }
 

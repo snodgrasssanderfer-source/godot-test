@@ -1380,6 +1380,25 @@ function createManager(rootDirectory, installPackage, parseYaml, probeGit) {
     if (!Array.isArray(rows) || rows.length > 512) fail('PLUGIN_CONFIG_INVALID')
     return rows
   }
+  /**
+   * 读取包声明的 bundle 补丁文件。
+   *
+   * 0.2.1-rc.2 起上游把 `dsh.bundle.patch` 从单个字符串改成了**有序数组**（一个 bundle
+   * 叠加多份预设补丁）。这里两种形态都接受，统一返回相对路径数组；空数组、超长、非字符串
+   * 一律返回 null，由调用方按原有错误码失败。只做格式校验，路径可穿越性仍由调用方用
+   * `within` + `safe` 逐层确认。
+   */
+  function bundlePatchFiles(pkg) {
+    const declared = pkg?.dsh?.bundle?.patch
+    const list = typeof declared === 'string' ? [declared] : declared
+    if (!Array.isArray(list) || list.length === 0 || list.length > 8) return null
+    const files = []
+    for (const item of list) {
+      if (typeof item !== 'string' || item.length > 160 || !/^(?:\.\/)?[A-Za-z0-9_./-]+\.(?:json|ya?ml)$/.test(item)) return null
+      files.push(item)
+    }
+    return files
+  }
   function catalog() {
     const groups = basicList().plugins
     const order = manifest().value.dshMobile?.bundleOrder ?? groups.map(group => group.id)
@@ -1428,12 +1447,14 @@ function createManager(rootDirectory, installPackage, parseYaml, probeGit) {
         const directory = resolvePackage(group.id)
         if (!directory) fail('PLUGIN_NOT_FOUND')
         const pkg = read(path.join(directory, 'package.json'))
-        const declared = pkg.dsh?.bundle?.patch
-        if (typeof declared !== 'string' || declared.length > 160 || !/^(?:\.\/)?[A-Za-z0-9_./-]+\.(?:json|ya?ml)$/.test(declared)) fail('PLUGIN_CONFIG_INVALID')
-        const file = path.resolve(directory, declared)
-        if (!within(directory, file) || !within(directory, fs.realpathSync(safe(file)))) fail('PLUGIN_PATH_INVALID')
-        group.file = declared.replace(/^\.\//, '')
-        apply(loadPatches(file).filter(row => group.enabled || row?.insert), group.id)
+        const declared = bundlePatchFiles(pkg)
+        if (declared === null) fail('PLUGIN_CONFIG_INVALID')
+        group.file = declared[0].replace(/^\.\//, '')
+        for (const relative of declared) {
+          const file = path.resolve(directory, relative)
+          if (!within(directory, file) || !within(directory, fs.realpathSync(safe(file)))) fail('PLUGIN_PATH_INVALID')
+          apply(loadPatches(file).filter(row => group.enabled || row?.insert), group.id)
+        }
       } catch {
         entries.clear(); for (const [key, value] of before) entries.set(key, value)
         group.readable = false
@@ -1479,6 +1500,121 @@ function createManager(rootDirectory, installPackage, parseYaml, probeGit) {
     const result = catalog()
     if (Buffer.byteLength(JSON.stringify(result)) > 220000) fail('PLUGIN_CONFIG_INVALID')
     return result
+  }
+
+  /** 切换门禁：只检查已启用插件的文件与声明范围，不联网更新，不静默禁用。 */
+  function checkCompatibility() {
+    const current = runtimeDshVersion()
+    if (current === null) fail('PLUGIN_DEPENDENCY_UNSUPPORTED')
+    let checked = 0
+    for (const id of manifest().enabled) {
+      const installed = resolvePackage(id)
+      if (installed === null) fail('PLUGIN_NOT_FOUND', id)
+      const pkg = read(path.join(installed, 'package.json'))
+      const range = pkg.dsh?.engines?.dsh
+      if (range !== undefined && (typeof range !== 'string' || range.length > 256 || !satisfiesRange(current, range))) fail('PLUGIN_ENGINE_UNSUPPORTED', id)
+      const declared = bundlePatchFiles(pkg)
+      if (declared === null) fail('PLUGIN_CONFIG_INVALID', id)
+      for (const relative of declared) {
+        const patch = path.resolve(installed, relative)
+        if (!within(installed, patch)) fail('PLUGIN_PATH_INVALID')
+        loadPatches(safe(patch))
+      }
+      checked += 1
+    }
+    return { checked }
+  }
+  /**
+   * 更新前收拢市场等外部安装器写入 profile 的插件。复制到已受保留策略保护的目录，
+   * 成功后事务式接回保留区链接；不在线更新插件，不改启停选择，失败恢复原位置。
+   */
+  function checkpoint() {
+    recover()
+    const config = manifest()
+    let preserved = 0
+    for (const id of config.names) {
+      if (id.startsWith(RUNTIME_SCOPE) || protectedPackage(id)) continue
+      const source = resolvePackage(id)
+      if (source === null) { if (config.enabled.includes(id)) fail('PLUGIN_NOT_FOUND', id); continue }
+      if (within(home, source)) continue
+      const transactionId = crypto.randomUUID()
+      const directory = safe(path.join(home, 'versions', transactionId))
+      fs.mkdirSync(directory, { recursive: true, mode: 0o700 })
+      const stageModules = path.join(directory, 'node_modules')
+      const seen = new Map()
+      let files = 0
+      let bytes = 0
+      function copyPackage(origin, target) {
+        origin = fs.realpathSync(safe(origin))
+        if (seen.has(origin)) {
+          fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 })
+          fs.symlinkSync(seen.get(origin), target, 'junction')
+          return
+        }
+        if (seen.size > 2048) fail('PLUGIN_DATA_TOO_LARGE')
+        seen.set(origin, target)
+        function copyTree(from, to, depth = 0) {
+          if (depth > 40 || ++files > 100000) fail('PLUGIN_DATA_TOO_LARGE')
+          const stat = fs.lstatSync(from)
+          if (stat.isSymbolicLink()) {
+            const real = fs.realpathSync(from)
+            if (!within(origin, real)) fail('PLUGIN_DATA_UNSAFE')
+            return copyTree(real, to, depth + 1)
+          }
+          if (stat.isDirectory()) {
+            fs.mkdirSync(to, { recursive: true, mode: 0o700 })
+            for (const name of fs.readdirSync(from)) if (name !== 'node_modules') copyTree(path.join(from, name), path.join(to, name), depth + 1)
+          } else if (stat.isFile()) {
+            bytes += stat.size
+            if (bytes > 512 * 1024 * 1024) fail('PLUGIN_DATA_TOO_LARGE')
+            fs.copyFileSync(from, to, fs.constants.COPYFILE_EXCL)
+            fs.chmodSync(to, stat.mode & 0o100 ? 0o700 : 0o600)
+          } else fail('PLUGIN_DATA_UNSAFE')
+        }
+        copyTree(origin, target)
+        const pkg = read(path.join(origin, 'package.json'))
+        const req = createRequire(path.join(origin, 'package.json'))
+        for (const name of Object.keys({ ...pkg.dependencies, ...pkg.optionalDependencies, ...pkg.peerDependencies })) {
+          validName(name)
+          const dependency = req.resolve.paths(name)?.map(base => path.join(base, name)).find(candidate => exists(path.join(candidate, 'package.json')))
+          if (!dependency) {
+            if (pkg.optionalDependencies?.[name] || pkg.peerDependencies?.[name]) continue
+            fail('PLUGIN_DEPENDENCY_UNSUPPORTED', name)
+          }
+          const destination = path.join(target, 'node_modules', name)
+          fs.mkdirSync(path.dirname(destination), { recursive: true, mode: 0o700 })
+          if (name.startsWith(RUNTIME_SCOPE)) {
+            const runtime = resolvePackage(name)
+            if (runtime === null) fail('PLUGIN_DEPENDENCY_UNSUPPORTED', name)
+            fs.symlinkSync(runtime, destination, 'junction')
+          } else copyPackage(dependency, destination)
+        }
+      }
+      let committed = false
+      try {
+        copyPackage(source, path.join(stageModules, id))
+        linkUnresolvedRuntimeDependencies(stageModules, [id])
+        const target = modules.map(base => path.join(base, id)).find(exists) ?? safe(path.join(fallbackModules, id))
+        const backup = safe(path.join(home, 'backups', transactionId, '0'))
+        fs.mkdirSync(path.dirname(backup), { recursive: true, mode: 0o700 })
+        fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 })
+        atomic(journal, { entries: [{ target: path.relative(root, target), backup: path.relative(root, backup), hadOriginal: exists(target) }] })
+        if (exists(target)) fs.renameSync(target, backup)
+        fs.symlinkSync(path.join(stageModules, id), target, 'junction')
+        if (refreshState() === null) fail('PLUGIN_RECOVERY_FAILED')
+        fs.unlinkSync(journal)
+        committed = true
+        try { fs.rmSync(path.dirname(backup), { recursive: true, force: true }) } catch { /* 保留安全副本供后续清理。 */ }
+        preserved += 1
+      } catch (error) {
+        if (exists(journal)) recover()
+        if (!committed && !exists(journal)) fs.rmSync(directory, { recursive: true, force: true })
+        throw error
+      }
+    }
+    // 快照写失败阻止更新，不能把没有保留成功宣告为可以切换。
+    if (refreshState() === null) fail('PLUGIN_RECOVERY_FAILED')
+    return { preserved, lock: refreshLock() }
   }
   function setChildEnabled(id, childId, enabled) {
     validName(id)
@@ -1594,7 +1730,15 @@ function createManager(rootDirectory, installPackage, parseYaml, probeGit) {
     safe(npm)
     if (!exists(npm)) fail('PLUGIN_UPDATER_MISSING')
     // 使用隔离配置和参数数组；不继承模型凭据，不执行依赖安装脚本。
-    const environment = { HOME: directory, PATH: path.dirname(process.execPath) + ':/usr/bin:/bin', LANG: 'C.UTF-8', TMPDIR: directory }
+    // PRoot 访客内 IPv6 不可达，Node 24 的地址族自动选择会让 npm 请求卡到超时；
+    // 显式关闭并优先 IPv4，与 harness-packages.cjs 的处理保持一致。
+    const environment = {
+      HOME: directory,
+      PATH: path.dirname(process.execPath) + ':/usr/bin:/bin',
+      LANG: 'C.UTF-8',
+      TMPDIR: directory,
+      NODE_OPTIONS: '--dns-result-order=ipv4first --no-network-family-autoselection',
+    }
     const common = ['--registry=https://registry.npmjs.org', '--userconfig=' + path.join(directory, 'npmrc'), '--globalconfig=' + path.join(directory, 'global-npmrc')]
     // 安装命令只定义一次；参数数组、`--ignore-scripts` 恒开、不经过 Shell。
     const install = spec => spawnSync(process.execPath, [npm, 'install', spec, '--ignore-scripts', '--legacy-peer-deps', '--bin-links=false', '--no-audit', '--no-fund', '--omit=dev', '--fetch-retries=1', '--fetch-timeout=30000', ...common], {
@@ -1754,10 +1898,13 @@ function createManager(rootDirectory, installPackage, parseYaml, probeGit) {
     }
     if (checkNativeAddons(path.join(stageModules, id))) fail('PLUGIN_NATIVE_UNSUPPORTED', id)
     const selected = read(path.join(stageModules, id, 'package.json'))
-    if (selected.name !== id || !VERSION.test(selected.version ?? '') || typeof selected.dsh?.bundle?.patch !== 'string') fail('PLUGIN_UPDATE_FAILED')
-    const patch = path.resolve(stageModules, id, selected.dsh.bundle.patch)
-    if (!within(path.join(stageModules, id), patch) || !fs.statSync(safe(patch)).isFile()) fail('PLUGIN_UPDATE_FAILED')
-    loadPatches(patch)
+    const declared = bundlePatchFiles(selected)
+    if (selected.name !== id || !VERSION.test(selected.version ?? '') || declared === null) fail('PLUGIN_UPDATE_FAILED')
+    for (const relative of declared) {
+      const patch = path.resolve(stageModules, id, relative)
+      if (!within(path.join(stageModules, id), patch) || !fs.statSync(safe(patch)).isFile()) fail('PLUGIN_UPDATE_FAILED')
+      loadPatches(patch)
+    }
     // 解析闭包补全。
     //
     // staging 位于 ~/.dsh-mobile/plugin-manager/versions/<txn>，而 Node 是按真实路径向上
@@ -1860,7 +2007,7 @@ function createManager(rootDirectory, installPackage, parseYaml, probeGit) {
     }
     const candidates = stagedNames.filter(name => {
       if (protectedPackage(name)) return false
-      try { return typeof read(path.join(stageModules, name, 'package.json')).dsh?.bundle?.patch === 'string' } catch { return false }
+      try { return bundlePatchFiles(read(path.join(stageModules, name, 'package.json'))) !== null } catch { return false }
     })
     if (candidates.length === 1) return candidates[0]
     const absent = candidates.filter(name => !manifest().names.includes(name))
@@ -1959,7 +2106,7 @@ function createManager(rootDirectory, installPackage, parseYaml, probeGit) {
     // 账本按事实重建：回滚后解析到的版本与事务目录都变了；来源沿用上一条（回滚不改变"当初从哪来"）。
     return { ...list(), lock: lockQuiet({ id, source: null }) }
   }
-  return { list, setEnabled, setChildEnabled, update, importPackage, rollback, recover, repair, scanRuntimeGraph, pruneVersions }
+  return { list, setEnabled, setChildEnabled, update, importPackage, rollback, recover, repair, scanRuntimeGraph, pruneVersions, checkCompatibility, checkpoint }
 }
 
 module.exports = {
@@ -1993,6 +2140,8 @@ if (require.main === module) {
     const [operation, first, second, third] = process.argv.slice(2)
     let result
     if (operation === 'list') result = manager.list()
+    else if (operation === 'verify') result = manager.checkCompatibility()
+    else if (operation === 'checkpoint') result = manager.checkpoint()
     // 状态回填只发生在 recover 里（list 保持纯读）；回填结果随恢复结果一起回传。
     // `lock` 同时出现在顶层与 `state` 里：顶层供原生侧统一读取（与其它操作的 `lock` 字段同形），
     // `state` 让恢复结果自己能说清"启停状态回填了没有、版本账本写成了没有"。

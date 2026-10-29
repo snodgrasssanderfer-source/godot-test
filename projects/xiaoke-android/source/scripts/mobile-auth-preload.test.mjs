@@ -9,14 +9,18 @@ import { after, before, describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
 const TOKEN = 'A'.repeat(43)
+const BROWSER_TOKEN = 'B'.repeat(43)
 const USERNAME = 'dsh-mobile'
 const PRELOAD = fileURLToPath(new URL('./mobile-auth-preload.cjs', import.meta.url))
 const CHILD_SOURCE = `
-  if (process.env.DSH_MOBILE_AUTH_TOKEN !== undefined || process.env.NODE_OPTIONS !== undefined) {
+  if (process.env.DSH_MOBILE_AUTH_TOKEN !== undefined || process.env.DSH_MOBILE_BROWSER_TOKEN !== undefined ||
+    process.env.NODE_OPTIONS !== undefined) {
     throw new Error('one-time authentication environment was not cleared')
   }
   const http = require('node:http')
-  const server = http.createServer((_request, response) => response.end('authorized'))
+  const server = http.createServer((_request, response) => {
+    response.end(_request.url === '/' ? 'authorized' : _request.url)
+  })
   server.on('upgrade', (_request, socket) => {
     socket.end('HTTP/1.1 101 Switching Protocols\\r\\nConnection: Upgrade\\r\\nUpgrade: websocket\\r\\n\\r\\n')
   })
@@ -28,10 +32,11 @@ function authorizationHeader() {
   return `Basic ${Buffer.from(`${USERNAME}:${TOKEN}`, 'ascii').toString('base64')}`
 }
 
-function request(port, authorization) {
+function request(port, authorization, requestPath = '/', method = 'GET', cookie) {
   return new Promise((resolve, reject) => {
     const headers = authorization === undefined ? {} : { Authorization: authorization }
-    const outgoing = http.get({ host: '127.0.0.1', port, path: '/', headers }, response => {
+    if (cookie !== undefined) headers.Cookie = cookie
+    const outgoing = http.request({ host: '127.0.0.1', port, path: requestPath, headers, method }, response => {
       const chunks = []
       response.on('data', chunk => chunks.push(chunk))
       response.on('end', () => resolve({
@@ -41,11 +46,12 @@ function request(port, authorization) {
       }))
     })
     outgoing.on('error', reject)
+    outgoing.end()
   })
 }
 
 function upgrade(port, options = {}) {
-  const { authorization, cookie } = options
+  const { authorization, cookie, requestPath = '/events' } = options
   return new Promise((resolve, reject) => {
     const socket = net.createConnection({ host: '127.0.0.1', port })
     let response = ''
@@ -55,7 +61,7 @@ function upgrade(port, options = {}) {
       if (authorization !== undefined) lines.push(`Authorization: ${authorization}`)
       if (cookie !== undefined) lines.push(`Cookie: ${cookie}`)
       socket.write(
-        `GET /events HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\n` +
+        `GET ${requestPath} HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\n` +
         `Connection: Upgrade\r\nUpgrade: websocket\r\n${lines.join('\r\n')}\r\n\r\n`,
       )
     })
@@ -74,6 +80,7 @@ describe('mobile Harness authentication preload', () => {
       env: {
         ...process.env,
         DSH_MOBILE_AUTH_TOKEN: TOKEN,
+        DSH_MOBILE_BROWSER_TOKEN: BROWSER_TOKEN,
         NODE_OPTIONS: `--require=${PRELOAD}`,
       },
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -112,6 +119,39 @@ describe('mobile Harness authentication preload', () => {
     assert.equal(accepted.body, 'authorized')
   })
 
+  it('lets the exact OAuth callback reach Harness without app Basic Auth', async () => {
+    const callback = await request(port, undefined, '/oauth/callback?code=oauth-code&state=oauth-state')
+    assert.equal(callback.status, 200)
+    assert.equal(callback.body, '/oauth/callback?code=oauth-code&state=oauth-state')
+
+    for (const path of [
+      '/oauth/callback/',
+      '/oauth/callbacks?code=oauth-code',
+      '/oauth/callback/extra',
+      '/other/../oauth/callback',
+      '/oauth/./callback',
+      '/oauth\\callback',
+      '/oauth/%63allback',
+      '/oauth%2fcallback',
+      '//attacker.invalid/oauth/callback?code=oauth-code&state=oauth-state',
+      'http://attacker.invalid/oauth/callback?code=oauth-code&state=oauth-state',
+    ]) {
+      const lookalike = await request(port, undefined, path)
+      assert.equal(lookalike.status, 401, path)
+    }
+  })
+
+  it('does not exempt non-GET callbacks or WebSocket upgrades', async () => {
+    for (const method of ['HEAD', 'POST', 'OPTIONS', 'PUT', 'DELETE']) {
+      const callback = await request(port, undefined, '/oauth/callback?code=oauth-code&state=oauth-state', method)
+      assert.equal(callback.status, 401, method)
+    }
+    assert.match(
+      await upgrade(port, { requestPath: '/oauth/callback?code=oauth-code&state=oauth-state' }),
+      /^HTTP\/1\.1 401 Unauthorized/,
+    )
+  })
+
   it('guards WebSocket upgrades with the same credential', async () => {
     assert.match(await upgrade(port), /^HTTP\/1\.1 401 Unauthorized/)
     assert.match(await upgrade(port, { authorization: authorizationHeader() }), /^HTTP\/1\.1 101 Switching Protocols/)
@@ -146,6 +186,34 @@ describe('mobile Harness authentication preload', () => {
       await upgrade(port, { cookie: 'dsh_mobile_token=short' }),
       /^HTTP\/1\.1 401 Unauthorized/,
     )
+  })
+
+  it('turns a query-string token into a browser cookie, and only that token works', async () => {
+    const handoff = await request(port, undefined, `/?dshMobileToken=${BROWSER_TOKEN}`)
+    assert.equal(handoff.status, 302)
+    // 绝对地址：部分浏览器不认相对 Location（实测「地址栏跳了、页面不加载」）。
+    assert.match(handoff.headers.location, /^http:\/\/127\.0\.0\.1:\d+\/$/)
+    // 只种浏览器专用那一枚，而且不带分钟数：有效性由令牌本身（每次启动重生成）决定。
+    assert.deepEqual(handoff.headers['set-cookie'], [
+      `dsh_browser_session=${BROWSER_TOKEN}; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000`,
+    ])
+    // Cookie 拿到后 HTTP 与 WS 都放行，能力与 WebView 内一致。
+    assert.equal((await request(port, undefined, '/', 'GET', `dsh_browser_session=${BROWSER_TOKEN}`)).status, 200)
+    assert.match(
+      await upgrade(port, { cookie: `dsh_browser_session=${BROWSER_TOKEN}` }),
+      /^HTTP\/1\.1 101 Switching Protocols/,
+    )
+    // Basic 密码不能拿来交接：两者是两枚不同的令牌。
+    assert.equal((await request(port, undefined, `/?dshMobileToken=${TOKEN}`)).status, 403)
+    // 交接只认根路径，避免误吃 dsh 自己的 token 查询参数。
+    assert.equal((await request(port, undefined, `/api?dshMobileToken=${BROWSER_TOKEN}`)).status, 401)
+  })
+
+  it('tells a stale browser session to reopen instead of prompting for Basic', async () => {
+    const stale = await request(port, undefined, '/', 'GET', `dsh_browser_session=${'C'.repeat(43)}`)
+    assert.equal(stale.status, 403)
+    assert.match(stale.body, /请回到应用里重新打开/u)
+    assert.equal(stale.headers['www-authenticate'], undefined)
   })
 })
 

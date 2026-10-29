@@ -36,6 +36,14 @@ import './VirtualScreenSettings.css'
 
 const SPEC_FIELDS = ['widthPx', 'heightPx', 'densityDpi'] as const
 
+/**
+ * 上次选中的目标应用包名（只存包名）。
+ *
+ * 副屏会话结束后原生状态里不再有 targetPackage，界面只能靠自己记住「上次选的是谁」，
+ * 否则每次重进这一页都要重新挑一次应用。存储失败（隐私模式/配额满）只是退化成旧行为。
+ */
+const VIRTUAL_SCREEN_TARGET_KEY = 'dsh-virtual-screen-target-v1'
+
 /** 三项手填规格的字段名。 */
 type SpecField = typeof SPEC_FIELDS[number]
 
@@ -222,6 +230,9 @@ function startRequest(target: string, draft: VirtualScreenSettingsSnapshot): Vir
     packageName: target,
     adaptive: draft.adaptive,
     orientation: draft.orientation,
+    // 档位与自动跟随也一并发出去：原生启动时会把它们写回偏好，重进页面才不会回到旧值。
+    previewMode: draft.previewMode,
+    autoFollow: draft.autoFollow,
   }
   if (specComplete(draft)) {
     request.widthPx = draft.widthPx
@@ -264,13 +275,41 @@ function frameAgeMillis(state: VirtualScreenState): number | null {
   return state.frameAgeMs
 }
 
-export function VirtualScreenSettings({ bridge, onBack }: { bridge: RuntimeBridge; onBack?: () => void }) {
+export function VirtualScreenSettings({
+  bridge,
+  onBack,
+  embedded = false,
+}: {
+  bridge: RuntimeBridge
+  onBack?: () => void
+  /**
+   * 嵌在别的页面里用（现在的「自动化设置 → 副屏」分组）。
+   *
+   * 默认行为是独立页面：自己带一层 screen 页面壳、应用管理眉标与 h1 标题。
+   * 嵌进分组时这些让位给外面的分组标题，否则一页里出现两个 h1，卡片还会被
+   * 页面内边距再缩一圈。
+   */
+  embedded?: boolean
+}) {
   const [settingsState, setSettingsState] = useState<SettingsLoadState>({ status: 'loading' })
   const [deviceState, setDeviceState] = useState<DeviceLoadState>({ status: 'loading' })
   // draft 是界面上正在编辑的那一份，baseline 是最后一次认为已经落盘的那一份。
   const [draft, setDraft] = useState<VirtualScreenSettingsSnapshot | null>(null)
   const [baseline, setBaseline] = useState<VirtualScreenSettingsSnapshot | null>(null)
-  const [target, setTarget] = useState('')
+  const [target, setTarget] = useState(() => {
+    /*
+     * 上次选过的目标应用。
+     *
+     * 会话结束（关闭副屏 / 杀掉页面）后原生状态里的 targetPackage 是空串，光靠它回填，
+     * 用户每次重进这一页都要重新挑一次应用。这里只记包名，不记任何界面内容。
+     */
+    try { return window.localStorage.getItem(VIRTUAL_SCREEN_TARGET_KEY) ?? '' } catch { return '' }
+  })
+  // 记住这次选的应用：会话结束后原生不再回报它，重进页面时靠这份记录回填。
+  useEffect(() => {
+    if (target === '') return
+    try { window.localStorage.setItem(VIRTUAL_SCREEN_TARGET_KEY, target) } catch { /* 存储不可用时退化为不记忆 */ }
+  }, [target])
   const [specText, setSpecText] = useState<Record<SpecField, string>>({ widthPx: '', heightPx: '', densityDpi: '' })
   const [specHint, setSpecHint] = useState('')
   // 悬浮窗宽度只有一个维度，用一条独立的输入串（0 显示成空格子，旁边写「跟随屏幕」）。
@@ -290,6 +329,11 @@ export function VirtualScreenSettings({ bridge, onBack }: { bridge: RuntimeBridg
   // 最近一次成功读到的运行状态：设置读得比它晚时用它预填规格。
   const stateRef = useRef<VirtualScreenState | null>(null)
   const draftRef = useRef<VirtualScreenSettingsSnapshot | null>(null)
+  /** 最后一次认为已落盘的设置；离开页面时用它算「还有哪些没保存」。 */
+  const baselineRef = useRef<VirtualScreenSettingsSnapshot | null>(null)
+  /** 卸载时的自动保存要拿到最新的桥：组件卸载后 props 不再更新，闭包会过期。 */
+  const bridgeRef = useRef(bridge)
+  bridgeRef.current = bridge
 
   /** 草稿、基线与三格输入一起换：分开设的话输入框会显示上一份的值。 */
   const applyLoaded = useCallback((next: VirtualScreenSettingsSnapshot): void => {
@@ -348,6 +392,27 @@ export function VirtualScreenSettings({ bridge, onBack }: { bridge: RuntimeBridg
   useEffect(() => {
     draftRef.current = draft
   }, [draft])
+  useEffect(() => {
+    baselineRef.current = baseline
+  }, [baseline])
+
+  /**
+   * 离开副屏设置页时自动保存还没落盘的改动。
+   *
+   * 其它设置页是全应用统一「离开页面即保存」，这一页原本只有底部那颗「保存设置」；
+   * 用户改完直接返回时改动会留在草稿里随组件卸载丢掉 —— 重进就是旧值。
+   * 只补这一条兜底，失败不弹窗（页面已经不在了），下次进入仍以原生读数为准。
+   */
+  useEffect(() => {
+    return () => {
+      const current = draftRef.current
+      const last = baselineRef.current
+      if (current === null || last === null) return
+      const update = settingsDiff(last, current)
+      if (Object.keys(update).length === 0) return
+      void bridgeRef.current.setVirtualScreenSettings(update).catch(() => undefined)
+    }
+  }, [])
 
   useEffect(() => {
     active.current = true
@@ -465,9 +530,14 @@ export function VirtualScreenSettings({ bridge, onBack }: { bridge: RuntimeBridg
       }
       await bridge.setVirtualScreenSettings(update)
       if (!active.current) return
-      // 桥只回 void：把刚发出去的这一份当作新的落盘基线（越界的值界面已经夹过，
-      // 与原生 coerceIn 同一口径），避免用户没改过的字段被反复重发。
-      setBaseline(draft)
+      // 重新读一遍原生：保存成功不等于界面该显示的那份值。原生会夹取越界数值，
+      // 这里以读回的结果作为新基线，避免「界面还停在旧值、用户以为没保存」。
+      // 读回失败不算保存失败：写已经发出去了，退回「把刚发出去的一份当基线」。
+      const saved = await bridge.getVirtualScreenSettings().catch(() => null)
+      if (!active.current) return
+      if (saved !== null && draftRef.current === draft) applyLoaded(seeded(saved, stateRef.current))
+      else if (draftRef.current === draft) setBaseline(draft)
+      // 保存期间又改了：不动基线，让这些新改动继续算「未保存」，离开时再写一次。
       setSaveNotice(t('副屏设置已保存'))
     } catch (error) {
       if (!active.current) return
@@ -566,12 +636,14 @@ export function VirtualScreenSettings({ bridge, onBack }: { bridge: RuntimeBridg
   const overlayWidth = draft === null ? 0 : overlayWidthOf(draft)
 
   return (
-    <div className="screen virtual-screen-screen">
+    <div className={embedded ? 'virtual-screen-embedded' : 'screen virtual-screen-screen'}>
       <div className="screen-heading management-heading">
-        <div>
-          <p className="eyebrow">{t('应用管理')}</p>
-          <h1>{t('目标应用副屏')}</h1>
-        </div>
+        {!embedded && (
+          <div>
+            <p className="eyebrow">{t('应用管理')}</p>
+            <h1>{t('目标应用副屏')}</h1>
+          </div>
+        )}
         <div className="heading-actions">
           <button
             className="button button-secondary compact-button"
@@ -604,6 +676,62 @@ export function VirtualScreenSettings({ bridge, onBack }: { bridge: RuntimeBridg
       <p className="virtual-screen-description">
         {t('在独立副屏中运行应用，通过预览页面或悬浮窗查看画面。可在此设置屏幕方向、分辨率和预览帧率。需要 Shizuku 和 Android 10 或更高版本。')}
       </p>
+
+      <section className="settings-subsection" aria-labelledby="virtual-screen-control-title">
+        <div className="section-title">
+          <span className="section-icon"><Play size={19} /></span>
+          <div>
+            <h3 id="virtual-screen-control-title">{t('控制')}</h3>
+            <p>{t('启动、停止与重启副屏。')}</p>
+          </div>
+        </div>
+        <div className="virtual-screen-actions">
+          <button
+            className="button"
+            type="button"
+            disabled={locked || target === ''}
+            onClick={() => { void start() }}
+          >
+            {busy === 'start' ? <Loader2 className="spin" size={18} /> : <Play size={18} />}
+            {t('启动副屏')}
+          </button>
+          <button
+            className="button button-secondary"
+            type="button"
+            disabled={busy !== ''}
+            onClick={() => { void stop() }}
+          >
+            {busy === 'stop' ? <Loader2 className="spin" size={18} /> : <Square size={18} />}
+            {t('停止副屏')}
+          </button>
+          <button
+            className="button button-secondary"
+            type="button"
+            disabled={locked || target === ''}
+            onClick={() => { void restart() }}
+          >
+            {busy === 'restart' ? <Loader2 className="spin" size={18} /> : <RotateCw size={18} />}
+            {t('重启副屏')}
+          </button>
+          <button
+            className="button button-secondary"
+            type="button"
+            disabled={busy !== ''}
+            onClick={() => { void openNativePage() }}
+          >
+            {busy === 'native' ? <Loader2 className="spin" size={18} /> : <Monitor size={18} />}
+            {t('打开副屏预览')}
+          </button>
+        </div>
+        <p className="settings-note">
+          {t('即使无法读取设置，也可尝试停止正在运行的副屏。')}
+        </p>
+        <p className="settings-note">
+          {t('打开副屏预览可查看画面并使用悬浮窗；副屏设置可在本页调整。')}
+        </p>
+        {actionFailure !== '' && <p className="virtual-screen-failure" role="alert">{actionFailure}</p>}
+        {actionNotice !== '' && <p className="virtual-screen-notice" role="status">{t(actionNotice)}</p>}
+      </section>
 
       <section className="settings-subsection virtual-screen-status" aria-labelledby="virtual-screen-status-title">
         <div className="section-title">
@@ -943,61 +1071,6 @@ export function VirtualScreenSettings({ bridge, onBack }: { bridge: RuntimeBridg
         </>
       )}
 
-      <section className="settings-subsection" aria-labelledby="virtual-screen-control-title">
-        <div className="section-title">
-          <span className="section-icon"><Play size={19} /></span>
-          <div>
-            <h3 id="virtual-screen-control-title">{t('控制')}</h3>
-            <p>{t('启动、停止与重启副屏。')}</p>
-          </div>
-        </div>
-        <div className="virtual-screen-actions">
-          <button
-            className="button"
-            type="button"
-            disabled={locked || target === ''}
-            onClick={() => { void start() }}
-          >
-            {busy === 'start' ? <Loader2 className="spin" size={18} /> : <Play size={18} />}
-            {t('启动副屏')}
-          </button>
-          <button
-            className="button button-secondary"
-            type="button"
-            disabled={busy !== ''}
-            onClick={() => { void stop() }}
-          >
-            {busy === 'stop' ? <Loader2 className="spin" size={18} /> : <Square size={18} />}
-            {t('停止副屏')}
-          </button>
-          <button
-            className="button button-secondary"
-            type="button"
-            disabled={locked || target === ''}
-            onClick={() => { void restart() }}
-          >
-            {busy === 'restart' ? <Loader2 className="spin" size={18} /> : <RotateCw size={18} />}
-            {t('重启副屏')}
-          </button>
-          <button
-            className="button button-secondary"
-            type="button"
-            disabled={busy !== ''}
-            onClick={() => { void openNativePage() }}
-          >
-            {busy === 'native' ? <Loader2 className="spin" size={18} /> : <Monitor size={18} />}
-            {t('打开副屏预览')}
-          </button>
-        </div>
-        <p className="settings-note">
-          {t('即使无法读取设置，也可尝试停止正在运行的副屏。')}
-        </p>
-        <p className="settings-note">
-          {t('打开副屏预览可查看画面并使用悬浮窗；副屏设置可在本页调整。')}
-        </p>
-        {actionFailure !== '' && <p className="virtual-screen-failure" role="alert">{actionFailure}</p>}
-        {actionNotice !== '' && <p className="virtual-screen-notice" role="status">{t(actionNotice)}</p>}
-      </section>
     </div>
   )
 }

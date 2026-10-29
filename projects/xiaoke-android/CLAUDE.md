@@ -20,7 +20,8 @@
 
 ## 构建
 - Linux 构建前设置 `LANG=C.UTF-8` 和 `LC_ALL=C.UTF-8`；Maven 返回 429 时用 `--max-workers=2` 重试。工具链见 build-materials/BUILD.md。
-- 完整包需要四个运行环境文件：两个 PRoot .so、rootfs.bundle 和 runtime-manifest.json。它们从本仓库 Release 里的旧参考 APK 提取，步骤和哈希见 BUILD.md。
+- 完整包需要四个运行环境文件：两个 PRoot .so（从本仓库 Release 的旧参考 APK 提取）、rootfs.bundle 和 runtime-manifest.json（上游 DSH v0.3.7 Release）。来源和哈希见 BUILD.md。
+- 底座是上游 DSH v0.3.7，同步方式见 docs/UPSTREAM_REUSE.md：以上一次同步的上游版本为 base，逐文件三方合并。
 
 ## 签名
 - 证书 SHA-256 固定为 `398EE6D99B4F31A2738D82FEC5EB3D0BEEB43EAAFA3B8359A5F0D30B609DA1C2`，写在 app/build.gradle 里，换了密钥构建会直接失败。

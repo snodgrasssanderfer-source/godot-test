@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.view.WindowManager
 import android.webkit.CookieManager
 import android.webkit.HttpAuthHandler
@@ -27,10 +28,14 @@ import android.webkit.WebViewDatabase
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import io.deepseekharness.mobile.runtime.HarnessAccess
+import io.deepseekharness.mobile.runtime.RuntimeFailure
 import io.deepseekharness.mobile.runtime.RuntimeStore
+import io.deepseekharness.mobile.runtime.WorkspaceFileSharing
 import java.io.ByteArrayInputStream
+import java.net.URI
 import java.util.concurrent.Executors
 
 class HarnessActivity : AppCompatActivity() {
@@ -43,7 +48,18 @@ class HarnessActivity : AppCompatActivity() {
     private var pageRetryCount = 0
     private var rendererRecovery = false
     private var entryUrlForRetry: String? = null
+    /** The OAuth page is opened by Harness with window.open(); keep its transport WebView detached. */
+    private var authorizationPopup: WebView? = null
     private val pageRetryHandler = Handler(Looper.getMainLooper())
+    /**
+     * 预览面板分享专用线程：复制工作区文件可能到几十 MB，不能占主线程。
+     * 单线程串行，避免用户连点两次同时复制同一份大文件。
+     */
+    private val workspaceShareExecutor = Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "dsh-workspace-share").apply { isDaemon = true }
+    }
+    private val exitConfirmationPolicy = HarnessExitConfirmationPolicy()
+    private var exitConfirmationDialog: AlertDialog? = null
 
     /** 等待用户从系统选择器返回的 WebView 回调；同一时刻只允许一个，页面靠它继续上传。 */
     private var pendingFileChooser: ValueCallback<Array<Uri>>? = null
@@ -99,10 +115,14 @@ class HarnessActivity : AppCompatActivity() {
         // 控制台也是一个窗口：主题在 Web 侧改过、或系统深色模式在后台切换过之后，
         // 回到前台都要按已保存的模式重算状态栏，否则它会与页面配色不一致。
         applyNativeChrome()
+        // 用户可能刚在外壳里点过「让 DSH 使用当前主题」：从后台回来时补一次，
+        // 不要求他手动刷新页面。
+        if (::webView.isInitialized) HarnessThemeBridge.apply(webView)
     }
 
     override fun onStart() {
         super.onStart()
+        exitConfirmationPolicy.reset()
         // 控制台与外壳共用同一个「是否在前台」计数器：控制台叠在外壳之上，
         // 只有两者都停了才算切到后台（用布尔标志会在关闭控制台时误判，见 AppForeground 的说明）。
         AppForeground.onActivityStarted()
@@ -116,6 +136,7 @@ class HarnessActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        resetExitConfirmation()
         val resetToHome = intent.getBooleanExtra(EXTRA_RESET_TO_HOME, false)
         val nextSessionId = sessionIdExtra(intent)
         if (!::webView.isInitialized) return
@@ -173,7 +194,12 @@ class HarnessActivity : AppCompatActivity() {
             allowContentAccess = true
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             javaScriptCanOpenWindowsAutomatically = false
-            setSupportMultipleWindows(false)
+            // DeepSeek account login opens an about:blank popup and assigns its location
+            // asynchronously.  Keep multiple-window support on so onCreateWindow can
+            // intercept that navigation without ever loading an external page in this WebView.
+            setSupportMultipleWindows(true)
+            // 默认不放行媒体自播；唯一的例外是「同步中的静音背景视频」，
+            // 由 HarnessThemeBridge.syncAutoplay 按背景状态逐次对齐，关掉背景就收回。
             mediaPlaybackRequiresUserGesture = true
             builtInZoomControls = false
             displayZoomControls = false
@@ -186,6 +212,8 @@ class HarnessActivity : AppCompatActivity() {
         // 没有 WebChromeClient 时 <input type="file"> 点了毫无反应：这是插件"从相册导入"
         // 这类入口在手机上完全不可用的根因（皮肤中心只能靠手填容器路径绕过）。
         webView.webChromeClient = HarnessWebChromeClient()
+        // 设置页改「连背景一起同步」时插件在本进程内改档，需要一块还没销毁的 WebView 来重放。
+        HarnessThemeBridge.attach(webView)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             WebView.startSafeBrowsing(applicationContext, null)
         }
@@ -193,7 +221,14 @@ class HarnessActivity : AppCompatActivity() {
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (webView.canGoBack()) webView.goBack() else returnToMainActivity()
+                when (exitConfirmationPolicy.onBackPressed(
+                    canGoBack = webView.canGoBack(),
+                    nowMs = SystemClock.elapsedRealtime(),
+                )) {
+                    HarnessExitConfirmationPolicy.Decision.WEB_BACK -> webView.goBack()
+                    HarnessExitConfirmationPolicy.Decision.PROMPT -> showExitConfirmation()
+                    HarnessExitConfirmationPolicy.Decision.EXIT -> returnToMainActivity()
+                }
             }
         })
     }
@@ -214,6 +249,7 @@ class HarnessActivity : AppCompatActivity() {
             return
         }
         var discardHistory = clearHistory || boundAccess != access
+        resetExitConfirmation()
         pageLoadGate.cancel()
         val gate = HarnessPageLoadGate()
         pageLoadGate = gate
@@ -221,6 +257,7 @@ class HarnessActivity : AppCompatActivity() {
         pageFailureHandled = false
         pageRetryCount = 0
         deliverFileChooserResult(emptyList())
+        closeAuthorizationPopup()
         webView.stopLoading()
         if (discardHistory) webView.clearHistory()
         boundAccess = access
@@ -238,6 +275,7 @@ class HarnessActivity : AppCompatActivity() {
         }
         webView.webViewClient = RestrictedWebViewClient(
             origin, access.username, access.password,
+            onDeepSeekAuthorization = ::openDeepSeekAuthorization,
             onMainFrameFailure = {
                 if (pageLoadGate === gate && AppAuthenticationState.ownsHarnessAccess(authenticationOwner)) {
                     handleMainFrameFailure()
@@ -248,7 +286,15 @@ class HarnessActivity : AppCompatActivity() {
                     discardHistory = false
                     view.clearHistory()
                 }
+                // 每次主框架加载完都重放一次已同步的主题；没有同步过时它什么都不做。
+                HarnessThemeBridge.apply(view)
+                // 同一时刻补一次浏览器 API：老 WebView 缺 AbortSignal.any，页面自带的
+                // 「选择工作区目录」会在点开时直接报错。缺失才补，新的 WebView 上是空操作。
+                HarnessPolyfill.apply(view)
+                // 官方预览面板没有分享入口；补一个按钮，点击回到原生分享。
+                HarnessWorkspaceShare.apply(view)
             },
+            onWorkspaceShare = ::shareWorkspaceFile,
         )
         clearHttpAuthCredentialsAsync()
         val cookies = CookieManager.getInstance().apply {
@@ -276,18 +322,72 @@ class HarnessActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * 预览面板点「分享」后的原生处理。
+     *
+     * 页面传来的只是资源地址，这里重新解析成工作区相对路径；路径校验和文件复制都在
+     * 后台线程完成（只允许 `root/1` 下的普通文件），最后回到主线程弹系统分享面板。
+     * 失败时不回传具体文件路径或系统错误，只给一条通用提示；只有「解析成功但工作区里
+     * 没有这个文件」才单独说明，便于区分页面给的地址与工作区实际内容对不上。
+     */
+    private fun shareWorkspaceFile(raw: String) {
+        if (isFinishing || isDestroyed) return
+        // 相对地址可能多带一层会话工作目录前缀（见 WorkspaceShareAddress.relativePaths）。
+        val candidates = WorkspaceShareAddress.relativePaths(raw)
+        if (candidates == null) {
+            Toast.makeText(this, R.string.harness_file_action_failed, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val app = this
+        workspaceShareExecutor.execute {
+            val result = try {
+                Result.success(
+                    WorkspaceFileSharing.chooser(app, RuntimeStore(app), app.cacheDir, candidates, open = false),
+                )
+            } catch (failure: RuntimeFailure) {
+                Result.failure<Intent>(failure)
+            } catch (error: Exception) {
+                Result.failure(error)
+            }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                val chooser = result.getOrNull()
+                if (chooser == null) {
+                    val code = (result.exceptionOrNull() as? RuntimeFailure)?.code
+                    val message = if (code == WorkspaceFileSharing.NOT_IN_WORKSPACE) {
+                        R.string.harness_file_share_unavailable
+                    } else {
+                        R.string.harness_file_action_failed
+                    }
+                    Toast.makeText(app, message, Toast.LENGTH_SHORT).show()
+                    return@runOnUiThread
+                }
+                try {
+                    startActivity(chooser)
+                } catch (_: Exception) {
+                    Toast.makeText(app, R.string.harness_file_action_failed, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
     override fun onDestroy() {
+        resetExitConfirmation()
+        // 只拒绝新任务；正在复制的那一次会自然跑完，再在主线程丢弃结果。
+        workspaceShareExecutor.shutdown()
         pageLoadGate.cancel()
         if (!isChangingConfigurations) OverlayBallService.closeConversation()
         // 页面可能仍在等待选择结果：必须显式回传 null，否则该 input 会永久处于"等待选择文件"。
         deliverFileChooserResult(emptyList())
         if (::webView.isInitialized) {
+            HarnessThemeBridge.detach(webView)
             webView.stopLoading()
             webView.webChromeClient = null
             webView.webViewClient = WebViewClient()
             webView.removeAllViews()
             webView.destroy()
         }
+        closeAuthorizationPopup()
         pageRetryHandler.removeCallbacksAndMessages(null)
         val revoked = !isChangingConfigurations && !rendererRecovery &&
             AppAuthenticationState.revokeHarness(authenticationOwner)
@@ -308,10 +408,47 @@ class HarnessActivity : AppCompatActivity() {
 
     private fun returnToMainActivity() {
         if (isFinishing) return
+        resetExitConfirmation()
         startActivity(
             Intent(this, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP),
         )
+    }
+
+    /** 在 DSH 入口页离开前明确提醒用户，避免系统返回手势误触导致切回应用。 */
+    private fun showExitConfirmation() {
+        if (isFinishing || isDestroyed) return
+        exitConfirmationDialog?.let { dialog ->
+            if (dialog.isShowing) return
+        }
+        exitConfirmationDialog = AlertDialog.Builder(this)
+            .setTitle(R.string.harness_exit_confirm_title)
+            .setMessage(R.string.harness_exit_confirm_message)
+            .setNegativeButton(R.string.harness_exit_confirm_cancel) { _, _ ->
+                resetExitConfirmation()
+            }
+            .setPositiveButton(R.string.harness_exit_confirm_ok) { _, _ ->
+                resetExitConfirmation()
+                returnToMainActivity()
+            }
+            .create()
+            .also { dialog ->
+                // 对话框打开后再次按系统返回，视为用户完成了第二次确认；
+                // 点击对话框外部不会取消，避免误触直接离开 DSH。
+                dialog.setCanceledOnTouchOutside(false)
+                dialog.setOnCancelListener {
+                    resetExitConfirmation()
+                    returnToMainActivity()
+                }
+                dialog.setOnDismissListener { exitConfirmationDialog = null }
+                dialog.show()
+            }
+    }
+
+    private fun resetExitConfirmation() {
+        exitConfirmationPolicy.reset()
+        exitConfirmationDialog?.dismiss()
+        exitConfirmationDialog = null
     }
 
     /**
@@ -369,12 +506,50 @@ class HarnessActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * 只为 `<input type="file">` 服务：没有它，页面上任何"选择文件"入口在手机上都是死按钮。
-     *
-     * 其余 WebChromeClient 能力（JS 弹窗、控制台、地理位置等）一概不重写，保持系统默认行为。
-     */
+    /** Handles user-selected uploads and the provider's authorization popup only. */
     private inner class HarnessWebChromeClient : WebChromeClient() {
+        override fun onCreateWindow(
+            view: WebView?,
+            isDialog: Boolean,
+            isUserGesture: Boolean,
+            resultMsg: android.os.Message?,
+        ): Boolean {
+            // Only a user-initiated popup may start account authorization.  A detached,
+            // JavaScript-disabled transport page prevents an untrusted redirect from
+            // receiving the localhost session cookie or HTTP Basic credentials.
+            if (view !== webView || !isUserGesture || resultMsg == null || isFinishing || isDestroyed ||
+                !AppAuthenticationState.ownsHarnessAccess(authenticationOwner)
+            ) return false
+            val transport = resultMsg.obj as? WebView.WebViewTransport ?: return false
+            closeAuthorizationPopup()
+            val popup = WebView(this@HarnessActivity).apply {
+                settings.apply {
+                    javaScriptEnabled = false
+                    domStorageEnabled = false
+                    allowFileAccess = false
+                    allowContentAccess = false
+                    mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                    javaScriptCanOpenWindowsAutomatically = false
+                    setSupportMultipleWindows(false)
+                    safeBrowsingEnabled = true
+                }
+                webChromeClient = object : WebChromeClient() {
+                    override fun onCloseWindow(window: WebView?) {
+                        if (window === authorizationPopup) closeAuthorizationPopup()
+                    }
+                }
+                webViewClient = AuthorizationPopupClient()
+            }
+            authorizationPopup = popup
+            transport.webView = popup
+            resultMsg.sendToTarget()
+            return true
+        }
+
+        override fun onCloseWindow(window: WebView?) {
+            if (window === authorizationPopup) closeAuthorizationPopup()
+        }
+
         override fun onShowFileChooser(
             webView: WebView?,
             filePathCallback: ValueCallback<Array<Uri>>?,
@@ -401,6 +576,56 @@ class HarnessActivity : AppCompatActivity() {
                 deliverFileChooserResult(emptyList())
                 false
             }
+        }
+    }
+
+    private fun closeAuthorizationPopup() {
+        val popup = authorizationPopup ?: return
+        authorizationPopup = null
+        popup.stopLoading()
+        popup.webChromeClient = null
+        popup.webViewClient = WebViewClient()
+        popup.destroy()
+    }
+
+    /** Never loads a network resource: WebView's shared cookie jar must not reach the popup. */
+    private inner class AuthorizationPopupClient : WebViewClient() {
+        override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+            val uri = request?.url ?: return true
+            if (uri.toString() == "about:blank") return false
+            if (isDeepSeekAuthorizationNavigation(uri.toString(), request.method, request.isForMainFrame)) {
+                openDeepSeekAuthorization(uri)
+            }
+            return true
+        }
+
+        override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? =
+            if (request?.url?.toString() == "about:blank") null else blockedResponse()
+
+        override fun onReceivedHttpAuthRequest(
+            view: WebView?, handler: HttpAuthHandler?, host: String?, realm: String?,
+        ) {
+            handler?.cancel()
+        }
+
+        override fun onRenderProcessGone(view: WebView?, detail: RenderProcessGoneDetail?): Boolean {
+            if (view === authorizationPopup) closeAuthorizationPopup()
+            return true
+        }
+    }
+
+    private fun openDeepSeekAuthorization(uri: Uri): Boolean {
+        if (!isDeepSeekAuthorizationUrl(uri.toString()) || isFinishing || isDestroyed ||
+            !AppAuthenticationState.ownsHarnessAccess(authenticationOwner)
+        ) return false
+        return try {
+            startActivity(Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE))
+            // The system browser now owns the OAuth page; release the detached transport WebView
+            // so it cannot retain renderer state or a stale popup after the hand-off.
+            closeAuthorizationPopup()
+            true
+        } catch (_: Throwable) {
+            false
         }
     }
 
@@ -438,12 +663,14 @@ class HarnessActivity : AppCompatActivity() {
         private val origin: Origin,
         private val username: String,
         private val password: String,
+        private val onDeepSeekAuthorization: (Uri) -> Boolean = { false },
         private val onMainFrameFailure: () -> Unit,
         private val onRendererGone: (WebView?) -> Unit = { view ->
             view?.destroy()
             (view?.context as? HarnessActivity)?.finish()
         },
         private val onMainFrameLoaded: (WebView) -> Unit = {},
+        private val onWorkspaceShare: (String) -> Unit = {},
     ) : WebViewClient() {
         override fun onPageFinished(view: WebView?, url: String?) {
             if (view != null) onMainFrameLoaded(view)
@@ -464,11 +691,34 @@ class HarnessActivity : AppCompatActivity() {
 
         override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
             val uri = request?.url ?: return true
-            return !origin.allows(uri)
+            // 预览面板的分享按钮：只认带用户手势的主框架 GET，且 scheme 必须是 dsh-share。
+            // 任何情况下都不让页面真的去加载这个地址（WebView 没有对应协议处理器）。
+            if (WorkspaceShareAddress.SCHEME.equals(uri.scheme, ignoreCase = true)) {
+                if (request.hasGesture() && request.method == "GET" && request.isForMainFrame) {
+                    onWorkspaceShare(uri.toString())
+                }
+                return true
+            }
+            if (origin.allows(uri)) return false
+            // A page must not be able to launch the external account chooser from a timer,
+            // redirect, or injected script.  Popup transport gets its own one-shot allowance
+            // from onCreateWindow after WebView has confirmed a real user gesture.
+            // Kotlin 不为 hasXxx() 生成合成属性（只有 get/is 前缀才生成），这里必须显式调用。
+            if (request.hasGesture() &&
+                isDeepSeekAuthorizationNavigation(uri.toString(), request.method, request.isForMainFrame)
+            ) {
+                onDeepSeekAuthorization(uri)
+            }
+            return true
         }
 
         override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
             val uri = request?.url ?: return blockedResponse()
+            // 外壳同步的背景：由原生按同源路径供给，支持 Range，也不放开文件权限。
+            if (uri.path == HarnessThemeBridge.BACKGROUND_PATH) {
+                val context = view?.context ?: return blockedResponse()
+                return HarnessThemeBridge.serveBackground(context, request)
+            }
             // 市场目录和缩略图由插件直接请求 HTTPS 资源站；交给 WebView 执行正常的 TLS/CORS 校验。
             // 不添加本机 Authorization 或 Cookie，也不允许资源站替换会话主页面。
             return if (origin.allows(uri) || HarnessPluginResources.allows(
@@ -496,14 +746,29 @@ class HarnessActivity : AppCompatActivity() {
             } else onRendererGone(view)
             return true
         }
+    }
+}
 
-        private fun blockedResponse(): WebResourceResponse = WebResourceResponse(
-            "text/plain",
-            "UTF-8",
-            403,
-            "Forbidden",
-            emptyMap(),
-            ByteArrayInputStream(ByteArray(0)),
-        )
+internal fun blockedResponse(): WebResourceResponse = WebResourceResponse(
+    "text/plain", "UTF-8", 403, "Forbidden", emptyMap(), ByteArrayInputStream(ByteArray(0)),
+)
+
+internal fun isDeepSeekAuthorizationNavigation(raw: String, method: String, isMainFrame: Boolean): Boolean =
+    isMainFrame && method == "GET" && isDeepSeekAuthorizationUrl(raw)
+
+/** JVM-only form kept separate so the allowlist can be tested without Android WebView classes. */
+internal fun isDeepSeekAuthorizationUrl(raw: String): Boolean {
+    if (raw.length > 8192 || raw.any { it.isISOControl() || it == '\\' }) return false
+    return try {
+        val uri = URI(raw)
+        uri.scheme.equals("https", ignoreCase = true) &&
+            uri.host.equals("platform.deepseek.com", ignoreCase = true) &&
+            (uri.port == -1 || uri.port == 443) &&
+            uri.rawUserInfo == null &&
+            uri.rawPath == "/dsh/authorize" &&
+            uri.rawFragment == null &&
+            !uri.rawQuery.isNullOrBlank()
+    } catch (_: Exception) {
+        false
     }
 }

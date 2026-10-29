@@ -1,6 +1,7 @@
 package io.deepseekharness.mobile.runtime
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayInputStream
 
@@ -47,7 +48,6 @@ class HarnessCredentialStatusTest {
     fun malformedOrUnsupportedDocumentsFailClosed() {
         val cases = listOf(
             "version: 2\nrefs:\n  DEEPSEEK_API_KEY: value",
-            "version: 1\nunknown: value\nrefs:\n  DEEPSEEK_API_KEY: value",
             "version: 1\nrefs:\n  DEEPSEEK_API_KEY: ''",
             "version: 1\nrefs:\n  DEEPSEEK_API_KEY: [value]",
             "version: 1\nrefs:\n  DEEPSEEK_API_KEY: first\n  DEEPSEEK_API_KEY: second",
@@ -56,6 +56,31 @@ class HarnessCredentialStatusTest {
         cases.forEach { yaml ->
             assertEquals(HarnessCredentialStatus(), parse(yaml))
         }
+        // 未知顶层键按 dsh 的口径忽略而不是整份拒绝：引用仍然要读出来。
+        assertEquals(
+            setOf(ModelProvider.DEEPSEEK),
+            parse("version: 1\nunknown: value\nrefs:\n  DEEPSEEK_API_KEY: value").modelProviders,
+        )
+    }
+
+    @Test
+    fun reportsDeepSeekAccountGrantWithoutExposingItsToken() {
+        val status = parse(
+            """
+            version: 1
+            records:
+              deepseek-account-platform/default:
+                kind: grant
+                payload:
+                  version: 1
+                  token: account-token-placeholder
+                  issuer: https://platform.deepseek.com
+            """.trimIndent(),
+        )
+
+        assertTrue(status.deepSeekAccountConfigured)
+        assertEquals(emptySet<ModelProvider>(), status.modelProviders)
+        assertEquals(emptySet<String>(), status.customProviderIds)
     }
 
     private fun parse(

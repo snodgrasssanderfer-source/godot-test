@@ -3,6 +3,8 @@ package io.deepseekharness.mobile.runtime
 import org.snakeyaml.engine.v2.api.Load
 import org.snakeyaml.engine.v2.api.LoadSettings
 import java.io.ByteArrayInputStream
+import java.net.URI
+import java.security.MessageDigest
 
 /**
  * `$DSH_HOME/.credentials.yaml`（访客内 `/root/.dsh/.credentials.yaml`）的**保序**读取与并写。
@@ -25,7 +27,8 @@ import java.io.ByteArrayInputStream
  *
  * ## 安全约束（与 dsh 侧一致，任何一条不满足就拒绝写）
  *
- *  - 文档必须是 `version: 1` 的映射，顶层只允许 `version` / `refs` / `records`；
+ *  - 文档必须是 `version: 1` 的映射；`refs` / `records` 按 dsh 的形态校验，
+ *    其它顶层键按 dsh 自己的口径**忽略并原样保留**（dsh 只 warn，不拒绝整份文档）；
  *  - `refs` 的键必须是合法凭据引用名（与环境变量名同文法），取值必须是**非空**字符串；
  *  - 文档里**已存在**的 `records` 段（OAuth 授权记录等）与所有注释、空行、格式一律**逐行原样保留**：
  *    本对象只替换/追加 `refs` 段里的行，绝不重建整份文档 —— 手写 YAML 往返是丢数据的最短路径；
@@ -44,6 +47,10 @@ internal object HarnessCredentialsDocument {
     /** 新建或追加 `refs` 条目时的默认缩进；dsh 自己写出来的就是这个缩进。 */
     private const val DEFAULT_REF_INDENT = 2
 
+    /** App 写入的引用归属元数据；只保存摘要，不保存任何凭据明文。 */
+    private const val MANAGED_REFS_KEY = "dshMobileManagedRefs"
+    private val MANAGED_REF_DIGEST = Regex("^[a-f0-9]{64}$")
+
     /** 顶层条目：行首无缩进、键为 POSIX 标识符。 */
     private val TOP_LEVEL_ENTRY = Regex("^([A-Za-z_][A-Za-z0-9_]*):(.*)$")
 
@@ -57,8 +64,6 @@ internal object HarnessCredentialsDocument {
      * `?` / `:` / `,` / `#` 在行首有结构含义。它们都意味着「这一行不是一个能直接替换掉的键值对」。
      */
     private const val PLAIN_SCALAR_INDICATORS = "|>[&*!%@`?,:#"
-
-    private val TOP_LEVEL_KEYS = setOf("version", "refs", "records")
 
     private val LOAD_SETTINGS = LoadSettings.builder()
         .setLabel("Harness credentials document")
@@ -82,7 +87,7 @@ internal object HarnessCredentialsDocument {
             return null
         }
         val root = document as? Map<*, *> ?: return null
-        if (root.keys.any { it !is String || it !in TOP_LEVEL_KEYS }) return null
+        if (root.keys.any { it !is String }) return null
         if (root["version"] != 1) return null
         val records = root["records"]
         if (records != null && records !is Map<*, *>) return null
@@ -97,6 +102,132 @@ internal object HarnessCredentialsDocument {
             parsed[name] = value
         }
         return parsed
+    }
+
+    /**
+     * 读取 App 写入引用的归属摘要。
+     *
+     * 元数据位于 Harness 忽略的顶层键中，值为「引用名 → 当前值 SHA-256」。
+     * 解析失败时返回 null，调用方必须失败关闭，不能猜测删除范围。
+     */
+    fun managedRefs(text: String): Map<String, String>? {
+        if (refs(text) == null) return null
+        if (text.isBlank()) return emptyMap()
+        val document = try {
+            Load(LOAD_SETTINGS).loadFromInputStream(ByteArrayInputStream(text.toByteArray(Charsets.UTF_8)))
+        } catch (_: Exception) {
+            return null
+        }
+        val root = document as? Map<*, *> ?: return null
+        val raw = root[MANAGED_REFS_KEY] ?: return emptyMap()
+        val mapping = raw as? Map<*, *> ?: return null
+        if (mapping.size > MAX_REFS) return null
+        val parsed = linkedMapOf<String, String>()
+        for ((rawName, rawDigest) in mapping) {
+            val name = rawName as? String ?: return null
+            val digest = rawDigest as? String ?: return null
+            if (!RuntimeSecretPolicy.isCredentialReferenceName(name) || !MANAGED_REF_DIGEST.matches(digest)) {
+                return null
+            }
+            parsed[name] = digest
+        }
+        return parsed
+    }
+
+    /**
+     * 把模型凭据并写入 refs，并记录这些引用由 App 管理。
+     * 旧的 [upsert] 保持原有无元数据行为，供已有纯文本编辑测试和只读兼容路径使用。
+     */
+    fun upsertManaged(text: String?, updates: Map<String, String>): String? {
+        if (updates.isEmpty()) return text
+        if (updates.any { !RuntimeSecretPolicy.isCredentialReferenceName(it.key) || !isStorableValue(it.value) }) {
+            return null
+        }
+        val existing = refs(text.orEmpty()) ?: return null
+        val managed = managedRefs(text.orEmpty()) ?: return null
+        val desired = linkedMapOf<String, String>().apply {
+            putAll(existing)
+            putAll(updates)
+        }
+        val desiredManaged = linkedMapOf<String, String>().apply {
+            putAll(managed)
+            updates.forEach { (name, value) -> put(name, digest(value)) }
+        }
+        if (desired == existing && desiredManaged == managed) return text
+        return edit(text, desired, desiredManaged)
+    }
+
+    /**
+     * 删除 App 自己写入的引用。
+     *
+     * 有归属摘要时要求摘要和当前文档值同时匹配；没有摘要的旧文档则以 expectedValues
+     * 作为兼容证据。用户在 Harness 中改过值后，值不匹配，引用会被保留。
+     */
+    fun removeManaged(text: String?, expectedValues: Map<String, String>): String? {
+        if (text.isNullOrBlank() || expectedValues.isEmpty()) return text
+        val existing = refs(text) ?: return null
+        val managed = managedRefs(text) ?: return null
+        val removals = expectedValues.filter { (name, expected) ->
+            val current = existing[name] ?: return@filter false
+            val managedDigest = managed[name]
+            val owned = if (managedDigest == null) {
+                current == expected
+            } else {
+                current == expected && managedDigest == digest(expected)
+            }
+            owned
+        }.keys
+        val desired = linkedMapOf<String, String>().apply {
+            putAll(existing)
+            removals.forEach(::remove)
+        }
+        val desiredManaged = linkedMapOf<String, String>().apply {
+            putAll(managed)
+            expectedValues.keys.forEach(::remove)
+        }
+        if (desired == existing && desiredManaged == managed) return text
+        return edit(text, desired, desiredManaged)
+    }
+
+    /**
+     * Return only the presence of the official DeepSeek account grant.
+     *
+     * The grant token is intentionally never returned to the caller.  This is
+     * kept separate from `refs`: account login is a record credential, not an
+     * API-key environment reference.
+     */
+    fun hasDeepSeekAccountGrant(text: String): Boolean {
+        if (text.isBlank() || text.toByteArray(Charsets.UTF_8).size > MAX_DOCUMENT_BYTES) return false
+        // Keep account presence on the same strict document contract as refs;
+        // otherwise an unknown top-level field could make the UI claim login
+        // for a file that the writer would reject.
+        if (refs(text) == null) return false
+        val root = try {
+            Load(LOAD_SETTINGS).loadFromInputStream(ByteArrayInputStream(text.toByteArray(Charsets.UTF_8)))
+        } catch (_: Exception) {
+            return false
+        }
+        val document = root as? Map<*, *> ?: return false
+        if (document["version"] != 1) return false
+        val records = document["records"] as? Map<*, *> ?: return false
+        val record = records[DEEPSEEK_ACCOUNT_RECORD] as? Map<*, *> ?: return false
+        if (record["kind"] != "grant") return false
+        val payload = record["payload"] as? Map<*, *> ?: return false
+        val token = payload["token"] as? String
+        val issuer = payload["issuer"] as? String
+        if (payload["version"] != 1 || token.isNullOrEmpty() || token.length > 4096 ||
+            !token.all { it.code in 0x21..0x7E } || issuer.isNullOrEmpty()
+        ) return false
+        return try {
+            val uri = URI(issuer)
+            uri.scheme.equals("https", ignoreCase = true) &&
+                uri.host.equals("platform.deepseek.com", ignoreCase = true) &&
+                (uri.port == -1 || uri.port == 443) &&
+                uri.rawUserInfo == null && uri.rawQuery == null && uri.rawFragment == null &&
+                (uri.path.isNullOrEmpty() || uri.path == "/")
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /**
@@ -128,10 +259,37 @@ internal object HarnessCredentialsDocument {
         } else {
             val lines = text.split('\n')
             val structure = scan(lines) ?: return null
-            render(lines, structure, updates)
+            val managed = managedRefs(text) ?: return null
+            render(lines, structure, desired, managed)
         }
         // 自校验：写盘前的最后一关。解析不出预期内容就当作「不能安全编辑」。
         return rendered.takeIf { refs(it) == desired }
+    }
+
+    /** 以已有文本结构为基础，同时更新 refs 和 App 归属元数据。 */
+    private fun edit(text: String?, desired: Map<String, String>, desiredManaged: Map<String, String>): String? {
+        val existing = refs(text.orEmpty()) ?: return null
+        if (text.isNullOrBlank()) {
+            val rendered = buildString {
+                append("version: 1\n")
+                append("refs:\n")
+                desired.forEach { (name, value) ->
+                    append(" ".repeat(DEFAULT_REF_INDENT))
+                    append(entry(name, value))
+                    append('\n')
+                }
+                appendManagedMetadata(desiredManaged)
+            }
+            return rendered.takeIf {
+                refs(it) == desired && managedRefs(it) == desiredManaged
+            }
+        }
+        val lines = text.split('\n')
+        val structure = scan(lines) ?: return null
+        val rendered = render(lines, structure, desired, desiredManaged)
+        return rendered.takeIf {
+            refs(it) == desired && managedRefs(it) == desiredManaged
+        }
     }
 
     /** 新建一份最小文档；`refs` 段的缩进与 dsh 自己写出来的一致。 */
@@ -154,6 +312,8 @@ internal object HarnessCredentialsDocument {
         var refsHeaderLine: Int? = null
         val refEntries = mutableListOf<Pair<Int, String>>()
         var refIndent = DEFAULT_REF_INDENT
+        // `refs: {}` 需要在写入时把这一行改回块映射表头，否则追加的条目会留在流式映射外。
+        var refsFlowEmpty = false
         // 新条目插入点：refs 段最后一个条目之后；段内没有条目时是表头之后。
         var insertLine = -1
         var section: String? = null
@@ -180,13 +340,22 @@ internal object HarnessCredentialsDocument {
                         versionLine = index
                     }
                     "refs" -> {
-                        // 只认块映射形态（`refs:` 后为空）。`refs: {}` 一类的流式形态一律拒绝。
-                        if (refsHeaderLine != null || rest.isNotEmpty()) return null
+                        // 块映射形态（`refs:` 后为空）与**空流式映射**（`refs: {}`）都可编辑：
+                        // dsh 用 yaml 库序列化，空 refs 会写成 `{}`（例如只有账号授权记录、
+                        // 还没存过 API Key 的文档）。拒绝这一种会让 App 回落到环境变量，
+                        // 而环境层会让 dsh 把同一引用判成只读 —— 模型页保存随后失败。
+                        // 非空的流式映射仍然拒绝：替换行会破坏同一行里的其它条目。
+                        val flowEmpty = rest.replace(" ", "").replace("\t", "") == "{}"
+                        if (refsHeaderLine != null || (!flowEmpty && rest.isNotEmpty())) return null
                         refsHeaderLine = index
+                        refsFlowEmpty = flowEmpty
                         insertLine = index + 1
                     }
                     "records" -> Unit
-                    else -> return null
+                    // 未知顶层段按 dsh 自己的口径处理：忽略并原样保留（dsh 只 warn，
+                    // 不拒绝整份文档）。拒绝会让 App 回落到环境变量，而环境层会让
+                    // dsh 把同一引用判成只读 —— 模型页保存随后失败。
+                    else -> Unit
                 }
                 return@forEachIndexed
             }
@@ -200,22 +369,39 @@ internal object HarnessCredentialsDocument {
         }
         // 非空文档必须带 `version: 1`：没有它 dsh 自己也会拒绝读取（pre-release 扁平布局）。
         val versionIndex = versionLine ?: return null
-        return Structure(versionIndex, refsHeaderLine, refEntries, insertLine, refIndent)
+        return Structure(versionIndex, refsHeaderLine, refsFlowEmpty, refEntries, insertLine, refIndent)
     }
 
     /** 逐行重建：只替换/追加 `refs` 段里的行，其它行原样透传。 */
-    private fun render(lines: List<String>, structure: Structure, updates: Map<String, String>): String {
+    private fun render(
+        lines: List<String>,
+        structure: Structure,
+        desired: Map<String, String>,
+        desiredManaged: Map<String, String>,
+    ): String {
         val indent = " ".repeat(structure.refIndent)
         val replacements = structure.refEntries.mapNotNull { (index, name) ->
-            updates[name]?.let { index to (indent + entry(name, it)) }
+            desired[name]?.let { index to (indent + entry(name, it)) }
         }.toMap()
         val existingNames = structure.refEntries.mapTo(linkedSetOf()) { it.second }
         // 追加的行必须带上与同段其它条目一致的缩进：少了它这些键会落到顶层，
         // 自校验会（正确地）判定文档不再是本编辑器认识的那一份并拒绝写入。
-        val additions = updates.filterKeys { it !in existingNames }.map { (name, value) -> indent + entry(name, value) }
+        val additions = desired.filterKeys { it !in existingNames }.map { (name, value) -> indent + entry(name, value) }
+        val managedLine = lines.indexOfFirst { raw -> raw.startsWith("$MANAGED_REFS_KEY:") }
+        val managedReplacement = managedMetadataLine(desiredManaged)
         val output = mutableListOf<String>()
         lines.forEachIndexed { index, raw ->
-            output += replacements[index] ?: raw
+            if (managedLine == index) {
+                managedReplacement?.let(output::add)
+                return@forEachIndexed
+            }
+            val originalName = structure.refEntries.firstOrNull { it.first == index }?.second
+            if (originalName != null && originalName !in desired) {
+                return@forEachIndexed
+            }
+            // `refs: {}` 先展开成块映射表头，追加的条目才有地方落；否则它们会落在流式映射后面。
+            val header = if (structure.refsFlowEmpty && index == structure.refsHeaderLine) "refs:" else raw
+            output += replacements[index] ?: header
             when {
                 structure.refsHeaderLine != null && index == structure.insertLine - 1 -> output += additions
                 structure.refsHeaderLine == null && index == structure.versionLine -> {
@@ -224,8 +410,39 @@ internal object HarnessCredentialsDocument {
                 }
             }
         }
+        if (managedLine < 0 && managedReplacement != null) {
+            if (output.isNotEmpty() && output.last().isNotEmpty()) output += ""
+            output += managedReplacement
+        }
         return output.joinToString("\n")
     }
+
+    private fun StringBuilder.appendManagedMetadata(managed: Map<String, String>) {
+        managedMetadataLine(managed)?.let {
+            append(it)
+            append('\n')
+        }
+    }
+
+    private fun managedMetadataLine(managed: Map<String, String>): String? {
+        if (managed.isEmpty()) return null
+        return buildString {
+            append(MANAGED_REFS_KEY)
+            append(": {")
+            managed.entries.forEachIndexed { index, (name, digest) ->
+                if (index > 0) append(", ")
+                append(name)
+                append(": '")
+                append(digest)
+                append("'")
+            }
+            append("}")
+        }
+    }
+
+    private fun digest(value: String): String = MessageDigest.getInstance("SHA-256")
+        .digest(value.toByteArray(Charsets.UTF_8))
+        .joinToString("") { byte -> "%02x".format(byte) }
 
     /** `NAME: 'value'`。 */
     private fun entry(name: String, value: String): String = "$name: ${yamlScalar(value)}"
@@ -259,6 +476,8 @@ internal object HarnessCredentialsDocument {
     private class Structure(
         val versionLine: Int,
         val refsHeaderLine: Int?,
+        /** `refs` 表头原本是空流式映射（`refs: {}`）：写入时要把它展开成块映射表头。 */
+        val refsFlowEmpty: Boolean,
         /** `refs` 段里的条目行：行下标 → 引用名，顺序与原文档一致。 */
         val refEntries: List<Pair<Int, String>>,
         /** 新条目的插入位置（行下标）。 */
@@ -268,4 +487,5 @@ internal object HarnessCredentialsDocument {
     )
 
     private const val REFS_SECTION = "refs"
+    private const val DEEPSEEK_ACCOUNT_RECORD = "deepseek-account-platform/default"
 }
