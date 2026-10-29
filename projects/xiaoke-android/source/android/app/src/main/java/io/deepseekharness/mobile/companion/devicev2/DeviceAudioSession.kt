@@ -64,6 +64,16 @@ object DeviceAudioSession {
         }
         action?.invoke(); onChanged?.invoke()
     }
+    /** Explicit privacy invalidation discards both buffered tracks and pending consent. */
+    fun clear() {
+        val action: (() -> Unit)?
+        synchronized(this) {
+            action = stopService; stopService = null; ticket = ""
+            expiry?.let { expiryHandler.removeCallbacks(it) }; expiry = null
+            pcm.clear(); phase = "cleared"; detail = "上下文已更新，临时音轨已清除"
+        }
+        action?.invoke(); onChanged?.invoke()
+    }
     @Synchronized fun read(session: String, source: String) = pcm.wav(session, source)
     @Synchronized fun state(): JSONObject {
         val tracks = JSONObject()

@@ -115,6 +115,7 @@ class CompanionOverlayService : Service() {
     }
     fun endPresence() { presence?.stop() }
     fun externalMicrophone(busy: Boolean) { presence?.externalMicrophone(busy) }
+    fun invalidatePresenceContext() { presence?.invalidateContext() }
     private fun applyVisibility(visible: Boolean) {
         visibleByOwner = visible
         if (!visible) { cancelHold?.invoke(); closePanel() }

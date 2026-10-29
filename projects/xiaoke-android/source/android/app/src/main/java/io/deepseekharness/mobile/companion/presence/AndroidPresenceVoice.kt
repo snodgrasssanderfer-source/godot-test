@@ -63,6 +63,7 @@ internal class AndroidPresenceVoice(
     private val mouthTick = object : Runnable {
         override fun run() {
             val current = playing ?: return
+            if (!valid(current.turn)) { stopPlayback(current.turn); return }
             val p = player ?: return
             val position = runCatching { p.currentPosition }.getOrDefault(0)
             mouth(current.audio.volumes.getOrNull(position / current.audio.sliceLengthMs) ?: 0f)
