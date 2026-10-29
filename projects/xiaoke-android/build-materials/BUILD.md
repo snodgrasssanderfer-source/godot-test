@@ -43,4 +43,4 @@ rootfs 的哈希与清单里的 `rootfs.sha256` 一致才能用。两个 PRoot .
 
    loader 内含构建路径信息；自行重建时它的哈希可能与表中不同，属已知情况。除 loader 以外的文件对不上就停止，不要修改清单去迁就。
 3. 两个 .so 放到 source/android/app/src/main/jniLibs/arm64-v8a/，rootfs.bundle 与 runtime-manifest.json 放到 source/android/app/src/main/assets/runtime/，然后按上文构建。
-4. 构建后可用 `unzip -p <apk> <路径> | sha256sum` 确认新 APK 内的四个文件与上表一致。完整 debug APK 约 312 MiB。
+4. 构建后可用 `unzip -p <apk> <路径> | sha256sum` 确认新 APK 内的四个文件与上表一致。完整 debug APK 约 398 MiB。
