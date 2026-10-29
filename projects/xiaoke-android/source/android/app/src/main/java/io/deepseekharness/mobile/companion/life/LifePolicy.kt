@@ -79,6 +79,22 @@ object LifePolicy {
         return result.values.toSet()
     }
 
+    /** Older builds did not record prompt lineage. Conservatively clear subsequent generated outputs. */
+    fun legacyOutputs(roots: Set<RecordRef>, records: List<Pair<String, JSONObject>>): Set<RecordRef> {
+        val cutoffs = mutableMapOf<String, Long>()
+        for (root in roots) {
+            val value = records.firstOrNull { it.first == root.kind && it.second.optString("id") == root.id }?.second
+            val at = value?.optLong("createdAt", value.optLong("updatedAt")) ?: 0L
+            cutoffs[root.scope] = minOf(cutoffs[root.scope] ?: Long.MAX_VALUE, at)
+        }
+        return records.filter { (kind, value) ->
+            val cutoff = cutoffs[value.getString("scope")]
+            cutoff != null && !value.has("contextEpoch") && value.optLong("createdAt", value.optLong("updatedAt")) >= cutoff &&
+                ((kind == "message" && value.optString("role") == "assistant") ||
+                    (kind == "task" && (value.has("partialText") || value.has("body"))))
+        }.map { reference(it.first, it.second) }.toSet()
+    }
+
     fun visible(record: JSONObject, proactive: Boolean = true): Boolean = !record.optBoolean("deleted") &&
         (!proactive || (!record.optBoolean("forgotten") && !record.optBoolean("suppressed") && !record.optBoolean("superseded")))
 }

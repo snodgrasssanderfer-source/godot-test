@@ -163,6 +163,16 @@ class LifeCoreTest {
         assertEquals(1, result.size)
     }
 
+    @Test fun legacyGeneratedOutputsAreConservativelyClearedWithinAffectedScope() {
+        val root = RecordRef("message", "source", owner)
+        val rows = listOf("message" to row("source").put("createdAt", 20),
+            "message" to row("legacy").put("role", "assistant").put("createdAt", 30),
+            "message" to row("before").put("role", "assistant").put("createdAt", 10),
+            "message" to row("tracked").put("role", "assistant").put("createdAt", 30).put("contextEpoch", 2),
+            "message" to row("other", scope = "qq:group:other").put("role", "assistant").put("createdAt", 30))
+        assertEquals(setOf("legacy"), LifePolicy.legacyOutputs(setOf(root), rows).map { it.id }.toSet())
+    }
+
     @Test fun forgottenPinnedAndSupersededMemoryNeverEntersAutomaticRanking() {
         val records = JSONArray().put(row("forgotten").put("forgotten", true).put("pinned", true))
             .put(row("suppressed").put("suppressed", true)).put(row("old").put("superseded", true)).put(row("current"))
@@ -209,6 +219,17 @@ class LifeCoreTest {
         assertEquals("unknown", task.getString("state")); assertFalse(task.has("grantDigest")); assertFalse(task.has("uiBinding"))
         assertFalse(LifeBackup.sanitize("message", row("m").put("wire", "opaque")).has("wire"))
         assertFalse(LifeBackup.sanitize("observation", row("o").put("parts", JSONArray())).has("parts"))
+    }
+
+    @Test fun forgottenMemorySuppressesAReintroducedOldSourceAndItsReply() {
+        val ref = RecordRef("message", "source", owner)
+        val local = backup().put("memory", JSONArray().put(row("forgotten", refs = listOf(ref)).put("forgotten", true)))
+        val old = backup().put("message", JSONArray().put(row("source", "private fixture"))
+            .put(row("reply", "derived fixture", listOf(ref))))
+        val plan = LifeBackup.plan(local, old)
+        val restored = plan.rows.filter { it.first == "message" }
+        assertEquals(2, restored.size)
+        assertTrue(restored.all { it.second.getBoolean("suppressed") })
     }
 
     @Test fun actualEncryptedRoundTripIncludesLedgerAndTombstones() {

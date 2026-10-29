@@ -34,13 +34,22 @@ class LifeMemoryRepository(private val store: CompanionStore) {
             store.get(it.kind, it.id)?.optLong("createdAt", now)
         } ?: now
         require(occurredAt in 0..now + 300000) { "事实发生时间无效" }
-        val factKey = input.optString("factKey", old?.optString("factKey").orEmpty()).trim()
+        val primarySource = refs.firstOrNull()?.let { store.get(it.kind, it.id) }
+        val actorId = primarySource?.optString("actorId", primarySource.optString("senderId")).orEmpty().ifBlank {
+            if (sourceScope == CompanionPolicy.OWNER || sourceScope.startsWith("qq:private:")) sourceScope else ""
+        }
+        var factKey = input.optString("factKey", old?.optString("factKey").orEmpty()).trim()
         require(factKey.length <= 160 && !factKey.contains('\u0000'))
+        if (fromModel && sourceScope.startsWith("qq:group:") && factKey.isNotBlank()) {
+            // Display names cannot collapse two participants into a single evolving fact.
+            factKey = if (actorId.isBlank()) "" else CompanionPolicy.digest(actorId).take(24) + ":" + factKey.take(135)
+        }
         val value = JSONObject().put("id", id).put("scope", scope).put("text", content).put("kind", kind)
             .put("factKey", factKey).put("occurredAt", occurredAt).put("observedAt", now)
             .put("createdAt", old?.optLong("createdAt", now) ?: now).put("revision", (old?.optInt("revision", 1) ?: 0) + 1)
             .put("source", input.optString("source", if (fromModel) "有来源的自动记录" else "主人纠正").take(1000))
             .put("sourceId", input.optString("sourceId")).put("sourceScope", sourceScope)
+            .put("actorId", actorId)
             .put("sourceRefs", JSONArray().also { a -> (refs + (old?.let(LifePolicy::sources) ?: emptyList())).distinctBy { it.key }.forEach { a.put(it.json()) } })
             .put("status", if (fromModel) "unverified" else "confirmed").put("pinned", !fromModel && input.optBoolean("pinned", old?.optBoolean("pinned") ?: false))
             .put("forgotten", old?.optBoolean("forgotten") ?: false).put("suppressed", old?.optBoolean("suppressed") ?: false)
@@ -57,21 +66,25 @@ class LifeMemoryRepository(private val store: CompanionStore) {
         if (old != null) store.recordRevision("memory", old)
         val saved = store.put("memory", value)
         store.appendMemoryHistory(scope, id, old?.optString("text"), content)
-        reconcileFact(scope, factKey)
-        if (old != null) store.bumpContentEpoch()
+        val changedContext = reconcileFact(scope, factKey, id)
+        if (old != null || changedContext) store.bumpContentEpoch()
         store.get("memory", saved.getString("id"))!!
     }
 
-    private fun reconcileFact(scope: String, factKey: String) {
-        if (factKey.isBlank()) return
+    private fun reconcileFact(scope: String, factKey: String, insertedId: String): Boolean {
+        if (factKey.isBlank()) return false
         val all = store.list("memory", scope, 10000)
         val facts = (0 until all.length()).map(all::getJSONObject).filter { it.optString("factKey") == factKey && it.optString("kind") != "inference" }
-        val latest = facts.maxWithOrNull(compareBy<JSONObject> { it.optLong("occurredAt") }.thenBy { it.optLong("observedAt") }.thenBy { it.getString("id") }) ?: return
+        val latest = facts.maxWithOrNull(compareBy<JSONObject> { it.optLong("occurredAt") }.thenBy { it.optLong("observedAt") }.thenBy { it.getString("id") }) ?: return false
+        var changedExisting = false
         facts.forEach { value ->
             val superseded = value.getString("id") != latest.getString("id")
-            if (value.optBoolean("superseded") != superseded || value.optString("currentFactId") != latest.getString("id"))
+            if (value.optBoolean("superseded") != superseded || value.optString("currentFactId") != latest.getString("id")) {
+                if (value.getString("id") != insertedId) changedExisting = true
                 store.put("memory", value.put("superseded", superseded).put("currentFactId", latest.getString("id")))
+            }
         }
+        return changedExisting
     }
 
     fun validateSources(refs: List<RecordRef>, sourceScope: String) {
@@ -91,7 +104,15 @@ class LifeMemoryRepository(private val store: CompanionStore) {
         if (kind == "diary") check(old != null) { "日记须由真实经历建立，不能补造缺失经历" }
         LifePolicy.checkRevision(old, input)
         val refs = if (old != null) LifePolicy.sources(old) else LifePolicy.sources(JSONObject(input.toString()).put("scope", scope))
-        validateSources(refs, scope)
+        if (old == null) validateSources(refs, scope) else refs.forEach { ref ->
+            check(ref.scope == scope && !store.isDeleted(ref.kind, ref.id)) { "来源已删除或不属于当前会话" }
+            // Expiry of ordinary media must not prevent the owner correcting the retained record.
+            store.get(ref.kind, ref.id)?.let { source ->
+                check(source.getString("scope") == scope && !source.optBoolean("forgotten") && !source.optBoolean("suppressed")) {
+                    "来源不可用于当前纠正"
+                }
+            }
+        }
         val text = CompanionPolicy.text(input.getString("text"), 8000)
         val value = JSONObject(old?.toString() ?: "{}").put("id", id).put("scope", scope).put("text", text)
             .put("revision", (old?.optInt("revision", 1) ?: 0) + 1).put("createdAt", old?.optLong("createdAt") ?: System.currentTimeMillis())

@@ -87,8 +87,11 @@ class LifeModule(@Suppress("UNUSED_PARAMETER") context: Context, private val sto
         }
         if (action !in READ_ACTIONS) {
             emit("moduleState", JSONObject().put("domain", domain))
-            if (action.startsWith("memory.") || action.startsWith("diary.") || action == "backup.restore")
-                emit("life.contentChanged", JSONObject().put("contentEpoch", store.contentEpoch()).put("action", action))
+            if (action.startsWith("memory.") || action.startsWith("diary.") || action.startsWith("interest.") || action == "backup.restore") {
+                val event = JSONObject().put("contentEpoch", store.contentEpoch()).put("action", action)
+                result.optJSONArray("deleted")?.let { event.put("deleted", it) }
+                emit("life.contentChanged", event)
+            }
         }
         return result
     }
@@ -148,16 +151,16 @@ class LifeModule(@Suppress("UNUSED_PARAMETER") context: Context, private val sto
         }
         val query = data.optString("query")
         // Explicit review keeps forgotten/history entries; automatic MemoryRanking always filters them.
-        JSONArray().also { out -> values.filter { query.isBlank() || it.optString("text").contains(query, true) ||
+        store.withEvidenceStatus(JSONArray().also { out -> values.filter { query.isBlank() || it.optString("text").contains(query, true) ||
             MemoryRanking.terms(query).any { term -> term in MemoryRanking.terms(it.optString("text")) } }
-            .sortedByDescending { it.optLong("occurredAt", it.optLong("updatedAt")) }.take(1000).forEach(out::put) }
+            .sortedByDescending { it.optLong("occurredAt", it.optLong("updatedAt")) }.take(1000).forEach(out::put) })
     }
 
     private fun entries(kind: String, scope: String, query: String, includeHidden: Boolean): JSONArray {
         val all = store.list(kind, scope, 10000)
-        return JSONArray().also { out -> for (i in all.length() - 1 downTo 0) all.getJSONObject(i).let {
+        return store.withEvidenceStatus(JSONArray().also { out -> for (i in all.length() - 1 downTo 0) all.getJSONObject(i).let {
             if ((includeHidden || LifePolicy.visible(it)) && it.optString("text").contains(query, true)) out.put(it)
-        } }
+        } })
     }
 
     private fun attention(): JSONObject = LifePolicy.attentionStatus(store.lifeState("attention"), System.currentTimeMillis()).also { state ->
@@ -169,8 +172,12 @@ class LifeModule(@Suppress("UNUSED_PARAMETER") context: Context, private val sto
 
     override fun onEvent(event: ModuleEvent) {
         if (event.type !in setOf("conversation.message", "observation.summary", "action.completed")) return
+        // A raw arrival may precede its grounded summary. Do not consume the idempotency key early.
+        if (event.type == "conversation.message" && (!event.data.optBoolean("meaningful") || event.data.optJSONObject("memory") == null)) return
+        if (event.type == "observation.summary" && !event.data.optBoolean("meaningful")) return
         val kind = when (event.type) { "conversation.message" -> "message"; "observation.summary" -> "observation"; else -> "task" }
         val key = "life-" + CompanionPolicy.digest(event.type + "\u0000" + event.sourceId)
+        val epoch = store.contentEpoch()
         val changed = store.lifeTransaction {
             if (store.get("lifeEvent", key) != null || store.isDeleted("lifeEvent", key)) return@lifeTransaction false
             val source = store.get(kind, event.sourceId) ?: return@lifeTransaction false
@@ -189,6 +196,7 @@ class LifeModule(@Suppress("UNUSED_PARAMETER") context: Context, private val sto
                 }
                 "observation.summary" -> {
                     val summary = source.optString("analysis", source.optString("summary"))
+                    if (summary.isBlank()) return@lifeTransaction false
                     if (event.data.optBoolean("meaningful") && summary.isNotBlank()) {
                         val refs = JSONArray().put(ref.json())
                         memory.upsertMemory(event.scope, JSONObject().put("id", "$key-memory").put("text", summary.take(8000)).put("kind", "inference")
@@ -208,7 +216,10 @@ class LifeModule(@Suppress("UNUSED_PARAMETER") context: Context, private val sto
                 .put("sourceRefs", JSONArray().put(ref.json())))
             true
         }
-        if (changed) emit("moduleState", JSONObject().put("domain", domain))
+        if (changed) {
+            emit("moduleState", JSONObject().put("domain", domain))
+            if (store.contentEpoch() != epoch) emit("life.contentChanged", JSONObject().put("contentEpoch", store.contentEpoch()).put("action", event.type))
+        }
     }
 
     private fun emit(topic: String, data: JSONObject) {

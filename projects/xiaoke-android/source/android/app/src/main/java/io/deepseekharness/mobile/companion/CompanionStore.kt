@@ -15,6 +15,8 @@ import io.deepseekharness.mobile.companion.life.RecordRef
  * Upstream: mem0ai/mem0 26cdefb46600c0fa5953c4b5ee5003c125539fc4 (Apache-2.0).
  * Changes: Android SQLite, mandatory scope, source links, tombstones, job recovery;
  * no automatic deletion of all but the last ten messages, no embedding/cloud dependency.
+ * 2026-10-29: v2 migration, revision/lineage preservation, conservative legacy-output purge,
+ * deletion fences, scoped life records and transaction-backed budget/attention state.
  */
 class CompanionStore(private val context: Context, databaseName: String = "companion.db") : SQLiteOpenHelper(context, databaseName, null, 2) {
     private var lastSocialPrune = 0L
@@ -61,8 +63,9 @@ class CompanionStore(private val context: Context, databaseName: String = "compa
         try { block() } finally { committingSources.set(previous) }
     }
     /** Keep this ticket with the actual provider request, then commit with its epoch and sourceRefs. */
-    @Synchronized fun contextSnapshot(scope: String, query: String = ""): JSONObject = lifeTransaction {
-        val messages = contextMessages(scope)
+    @Synchronized fun contextSnapshot(scope: String, query: String = "", historyLimit: Int = 60): JSONObject = lifeTransaction {
+        require(historyLimit in 1..1000)
+        val messages = contextMessages(scope, historyLimit)
         val memories = memoriesFor(scope, query)
         val refs = JSONArray()
         for ((kind, rows) in listOf("message" to messages, "memory" to memories)) {
@@ -110,7 +113,8 @@ class CompanionStore(private val context: Context, databaseName: String = "compa
 
     /** Source removal is conservative: whole source messages and every derivative are erased together. */
     @Synchronized fun deleteContent(roots: Set<RecordRef>): JSONObject = lifeTransaction {
-        val deleted = LifePolicy.descendants(roots, contentRecords())
+        val records = contentRecords()
+        val deleted = LifePolicy.descendants(roots + LifePolicy.legacyOutputs(roots, records), records)
         if (deleted.isEmpty()) return@lifeTransaction JSONObject().put("deleted", JSONArray()).put("contentEpoch", contentEpoch())
         val epoch = bumpContentEpoch()
         for (ref in deleted) {
@@ -150,7 +154,7 @@ class CompanionStore(private val context: Context, databaseName: String = "compa
         val sameFact = records.filter { it.first == "memory" && it.second.getString("scope") == scope &&
             memory.optString("factKey").isNotBlank() && it.second.optString("factKey") == memory.optString("factKey") }.map { it.second }
         val roots = setOf(root) + LifePolicy.sources(memory) + sameFact.flatMap { listOf(LifePolicy.reference("memory", it)) + LifePolicy.sources(it) }
-        val targets = LifePolicy.descendants(roots, records).map { it.key }.toSet()
+        val targets = LifePolicy.descendants(roots + LifePolicy.legacyOutputs(roots, records), records).map { it.key }.toSet()
         for ((kind, value) in records) {
             val key = LifePolicy.reference(kind, value).key
             val ids = value.optJSONArray("suppressedBy") ?: JSONArray()
@@ -274,7 +278,20 @@ class CompanionStore(private val context: Context, databaseName: String = "compa
     }
 
     fun memoriesFor(scope: String, query: String = ""): JSONArray {
-        return MemoryRanking.rank(list("memory", scope, 10000), query)
+        return withEvidenceStatus(MemoryRanking.rank(list("memory", scope, 10000), query)).also { rows ->
+            // The model gets concise provenance; complete lineage remains in the owner review/store.
+            for (i in 0 until rows.length()) { rows.getJSONObject(i).remove("sourceRefs"); rows.getJSONObject(i).remove("suppressedBy") }
+        }
+    }
+    @Synchronized fun withEvidenceStatus(rows: JSONArray): JSONArray {
+        val available = mutableMapOf<String, Boolean>()
+        return JSONArray().also { out -> for (i in 0 until rows.length()) {
+            val record = JSONObject(rows.getJSONObject(i).toString())
+            val missing = LifePolicy.sources(record).any { ref ->
+                !available.getOrPut(ref.key) { get(ref.kind, ref.id)?.optString("scope") == ref.scope }
+            }
+            out.put(record.put("evidenceMissing", missing))
+        } }
     }
 
     @Synchronized fun observationParts(id: String): JSONArray {

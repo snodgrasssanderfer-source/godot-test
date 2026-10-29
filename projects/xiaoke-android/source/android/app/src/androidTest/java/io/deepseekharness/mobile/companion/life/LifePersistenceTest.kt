@@ -65,6 +65,10 @@ class LifePersistenceTest {
         assertEquals(newer.getString("id"), store.memoriesFor(scope).getJSONObject(0).getString("id"))
         assertTrue(store.get("memory", late.getString("id"))!!.getBoolean("superseded"))
         assertEquals(2, action("memory.search", JSONObject().put("includeHistory", true)).getJSONArray("items").length())
+        val epoch = store.contentEpoch()
+        val latest = memory("latest", s, key = "fixture-slot", at = now + 1)
+        assertTrue(store.contentEpoch() > epoch)
+        assertEquals(latest.getString("id"), store.memoriesFor(scope).getJSONObject(0).getString("id"))
     }
 
     @Test fun forgetSuppressesHistoryAndCanBeExplicitlyRestored() {
@@ -109,6 +113,7 @@ class LifePersistenceTest {
 
     @Test fun structuredMeaningfulEventsAreGroundedDeduplicatedAndCannotInventCompletion() {
         val s = source("fixture experience")
+        module.onEvent(ModuleEvent("conversation.message", scope, s.getString("id"), JSONObject()))
         val event = ModuleEvent("conversation.message", scope, s.getString("id"), JSONObject().put("meaningful", true).put("memory", JSONObject().put("text", "fixture experience").put("kind", "event")))
         module.onEvent(event); module.onEvent(event)
         assertEquals(1, store.list("memory", scope).length())
@@ -119,7 +124,7 @@ class LifePersistenceTest {
         assertTrue(store.list("diary", scope).getJSONObject(0).getString("text").startsWith("我"))
     }
 
-    @Test fun twoDatabaseConnectionsCannotOversubscribeActivityAndRestartKeepsUnknownHold() {
+    @Test fun twoDatabaseConnectionsCannotOversubscribeActivityOrSpendOwnerQuota() {
         action("budget.configure", JSONObject().put("unit", "calls").put("currency", "").put("ownerLimit", 10).put("activityLimit", 20).put("warningRemaining", 2).put("allowUnknownPrice", true).put("unknownPriceCeiling", 1))
         val secondStore = CompanionStore(context, dbName); val second = LifeModule(context, secondStore, ports)
         val accepted = AtomicInteger(); val start = CountDownLatch(1); val pool = Executors.newFixedThreadPool(4)
@@ -146,6 +151,31 @@ class LifePersistenceTest {
         assertEquals(saved.getString("id"), result.getJSONObject(0).getString("id"))
         assertEquals("approved summary", result.getJSONObject(0).getString("summary"))
         assertFalse(result.toString().contains("private fixture")); assertFalse(result.getJSONObject(0).has("sourceRefs"))
+    }
+
+    @Test fun groupFactSlotsUseStableSourceActorInsteadOfSharedDisplayName() {
+        val group = "qq:group:fixture"
+        for (actor in listOf("account-a", "account-b")) {
+            val source = store.put("message", JSONObject().put("scope", group).put("role", "user").put("text", actor + " fixture")
+                .put("actorId", actor).put("displayName", "same-name").put("createdAt", System.currentTimeMillis()))
+            store.saveMemory(group, JSONObject().put("text", actor + " fact").put("sourceId", source.getString("id")).put("factKey", "preference"), true)
+        }
+        val records = store.memoriesFor(group)
+        assertEquals(2, records.length())
+        assertNotEquals(records.getJSONObject(0).getString("factKey"), records.getJSONObject(1).getString("factKey"))
+    }
+
+    @Test fun discardedOrdinaryMediaKeepsGroundedSummaryAndMarksMissingSource() {
+        val observation = store.put("observation", JSONObject().put("scope", scope).put("temporary", true)
+            .put("analysis", "synthetic observed summary").put("createdAt", System.currentTimeMillis()))
+        module.onEvent(ModuleEvent("observation.summary", scope, observation.getString("id"), JSONObject().put("meaningful", true)))
+        assertEquals(1, store.memoriesFor(scope).length())
+        store.clearTemporaryObservations()
+        assertTrue(store.memoriesFor(scope).getJSONObject(0).getBoolean("evidenceMissing"))
+        val diary = action("diary.list").getJSONArray("items")
+        assertEquals(1, diary.length()); assertTrue(diary.getJSONObject(0).getBoolean("evidenceMissing"))
+        action("diary.correct", JSONObject().put("id", diary.getJSONObject(0).getString("id")).put("text", "我纠正了这条保留的记录。").put("expectedRevision", 1))
+        assertEquals("我纠正了这条保留的记录。", action("diary.list").getJSONArray("items").getJSONObject(0).getString("text"))
     }
 
     @Test fun versionOneSchemaMigratesWithoutLosingContent() {

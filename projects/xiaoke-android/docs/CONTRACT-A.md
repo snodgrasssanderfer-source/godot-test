@@ -63,7 +63,7 @@ Engine 用 `store.contextSnapshot(scope, query)` 一次取得 `epoch/messages/me
 - 只读参考 [Graphiti 删除实现](https://github.com/getzep/graphiti/blob/72b5c59c06607e09ea855be61b6ff5a3446fc951/graphiti_core/graphiti.py#L2174)，Apache-2.0：独立实现同步删除闭包与代际屏蔽，未复制或安装其代码。
 - 只读参考 [LiteLLM 预算预留](https://github.com/BerriAI/litellm/blob/b7da9a275581ccec82538428dfd0b84bbc4fb6fc/litellm/proxy/spend_tracking/budget_reservation.py#L231)，该路径 MIT：独立实现端侧整数预留与未知费用保留，未复制或安装框架。
 
-当前：原生 LifeModule/存储/预算/删除/备份已实现，22 项核心 JVM 测试通过；原生源码编译通过。独立 LifePanel 已实现，前端类型及交互验证进行中。Android SQLite 集成测试源码已补充但本执行器未运行；尚未声明 APK 构建、模拟器、真机或真实模型调用通过。
+当前：原生 LifeModule/存储/预算/删除/备份已实现，24 项新核心 JVM 测试及 14 项原陪伴回归通过（合计 38）；原生源码编译通过。独立 LifePanel 已实现，10 项交互测试、TypeScript 类型检查与模块 ESLint 通过。11 项 Android SQLite 集成测试源码已补充并编译，但本执行器未运行；尚未声明 APK 构建、模拟器、真机或真实模型调用通过。
 
 ## 主线可立即使用的接线结果
 
@@ -75,3 +75,38 @@ Engine 用 `store.contextSnapshot(scope, query)` 一次取得 `epoch/messages/me
 - 本轮不包含独立语义抽取模型。沿用已有 remember 工具，并接收明确有来源、标记 meaningful 的事件自动保存；所有自动总结标为 unverified 或 inference。
 - 共享概要须由主人填 `shareSummary` 和 `shareWithScopes:[明确会话或"*"]`。跨会话检索只返回 `{id,summary}`；没有授权概要时返回空数组。
 - UI 入口可导入 `LifePanel` 并传 `{state: snapshot.modules.life, run:(action,data)=>command("module",{domain:"life",action,data}), available:nativeCompanion}`。主线需在动作完成及 moduleState 通知后刷新快照。
+
+## 最终接线补充
+
+- `docs/INTEGRATION-A.patch` 是针对固定基线的 UI/共享快照接线提案，已做 `git apply --check`；没有直接修改主线文件。它替换旧记忆页，避免旧页面仍显示“删除后原消息保留”的错误提示。`LifePanel.saveFile(name, encryptedText)` 接已有 `saveDocument` 系统文件保存；用户取消时不得提示已导出。原生模块路由、模型队列、权限入口仍由主集成接线。
+- `contextSnapshot` 默认提供最近 60 条未抑制消息；可显式把 `historyLimit` 设为 1–1000。完整历史仍在库中。模型 `recall` 若增添更早来源，宿主须把实际返回记录的 `{kind,id,scope}` 加入本次 ticket.sourceRefs，然后继续在同一 epoch 下处理工具结果。
+- 在每次继续发模型请求、发布流式文字、保存 partialText/最终回复和外发前核对 epoch。保存派生结果需使用带来源数组的 `commitContext` 重载；只有 `commitContext(epoch)` 的旧重载保留兼容，不能单独提供完整派生删除保证。
+- `life.contentChanged` 的删除事件携带 `deleted:[{kind,id,scope}]`；墓碑永久保存在本地，可从 `store.tombstones()` 获取。主线应把删除元数据交给 C 的加密同步 outbox。此模块没有声称离线设备已收到删除、已发平台内容已撤回或第三方提供者已清除其副本。
+- 对没有上下文来源标记的旧版助手回复/含正文任务，自最早被删或忘掉的来源时间起在相同 scope 保守清理/抑制，以免旧摘要继续泄漏。新回复使用 contextEpoch 与完整来源关系。不同 scope 的独立记录不会因此清空。
+- 临时媒体过期后，记忆/日记保留已产生的有来源摘要，并返回 `evidenceMissing=true`。UI 明示来源不可用；模型遇到该标记应说明只剩记录，不虚构缺失经历。
+- 群聊自动事实槽有稳定来源 actorId 时按 actor 隔离；没有可靠 actorId 时不根据昵称合并事实。主人身份仍只信任宿主的 CommandPrincipal。
+- 数据库沿用原生 SQLite，未引入 SQLCipher；备份沿用 AES-256-GCM 与 PBKDF2，新增内容、修订、墓碑与预算均包含在加密载荷中。未声称完整数据库静态加密。加密导出目前限制明文 11 MiB，超限报错，不截断导出。
+- mem0 许可证与声明沿用已有 `source/third-party/mem0-Apache-2.0.txt`、`source/docs/COMMUNITY_REUSE.md`，基线已将完整许可打包为 APK legal asset。没有新增框架运行依赖。
+
+历史备份边界：保留口令的旧备份文件仍可在应用外解密；本轮没有逐备份密钥撤销机制。墓碑只保证已有墓碑或导入最新墓碑的恢复路径不复活内容。全新设备仅持有删除之前的旧备份时，必须先取得最新删除记录；不能声称它已知晓未来的删除。
+
+
+## 可直接核对的状态示例
+
+下例是合成接口样例：主人通道一次未知价格调用已发送、随后断网；未凭空退款。状态数字为 calls 单位，实际实现返回额外说明字段。
+
+    {
+      "configured": true, "unit": "calls", "currency": "",
+      "owner": {"limit":80,"spent":0,"held":1,"remaining":79,"unknownRequests":1,"overrun":false},
+      "activity": {"limit":20,"spent":0,"held":0,"remaining":20,"unknownRequests":0,"overrun":false},
+      "warningRemaining":2,"stopActivity":false,"stopOwner":false,
+      "unknownPrice":{"allowed":true,"ceiling":1},"monetaryGuarantee":false
+    }
+
+对应预留的 state 为 outcome_unknown。之后 budget.settle 的 actualKnown=true、actual=1 才把 held 从 1 改为 0、spent 从 0 改为 1，remaining 仍为 79。不能在 HTTP 发送之后用 release 腾出这一次调用额度。
+
+注意力示例：
+
+    {"mode":"quiet","until":0,"maxBackgroundTasks":2,"mayInterruptOrdinary":false,"expired":false,"pendingEvents":[]}
+
+查看最终验证、接线顺序及明确未运行项：[VALIDATION-A.md](VALIDATION-A.md)。
