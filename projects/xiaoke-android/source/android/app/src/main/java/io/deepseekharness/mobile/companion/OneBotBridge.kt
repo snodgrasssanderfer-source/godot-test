@@ -27,6 +27,8 @@ class OneBotBridge private constructor(private val context: Context) {
     private val media = OneBotMedia()
     private data class Pending(val latch: CountDownLatch = CountDownLatch(1), var response: JSONObject? = null)
     private val pending = ConcurrentHashMap<String, Pending>()
+    @Volatile private var moduleListener: ((String, JSONObject) -> Unit)? = null
+    fun setModuleListener(listener: ((String, JSONObject) -> Unit)?) { moduleListener = listener }
     fun state() = JSONObject().put("connected", verified).put("status", status)
         .put("tokenConfigured", CompanionSecrets(context, "onebot").configured())
     @Synchronized fun ensureStarted() { if (socket == null) runCatching { start() }.onFailure { status = "配置不完整，请重新连接" } }
@@ -69,6 +71,18 @@ class OneBotBridge private constructor(private val context: Context) {
                     }
                     pending.remove(echo)?.let { it.response = value; it.latch.countDown(); return }
                     if (!verified || engine.store.settings().optBoolean("paused")) return
+                    if (value.optString("post_type") == "request" && value.optString("self_id") == account) {
+                        val kind = value.optString("request_type")
+                        if (kind !in setOf("friend", "group")) return
+                        val target = OneBotProtocol.numeric(value.optString(if (kind == "group") "group_id" else "user_id"))
+                        val flag = value.optString("flag"); if (flag.isBlank() || flag.length > 512) return
+                        val event = JSONObject().put("id", "qqreq-" + CompanionPolicy.digest("$account\u0000$kind\u0000$target\u0000$flag"))
+                            .put("scope", "qq:${if (kind == "group") "group" else "private"}:${CompanionPolicy.digest("onebot\u0000$account\u0000$target").take(40)}")
+                            .put("account", account).put("targetId", target).put("requestType", kind).put("flag", flag)
+                        try { receiveWorker.execute { if (gen == generation) moduleListener?.invoke("social.request", event) } }
+                        catch (_: java.util.concurrent.RejectedExecutionException) { status = "请求接收繁忙，请稍后查看平台" }
+                        return
+                    }
                     val address = OneBotProtocol.address(value, account) ?: return
                     val scope = address.getString("scope")
                     val store = engine.store
@@ -110,25 +124,31 @@ class OneBotBridge private constructor(private val context: Context) {
     private fun receiveEvent(gen: Int, event: JSONObject) {
         val store = engine.store
         val scope = event.getString("scope")
-        fun allowed(images: Boolean = false): Boolean {
+        fun allowed(kind: String = ""): Boolean {
             val settings = store.settings()
             val c = store.get("conversation", scope) ?: return false
             return gen == generation && verified && settings.optBoolean("oneBotEnabled") && settings.optBoolean("networkEnabled") &&
-                !settings.optBoolean("paused") && c.optBoolean("captureEnabled") && (!images || c.optBoolean("allowImages"))
+                !settings.optBoolean("paused") && c.optBoolean("captureEnabled") && when (kind) {
+                    "image", "mface" -> c.optBoolean("allowImages")
+                    "record" -> c.optBoolean("allowAudio")
+                    "video" -> c.optBoolean("allowVideo")
+                    else -> true
+                }
         }
         if (!allowed()) return
-        val images = event.optJSONArray("images") ?: JSONArray()
-        val (parts, read) = if (allowed(true)) media.fetch(images) { allowed(true) } else JSONArray() to 0
+        val attachments = event.optJSONArray("attachments") ?: JSONArray()
+        val (parts, read) = media.fetchSegments(attachments, ::allowed)
         if (!allowed()) return
+        moduleListener?.invoke("conversation.message", JSONObject(event.toString()))
         var observationId = ""
         synchronized(store) {
-            if (read > 0 && allowed(true)) observationId = store.put("observation", JSONObject().put("scope", scope)
-                .put("source", "OneBot 消息 ${event.getString("id")} 的图片")
-                .put("coverage", "已读取 $read 张图片（最多处理前三张）；未读取的附件不能描述")
+            if (read > 0 && allowed()) observationId = store.put("observation", JSONObject().put("scope", scope).put("temporary", true)
+                .put("source", "OneBot 消息 ${event.getString("id")} 的媒体").put("sourceIds", JSONArray().put(event.getString("id")))
+                .put("coverage", "已读取 $read 个媒体片段（每条消息最多三个）；还未取得模型理解结果，未读取附件不能描述")
                 .put("createdAt", System.currentTimeMillis()).put("analyzed", false).put("parts", parts)).getString("id")
         }
         val c = store.get("conversation", scope) ?: return
-        val summary = if (images.length() > 0) " [已读取 $read 张图片；其余未读取]" else ""
+        val summary = if (attachments.length() > 0) " [已读取 $read 个媒体片段；其余未读取，具体格式可能不受支持]" else ""
         CompanionRouting.receive(context, c, "${event.optString("sender")}（${event.getString("senderId")}）：${event.getString("text")}$summary",
             "OneBot 消息 ${event.getString("id")}", event.optBoolean("mentioned"), event.getString("senderId"), observationId)
     }
@@ -138,6 +158,20 @@ class OneBotBridge private constructor(private val context: Context) {
         pending.values.forEach { it.latch.countDown() }; pending.clear()
         val delay = (5000L shl failures.coerceAtMost(4)); failures++
         handler.postDelayed({ if (gen == generation) runCatching { start() } }, delay)
+    }
+    /** Module-owned durable ledger must claim a write before calling. No automatic retry here. */
+    fun callAction(account: String, action: String, params: JSONObject): JSONObject {
+        check(action in setOf("send_msg", "send_qzone_msg", "comment_qzone_public_feed", "set_friend_add_request", "set_group_add_request", "set_group_leave", "get_qzone_public_feeds", "get_forward_msg")) { "不支持的桥动作" }
+        val settings = engine.store.settings()
+        check(verified && settings.optBoolean("oneBotEnabled") && settings.optBoolean("networkEnabled") && !settings.optBoolean("paused")) { "消息桥未连接" }
+        check(OneBotProtocol.numeric(account) == settings.optString("oneBotAccount")) { "桥接账号已变化" }
+        val echo = CompanionPolicy.id(); val wait = Pending(); val gen = generation
+        pending[echo] = wait
+        try {
+            check(socket?.send(JSONObject().put("action", action).put("params", params).put("echo", echo).toString()) == true) { "桥未接受请求" }
+            check(wait.latch.await(15, TimeUnit.SECONDS) && gen == generation) { "桥响应未确认" }
+            return wait.response ?: error("桥响应未确认")
+        } finally { pending.remove(echo) }
     }
     fun send(task: JSONObject): JSONObject {
         val store = engine.store
