@@ -4,6 +4,8 @@ import android.content.Context
 import io.deepseekharness.mobile.companion.CompanionSecrets
 import io.deepseekharness.mobile.companion.CompanionStore
 import io.deepseekharness.mobile.companion.OneBotBridge
+import io.deepseekharness.mobile.companion.QqNotificationBridge
+import io.deepseekharness.mobile.companion.CompanionPolicy
 import io.deepseekharness.mobile.companion.iteration.CommandPrincipal
 import io.deepseekharness.mobile.companion.iteration.HostPorts
 import io.deepseekharness.mobile.companion.iteration.ModuleEndpoint
@@ -32,23 +34,37 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
                 conversation.optString("targetId") == action.optString("target") && conversation.optString("targetType") == action.getJSONObject("payload").optString("targetType") &&
                 conversation.optBoolean("captureEnabled") && conversation.optString("route") == "onebot" && conversation.optBoolean("reliable")
         } else true
-    })
+    }, networkAllowed = { store.settings().optBoolean("networkEnabled") && !store.settings().optBoolean("paused") })
     private val timer = Executors.newSingleThreadScheduledExecutor { runnable -> Thread(runnable, "xiaoke-social-background").apply { isDaemon = true } }
+    private val syncWorker = Executors.newSingleThreadScheduledExecutor { runnable -> Thread(runnable, "xiaoke-event-sync").apply { isDaemon = true } }
     @Volatile private var lastError = ""
     @Volatile private var syncClient: SocialSync? = null
+    @Volatile private var syncTransport: HttpsSyncTransport? = null
+    @Volatile private var closing = false
     private val syncing = AtomicBoolean(false)
     init {
+        val legacyGate: (JSONObject) -> Boolean = { task ->
+            val current = store.get("task", task.optString("id"))
+            if (current == null || !CompanionPolicy.canSend(current, System.currentTimeMillis()) || CompanionPolicy.draftDigest(task) != CompanionPolicy.draftDigest(current)) false
+            else {
+                // Authority is derived only from the native store's exact, unexpired owner grant.
+                val principal = if (current.optBoolean("automaticGrant")) CommandPrincipal("companion", "background", current.getString("scope"), false)
+                    else CommandPrincipal("owner", "owner_ui", "owner:local", true)
+                ports.authorizeEffect(JSONObject().put("type", "social_send").put("target", current.getString("target"))
+                    .put("scope", current.getString("scope")).put("contentDigest", CompanionPolicy.draftDigest(current)).put("requestId", current.getString("id")), principal).optBoolean("allowed")
+            }
+        }
+        bridge.setEffectGate(legacyGate); QqNotificationBridge.setEffectGate(legacyGate)
         bridge.setModuleListener { type, event ->
             runCatching {
-                onEvent(ModuleEvent(type, event.getString("scope"), event.getString("id"), event))
-                val evidence = copy(event)
-                objects(evidence.optJSONArray("attachments") ?: JSONArray()).forEach { it.remove("url"); if (it.optString("kind") != "forward") it.remove("platformId") }
-                evidence.remove("images")
-                ports.emit("social.event", JSONObject().put("type", type).put("scope", event.getString("scope")).put("sourceId", event.getString("id")).put("data", evidence))
+                runtime.onEvent(ModuleEvent(type, event.getString("scope"), event.getString("id"), event), notifyHost = true)
             }
                 .onFailure { lastError = "部分社交事件未入账，请检查本机存储" }
         }
         timer.scheduleWithFixedDelay({ runCatching { runtime.tick() }.onFailure { lastError = "后台处理暂未完成，请查看任务状态" } }, 1, 5, TimeUnit.SECONDS)
+        syncWorker.scheduleWithFixedDelay({
+            if (canSync()) runCatching { runSync() }
+        }, 15, 60, TimeUnit.SECONDS)
     }
     override fun snapshot(principal: CommandPrincipal): JSONObject = runtime.snapshot(principal).also {
         it.getJSONObject("service").put("error", lastError)
@@ -62,18 +78,7 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
         "sync.configure" -> configureSync(data, principal)
         "sync.run" -> {
             SocialRules.owner(principal)
-            check(syncing.compareAndSet(false, true)) { "同步正在执行" }
-            try {
-            check(store.settings().optBoolean("networkEnabled")) { "请先开启联网" }
-            val config = ledger.read { rows(it, "sync") }
-            check(config.optBoolean("enabled") && syncToken.configured() && syncKey.configured()) { "请先完成同步配对" }
-            val client = synchronized(this) {
-                syncClient ?: SocialSync(runtime, SyncCipher(SyncCipher.decodeKey(syncKey.read())), HttpsSyncTransport(config.getString("endpoint"), syncToken::read)) {
-                    ledger.read { rows(it, "sync").optBoolean("enabled") } && store.settings().optBoolean("networkEnabled")
-                }.also { syncClient = it }
-            }
-            client.run().also { ports.emit("moduleState", JSONObject().put("domain", domain)) }
-            } finally { syncing.set(false) }
+            runSync()
         }
         "media.import" -> importMedia(data, principal)
         "social.conversationMedia" -> {
@@ -111,14 +116,15 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
             check(result.optInt("retcode", -1) == 0 && result.optString("status") == "ok") { "转发记录已过期或不可读" }
             val segments = JSONArray().put(JSONObject().put("type", "forward").put("data", JSONObject().put("content", result.getJSONObject("data").getJSONArray("messages"))))
             val parsed = OneBotSegments.parse(segments, conversation.getString("account"))
-            onEvent(ModuleEvent("conversation.message", scope, "forward-" + hash(source.getString("id") + forwardId), parsed.put("sourceIds", JSONArray().put(source.getString("sourceId")))))
+            runtime.onEvent(ModuleEvent("conversation.message", scope, "forward-" + hash(source.getString("id") + forwardId), parsed.put("sourceIds", JSONArray().put(source.getString("sourceId")))), notifyHost = true)
             parsed
         }
         else -> runtime.execute(action, data, principal)
     }
     private fun configureSync(data: JSONObject, principal: CommandPrincipal): JSONObject {
         SocialRules.owner(principal)
-        check(!syncing.get()) { "同步正在执行，请结束后再修改配对配置" }
+        check(!syncing.get() || !data.getBoolean("enabled")) { "同步正在执行，请结束后再修改配对配置" }
+        if (!data.getBoolean("enabled")) syncTransport?.cancel()
         val previous = ledger.read { rows(it, "sync") }
         val enabled = data.getBoolean("enabled")
         val endpoint = data.optString("endpoint", previous.optString("endpoint"))
@@ -142,8 +148,25 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
             if (syncKey.configured()) sync.put("vault", hash(syncKey.read()).take(32))
             copy(sync)
         }
-        synchronized(this) { syncClient = null }
+        synchronized(this) { syncClient = null; syncTransport = null }
         ports.emit("moduleState", JSONObject().put("domain", domain)); return result
+    }
+    private fun canSync() = !closing && ledger.read { rows(it, "sync").optBoolean("enabled") } &&
+        store.settings().optBoolean("networkEnabled") && syncToken.configured() && syncKey.configured()
+    private fun runSync(): JSONObject {
+        check(syncing.compareAndSet(false, true)) { "同步正在执行" }
+        try {
+            check(canSync()) { "请先完成同步配对并开启联网" }
+            val config = ledger.read { rows(it, "sync") }
+            val client = synchronized(this) {
+                syncClient ?: run {
+                    val transport = HttpsSyncTransport(config.getString("endpoint"), syncToken::read)
+                    syncTransport = transport
+                    SocialSync(runtime, SyncCipher(SyncCipher.decodeKey(syncKey.read())), transport, ::canSync).also { syncClient = it }
+                }
+            }
+            return client.run()
+        } finally { syncing.set(false); ports.emit("moduleState", JSONObject().put("domain", domain)) }
     }
     private fun importMedia(data: JSONObject, principal: CommandPrincipal): JSONObject {
         SocialRules.owner(principal)
@@ -162,13 +185,17 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
             ports.emit("moduleState", JSONObject().put("domain", domain)); return result
         } catch (error: Throwable) { vault.delete(blobId); throw error }
     }
-    override fun onEvent(event: ModuleEvent) = runtime.onEvent(event)
+    override fun onEvent(event: ModuleEvent) {
+        runtime.onEvent(event)
+        if (event.type == "connectivity.changed" && event.data.optBoolean("online") && canSync()) syncWorker.execute { runCatching { runSync() } }
+    }
     /** A can call before encrypted backup; no raw secret or approval grants are returned. */
     fun exportBackup(): JSONObject = ledger.exportEncryptedInput().also { root ->
-        values(rows(root, "actions")).forEach { it.remove("grant"); if (it.optString("state") == "approved") it.put("state", "pending") }
+        values(rows(root, "actions")).forEach { it.remove("grant"); it.remove("grantPrincipal"); if (it.optString("state") == "approved") it.put("state", "pending") }
         root.remove("sync"); root.remove("sealed")
         // Blob bytes are not silently included. The owner can reimport explicit assets on another device.
         values(rows(root, "media")).forEach { it.remove("blobId"); it.put("status", "bytes_not_in_backup") }
     }
-    override fun close() { timer.shutdownNow(); bridge.setModuleListener(null); runtime.close() }
+    fun restoreBackup(data: JSONObject, principal: CommandPrincipal): JSONObject = runtime.restoreBackup(data, principal)
+    override fun close() { closing = true; timer.shutdownNow(); syncWorker.shutdownNow(); syncTransport?.cancel(); bridge.setModuleListener(null); bridge.setEffectGate(null); QqNotificationBridge.setEffectGate(null); runtime.close() }
 }

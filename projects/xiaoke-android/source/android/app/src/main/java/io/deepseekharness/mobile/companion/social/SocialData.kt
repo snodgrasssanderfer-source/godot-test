@@ -32,6 +32,7 @@ class SocialLedger(initial: JSONObject = JSONObject(), private val persist: (JSO
     @Synchronized internal fun <T> change(block: (JSONObject) -> T): T {
         val next = copy(data)
         val result = block(next)
+        if (canonical(next) == canonical(data)) return result
         persist(copy(next))
         data = copy(next)
         return result
