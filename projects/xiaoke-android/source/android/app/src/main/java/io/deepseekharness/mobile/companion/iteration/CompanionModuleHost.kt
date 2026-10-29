@@ -8,13 +8,17 @@ import io.deepseekharness.mobile.companion.CompanionEngine
 import io.deepseekharness.mobile.companion.CompanionPolicy
 import io.deepseekharness.mobile.companion.CompanionStore
 import org.json.JSONObject
+import org.json.JSONArray
 
 /** Process-wide bridge; no Activity or WebView ownership of durable modules. */
 class CompanionModuleHost(context: Context, private val engine: CompanionEngine, private val store: CompanionStore) : HostPorts {
     val router = ModuleRouter()
     private val eventWorker = java.util.concurrent.Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "companion-events").apply { isDaemon = true } }
     private val seenEvents = linkedSetOf<String>()
+    private val lastContentEpoch = java.util.concurrent.atomic.AtomicLong(-1)
+    private val activityBudgetWarned = java.util.concurrent.atomic.AtomicBoolean(false)
     val localOwner = CommandPrincipal("local-device-owner", "owner_ui", CompanionPolicy.OWNER, true)
+    val life = io.deepseekharness.mobile.companion.life.LifeModule(context, store, this)
     val device = io.deepseekharness.mobile.companion.devicev2.DeviceModule(context, this)
     val social = io.deepseekharness.mobile.companion.social.SocialModule(context, store, this)
     private val connectivity = context.getSystemService(ConnectivityManager::class.java)
@@ -24,9 +28,10 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
         override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) { refreshConnectivity() }
     }
     init {
-        router.register(device); router.register(social)
+        router.register(life); router.register(device); router.register(social)
         connectivity.registerDefaultNetworkCallback(connectionWatcher)
         refreshConnectivity()
+        contentChanged()
     }
     fun refreshConnectivity() {
         eventWorker.execute {
@@ -50,8 +55,30 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
         val channel = if (owner) "owner_qq" else if (scope.startsWith("qq:group:")) "group_qq" else "friend_qq"
         return CommandPrincipal(if (verified) conversation!!.optString("targetId") else "unresolved", channel, scope, owner)
     }
+    /** Also called by legacy content-management paths, so deletion reaches every output cache. */
+    fun contentChanged() {
+        val epoch = store.contentEpoch()
+        if (lastContentEpoch.getAndSet(epoch) == epoch) return
+        engine.contextChanged(epoch)
+        val deleted = store.tombstones()
+        val ids = JSONArray()
+        for (i in 0 until deleted.length()) ids.put(deleted.getJSONObject(i).getString("id"))
+        // Cancellation and deletion propagation must precede a later outgoing platform claim.
+        router.event(ModuleEvent("data.deleted", CompanionPolicy.OWNER, "content-$epoch", JSONObject().put("sourceIds", ids).put("contentEpoch", epoch)))
+    }
     override fun emit(topic: String, payload: JSONObject) {
         router.signal(payload.optString("domain", "all"), topic)
+        if (topic == "life.contentChanged") { contentChanged(); return }
+        if (topic == "budget.changed") {
+            val stopped = payload.optBoolean("configured") && payload.optBoolean("stopActivity")
+            if (stopped && !activityBudgetWarned.getAndSet(true)) store.message(CompanionPolicy.OWNER, "notice", "活动额度已接近或达到停止线，后续收费活动不会开始。主人交流额度独立；已预留请求按真实结果核账。", "本机预算账本")
+            if (!stopped) activityBudgetWarned.set(false)
+            return
+        }
+        if (topic == "social.reminder" || topic == "social.job.completed") {
+            recordJobOutcome(topic, JSONObject(payload.toString()))
+            return
+        }
         val eventTopic = when (topic) {
             "experience", "social.event" -> payload.optString("type")
             "data.deleted", "action.completed", "control.stopped", "observation.summary", "connectivity.changed" -> topic
@@ -62,6 +89,15 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
         val source = payload.getString("sourceId")
         require(type.matches(Regex("[a-z][a-zA-Z0-9.]{0,79}")) && source.length in 1..160)
         val event = ModuleEvent(type, scope, source, JSONObject((payload.optJSONObject("data") ?: JSONObject()).toString()))
+        if (type == "data.deleted") { applyDeletion(event.data); return }
+        if (type == "action.completed" && event.data.optString("state") == "completed" && store.get("task", source) == null && !store.isDeleted("task", source)) {
+            store.put("task", JSONObject().put("id", source).put("scope", scope).put("type", "device_input").put("state", "done")
+                .put("progress", "系统确认完成本次已授权手势；游戏内目标结果尚待后续观察").put("deviceReceipt", event.data))
+        }
+        if (topic == "social.event" && payload.optBoolean("replayed")) {
+            acceptSynchronizedFact(event)
+            return // Sync transfers facts only, never replays a model request or external action.
+        }
         eventWorker.execute {
             val dedup = "$type\u0000$scope\u0000$source\u0000${CompanionPolicy.digest(event.data.toString())}"
             if (seenEvents.add(dedup)) {
@@ -69,6 +105,71 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
                 router.event(event)
             }
         }
+    }
+    fun applyDeletion(data: JSONObject) {
+        val raw = data.optJSONArray("sourceIds") ?: JSONArray()
+        val incoming = data.optJSONArray("sourceHashes") ?: JSONArray()
+        val saved = store.lifeState("socialDeletionHashes").optJSONArray("hashes") ?: JSONArray()
+        val hashes = linkedSetOf<String>()
+        for (array in listOf(saved, incoming)) for (i in 0 until array.length()) {
+            val hash = array.getString(i); require(hash.matches(Regex("[a-f0-9]{64}"))); hashes.add(hash)
+        }
+        for (i in 0 until raw.length()) hashes.add(CompanionPolicy.digest(raw.getString(i)))
+        store.lifeTransaction {
+            store.saveLifeState("socialDeletionHashes", JSONObject().put("hashes", JSONArray(hashes.toList())))
+            val roots = store.contentRecords().filter { (_, value) -> CompanionPolicy.digest(value.getString("id")) in hashes ||
+                value.optString("syncSourceId").takeIf { it.isNotBlank() }?.let { CompanionPolicy.digest(it) in hashes } == true }
+                .map { (kind, value) -> io.deepseekharness.mobile.companion.life.LifePolicy.reference(kind, value) }.toSet()
+            if (roots.isNotEmpty()) store.deleteContent(roots)
+        }
+        contentChanged()
+    }
+    private fun acceptSynchronizedFact(event: ModuleEvent) {
+        if (event.type !in setOf("conversation.message", "model.completed", "observation.summary")) return
+        val id = "synced-" + CompanionPolicy.digest(event.type + "\u0000" + event.scope + "\u0000" + event.sourceId)
+        val deletedHashes = store.lifeState("socialDeletionHashes").optJSONArray("hashes") ?: JSONArray()
+        if ((0 until deletedHashes.length()).any { deletedHashes.getString(it) == CompanionPolicy.digest(event.sourceId) }) return
+        if (store.get("message", id) != null || store.get("observation", id) != null || store.isDeleted("message", id) || store.isDeleted("observation", id)) return
+        if (event.type == "observation.summary") {
+            val summary = event.data.optString("summary", event.data.optString("text")).take(24000)
+            if (summary.isBlank()) return
+            store.put("observation", JSONObject().put("id", id).put("scope", event.scope).put("syncSourceId", event.sourceId)
+                .put("summary", summary).put("analysis", summary).put("analyzed", true).put("source", "已配对设备的经历概要")
+                .put("coverage", "同步的文字概要，不包含原始视听资料").put("createdAt", event.data.optLong("createdAt", System.currentTimeMillis())))
+            life.onEvent(ModuleEvent("observation.summary", event.scope, id, JSONObject().put("meaningful", true)))
+        } else {
+            val text = event.data.optString("text").take(128000)
+            if (text.isBlank()) return
+            val role = event.data.optString("role", if (event.type == "model.completed") "assistant" else "user").takeIf { it in setOf("user", "assistant", "notice") } ?: "notice"
+            store.put("message", JSONObject().put("id", id).put("scope", event.scope).put("syncSourceId", event.sourceId)
+                .put("role", role).put("text", text).put("source", "已配对设备同步的可见交流")
+                .put("createdAt", event.data.optLong("createdAt", System.currentTimeMillis())))
+        }
+        router.signal("all", "sync.fact")
+    }
+    private fun recordJobOutcome(topic: String, payload: JSONObject) {
+        val id = payload.optString("id")
+        if (id.isBlank()) return
+        val scope = CompanionPolicy.scope(payload.optString("scope", CompanionPolicy.OWNER))
+        val existing = store.get("task", id)
+        if (existing?.optString("state") == "done" || store.isDeleted("task", id)) return
+        val reminder = topic == "social.reminder"
+        val state = if (reminder || payload.optString("state") == "done") "done" else "failed"
+        val text = (if (reminder) payload.optString("text") else payload.optString("result", payload.optString("error"))).take(24000)
+        val refs = JSONArray()
+        val ids = payload.optJSONArray("sourceIds") ?: JSONArray()
+        for (i in 0 until ids.length()) {
+            val source = store.get("message", ids.getString(i)) ?: continue
+            if (source.optString("scope") == scope) refs.put(JSONObject().put("kind", "message").put("id", source.getString("id")).put("scope", scope))
+        }
+        val task = store.put("task", JSONObject().put("id", id).put("scope", scope).put("type", if (reminder) "reminder" else "summary")
+            .put("state", state).put("progress", text).put("sourceRefs", refs))
+        if (state == "done") router.event(ModuleEvent("action.completed", scope, id, task))
+        val attention = life.execute("attention.status", JSONObject(), localOwner)
+        if (reminder && scope == CompanionPolicy.OWNER && attention.optBoolean("mayInterruptOrdinary")) {
+            store.message(scope, "notice", "提醒：$text", "已到期的本机提醒")
+        }
+        router.signal("all", "job.outcome")
     }
     override fun requestModel(request: JSONObject, onEvent: (JSONObject) -> Unit): String = engine.enqueueModuleRequest(request, onEvent)
     override fun cancelModel(requestId: String) = engine.cancelModuleRequest(requestId)
@@ -80,7 +181,9 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
         val settings = store.settings()
         fun decision(allowed: Boolean, reason: String = "") = JSONObject().put("allowed", allowed).put("reason", reason)
         if (target.isBlank()) return decision(false, "缺少明确目标")
-        if (effect.optString("scope", principal.scope) != principal.scope) return decision(false, "请求会话与可信身份不符")
+        val localOwnerGrant = principal.owner && principal.channel == "owner_ui" && principal.scope == CompanionPolicy.OWNER
+        if (!localOwnerGrant && principal.channel != "background" && effect.optString("scope", principal.scope) != principal.scope)
+            return decision(false, "请求会话与可信身份不符")
         if (type in setOf("phone_input", "camera")) {
             if (!principal.owner) return decision(false, "只有主人可授权设备控制或摄像头")
             if (type == "camera" && principal.channel != "owner_ui") return decision(false, "摄像头需要本机明确开启")

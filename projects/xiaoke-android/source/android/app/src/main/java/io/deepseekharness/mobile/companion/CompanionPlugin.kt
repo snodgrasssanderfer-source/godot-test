@@ -93,10 +93,11 @@ class CompanionPlugin : Plugin() {
         executor.execute {
             var foregroundOperation = false
             try {
-                if (action in setOf("videoInfo", "observePublicVideo", "captureVideo", "importMedia")) {
+                if (action in setOf("videoInfo", "observePublicVideo", "captureVideo", "importMedia", "startGameCompanion")) {
                     CompanionService.beginOperation(context); foregroundOperation = true
                 }
                 val store = engine.store
+                val epochBefore = store.contentEpoch()
                 val result: Any = when (action) {
                     "module" -> {
                         val domain = data.getString("domain")
@@ -106,7 +107,11 @@ class CompanionPlugin : Plugin() {
                         }
                         val payload = data.optJSONObject("data") ?: JSONObject()
                         if (domain == "social" && moduleAction == "jobs.create" && payload.optString("kind") == "summary" && payload.optString("condition").isBlank()) payload.put("condition", "online")
-                        engine.modules.router.execute(domain, moduleAction, payload, engine.modules.localOwner)
+                        when {
+                            domain == "life" && moduleAction == "backup.export" -> io.deepseekharness.mobile.companion.iteration.CompanionBackupCoordinator(context, engine).export(payload.getString("password"))
+                            domain == "life" && moduleAction == "backup.restore" -> io.deepseekharness.mobile.companion.iteration.CompanionBackupCoordinator(context, engine).restore(payload.getString("text"), payload.getString("password"))
+                            else -> engine.modules.router.execute(domain, moduleAction, payload, engine.modules.localOwner)
+                        }
                     }
                     "settings" -> {
                         val previous = store.settings()
@@ -143,7 +148,7 @@ class CompanionPlugin : Plugin() {
                     "maintainMemory" -> {
                         val scope = CompanionPolicy.scope(data.getString("scope"))
                         CompanionService.start(context)
-                        engine.submit(scope, "请先用 recall 查找原消息和消息 ID，再检查当前会话与已有记忆，把尚未记下、且有本会话证据的稳定偏好、关系或重要事件用 remember 保存为待确认项并提供原消息 sourceId。避免重复，不把推测、思考过程、密钥或授权当事实。不要替其他会话整理。最后简要说明新增项目与待主人确认的矛盾。", "主人在本机要求整理本会话记忆")
+                        engine.submit(scope, "请先用 recall 查找原消息和消息 ID，再检查当前会话与已有记忆，把尚未记下、且有本会话证据的稳定偏好、关系或重要事件用 remember 自主保存有来源的条目并提供原消息 sourceId。避免重复，不把推测、思考过程、密钥或授权当事实。不要替其他会话整理。最后简要说明新增项目与尚待澄清的矛盾。", "主人在本机要求整理本会话记忆")
                     }
                     "persona" -> store.savePersona(data.getString("name"), data.getString("text"), data.optString("source", "主人编辑"))
                     "saveCharacter" -> CompanionCharacterStore.save(context, data.getString("base64"), data.getString("layout"))
@@ -162,7 +167,7 @@ class CompanionPlugin : Plugin() {
                         check(observation.optBoolean("analyzed") && observation.optString("analysis").isNotBlank()) { "请先取得分析并核对内容" }
                         if (observation.optBoolean("temporary")) observation = store.saveTemporaryObservation(observation.getString("id"))
                         store.saveMemory(observation.getString("scope"), JSONObject().put("kind", "event")
-                            .put("text", observation.getString("analysis").take(8000)).put("sourceId", observation.getString("id"))
+                            .put("text", observation.getString("analysis").take(8000)).put("sourceRefs", JSONArray().put(JSONObject().put("kind", "observation").put("id", observation.getString("id")).put("scope", observation.getString("scope"))))
                             .put("source", "主人确认保存观察事件：${observation.optString("source")}；${observation.optString("coverage")}"))
                     }
                     "chat" -> {
@@ -233,6 +238,23 @@ class CompanionPlugin : Plugin() {
                         val videoId = if (task.optString("package") == "tv.danmaku.bili") task.optString("target") else ""
                         CompanionDevice(context).open(task.getString("package"), videoId)
                     }
+                    "startGameCompanion" -> {
+                        check(data.optBoolean("observe") && data.optBoolean("singlePlayer")) { "请明确确认本机单人游戏和本次画面观察" }
+                        val pkg = data.getString("packageName")
+                        check(pkg.matches(Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+")))
+                        val info = context.packageManager.getApplicationInfo(pkg, 0)
+                        check(info.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM == 0 && pkg !in setOf(context.packageName, "com.tencent.mobileqq", "tv.danmaku.bili")) { "此入口仅用于你选定的单机游戏" }
+                        check(Settings.canDrawOverlays(context)) { "请先开启浮窗权限，确保可以随时停止输入或结束观察" }
+                        val goal = CompanionPolicy.text(data.getString("goal"), 12000)
+                        val settings = store.settings()
+                        check(settings.optBoolean("networkEnabled") && !settings.optBoolean("paused") && engine.secrets.configured()) { "请先配置模型、预算并开启联网" }
+                        check(engine.modules.life.execute("budget.status", JSONObject(), engine.modules.localOwner).optBoolean("configured")) { "请先设置主人与活动额度" }
+                        AccessibilityAutomationStore.setAllowedPackages(context, (AccessibilityAutomationStore.allowedPackages(context) + pkg).toList(), data.optString("password").ifBlank { null }, true)
+                        if (data.optBoolean("control")) engine.modules.device.execute("control.start", JSONObject().put("packageName", pkg).put("singlePlayer", true).put("durationSeconds", 120), engine.modules.localOwner)
+                        else engine.modules.device.execute("control.stop", JSONObject(), engine.modules.localOwner)
+                        val capture = engine.modules.device.execute("capture.request", JSONObject().put("packageName", pkg), engine.modules.localOwner)
+                        engine.submit(CompanionPolicy.OWNER, goal, "主人开启的单机陪伴会话").put("captureJobId", capture.optString("jobId"))
+                    }
                     "launchableApps" -> {
                         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
                         JSONArray().also { out -> context.packageManager.queryIntentActivities(intent, 0).distinctBy { it.activityInfo.packageName }
@@ -296,14 +318,8 @@ class CompanionPlugin : Plugin() {
                             .let { thinObservation(it) }
                     }
                     "importMedia" -> thinObservation(CompanionDevice(context).importMedia(data.getString("mime"), data.getString("base64"), data.getString("name"), data.optString("videoId")))
-                    "backup" -> JSONObject().put("text", CompanionBackupCrypto.encrypt(store.exportData(), data.getString("password")))
-                    "restoreBackup" -> {
-                        check(engine.activeTask == null) { "请先停止正在执行的任务" }
-                        OneBotBridge.get(context).stop()
-                        context.stopService(Intent(context, CompanionOverlayService::class.java))
-                        store.restoreData(CompanionBackupCrypto.decrypt(data.getString("text"), data.getString("password")))
-                        JSONObject().put("ok", true)
-                    }
+                    "backup" -> io.deepseekharness.mobile.companion.iteration.CompanionBackupCoordinator(context, engine).export(data.getString("password"))
+                    "restoreBackup" -> io.deepseekharness.mobile.companion.iteration.CompanionBackupCoordinator(context, engine).restore(data.getString("text"), data.getString("password"))
                     "grantApps" -> AccessibilityAutomationStore.setAllowedPackages(context,
                         (AccessibilityAutomationStore.allowedPackages(context) + CompanionPolicy.packages).toList(), data.optString("password").ifEmpty { null }, true)
                     "openPermission" -> {
@@ -318,6 +334,7 @@ class CompanionPlugin : Plugin() {
                     }
                     else -> error("操作不存在")
                 }
+                if (store.contentEpoch() != epochBefore) engine.modules.contentChanged()
                 call.resolve(JSObject().put("result", result))
             } catch (e: Exception) { call.reject((e.message ?: "操作失败").take(240)) }
             finally { if (foregroundOperation) CompanionService.endOperation() }

@@ -23,7 +23,7 @@ class ModelAccounting(
         // This relay has no verified price/invoice contract. Never label a guessed token estimate known.
         val maximum = if (unit == "calls") 1L else {
             val config = status.optJSONObject("config") ?: status
-            config.optLong("unknownPriceCeiling", 0L)
+            status.optJSONObject("unknownPrice")?.optLong("ceiling", 0L) ?: config.optLong("unknownPriceCeiling", 0L)
         }
         check(maximum > 0L) { "中转价格上界未知；请选择明确的次数额度，或配置并接受保守金额预留" }
         val id = CompanionPolicy.id()
@@ -34,7 +34,8 @@ class ModelAccounting(
         current = id
         try {
             legacyRequestGuard()
-            ledger("budget.reserve", JSONObject(data.toString()).put("submitted", true))
+            val claim = ledger("budget.reserve", JSONObject(data.toString()).put("submitted", true))
+            check(claim.optBoolean("sendAuthorized")) { "此请求未取得唯一发送权，未重复发出" }
         } catch (e: Exception) {
             ledger("budget.release", JSONObject().put("requestId", id).put("reason", "请求发送前被取消"))
             current = null
