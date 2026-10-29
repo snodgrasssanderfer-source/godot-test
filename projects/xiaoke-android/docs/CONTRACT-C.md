@@ -26,10 +26,10 @@
 - `ports.requestModel({scope,lane:'activity',purpose:'social.background.summary',prompt,maxOutputTokens:2048,taskId}, callback)`；处理 queued/delta/completed/failed/cancelled，终止后迟到回调丢弃。
 - `onEvent` 接收 conversation.message、observation.summary、model.completed、connectivity.changed、data.deleted。数据删除载荷为 `{sourceIds:[...]}`；先安装删除栅栏，再清事件、动作正文、任务和媒体派生内容。事件入队只补传结果，不执行模型重试。
 - 模块发出 moduleState、social.job.completed、social.reminder、social.effect.completed、social.event。后台提醒和普通社交消息由主线注意力模块决定何时呈现，不直接抢占主人语音。
-- social.reminder/social.job.completed 的 `sourceId` 是持久通知 ID；宿主据此去重。任务已完成但宿主未接收的通知会在重启后继续交付，不重跑模型。`social.event` 载荷为 `{type,scope,sourceId,data}`，根协调器转给 life；不得再把它反射成另一条外部消息。
+- social.reminder/social.job.completed 的 `sourceId` 是持久通知 ID；宿主据此去重。任务已完成但宿主未接收的通知会在重启后继续交付，不重跑模型。`social.event` 载荷为 `{type,scope,sourceId,data,replayed?}`，根协调器转给 life；不得再把它反射成另一条外部消息。下载的历史经历标记 `replayed:true`，保留原 sourceId；不得把历史请求当新任务/发送指令。OneBot、同步及删除事件都先写入本机通知队列再交付，宿主 emit 应在事实已持久入账后返回，失败应抛出；仅向 WebView 广播并不等于入账。
 - OneBot 原生连接接收事件转发到 C；连接状态、身份与实际平台 API 调用复用既有桥。本轮不运行第三方 QQ 客户端。
 - SocialModule 初始化时为旧 OneBotBridge.send 和 QQ 通知回复安装 HostPorts 外发门禁；未构造模块或模块关闭时这两条路径拒绝发送。宿主仍须在自己所有 B站/UI 发送入口检查 public_comment/social_send，C 不改 B 组 Device 的点击实现。
-- A 的加密备份可直接调用 `social.exportBackup()`，返回不含凭据或可执行批准的原生 JSON；在 A 加密封装内写入。恢复调用 `social.restoreBackup(data, principal)`：合并、保留本地删除栅栏、取消当前任务、旧任务待恢复、旧批准失效。素材只含索引，原文件不在本轮便携备份中；恢复后标注需要重导。
+- A 的加密备份可直接调用 `social.exportBackup()`，返回不含凭据或可执行批准的原生 JSON；在 A 加密封装内写入。恢复调用 `social.restoreBackup(data, principal)`：先合并墓碑，保留本地删除栅栏，再合并未删除记录；取消当前模型请求，当前 queued/running/waiting 和导入任务都变 interrupted；当前及导入的旧批准全部失效。提交中的动作变 outcome_unknown，不再发送。素材只含索引，原文件不在本轮便携备份中；恢复后标注需要重导。
 
 ## 来源与依赖
 
@@ -41,9 +41,9 @@ NapCat 协议核对提交 https://github.com/NapNeko/NapCatQQ/tree/ba0a53dd372db
 
 已完成：持久审批、活动 lane 后台摘要、提醒与条件续接、取消/重启栅栏、受控来源删除、加密素材、AES-GCM 密文同步、回环 SQLite 接收端、SocialPanel UI、OneBot 多模态与分会话开关。
 
-已通过：26 项 Kotlin/JUnit 测试、5 项真实回环 HTTP/SQLite 测试、5 项 React UI 测试、模块 ESLint、完整前端 TypeScript/Vite 构建。Kotlin 核心测试使用项目版本 2.0.21/JUnit 4.13.2；不冒充 Android 设备执行。
+已通过：31 项 Kotlin/JUnit 测试、5 项真实回环 HTTP/SQLite 测试、5 项 React UI 测试、模块 ESLint、完整前端 TypeScript/Vite 构建。新增 5 项交付/恢复边界测试独立放在 SocialDeliveryTest，不改主线正在适配的 SocialRuntimeTest。Kotlin 核心测试使用项目版本 2.0.21/JUnit 4.13.2；不冒充 Android 设备执行。
 
-Android 原生集成编译正在补齐本环境工具链，首次完整 Gradle 配置因 NDK 29 未安装/许可未初始化而停止；后续限定 Java/Kotlin 的检查排除 CMake，只用于接线验证，不能代替 JNI/APK 构建。最终 APK 由主线集成构建。
+Android 全项目 `:app:compileDebugKotlin` 已通过（包括 SocialModule、SocialVault 和桥接生产源码）；首次完整 Gradle 配置因 NDK 29 未安装/许可未初始化而停止。后续检查使用仓库外 init script 仅排除 CMake，JDK 21/Android 35/Gradle 8.11.1，没有修改项目构建文件。该证据只证明 Java/Kotlin 接线编译，不能代替 JNI/APK 构建。最终 APK 由主线集成构建。
 
 明确未实现：主动搜索并发起任意加好友/加群（本轮只处理实际收到的好友请求/群邀请）、B站新点赞/关注/下载适配器、SILK/AMR 解码、无限大小媒体处理、跨设备素材字节同步、系统进程被杀后的精确提醒。现有 B站公开读取和审批后 UI 评论流程保留。未执行：真实 QQ/B站登录、发送/点赞、付费模型、APK 安装、Android 真机验收。
 
@@ -69,6 +69,12 @@ import { SocialPanel } from './social/SocialPanel'
 ```
 
 `snapshot.modules.social` 包含 `accounts/approvals/activity/scheduled/sync/service`，另含 media。主线无需额外运行时依赖、Manifest 权限或服务注册；沿用应用前台服务生命周期，不新增常驻录音。宿主传入网络事件 `{online:true|false}`，已配对同步在恢复联网时和进程存活期间每分钟尝试一批；自动同步与主人模型队列独立。
+
+后台摘要会同时核对连接事件和现有 `settings.networkEnabled/paused`。关闭联网时保持 queued，反复 tick 不调用模型或产生失败重试；恢复后按原条件接续。提醒不依赖模型和网络，通知先交给根协调器的注意力流程。
+
+整机备份接线顺序：根协调器先暂停对外模型/发送入口；读取并认证解密 A 的备份后，先恢复所有删除栅栏，再对 C 调用上面的 `restoreBackup`，最后恢复可见历史/UI。禁止从旧 store JSON 恢复 executable grant、automaticGrant、运行中模型 ID 或发送队列。C 只撤销自己表中的授权；旧 CompanionStore task 和预算保留属于根/A，须在整机恢复入口清理，不能只调用 C 就声称整机恢复完成。C 同步删除发出 `data.deleted {sourceIds,sourceHashes}`；主线将 raw ID 及可识别的哈希栅栏交给 A，防止共享概要或恢复备份重新出现。
+
+根 HostPorts 接收 `social.reminder`/`social.job.completed` 时，使用其 sourceId、scope、text/result、state、dueAt/completedAt 生成可审计的事实观察（失败/取消不写成完成），入 A 的事实账本与注意力待处理队列。提醒的显示/说话时间由注意力决定；通知不自动调用模型，也不把朋友请求升级为主人权限。
 
 状态示例：
 

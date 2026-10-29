@@ -34,7 +34,7 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
                 conversation.optString("targetId") == action.optString("target") && conversation.optString("targetType") == action.getJSONObject("payload").optString("targetType") &&
                 conversation.optBoolean("captureEnabled") && conversation.optString("route") == "onebot" && conversation.optBoolean("reliable")
         } else true
-    })
+    }, networkAllowed = { store.settings().optBoolean("networkEnabled") && !store.settings().optBoolean("paused") })
     private val timer = Executors.newSingleThreadScheduledExecutor { runnable -> Thread(runnable, "xiaoke-social-background").apply { isDaemon = true } }
     private val syncWorker = Executors.newSingleThreadScheduledExecutor { runnable -> Thread(runnable, "xiaoke-event-sync").apply { isDaemon = true } }
     @Volatile private var lastError = ""
@@ -57,11 +57,7 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
         bridge.setEffectGate(legacyGate); QqNotificationBridge.setEffectGate(legacyGate)
         bridge.setModuleListener { type, event ->
             runCatching {
-                onEvent(ModuleEvent(type, event.getString("scope"), event.getString("id"), event))
-                val evidence = copy(event)
-                objects(evidence.optJSONArray("attachments") ?: JSONArray()).forEach { it.remove("url"); if (it.optString("kind") != "forward") it.remove("platformId") }
-                evidence.remove("images")
-                ports.emit("social.event", JSONObject().put("type", type).put("scope", event.getString("scope")).put("sourceId", event.getString("id")).put("data", evidence))
+                runtime.onEvent(ModuleEvent(type, event.getString("scope"), event.getString("id"), event), notifyHost = true)
             }
                 .onFailure { lastError = "部分社交事件未入账，请检查本机存储" }
         }
@@ -120,7 +116,7 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
             check(result.optInt("retcode", -1) == 0 && result.optString("status") == "ok") { "转发记录已过期或不可读" }
             val segments = JSONArray().put(JSONObject().put("type", "forward").put("data", JSONObject().put("content", result.getJSONObject("data").getJSONArray("messages"))))
             val parsed = OneBotSegments.parse(segments, conversation.getString("account"))
-            onEvent(ModuleEvent("conversation.message", scope, "forward-" + hash(source.getString("id") + forwardId), parsed.put("sourceIds", JSONArray().put(source.getString("sourceId")))))
+            runtime.onEvent(ModuleEvent("conversation.message", scope, "forward-" + hash(source.getString("id") + forwardId), parsed.put("sourceIds", JSONArray().put(source.getString("sourceId")))), notifyHost = true)
             parsed
         }
         else -> runtime.execute(action, data, principal)

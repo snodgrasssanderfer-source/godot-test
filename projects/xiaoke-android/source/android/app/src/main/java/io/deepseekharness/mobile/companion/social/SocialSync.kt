@@ -80,7 +80,12 @@ class SocialSync(private val runtime: SocialRuntime, private val cipher: SyncCip
         val removed = strings(response.getJSONArray("deletions")); require(removed.size <= 10000)
         runtime.deleteHashes(removed, true)
         // Authentication failures leave the cursor and outbox untouched; deletion fences remain installed.
-        val incoming = objects(response.getJSONArray("events")).map(cipher::open)
+        val incoming = objects(response.getJSONArray("events")).map(cipher::open).onEach { event ->
+            require(event.getString("type") in setOf("conversation.message", "observation.summary", "model.completed", "social.request"))
+            SocialRules.bounded(event.getString("scope"), 200); SocialRules.bounded(event.getString("sourceId"), 256)
+            require(event.getJSONObject("data").toString().length <= 262144)
+            require(event.getString("id") == "event-" + hash(event.getString("type") + "\u0000" + event.getString("scope") + "\u0000" + event.getString("sourceId")))
+        }
         val acks = strings(response.getJSONArray("ackIds"))
         val sentIds = objects(sent?.optJSONArray("events") ?: JSONArray()).map { it.getString("id") }.toSet()
         require(acks.all { it in sentIds }) { "同步确认不属于本次提交" }
@@ -93,11 +98,13 @@ class SocialSync(private val runtime: SocialRuntime, private val cipher: SyncCip
             incoming.forEach { event ->
                 if (!SocialRules.blocked(root, event) && !rows(root, "events").has(event.getString("id"))) {
                     event.put("pendingSync", false); rows(root, "events").put(event.getString("id"), event)
+                    runtime.queueHostEvent(root, event, replayed = true)
                 }
             }
             values(rows(root, "events")).filter { hash(it.getString("id")) in acks }.forEach { it.put("pendingSync", false) }
             acknowledgedDeletes.forEach { key -> rows(root, "tombstones").optJSONObject(key)?.put("acked", true) }
             sync.put("cursor", response.getLong("cursor")).put("generation", response.getLong("generation"))
         }
+        runtime.flushNotifications()
     }
 }
