@@ -9,11 +9,25 @@ const list = (value: unknown): Row[] => Array.isArray(value) ? value.map(record)
 const text = (row: Row, key: string) => typeof row[key] === 'string' ? row[key] : ''
 const labels: Record<string, string> = { pending: '待批准', approved: '已批准 · 待提交', ready: '可执行', submitting: '正在提交', outcome_unknown: '结果待核对', done: '已完成', failed: '未完成', rejected: '已拒绝', cancelled: '已取消', expired: '已过期', queued: '等待处理', running: '正在处理', interrupted: '已中断 · 待恢复', waiting: '等待条件', deleted: '已删除' }
 
+function kindLabel(a: Row): string {
+  const payload = record(a.payload)
+  switch (text(a, 'kind')) {
+    case 'bili_comment': return `B站评论 · 《${text(payload, 'title')}》`
+    case 'save_media': return `存进资料库 · ${text(a, 'content')}`
+    case 'comment': return 'QQ 空间评论'
+    case 'post': return '发 QQ 空间说说'
+    case 'reply': return `QQ 回复 · ${text(a, 'target')}`
+    case 'add_friend': return `加好友请求 · ${text(a, 'target')}`
+    case 'join_group': return `加群邀请 · ${text(a, 'target')}`
+    default: return text(a, 'effect')
+  }
+}
+
 export function SocialPanel({ state, run, available }: ModulePanelProps) {
   const approvals = list(state.approvals), jobs = list(state.scheduled), activity = list(state.activity), media = list(state.media)
   const accounts = list(state.accounts), sync = record(state.sync), service = record(state.service), config = record(service.config)
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('')
-  const [selected, setSelected] = useState<Record<string, string>>({})
+  const [previews, setPreviews] = useState<Record<string, string>>({})
   const [jobText, setJobText] = useState(''), [jobKind, setJobKind] = useState('summary'), [dueAt, setDueAt] = useState(''), [condition, setCondition] = useState('')
   const [postText, setPostText] = useState(''), [postKind, setPostKind] = useState('post'), [feedId, setFeedId] = useState(''), [feeds, setFeeds] = useState<Row[]>([])
   const [endpoint, setEndpoint] = useState(text(sync, 'endpoint')), [token, setToken] = useState(''), [key, setKey] = useState('')
@@ -50,14 +64,21 @@ export function SocialPanel({ state, run, available }: ModulePanelProps) {
       {list(service.conversations).map(c => <div className="social-row" key={text(c,'id')}><strong>{text(c,'title')}</strong>{(['images','audio','video'] as const).map((kind,index) => <label key={kind}><input type="checkbox" disabled={disabled} checked={c[kind] === true} onChange={e => void act('social.conversationMedia',{scope:c.id,images:c.images===true,audio:c.audio===true,video:c.video===true,[kind]:e.target.checked})}/>{['读取图片与表情','读取受支持的语音片段','读取受支持的短视频'][index]}</label>)}<small>每条消息最多读取三个；语音和视频每个不超过 2 MB。无法解码的附件会显示原因，原图不会自动长期保存。</small></div>)}
     </article>
     <article><h3>待你决定 <span>{approvals.length}</span></h3>
-      {approvals.length === 0 && <p className="social-muted">暂时没有等待批准的提议。</p>}
-      {approvals.map(a => <div className="social-row" key={text(a, 'id')}>
-        <label><input type="checkbox" disabled={disabled || text(a, 'state') !== 'pending'} checked={selected[text(a, 'id')] === text(a, 'digest')} onChange={e => setSelected(prev => { const next = { ...prev }; if (e.target.checked) next[text(a, 'id')] = text(a, 'digest'); else delete next[text(a, 'id')]; return next })}/>{text(a, 'effect')} · {labels[text(a, 'state')] ?? text(a, 'state')}</label>
-        <p>账号 {text(a, 'account')} → {text(a, 'target')}</p><p>{text(a, 'motivation') || '查看目标和拟发内容后决定。'}</p><blockquote>{text(a, 'content')}</blockquote>
-        <small>有效期：{new Date(Number(a.expiresAt)).toLocaleString()}</small>
-        <button disabled={disabled || !['pending', 'approved', 'ready'].includes(text(a, 'state'))} onClick={() => void act('approvals.reject', { id: a.id })}>拒绝此项</button>
-      </div>)}
-      <button disabled={disabled || Object.keys(selected).length === 0} onClick={() => { const items = Object.entries(selected).map(([id, digest]) => ({ id, digest })); void act('approvals.approveBatch', { items }).then(result => { if (result !== undefined) setSelected({}) }) }}>批准所选目标与内容</button>
+      {approvals.length === 0 && <p className="social-muted">清单是空的。</p>}
+      {approvals.map(a => { const id = text(a, 'id'), payload = record(a.payload), pending = text(a, 'state') === 'pending'; return <div className="social-row" key={id}>
+        <strong>{kindLabel(a)}</strong>{!pending && <small> · {labels[text(a, 'state')] ?? text(a, 'state')}</small>}
+        {text(a, 'motivation') && <p>{text(a, 'motivation')}</p>}
+        {text(a, 'kind') === 'save_media'
+          ? <>{(Array.isArray(payload.mediaIds) ? payload.mediaIds as string[] : []).map(mediaId => previews[mediaId]
+              ? <img key={mediaId} src={previews[mediaId]} alt={text(a, 'content')} style={{ maxWidth: '100%' }}/>
+              : <button key={mediaId} disabled={disabled} onClick={() => void act('media.preview', { id: mediaId }).then(r => { const v = record(r); if (text(v, 'base64')) setPreviews(prev => ({ ...prev, [mediaId]: `data:${text(v, 'mime')};base64,${text(v, 'base64')}` })) })}>看图</button>)}</>
+          : <blockquote>{text(a, 'content')}</blockquote>}
+        {pending && <div className="form-actions">
+          <button disabled={disabled} onClick={() => void act('approvals.approveBatch', { items: [{ id, digest: text(a, 'digest') }] })}>放行</button>
+          <button disabled={disabled} onClick={() => void act('approvals.reject', { id })}>删掉</button>
+        </div>}
+      </div> })}
+      {approvals.filter(a => text(a, 'state') === 'pending').length > 1 && <button disabled={disabled} onClick={() => void act('approvals.approveBatch', { items: approvals.filter(a => text(a, 'state') === 'pending').map(a => ({ id: text(a, 'id'), digest: text(a, 'digest') })) })}>全部放行</button>}
     </article>
     <article><h3>后台任务</h3><form onSubmit={e => { e.preventDefault(); void act('jobs.create', { idempotencyKey: crypto.randomUUID(), kind: jobKind, text: jobText, ...(dueAt ? { dueAt: new Date(dueAt).getTime() } : {}), condition }).then(result => { if (result !== undefined) setJobText('') }) }}>
       <label>任务类型<select value={jobKind} onChange={e => setJobKind(e.target.value)}><option value="summary">整理一段资料</option><option value="reminder">提醒我</option></select></label>

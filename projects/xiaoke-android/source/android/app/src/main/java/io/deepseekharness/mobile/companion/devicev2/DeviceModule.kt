@@ -365,12 +365,13 @@ class DeviceModule(context: Context, private val ports: HostPorts) : ModuleEndpo
             val control = owner.input.state()
             if (control.optString("state") != "authorized" || control.optBoolean("releasePending")) return
             if (SystemClock.elapsedRealtime() - owner.input.lastGestureEndedAt < 500) return
-            owner.holdInput("owner_touch")
+            owner.stopInput("owner_touch") // The owner took the game back; nothing to resume.
         }
-        /** Owner said "继续" or pressed recovery. Ordinary input only; the sensitive hold is cleared by the button alone. */
+        /** Owner said "继续" (own chat or voice) or pressed resume: everything the hold stopped comes back. */
         fun continueAfterHold() {
+            if (!EmergencyHold.anyHeld) return
+            EmergencyHold.releaseAll()
             val owner = active ?: return
-            if (EmergencyHold.ordinaryHeld) EmergencyHold.releaseOrdinary()
             owner.worker.execute { owner.resumeInput() }
         }
         fun overlayChanged() { active?.changed() }

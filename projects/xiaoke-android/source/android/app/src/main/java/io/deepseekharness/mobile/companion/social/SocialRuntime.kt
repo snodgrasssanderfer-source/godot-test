@@ -46,6 +46,23 @@ class SocialRuntime(
             .put("sync", if (owner) syncStatus(root) else JSONObject().put("enabled", false))
             .put("service", JSONObject().put("online", online && networkAllowed()).put("closed", closed).put("config", if (owner) root.optJSONObject("config") ?: JSONObject() else JSONObject()))
     }
+    /** She wants to keep pictures from a chat. The bytes are already sealed in the vault; this adds the review item. */
+    fun proposeSave(scope: String, sourceId: String, media: List<JSONObject>, title: String, reason: String): JSONObject {
+        check(!closed); require(media.isNotEmpty() && media.size <= 3)
+        val now = clock()
+        val item = JSONObject().put("id", "action-" + hash("save\u0000" + sourceId)).put("kind", "save_media").put("platform", "local")
+            .put("effect", "save").put("account", "").put("target", SocialRules.bounded(title, 160)).put("scope", scope)
+            .put("content", SocialRules.bounded(title, 160)).put("motivation", reason.take(1000))
+            .put("payload", JSONObject().put("mediaIds", JSONArray(media.map { it.getString("id") })))
+            .put("sourceIds", JSONArray().put(sourceId)).put("expiresAt", now + DRAFT_TTL_MS).put("createdAt", now).put("ownerAuthored", false)
+        item.put("digest", SocialRules.digest(item)).put("state", "pending")
+        return ledger.change { root ->
+            rows(root, "actions").optJSONObject(item.getString("id"))?.let { return@change it }
+            check(!SocialRules.blocked(root, item)) { "图片来源已删除" }
+            media.forEach { rows(root, "media").put(it.getString("id"), it.put("expiresAt", item.getLong("expiresAt"))) }
+            rows(root, "actions").put(item.getString("id"), item); item
+        }.also { changed() }
+    }
     /** Items waiting in the owner's review list (outbound expression, saves, platform requests). */
     fun pendingApprovalIds(): List<String> = ledger.read { root ->
         values(rows(root, "actions")).filter { it.optString("state") == "pending" && it.optLong("expiresAt") > clock() }.map { it.getString("id") }
@@ -71,11 +88,18 @@ class SocialRuntime(
             "approvals.approveBatch" -> approve(data, principal)
             "approvals.reject" -> {
                 SocialRules.owner(principal)
-                ledger.change { root ->
+                val blobs = mutableListOf<String>()
+                val result = ledger.change { root ->
                     val item = rows(root, "actions").getJSONObject(data.getString("id"))
                     check(item.getString("state") in setOf("pending", "approved", "ready")) { "已经提交的动作不能撤回审批" }
+                    // A rejected save proposal leaves nothing behind.
+                    if (item.getString("kind") == "save_media") strings(item.getJSONObject("payload").optJSONArray("mediaIds")).forEach { id ->
+                        rows(root, "media").optJSONObject(id)?.optString("blobId")?.takeIf(String::isNotBlank)?.let(blobs::add)
+                        rows(root, "media").remove(id)
+                    }
                     item.put("state", "rejected").also { it.remove("grant") }
                 }
+                blobs.forEach(deleteMedia); result
             }
             "social.execute" -> { SocialRules.owner(principal); dispatchAction(data.getString("id"), principal) }
             "social.resolve" -> {
@@ -132,8 +156,9 @@ class SocialRuntime(
         if (bilibili && kind != "bili_follow") BilibiliActions.videoId(target)
         else if (kind != "comment") SocialRules.numeric(target)
         if (kind == "post") require(target == account) { "只能发布到自己的空间" }
-        val now = clock(); val expires = input.optLong("expiresAt", now + 15 * 60_000)
-        require(expires in (now + 1)..(now + 24 * 60 * 60_000))
+        // Her own drafts wait until the owner has time; owner-authored plans are acted on right away.
+        val now = clock(); val expires = input.optLong("expiresAt", now + if (ownerAuthored) 15 * 60_000L else DRAFT_TTL_MS)
+        require(expires in (now + 1)..(now + 7 * DAY_MS))
         val sources = strings(input.optJSONArray("sourceIds")); require(sources.size <= 32)
         val content = input.optString("content"); require(content.length <= 4000)
         if (kind in setOf("reply", "post", "comment", "bili_comment")) SocialRules.bounded(content, 4000)
@@ -199,8 +224,16 @@ class SocialRuntime(
                 check(item.getString("state") == "pending" && item.getLong("expiresAt") > clock() && !SocialRules.blocked(root, item)) { "批准对象已失效" }
                 check(request.getString("digest") == item.getString("digest") && SocialRules.digest(item) == item.getString("digest")) { "目标或内容已变化" }
             } }
-            items.forEach { it.put("state", "approved").put("grant", it.getString("digest"))
-                .put("grantPrincipal", JSONObject().put("actorId", principal.actorId).put("channel", principal.channel).put("scope", principal.scope)) }
+            items.forEach { item ->
+                if (item.getString("kind") == "save_media") {
+                    // Saving into the library is local: approval is the whole action.
+                    strings(item.getJSONObject("payload").optJSONArray("mediaIds")).forEach { id ->
+                        rows(root, "media").optJSONObject(id)?.put("retention", "explicit")?.put("status", "cached")?.put("expiresAt", 0)
+                    }
+                    item.put("state", "done").put("finishedAt", clock())
+                } else item.put("state", "approved").put("grant", item.getString("digest"))
+                    .put("grantPrincipal", JSONObject().put("actorId", principal.actorId).put("channel", principal.channel).put("scope", principal.scope))
+            }
             JSONObject().put("items", JSONArray(items))
         }
     }
@@ -532,7 +565,7 @@ class SocialRuntime(
         changed(); return restored
     }
     private fun expireMedia() {
-        val expired = ledger.change { root -> values(rows(root, "media")).filter { it.optString("retention") == "transient" && it.optString("status") != "expired" && it.optLong("expiresAt") <= clock() }
+        val expired = ledger.change { root -> values(rows(root, "media")).filter { it.optString("retention") in setOf("transient", "proposed") && it.optString("status") != "expired" && it.optLong("expiresAt") <= clock() }
             .map { item -> item.optString("blobId").also { item.remove("blobId"); item.put("status", "expired") } } }
         expired.filter { it.isNotBlank() }.forEach(deleteMedia)
     }
@@ -544,4 +577,9 @@ class SocialRuntime(
         requests.filter { it.isNotBlank() }.forEach(ports::cancelModel)
     }
     private fun changed() = ports.emit("moduleState", JSONObject().put("domain", "social"))
+
+    companion object {
+        const val DAY_MS = 24 * 60 * 60_000L
+        const val DRAFT_TTL_MS = 3 * DAY_MS
+    }
 }

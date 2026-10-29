@@ -44,7 +44,8 @@ class CompanionEngine private constructor(private val context: Context) {
 
     fun submit(scope: String, text: String, source: String = "本机主人", observationId: String = "", actorId: String = ""): JSONObject {
         CompanionPolicy.scope(scope)
-        if (scope == CompanionPolicy.OWNER && io.deepseekharness.mobile.companion.devicev2.EmergencyHold.isContinue(text))
+        // Only the owner's own chat counts; nobody in a group can lift a hold.
+        if ((scope == CompanionPolicy.OWNER || modules.principal(scope).owner) && io.deepseekharness.mobile.companion.devicev2.EmergencyHold.isContinue(text))
             io.deepseekharness.mobile.companion.devicev2.DeviceModule.continueAfterHold()
         val userMessage = store.message(scope, "user", CompanionPolicy.text(text), source).let { message ->
             store.put("message", message.put("actorId", if (scope == CompanionPolicy.OWNER) "local-device-owner" else actorId))
@@ -277,7 +278,9 @@ class CompanionEngine private constructor(private val context: Context) {
             val system = buildString {
                 val name = persona.optString("name", "小克")
                 append("你是$name。你清楚自己是 AI，被问到时坦然承认，不冒充真人。以下是主人写的人设：\n${persona.optString("text")}\n")
-                append("说话像熟人聊天：不用客服腔和公文套话，不播报自己的动作或外貌，不做定时问候打卡。听不懂就直接问，看错了就直说并改正。\n")
+                append("说话像熟人聊天：不用客服腔和公文套话，不播报自己的动作或外貌，不做定时问候打卡。听不懂就直接问，看错了就直说并改正。")
+                append("回复长短跟着对方走：随口一句就简短回，认真聊的话题可以多说几句。")
+                append("在逻辑、代码和作品结构完整度上坚持自己的判断，讲道理不讲情面；口味和审美可以慢慢被主人影响，变了也坦然承认。\n")
                 append("只说有依据的事：没执行的动作不说成做了，没读到字幕或画面的视频不说成看过；工具没返回结果就说还没完成。\n")
                 if (scope == CompanionPolicy.OWNER || modules.principal(scope).owner) {
                     append("现在是和主人私聊。")
@@ -464,6 +467,19 @@ class CompanionEngine private constructor(private val context: Context) {
                 io.deepseekharness.mobile.companion.devicev2.DeviceModule.captureFromSurface()
             } else modules.router.execute("device", action, data, modules.localOwner)
         }
+        "propose_save" -> {
+            check(!modules.principal(scope).owner) { "主人的东西直接存就好" }
+            val observationId = activeTask?.let { store.get("task", it) }?.optString("observationId").orEmpty()
+            val observation = store.get("observation", observationId) ?: error("这条消息里没有你看到的图片")
+            check(observation.optString("scope") == scope) { "图片不属于这个会话" }
+            val parts = observation.optJSONArray("parts") ?: JSONArray()
+            val images = (0 until parts.length()).mapNotNull { parts.getJSONObject(it).optJSONObject("inlineData") }
+                .filter { it.optString("mimeType").startsWith("image/") }.take(3)
+                .map { it.getString("mimeType") to android.util.Base64.decode(it.getString("data"), android.util.Base64.DEFAULT) }
+            check(images.isNotEmpty()) { "这条消息里没有能保存的图片" }
+            modules.social.proposeMediaSave(scope, sourceId, images, args.getString("title").take(140), args.optString("reason"))
+            JSONObject().put("state", "pending").put("note", "已放进待审清单，主人确认后才进资料库")
+        }
         "watch_bilibili" -> {
             check(scope == CompanionPolicy.OWNER || scope.startsWith("qq:group:")) { "这里不能引出看视频" }
             modules.biliWatcher.start(args.optString("videoId").trim(), args.optString("query").trim(), args.optString("reason"), sourceId)
@@ -523,6 +539,8 @@ class CompanionEngine private constructor(private val context: Context) {
                 if (modules.router.available("life")) a.put(structured("life_action", "查看记忆、日记、兴趣、注意力；新增兴趣 data.text，attention.set data.mode=available/busy/quiet、until 为毫秒时间戳。只在主人明确当时意愿下调整注意力，不把口头短语当固定命令。不能修改人格、权限或预算。",
                     fields("query" to "STRING", "text" to "STRING", "mode" to "STRING", "until" to "INTEGER", "maxBackgroundTasks" to "INTEGER"),
                     listOf("memory.search", "diary.list", "interest.list", "interest.upsert", "attention.status", "attention.set")))
+                if (scope != CompanionPolicy.OWNER && !modules.principal(scope).owner)
+                    a.put(decl("propose_save", "聊天里有人发的图片值得留作参考时，提议存进主人的资料库（进待审清单，主人确认才存）。title 简短说明是什么图，reason 为什么值得留", listOf("title", "reason")))
                 if (scope == CompanionPolicy.OWNER || scope.startsWith("qq:group:"))
                     a.put(decl("watch_bilibili", "对聊到的话题感兴趣时，自己去 B站看一部相关公开视频（videoId=BV 号，或 query 关键词）。后台进行、用活动额度；只读字幕和关键帧，看完记成你自己的观察并写明实际看了哪部分", listOf("videoId", "query", "reason"), listOf("reason")))
                 if (modules.router.available("social")) {

@@ -26,7 +26,6 @@ object CompanionRouting {
             !groupPaused && conversation.optBoolean("reliable") && !settings.optBoolean("paused") && settings.optBoolean("networkEnabled") &&
             ParticipationPolicy.nightAllows(conversation, settings, mentioned, senderId, java.time.LocalTime.now().hour) &&
             now - conversation.optLong("humanActivityAt") > 120000 &&
-            (mentioned || conversation.optString("mode") != "natural" || count >= conversation.optInt("naturalEveryMessages", 24)) &&
             ReplyLikelihood.shouldReply(conversation.optString("mode", "quiet"), mentioned, score, conversation.optDouble("threshold", 0.65),
                 since, conversation.optInt("cooldownSeconds", 60), used, conversation.optInt("hourlyLimit", 6).coerceAtMost(if (scope.startsWith("qq:group:")) 6 else 60))
         if (eligible) {

@@ -2,12 +2,12 @@ package io.deepseekharness.mobile.companion.devicev2
 
 import android.content.Context
 
-/** Five-second hold on the floating ball. Locks taps and input only; voice and text chat continue.
- * Ordinary input resumes when the owner says "继续"; credentials, file deletion, outbound sends and
- * payment stay held until the owner presses the recovery button on the ball.
+/** Five-second hold on the floating ball. Locks taps, input and outbound sends; voice and text chat continue.
+ * Everything resumes when the owner says "继续" in their own chat or by voice (never from a group), or presses resume on the ball.
  */
 object EmergencyHold {
-    private val continueWord = Regex("继续[。！!.～~吧呀啊]*")
+    // "继续" / "继续吧" / "你继续输文件名导出吧": a short message that starts by telling her to go on.
+    private val continueWord = Regex("(好[，, ]?)?(你)?继续.{0,24}")
     @Volatile private var preferences: android.content.SharedPreferences? = null
     @Volatile var ordinaryHeld = false; private set
     @Volatile private var sensitive = false

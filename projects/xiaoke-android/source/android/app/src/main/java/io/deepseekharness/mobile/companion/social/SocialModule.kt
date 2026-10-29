@@ -109,6 +109,12 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
             runSync()
         }
         "media.import" -> importMedia(data, principal)
+        "media.preview" -> {
+            SocialRules.owner(principal)
+            val media = ledger.read { root -> rows(root, "media").getJSONObject(data.getString("id")) }
+            val bytes = vault.read(media.optString("blobId").ifBlank { error("这张图没有保存原图") }) ?: error("原图已不在")
+            JSONObject().put("mime", media.optString("mime")).put("base64", Base64.getEncoder().encodeToString(bytes))
+        }
         "social.conversationMedia" -> {
             SocialRules.owner(principal)
             val conversation = store.get("conversation", data.getString("scope")) ?: error("会话不存在")
@@ -184,7 +190,8 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
             check(!BudgetLedger(store.lifeState("budget")).status().optBoolean("stopActivity")) { "活动额度已停，暂停浏览" }
             val topics = data.optJSONArray("sourceIds") ?: JSONArray()
             check(topics.length() > 0 && (0 until topics.length()).all { i ->
-                store.get("message", topics.getString(i))?.optString("scope") == CompanionPolicy.OWNER || store.get("interest", topics.getString(i)) != null
+                store.get("message", topics.getString(i))?.optString("scope").orEmpty().let { it == CompanionPolicy.OWNER || it.startsWith("qq:group:") } ||
+                    store.get("interest", topics.getString(i)) != null || store.get("observation", topics.getString(i))?.optBoolean("autonomous") == true
             }) { "只浏览聊天中提到的话题或已记录的兴趣，不从首页推荐自由探索" }
         }
         val videoId = BilibiliActions.videoId(data.getString("videoId"))
@@ -309,5 +316,30 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
     }
     fun restoreBackup(data: JSONObject, principal: CommandPrincipal): JSONObject = runtime.restoreBackup(data, principal)
     fun pendingApprovalIds(): List<String> = runtime.pendingApprovalIds()
+
+    /** She proposes keeping pictures she saw in a chat. Bytes are sealed now; the library only gets them when the owner approves. */
+    fun proposeMediaSave(scope: String, sourceId: String, images: List<Pair<String, ByteArray>>, title: String, reason: String): JSONObject {
+        require(images.isNotEmpty() && images.size <= 3)
+        val rowsToAdd = images.mapIndexed { index, (mime, bytes) ->
+            require(mime.startsWith("image/") && bytes.size in 1..6 * 1024 * 1024)
+            val key = hash(sourceId + ":" + index)
+            vault.write("blob-$key", bytes)
+            JSONObject().put("id", "media-save-$key").put("scope", "owner:local").put("sourceId", sourceId).put("sourceIds", JSONArray().put(sourceId))
+                .put("name", title.take(140)).put("mime", mime).put("bytes", bytes.size).put("kind", "image").put("blobId", "blob-$key")
+                .put("status", "proposed").put("retention", "proposed").put("from", scope)
+        }
+        return try { runtime.proposeSave(scope, sourceId, rowsToAdd, title, reason) }
+        catch (error: Throwable) { rowsToAdd.forEach { vault.delete(it.getString("blobId")) }; throw error }
+    }
+
+    /** A comment she drafted after watching a video. Without a connected B站 account there is nothing to queue. */
+    fun draftBiliComment(videoId: String, content: String, motivation: String, observationId: String, topicSourceId: String): JSONObject? {
+        if (!biliState().optBoolean("connected")) return null
+        val companion = CommandPrincipal("companion", "background", "owner:local", false)
+        val resource = inspectBilibili(JSONObject().put("videoId", videoId).put("sourceIds", JSONArray().put(topicSourceId)), companion)
+        return planBilibili(JSONObject().put("kind", "comment").put("resourceId", resource.getString("id")).put("content", content)
+            .put("motivation", motivation).put("idempotencyKey", "watch-" + hash(observationId))
+            .put("sourceIds", JSONArray().put(observationId)), companion)
+    }
     override fun close() { closing = true; timer.shutdownNow(); effectWorker.shutdownNow(); syncWorker.shutdownNow(); syncTransport?.cancel(); biliActions.cancel(); biliDownload.cancel(); bridge.setModuleListener(null); bridge.setEffectGate(null); QqNotificationBridge.setEffectGate(null); runtime.close() }
 }

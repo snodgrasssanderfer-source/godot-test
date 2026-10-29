@@ -61,8 +61,10 @@ class BilibiliWatcher(context: Context, private val store: CompanionStore, priva
             (0 until lines.length()).joinToString("\n") { val l = lines.getJSONObject(it); "[${VideoEvidence.time(l.optDouble("from"))}] ${l.optString("content")}" }))
         frames?.getJSONArray("parts")?.let { f -> for (i in 0 until f.length()) parts.put(f.getJSONObject(i)) }
         val prompt = "你自己找来看了B站视频《${info.optString("title").take(200)}》（UP：${info.optString("upName").take(80)}），起因：$reason。\n" +
-            "实际读到的范围：${watched.getString("text")}。\n用第一人称写下你看到了什么、有什么想法，200 字以内。只依据上面的字幕和画面；" +
-            "没看到的部分要说没看到，不推测剧情或结论。如果材料不足以形成任何观察，只返回[[SILENT]]。"
+            "实际读到的范围：${watched.getString("text")}。\n先用第一人称写下你看到了什么、有什么想法，200 字以内。只依据上面的字幕和画面；" +
+            "没看到的部分要说没看到，不推测剧情或结论。如果材料不足以形成任何观察，只返回[[SILENT]]。\n" +
+            "如果你真想在视频下留言，另起一行写 [[评论]] 再写评论正文：像普通观众，100 字以内，提到具体内容时带上时间点（只能是你看过的部分），" +
+            "不提主人、不提私聊里的事。不想评论就不写这一段。评论只是草稿，主人确认后才会发。"
         val scope = "bili:public:" + CompanionPolicy.digest(id).take(32)
         val done = CountDownLatch(1)
         var text = ""
@@ -74,16 +76,24 @@ class BilibiliWatcher(context: Context, private val store: CompanionStore, priva
             }
         }
         if (!done.await(10, TimeUnit.MINUTES) || text.isBlank() || text == "[[SILENT]]") return
+        val (thoughts, comment) = text.split("[[评论]]", limit = 2).let { it[0].trim() to it.getOrNull(1)?.trim().orEmpty() }
+        if (thoughts.isBlank() || thoughts == "[[SILENT]]") return
         val observation = store.put("observation", JSONObject().put("scope", scope).put("videoId", id).put("cid", info.getLong("cid"))
             .put("videoTitle", info.optString("title")).put("upName", info.optString("upName"))
             .put("source", "她自主观看的B站公开视频（字幕与关键帧，无音轨）").put("autonomous", true)
             .put("reason", reason).put("topicSourceId", topicSourceId)
             .put("rangeStart", 0.0).put("rangeEnd", end).put("watched", watched).put("coverage", watched.getString("text"))
             .put("frames", frames?.getJSONArray("frames") ?: JSONArray())
-            .put("summary", text.take(8000)).put("analysis", text.take(8000)).put("analyzed", true).put("kind", "inference")
+            .put("summary", thoughts.take(8000)).put("analysis", thoughts.take(8000)).put("analyzed", true).put("kind", "inference")
+            .put("commentDraft", comment.take(1000))
             .put("createdAt", System.currentTimeMillis()))
         // Same path as any meaningful observation: life records a sourced memory and diary entry; proactive sharing picks it up.
-        host.router.event(ModuleEvent("observation.summary", scope, observation.getString("id"), JSONObject().put("meaningful", true)))
+        // shareable: a public video and her own take on it may ground a public comment draft (the owner still approves it).
+        host.router.event(ModuleEvent("observation.summary", scope, observation.getString("id"), JSONObject().put("meaningful", true).put("shareable", true)))
+        if (comment.isNotBlank()) runCatching {
+            host.social.draftBiliComment(id, comment.take(1000), "看了《${info.optString("title").take(80)}》后想说的；依据：${watched.getString("text").take(400)}",
+                observation.getString("id"), topicSourceId)
+        }
     }
 
     fun close() { worker.shutdownNow() }

@@ -196,7 +196,7 @@ class CompanionOverlayService : Service() {
         val hold = FiveSecondHold(SystemClock::elapsedRealtime, ViewConfiguration.get(this).scaledTouchSlop.toFloat())
         val timer = Runnable { if (hold.fire()) {
             fired = true; DeviceModule.emergencyHoldFromSurface(); refreshBubble()
-            localStatus = "已急停点击和输入；语音与文字对话继续。说「继续」恢复普通操作，外发等敏感操作需点恢复按钮"
+            localStatus = "已急停点击、输入和外发；对话照常。说「继续」或点恢复就接着来"
             view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
         } }
         cancelHold = { hold.cancel(); main.removeCallbacks(timer) }
@@ -255,8 +255,8 @@ class CompanionOverlayService : Service() {
         stateText = label(localStatus); box.addView(stateText)
         box.addView(button("收起，继续使用当前应用") { closePanel() })
         box.addView(button("仅停止输入，继续陪聊") { DeviceModule.stopInputFromSurface(); localStatus = "输入已停止；观察、收音与陪聊不受影响" })
-        if (EmergencyHold.anyHeld) box.addView(button("恢复全部操作（含外发、凭证、删除、支付）") {
-            EmergencyHold.releaseAll(); DeviceModule.continueAfterHold(); refreshBubble(); localStatus = "急停已解除"; closePanel(); showPanel()
+        if (EmergencyHold.anyHeld) box.addView(button("恢复操作") {
+            DeviceModule.continueAfterHold(); refreshBubble(); localStatus = "急停已解除"; closePanel(); showPanel()
         })
         box.addView(button("隐藏浮球，保留本次陪伴") { applyVisibility(false) })
         val deviceFrame = DeviceModule.surfaceFrame()

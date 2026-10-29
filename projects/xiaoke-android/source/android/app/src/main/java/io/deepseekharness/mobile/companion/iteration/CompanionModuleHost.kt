@@ -28,6 +28,8 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
     }
     private val proactiveShare = ProactiveShareRunner(store, this)
     val biliWatcher = io.deepseekharness.mobile.companion.BilibiliWatcher(context, store, this)
+    private val nightlyDiary = NightlyDiary(store, this)
+    private val clock = java.util.concurrent.Executors.newSingleThreadScheduledExecutor { runnable -> Thread(runnable, "companion-clock").apply { isDaemon = true } }
     private val unlockWatcher = object : android.content.BroadcastReceiver() {
         override fun onReceive(receiver: Context, intent: android.content.Intent) {
             // The unlock that ends night quiet is evaluated first, so quiet hours never trigger a share.
@@ -39,6 +41,7 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
         androidx.core.content.ContextCompat.registerReceiver(context.applicationContext, unlockWatcher,
             android.content.IntentFilter(android.content.Intent.ACTION_USER_PRESENT), androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
         connectivity.registerDefaultNetworkCallback(connectionWatcher)
+        clock.scheduleWithFixedDelay({ runCatching { nightlyDiary.tick() } }, 1, 2, java.util.concurrent.TimeUnit.MINUTES)
         refreshConnectivity()
         contentChanged()
     }
@@ -225,7 +228,7 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
         if (type !in setOf("social_send", "public_post", "public_comment", "add_friend", "join_group", "download", "like", "follow", "block", "leave_group"))
             return decision(false, "未知外部动作")
         if (!settings.optBoolean("networkEnabled") || settings.optBoolean("paused")) return decision(false, "联网关闭或助手已暂停")
-        if (io.deepseekharness.mobile.companion.devicev2.EmergencyHold.sensitiveHeld) return decision(false, "急停中：外发需主人先点悬浮球上的恢复按钮")
+        if (io.deepseekharness.mobile.companion.devicev2.EmergencyHold.sensitiveHeld) return decision(false, "急停中：主人说继续之后再发")
         val groupOrPublic = effect.optString("scope", principal.scope).startsWith("qq:group:") || type !in setOf("social_send", "add_friend", "block")
         if (!principal.owner && groupOrPublic && io.deepseekharness.mobile.companion.NightQuiet.active(store)) return decision(false, "夜间安静：不在群里发言或浏览B站")
         if (type == "social_send") {

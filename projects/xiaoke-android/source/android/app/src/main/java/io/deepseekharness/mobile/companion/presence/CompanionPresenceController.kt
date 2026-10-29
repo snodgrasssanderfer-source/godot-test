@@ -48,6 +48,8 @@ class CompanionPresenceController(context: Context, private val onEvent: (JSONOb
     private var mode = "companion"
     private var voiceInput = false
     private var voiceOutput = true
+    /** She answers the way the owner last talked to her: speech gets speech, typing gets text. */
+    private var ownerSpokeLast = false
     private var muted = false
     private var manualListen = false
     private var allowNetworkAsr = false
@@ -102,7 +104,7 @@ class CompanionPresenceController(context: Context, private val onEvent: (JSONOb
                 require(requestedMode in setOf("companion", "focus", "silent"))
                 stopInternal()
                 packageName = pkg; mode = requestedMode
-                voiceInput = copy.optBoolean("voiceInput", false); voiceOutput = copy.optBoolean("voiceOutput", true)
+                voiceInput = copy.optBoolean("voiceInput", false); voiceOutput = copy.optBoolean("voiceOutput", true); ownerSpokeLast = voiceInput
                 muted = false; manualListen = false
                 allowNetworkAsr = copy.optBoolean("allowNetworkAsr", false); allowNetworkTts = copy.optBoolean("allowNetworkTts", false)
                 intervalMs = copy.optLong("intervalSeconds", 15).coerceIn(5, 120) * 1_000
@@ -238,7 +240,7 @@ class CompanionPresenceController(context: Context, private val onEvent: (JSONOb
             is DiscardObservation -> frames.remove(effect.observationId)
             is Generate -> generate(effect)
             is Transcribe -> { voice.release(effect.audioRef); events.dispatch(Failed(effect.turn, "external-stt-not-configured")) }
-            is Synthesize -> if (valid(effect.turn)) voice.synthesize(effect, voiceOutput && !muted && mode != "silent")
+            is Synthesize -> if (valid(effect.turn)) voice.synthesize(effect, voiceOutput && !muted && mode != "silent" && ownerSpokeLast)
                 else events.dispatch(Failed(effect.turn, "automatic-response-expired"))
             is Present -> if (valid(effect.turn)) voice.present(effect) else events.dispatch(Failed(effect.turn, "automatic-response-expired"))
             is CancelWork -> {
@@ -291,6 +293,7 @@ class CompanionPresenceController(context: Context, private val onEvent: (JSONOb
         val turn = request.turn
         val input = request.input
         if (input.origin == Origin.TEXT || input.origin == Origin.SPEECH) {
+            ownerSpokeLast = input.origin == Origin.SPEECH
             if (EmergencyHold.isContinue(input.text)) DeviceModule.continueAfterHold()
         }
         val gameQuiet = packageName.isNotBlank()
@@ -326,7 +329,7 @@ class CompanionPresenceController(context: Context, private val onEvent: (JSONOb
         val persona = engine.store.persona()
         val memories = context.memories.toString().take(4_000)
         val system = "你是${persona.optString("name", "小克")}，清楚自己是 AI。主人写的人设：${persona.optString("text").take(8_000)}\n" +
-            "现在在悬浮窗里陪主人，语音或文字，说话简短自然，通常一两句；不用客服腔，不播报自己的动作。" +
+            "现在在悬浮窗里陪主人，说话简短自然，跟着主人的话长短走，通常一两句；不用客服腔，不播报自己的动作。" +
             (if (gameQuiet) "主人在玩游戏：平时安静，主人跟你说话时再接；自动画面检查只在结算或失败画面开口。"
                 else "可以随着当前画面和对话自然聊。") +
             (if (EmergencyHold.ordinaryHeld) "主人刚长按悬浮球急停了点击和输入（对话照常）。告诉主人你已经停手，问一句是你点错了还是主人有别的事。" else "") +
