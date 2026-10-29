@@ -1,16 +1,42 @@
 package io.deepseekharness.mobile.companion.iteration
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import io.deepseekharness.mobile.companion.CompanionEngine
 import io.deepseekharness.mobile.companion.CompanionPolicy
 import io.deepseekharness.mobile.companion.CompanionStore
 import org.json.JSONObject
 
 /** Process-wide bridge; no Activity or WebView ownership of durable modules. */
-class CompanionModuleHost(private val engine: CompanionEngine, private val store: CompanionStore) : HostPorts {
+class CompanionModuleHost(context: Context, private val engine: CompanionEngine, private val store: CompanionStore) : HostPorts {
     val router = ModuleRouter()
     private val eventWorker = java.util.concurrent.Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "companion-events").apply { isDaemon = true } }
     private val seenEvents = linkedSetOf<String>()
     val localOwner = CommandPrincipal("local-device-owner", "owner_ui", CompanionPolicy.OWNER, true)
+    val device = io.deepseekharness.mobile.companion.devicev2.DeviceModule(context, this)
+    val social = io.deepseekharness.mobile.companion.social.SocialModule(context, store, this)
+    private val connectivity = context.getSystemService(ConnectivityManager::class.java)
+    private val connectionWatcher = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) { refreshConnectivity() }
+        override fun onLost(network: Network) { refreshConnectivity() }
+        override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) { refreshConnectivity() }
+    }
+    init {
+        router.register(device); router.register(social)
+        connectivity.registerDefaultNetworkCallback(connectionWatcher)
+        refreshConnectivity()
+    }
+    fun refreshConnectivity() {
+        eventWorker.execute {
+            val settings = store.settings()
+            val active = connectivity.activeNetwork
+            val online = settings.optBoolean("networkEnabled") && !settings.optBoolean("paused") && active != null &&
+                connectivity.getNetworkCapabilities(active)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+            router.event(ModuleEvent("connectivity.changed", CompanionPolicy.OWNER, "connection-${System.nanoTime()}", JSONObject().put("online", online)))
+        }
+    }
 
     fun principal(scope: String): CommandPrincipal {
         CompanionPolicy.scope(scope)
@@ -26,9 +52,13 @@ class CompanionModuleHost(private val engine: CompanionEngine, private val store
     }
     override fun emit(topic: String, payload: JSONObject) {
         router.signal(payload.optString("domain", "all"), topic)
-        if (topic != "experience") return
+        val eventTopic = when (topic) {
+            "experience", "social.event" -> payload.optString("type")
+            "data.deleted", "action.completed", "control.stopped", "observation.summary", "connectivity.changed" -> topic
+            else -> return
+        }
         val scope = CompanionPolicy.scope(payload.getString("scope"))
-        val type = payload.getString("type")
+        val type = eventTopic
         val source = payload.getString("sourceId")
         require(type.matches(Regex("[a-z][a-zA-Z0-9.]{0,79}")) && source.length in 1..160)
         val event = ModuleEvent(type, scope, source, JSONObject((payload.optJSONObject("data") ?: JSONObject()).toString()))

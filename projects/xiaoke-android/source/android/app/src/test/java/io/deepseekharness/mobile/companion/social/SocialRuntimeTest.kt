@@ -77,11 +77,11 @@ class SocialRuntimeTest {
     @Test fun diskRecoveryPreservesUnknownAndInvalidatesExecutableApproval() {
         val path=Files.createTempFile("social-state-test", ".json")
         try {
-            val ledger=SocialLedger(persist={Files.writeString(path,it.toString())}); val rt=runtime(ledger)
+            val ledger=SocialLedger(persist={path.toFile().writeText(it.toString())}); val rt=runtime(ledger)
             val a=rt.execute("social.plan",draft(key="a"),owner); approve(rt,a)
             val b=rt.execute("social.plan",draft(key="b"),owner)
             ledger.change { rows(it,"actions").getJSONObject(b.getString("id")).put("state","submitting") }
-            val recovered=runtime(SocialLedger(JSONObject(Files.readString(path))))
+            val recovered=runtime(SocialLedger(JSONObject(path.toFile().readText())))
             val states=objects(recovered.snapshot(owner).getJSONArray("activity")).associate { it.getString("id") to it.getString("state") }
             assertEquals("pending",states[a.getString("id")]); assertEquals("outcome_unknown",states[b.getString("id")])
         } finally { Files.deleteIfExists(path) }

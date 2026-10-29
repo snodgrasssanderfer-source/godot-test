@@ -104,7 +104,9 @@ class CompanionPlugin : Plugin() {
                         if (domain == "social" && moduleAction in setOf("jobs.create", "jobs.resume", "social.execute", "sync.run")) {
                             CompanionService.beginOperation(context); foregroundOperation = true
                         }
-                        engine.modules.router.execute(domain, moduleAction, data.optJSONObject("data") ?: JSONObject(), engine.modules.localOwner)
+                        val payload = data.optJSONObject("data") ?: JSONObject()
+                        if (domain == "social" && moduleAction == "jobs.create" && payload.optString("kind") == "summary" && payload.optString("condition").isBlank()) payload.put("condition", "online")
+                        engine.modules.router.execute(domain, moduleAction, payload, engine.modules.localOwner)
                     }
                     "settings" -> {
                         val previous = store.settings()
@@ -113,6 +115,7 @@ class CompanionPlugin : Plugin() {
                         if (!it.optBoolean("networkEnabled")) engine.activeTask?.let(engine::cancel)
                         if (!it.optBoolean("oneBotEnabled") || !it.optBoolean("networkEnabled") || it.optBoolean("paused") ||
                             it.optString("oneBotAccount") != previous.optString("oneBotAccount") || it.optString("oneBotUrl") != previous.optString("oneBotUrl")) OneBotBridge.get(context).stop()
+                        engine.modules.refreshConnectivity()
                         }
                     }
                     "saveKey" -> { engine.secrets.save(data.getString("key")); store.credentialChanged(); JSONObject().put("configured", true) }
@@ -171,6 +174,7 @@ class CompanionPlugin : Plugin() {
                         store.saveSettings(store.settings().put("paused", data.getBoolean("paused")))
                         if (data.getBoolean("paused")) engine.activeTask?.let(engine::cancel)
                         if (data.getBoolean("paused")) OneBotBridge.get(context).stop()
+                        engine.modules.refreshConnectivity()
                         JSONObject().put("ok", true)
                     }
                     "retry" -> {

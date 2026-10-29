@@ -20,7 +20,7 @@ class CompanionEngine private constructor(private val context: Context) {
     val secrets = CompanionSecrets(context)
     private val model = GeminiClient(secrets)
     private val worker = ModelWorkQueue()
-    val modules by lazy { CompanionModuleHost(this, store) }
+    val modules by lazy { CompanionModuleHost(context, this, store) }
     private val moduleRequests = ConcurrentHashMap<String, AtomicBoolean>()
     private val preempted = ConcurrentHashMap.newKeySet<String>()
     private val modelLease = Any()
@@ -287,6 +287,14 @@ class CompanionEngine private constructor(private val context: Context) {
                     catch (e: IllegalArgumentException) { JSONObject().put("error", e.message?.take(180) ?: "参数不正确") }
                     catch (e: IllegalStateException) { JSONObject().put("error", e.message?.take(180) ?: "操作不可用") }
                     responses.put(GeminiWire.toolResponse(call, result))
+                    if (call.optString("name") == "device_action") {
+                        val frame = if (result.has("preview")) result else result.optJSONObject("after")
+                        val preview = frame?.optString("preview").orEmpty()
+                        frame?.remove("preview")
+                        if (preview.startsWith("data:image/jpeg;base64,") && preview.length < 6 * 1024 * 1024 && profile.optBoolean("images"))
+                            responses.put(JSONObject().put("inlineData", JSONObject().put("mimeType", "image/jpeg").put("data", preview.substringAfter(','))))
+                        else if (preview.isNotEmpty()) result.put("visionUnavailable", "所选模型尚未开启图片能力，未提供画面给模型")
+                    }
                 }
                 val responseTurn = JSONObject().put("role", "user").put("parts", responses)
                 contents.put(responseTurn)

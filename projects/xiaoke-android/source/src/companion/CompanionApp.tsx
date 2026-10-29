@@ -8,6 +8,8 @@ import { VideoPanel } from './VideoPanel'
 import { Onboarding } from './Onboarding'
 import { PresencePanel, subscribePresence, type PresenceState } from './presence'
 import { DocumentsPanel } from './iteration/DocumentsPanel'
+import { DevicePanel } from './devicev2/DevicePanel'
+import { SocialPanel } from './social/SocialPanel'
 const AgentWorkbench = lazy(() => import('../App').then(module => ({default: module.App})))
 
 type Tab = 'chat' | 'models' | 'persona' | 'memory' | 'tasks' | 'device'
@@ -75,13 +77,14 @@ export function CompanionApp() {
       {!nativeCompanion && <div className="preview-note">浏览器界面预览 · 数据仅在本浏览器保存；安卓操作与模型调用不可用</div>}
       {error && <div className="companion-error" role="alert"><span>{error}</span><button aria-label="关闭错误提示" onClick={() => setError('')}><X size={18}/></button></div>}
       {busy && <div className="companion-busy" role="status"><Loader2 size={14} className="spin"/> 正在处理；长任务可从顶部暂停</div>}
-      {!setupVisible && tab==='chat' && <div className="presence-host"><PresencePanel state={{...(presence ?? snapshot.presence ?? {phase:'idle',displayName:snapshot.persona.name,mode:'companion',running:false,available:false}),character:snapshot.character,characterStorage:nativeCompanion}} onCommand={run}/></div>}
+      {!setupVisible && tab==='chat' && <details className="presence-config"><summary>悬浮陪伴与语音 · {(presence??snapshot.presence)?.running?'会话进行中':'按需开启'}</summary><div className="presence-host"><PresencePanel state={{...(presence ?? snapshot.presence ?? {phase:'idle',displayName:snapshot.persona.name,mode:'companion',running:false,available:false}),character:snapshot.character,characterStorage:nativeCompanion}} onCommand={run}/></div></details>}
+      {!setupVisible && tab==='chat' && (presence??snapshot.presence)?.running && <div className="form-actions"><button onClick={()=>void quietRun('presenceInterrupt')}>打断当前回应</button><button onClick={()=>void quietRun('presenceMute',{muted:!(presence??snapshot.presence)?.muted})}>{(presence??snapshot.presence)?.muted?'恢复语音':'静音语音'}</button><button onClick={()=>void quietRun('presenceStop')}>结束陪伴会话</button></div>}
       {!setupVisible && tab==='chat' && <Chat snapshot={snapshot} run={run} onSetup={() => setTab('models')}/>}
       {!setupVisible && tab==='models' && <Models snapshot={snapshot} run={run}/>}
       {!setupVisible && tab==='persona' && <PersonaEditor value={snapshot.persona} versions={snapshot.personaVersions} run={run}/>}
       {!setupVisible && tab==='memory' && <Memory snapshot={snapshot} run={run}/>}
-      {!setupVisible && tab==='tasks' && <Tasks snapshot={snapshot} run={run}/>}
-      {!setupVisible && tab==='device' && <Device snapshot={snapshot} run={run}/>}
+      {!setupVisible && tab==='tasks' && <><section className="content-panel"><div className="card activity-switch"><label className="check-row"><input type="checkbox" checked={snapshot.settings.activityEnabled===true} onChange={e=>void quietRun('settings',{...snapshot.settings,activityEnabled:e.target.checked})}/>启用按已设范围执行外部活动</label><small>需先配置账号与预算。评论、加好友和加群仍须具体审批，开关不会自动登录或替你授权任何目标。</small></div><SocialPanel state={snapshot.modules?.social??{}} available={nativeCompanion&&snapshot.modules?.social.available===true} run={(action,data)=>run('module',{domain:'social',action,data})}/></section><details className="legacy-task-details"><summary>聊天处理与原有发送草稿</summary><Tasks snapshot={snapshot} run={run}/></details></>}
+      {!setupVisible && tab==='device' && <><section className="content-panel"><Heading title="手机陪伴与操作" text="观察、收音和输入控制分别开关，关闭浮球不会结束全部联系。"/><DevicePanel state={snapshot.modules?.device??{}} available={nativeCompanion&&snapshot.modules?.device.available===true} run={(action,data)=>run('module',{domain:'device',action,data})}/></section><Device snapshot={snapshot} run={run}/></>}
     </main>
   </div>
 }
