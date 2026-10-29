@@ -42,3 +42,4 @@
 - 运行环境补齐未完成：下载旧 APK 的请求被执行环境的权限策略拦截，按要求停止；APK 仍不含 PRoot 与 rootfs。
 
 验证：compileDebugKotlin、compileDebugAndroidTestKotlin（只编译）、testDebugUnitTest（164 套件 1582 项，0 失败/错误，3 项按设计跳过）、assembleDebug 通过。
+- 补记：旧参考 APK 改由用户上传到本仓库 Release 后取得（APK SHA-256 与发布说明一致）。取出的 libdsh_proot.so、libdsh_proot_loader.so、rootfs.bundle、runtime-manifest.json 四个文件哈希与 proot-rebuild-status.json / release-inputs.json 全部一致（loader 也一致）。放入构建位置后打出完整 debug APK（327,335,605 字节），包内四个文件哈希不变。这些文件和 APK 均未提交；BUILD.md 新增“从旧 APK 提取运行环境”一节。PRoot/Ubuntu 运行环境仍未在设备上运行验证。

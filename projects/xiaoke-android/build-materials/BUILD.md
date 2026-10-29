@@ -11,3 +11,21 @@
 7. 设置 GRADLE_BIN 后运行 scripts/build-companion-private.sh，或从 android 执行 Gradle :app:lintRelease :app:testDebugUnitTest :app:assembleRelease。输出 app/build/outputs/apk/release/app-release.apk。编译不是运行验收。
 
 原源码文件清单与 verify-source.py 是历史静态交接基线；本轮新增文件不适用那个旧摘要集合。新 APK/源码的最终摘要及真实测试记录由本轮集成后更新。无硬件加速的 Android16 首启已经失败，不要重复该路径消耗资源；仪器测试保留供授权真机/加速环境运行。
+
+## 从旧 APK 提取运行环境
+
+没有自行重建 PRoot 时，可以从此前构建的旧 APK 中取出运行环境文件。旧 APK 和取出的文件都放在仓库目录之外的工作目录，**绝不提交**（已由 .gitignore 排除）。
+
+1. 先核对旧 APK 本身的 SHA-256 与其发布说明一致。只解包，不运行其中任何程序。
+2. 取出以下四个文件，逐一核对 SHA-256：
+
+| APK 内路径 | 字节 | SHA-256 | 核对依据 |
+|---|---|---|---|
+| lib/arm64-v8a/libdsh_proot.so | 257088 | caa5d7d65952b258b3427322448db91b5eebea4aa72ab66c77174b86c8437f94 | proot-rebuild-status.json |
+| lib/arm64-v8a/libdsh_proot_loader.so | 1632 | f149774236db1e69b36cc1e4ed3866c7094db2eee52da0d4956aa63a9bb26929 | proot-rebuild-status.json |
+| assets/runtime/rootfs.bundle | 317842454 | f7e9736ebc359a761adaf56bf02fe5ac64877c73085aaa1df0ffbe876c7708fb | release-inputs.json |
+| assets/runtime/runtime-manifest.json | 1035 | 09f709fd1439f4c305b7ed9012287a0e437b993cfef9dacc387da09b10aa13d4 | release-inputs.json |
+
+   loader 内含构建路径信息；自行重建时它的哈希可能与表中不同，属已知情况。除 loader 以外的文件对不上就停止，不要修改清单去迁就。
+3. 两个 .so 放到 source/android/app/src/main/jniLibs/arm64-v8a/，rootfs.bundle 与 runtime-manifest.json 放到 source/android/app/src/main/assets/runtime/，然后按上文构建。
+4. 构建后可用 `unzip -p <apk> <路径> | sha256sum` 确认新 APK 内的四个文件与上表一致。完整 debug APK 约 312 MiB。
