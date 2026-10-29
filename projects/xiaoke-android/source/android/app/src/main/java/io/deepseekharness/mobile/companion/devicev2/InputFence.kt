@@ -12,7 +12,8 @@ class InputFence(private val now: () -> Long) {
     private var active: String? = null
     private val receipts = linkedMapOf<String, Receipt>()
 
-    @Synchronized fun start(packageName: String, seconds: Int): Lease {
+    @Synchronized fun start(packageName: String, seconds: Int, expectedEpoch: Long? = null): Lease {
+        check(expectedEpoch == null || expectedEpoch == epoch) { "授权界面已过期，请重新确认恢复" }
         require(packageName.matches(Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+")))
         require(seconds in 10..300)
         check(active == null) { "上一个触点尚未释放" }
@@ -25,7 +26,7 @@ class InputFence(private val now: () -> Long) {
         return lease
     }
     @Synchronized fun stop(cause: String): Long {
-        if (lease != null) { epoch++; lease = null }
+        epoch++; lease = null
         reason = cause
         receipts.values.filter { it.state == "queued" || it.state == "dispatched" }.forEach { it.state = "stopped"; it.detail = cause }
         return epoch
@@ -79,4 +80,11 @@ class FiveSecondHold(private val now: () -> Long, private val slop: Float) {
         if (fired || now() - began < 5_000L) return false
         fired = true; startedAt = null; return true
     }
+}
+
+/** Partition a bounded gesture without a long remainder segment delaying an emergency release. */
+internal fun gestureSegments(durationMs: Long): List<Long> {
+    require(durationMs in 1..1500)
+    val count = ((durationMs + 79) / 80).toInt()
+    return (0 until count).map { index -> durationMs * (index + 1) / count - durationMs * index / count }
 }

@@ -86,7 +86,7 @@ class CompanionOverlayService : Service() {
             presence!!.start(config)
         }
         runCatching { showBubble(); if (taskId.isNotBlank()) showPanel() }.onFailure { stopSelf() }
-        main.removeCallbacks(tick); main.post(tick)
+        main.removeCallbacks(tick); main.post(tick); DeviceModule.overlayChanged()
         return START_NOT_STICKY
     }
     private fun updateForeground(continuous: Boolean) {
@@ -119,6 +119,7 @@ class CompanionOverlayService : Service() {
         visibleByOwner = visible
         if (!visible) { cancelHold?.invoke(); closePanel() }
         bubble?.visibility = if (visible && !hidden) View.VISIBLE else View.GONE
+        DeviceModule.overlayChanged()
     }
     private fun updateCharacter(event: JSONObject) {
         if (characterReady) {
@@ -350,7 +351,7 @@ class CompanionOverlayService : Service() {
         cancelHold?.invoke(); cancelHold = null; if (activeService === this) activeService = null
         presence?.close(); presence = null; CompanionPresenceHost.detach(this)
         characterReady = false; characterWeb?.destroy(); characterWeb = null
-        running = false; deadline = 0; allowedPackage = ""; main.removeCallbacksAndMessages(null)
+        running = false; DeviceModule.overlayChanged(); deadline = 0; allowedPackage = ""; main.removeCallbacksAndMessages(null)
         if (taskId.isNotBlank()) engine.store.get("task", taskId)?.let { if (it.optString("state") in setOf("draft", "approved")) engine.cancel(taskId) }
         engine.store.clearTemporaryObservations()
         closePanel(); bubble?.let { runCatching { windows.removeView(it) } }; bubble = null

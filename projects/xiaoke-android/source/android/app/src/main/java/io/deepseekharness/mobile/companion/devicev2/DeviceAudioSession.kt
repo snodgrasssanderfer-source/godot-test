@@ -14,10 +14,13 @@ object DeviceAudioSession {
     private var detail = ""
     private var stopService: (() -> Unit)? = null
     private var lastPublish = 0L
+    private val expiryHandler by lazy { android.os.Handler(android.os.Looper.getMainLooper()) }
+    private var expiry: Runnable? = null
     @Volatile var onChanged: (() -> Unit)? = null
     @Synchronized fun prepare(value: Config): String {
         check(phase !in setOf("awaiting_permission", "starting", "recording", "stopping")) { "录音已开启或正在等待权限" }
         require(value.microphone || value.playback); require(value.seconds in 1..30)
+        expiry?.let { expiryHandler.removeCallbacks(it) }; expiry = null
         ticket = UUID.randomUUID().toString(); config = value; phase = "awaiting_permission"; detail = "等待系统同意"
         pcm.clear(); onChanged?.invoke(); return ticket
     }
@@ -40,16 +43,24 @@ object DeviceAudioSession {
     @Synchronized fun ended(id: String, status: String, message: String) {
         if (id != ticket) return
         if (pcm.id.isNotEmpty()) pcm.stop(pcm.id)
-        phase = status; detail = message; stopService = null; onChanged?.invoke()
+        phase = status; detail = message; stopService = null
+        if (pcm.id.isNotEmpty()) {
+            expiry?.let { expiryHandler.removeCallbacks(it) }
+            expiry = Runnable { synchronized(this) { if (ticket == id && phase !in setOf("starting", "recording")) {
+                pcm.clear(); phase = "expired"; detail = "临时音轨已清除"; onChanged?.invoke()
+            } } }.also { expiryHandler.postDelayed(it, 5 * 60_000L) }
+        }
+        onChanged?.invoke()
     }
     fun stop(session: String = "") {
         val action: (() -> Unit)?
         synchronized(this) {
             check(session.isEmpty() || session == pcm.id) { "不能停止另一个录音会话" }
+            val wasPending = phase in setOf("awaiting_permission", "starting")
             action = stopService
             if (pcm.id.isNotEmpty()) pcm.stop(pcm.id)
             phase = if (action == null) "stopped" else "stopping"; detail = "正在结束采集"; stopService = null
-            if (action == null) ticket = "" // Fences an open permission dialog / pending service start.
+            if (action == null && wasPending) ticket = "" // Fences an open permission dialog / pending service start.
         }
         action?.invoke(); onChanged?.invoke()
     }
@@ -57,7 +68,7 @@ object DeviceAudioSession {
     @Synchronized fun state(): JSONObject {
         val tracks = JSONObject()
         pcm.metadata().forEach { (name, m) -> tracks.put(name, JSONObject().put("samples", m.samples).put("hasSignal", m.nonZero)
-            .put("firstAtMs", m.firstAtMs).put("lastAtMs", m.lastAtMs).put("sampleRate", 16000).put("channels", 1)
+            .put("sequence", m.sequence).put("clock", "elapsedRealtime_at_read").put("alignmentVerified", false).put("firstAtMs", m.firstAtMs).put("lastAtMs", m.lastAtMs).put("sampleRate", 16000).put("channels", 1)
             .put("signalStatus", if (m.nonZero) "signal_received" else "silence_or_capture_disallowed")) }
         return JSONObject().put("state", phase).put("jobId", ticket).put("captureSession", pcm.id).put("detail", detail)
             .put("mode", "bounded_capture").put("tracks", tracks).put("fullDuplexVerified", false)

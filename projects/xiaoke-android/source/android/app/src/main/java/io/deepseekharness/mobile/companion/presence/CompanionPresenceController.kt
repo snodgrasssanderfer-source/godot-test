@@ -12,6 +12,7 @@ import android.util.Base64
 import io.deepseekharness.mobile.companion.CompanionDevice
 import io.deepseekharness.mobile.companion.CompanionEngine
 import io.deepseekharness.mobile.companion.CompanionOverlayService
+import io.deepseekharness.mobile.companion.devicev2.DeviceAudioSession
 import io.deepseekharness.mobile.companion.CompanionPolicy
 import io.deepseekharness.mobile.accessibility.DeepSeekAccessibilityService
 import io.deepseekharness.mobile.companion.presence.PresenceProtocol.*
@@ -106,6 +107,7 @@ class CompanionPresenceController(context: Context, private val onEvent: (JSONOb
                 awaySince = if (targetVisible) 0 else SystemClock.elapsedRealtime()
                 statusMessage = if (targetVisible) "本次陪伴已开启" else "等待选定应用；画面感知已挂起，3 分钟未返回将结束"
                 voice.configure(allowNetworkAsr, allowNetworkTts, copy.optBoolean("headphoneBargeIn", false))
+                voice.externalMicrophone(DeviceAudioSession.state().optBoolean("microphoneBusy"))
                 sessionId = UUID.randomUUID().toString()
                 events.start(sessionId, policy())
                 main.post(ticker)
@@ -118,6 +120,7 @@ class CompanionPresenceController(context: Context, private val onEvent: (JSONOb
     fun listenOnce() = onMain {
         if (!running || externallyPaused) { fail("active-session-required"); return@onMain }
         if (app.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { fail("microphone-permission-required"); return@onMain }
+        if (DeviceAudioSession.state().optBoolean("microphoneBusy")) { statusMessage = "正在采集有界音频，请结束收音后再识别"; publish(); return@onMain }
         manualListen = true
         // This explicit action interrupts current speech before opening the microphone.
         events.interrupt(); events.setPolicy(policy())

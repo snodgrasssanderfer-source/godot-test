@@ -47,12 +47,27 @@ class InputFenceTest {
         fence.finish("one", "completed")
         assertEquals("stopped", fence.receipt("one")!!.state)
     }
+    @Test fun `急停使尚在等待宿主许可的恢复请求失效`() {
+        val fence = InputFence { 0L }
+        val oldEpoch = fence.status()["inputEpoch"] as Long
+        fence.stop("owner_stop")
+        assertThrows(IllegalStateException::class.java) { fence.start("example.game", 30, oldEpoch) }
+        fence.start("example.game", 30, fence.status()["inputEpoch"] as Long)
+        assertNotNull(fence.current())
+    }
     @Test fun `系统未确认释放时不能重新获得控制`() {
         val fence = InputFence { 0L }; val lease = fence.start("example.game", 30)
         fence.enqueue("one", "digest", lease.sessionId, lease.epoch); fence.stop("timeout")
         fence.finish("one", "outcome_unknown")
         assertTrue(fence.status()["releasePending"] as Boolean)
         assertThrows(IllegalStateException::class.java) { fence.start("example.game", 30) }
+    }
+    @Test fun `手势尾段也不超过八十毫秒并保持总时长`() {
+        for (duration in listOf(70L, 400L, 600L, 1500L)) {
+            val segments = gestureSegments(duration)
+            assertEquals(duration, segments.sum())
+            assertTrue(segments.all { it in 1..80 })
+        }
     }
     @Test fun `浮球静止计满五秒且取消拖动多指不误触发`() {
         var now = 0L; val hold = FiveSecondHold({ now }, 8f)

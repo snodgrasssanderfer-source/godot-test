@@ -29,7 +29,7 @@ class DeviceAudioService : Service() {
         override fun onStop() { finish("projection_revoked", "投影已被系统或主人撤销，采集已结束") }
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == "stop") { DeviceAudioSession.stop(); return START_NOT_STICKY }
+        if (intent?.action == "stop") { DeviceAudioSession.stop(); stopSelf(); return START_NOT_STICKY }
         if (ticket.isNotEmpty()) return START_NOT_STICKY
         ticket = intent?.getStringExtra("ticket").orEmpty()
         val config = DeviceAudioSession.starting(ticket) ?: run { stopSelf(); return START_NOT_STICKY }
