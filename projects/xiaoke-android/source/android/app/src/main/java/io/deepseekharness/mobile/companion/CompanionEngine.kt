@@ -556,7 +556,8 @@ class CompanionEngine private constructor(private val context: Context) {
         }
         "watch_bilibili" -> {
             check(scope == CompanionPolicy.OWNER || scope.startsWith("qq:group:")) { "这里不能引出看视频" }
-            modules.biliWatcher.start(args.optString("videoId").trim(), args.optString("query").trim(), args.optString("reason"), sourceId)
+            modules.biliWatcher.start(args.optString("videoId").trim(), args.optString("query").trim(), args.optString("reason"), sourceId,
+                args.optString("articleId").removePrefix("cv").trim().toLongOrNull() ?: 0, if (args.optString("kind") == "article") "article" else "video")
         }
         "observe_screen" -> {
             check(scope == CompanionPolicy.OWNER) { "当前聊天没有设备观察权限" }
@@ -639,7 +640,7 @@ class CompanionEngine private constructor(private val context: Context) {
                 if (store.get("conversation", scope)?.optString("route") == "onebot")
                     a.put(decl("poke", "QQ 戳一戳正在和你说话的人。朋友间偶尔的小动作：主人私聊里偶尔用（每天最多 3 次），群里很少用（每个群每天最多 1 次），别和文字说同一个意思", emptyList()))
                 if (scope == CompanionPolicy.OWNER || scope.startsWith("qq:group:"))
-                    a.put(decl("watch_bilibili", "对聊到的话题感兴趣时，自己去 B站看一部相关公开视频（videoId=BV 号，或 query 关键词）。后台进行、用活动额度；只读字幕和关键帧，看完记成你自己的观察并写明实际看了哪部分", listOf("videoId", "query", "reason"), listOf("reason")))
+                    a.put(decl("watch_bilibili", "对聊到的话题感兴趣时，自己去 B站看一部视频或读一篇专栏（videoId=BV 号，articleId=cv 号，或 query 关键词；读专栏时 kind=article）。后台进行、用活动额度；视频读字幕、关键帧、弹幕和热门评论，看完记成你自己的观察并写明实际看了哪部分", listOf("videoId", "articleId", "query", "kind", "reason"), listOf("reason")))
                 if (modules.router.available("social")) {
                     a.put(structured("social_plan", "规划社交动作，data={kind:reply/post/comment/add_friend/join_group/leave_group,account,target,content}。账号与目标必须来自已核对绑定；评论、加好友和加群进入精确审批队列，结果不得说成已经发布。",
                         fields("kind" to "STRING", "account" to "STRING", "target" to "STRING", "content" to "STRING")))

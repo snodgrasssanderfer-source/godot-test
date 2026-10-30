@@ -127,3 +127,14 @@ Mobilerun 仅作为原有设备控制对照，不替换已运行的 DSH 权限�
 ## 2026-10-30 QQ 能力补全（`chat/QqExtras.kt`）
 
 只按 NapNeko/NapCatQQ 49ecfe0f56c1e0649db6988444950216fd5fe792 的接口定义调用，不含它的代码（它的许可证限制再分发）。核对过的参数：`fetch_ptt_text {message_id}`、`set_msg_emoji_like {message_id, emoji_id, set}`（emoji_id 超过三位按 Unicode 表情）、`set_input_status {user_id, event_type: 1}`（仅私聊）、`send_poke {user_id, group_id?}`、`mark_msg_as_read {message_id | group_id | user_id}`。
+
+## 2026-10-30 B站补全
+
+| 机制 | 来源（固定版本） | 许可证 | 本项目文件 |
+|---|---|---|---|
+| 搜索（wbi/search/type）、评论区（reply/main）、弹幕分段（dm/web/seg.so）、专栏（article/view）、回复通知（msgfeed/reply）、楼中楼回复（reply/add 带 root/parent） | iseenope/bilibili-mcp-server 20eedd09862aea2c160163007f45221c544651b2 `src/api/bilibili.ts` | MIT | BilibiliReader.kt、BilibiliActions.kt |
+| 弹幕 protobuf 字段（elems=1，progress=2，content=7） | 同上 `src/api/danmaku.ts` | MIT | BiliDanmaku.kt |
+| 扫码登录、Cookie 六步续期（cookie/info → RSA-OAEP CorrespondPath → refresh_csrf → cookie/refresh → confirm/refresh） | 同上 `src/api/login.ts`、`src/api/cookie.ts` | MIT | social/BiliLogin.kt |
+| 二维码绘制 | soldair/node-qrcode 1.5.4（npm `qrcode`） | MIT | BilibiliPanel.tsx |
+
+读取改用主人登录后的 Cookie（没有 buvid3 时按 `x/frontend/finger/spi` 补一个），不做风控绕过；写入（评论、回复）照旧只经审批清单。

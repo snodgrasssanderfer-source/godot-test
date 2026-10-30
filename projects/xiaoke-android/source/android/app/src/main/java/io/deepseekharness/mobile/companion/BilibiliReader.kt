@@ -1,6 +1,6 @@
-// Public content endpoint/signing adaptation of iseenope/bilibili-mcp-server
-// 20eedd09862aea2c160163007f45221c544651b2, src/api/{bilibili,wbi}.ts, MIT.
-// No login, cookies, account writes, WBI-disable fallback or risk-control bypass.
+// Content endpoint/signing adaptation of iseenope/bilibili-mcp-server
+// 20eedd09862aea2c160163007f45221c544651b2, src/api/{bilibili,wbi,danmaku}.ts, MIT.
+// Reads use the owner's logged-in cookie when one is connected (search refuses anonymous callers); no account writes here.
 package io.deepseekharness.mobile.companion
 
 import okhttp3.OkHttpClient
@@ -25,23 +25,39 @@ object BilibiliWbi {
     }
 }
 
-class BilibiliReader {
+class BilibiliReader(private val cookie: () -> String? = { null }) {
     private var keys: Pair<String, String>? = null
+    @Volatile private var buvid: String? = null
     private val client = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(20, TimeUnit.SECONDS)
         .followRedirects(false).followSslRedirects(false).build()
-    private fun read(url: String): JSONObject {
+    private fun raw(url: String, limit: Long = 2L * 1024 * 1024): ByteArray {
         val uri = URI(url)
         require(uri.scheme == "https" && uri.userInfo == null && (uri.port == -1 || uri.port == 443))
         require(uri.host == "api.bilibili.com" || uri.host.endsWith(".hdslb.com") || uri.host.endsWith(".bilibili.com"))
-        val request = Request.Builder().url(url).header("Referer", "https://www.bilibili.com/").header("User-Agent", "DSH-Companion/0.1 (Android; personal assistant)").build()
-        client.newCall(request).execute().use { response ->
+        val request = Request.Builder().url(url).header("Referer", "https://www.bilibili.com/").header("User-Agent", USER_AGENT)
+        cookieHeader(uri.host)?.let { request.header("Cookie", it) }
+        client.newCall(request.build()).execute().use { response ->
             check(response.isSuccessful) { "B站内容接口暂不可用（HTTP ${response.code}），没有进行绕过或重复发布" }
             val source = response.body?.source() ?: error("内容响应为空")
-            require(!source.request(2L * 1024 * 1024 + 1)) { "内容响应过大" }
-            val text = source.readByteArray()
-            return JSONObject(String(text, Charsets.UTF_8))
+            require(!source.request(limit + 1)) { "内容响应过大" }
+            return source.readByteArray()
         }
     }
+    private fun read(url: String): JSONObject = JSONObject(String(raw(url), Charsets.UTF_8))
+
+    /** The owner's cookie plus a device id; without buvid3 the search API answers -412. */
+    private fun cookieHeader(host: String): String? {
+        if (!host.endsWith("bilibili.com")) return null
+        val base = cookie()?.takeIf { it.isNotBlank() }
+        if (base?.contains("buvid3=") == true) return base
+        val id = buvid ?: runCatching {
+            val data = JSONObject(String(rawNoCookie("https://api.bilibili.com/x/frontend/finger/spi"), Charsets.UTF_8)).getJSONObject("data")
+            "buvid3=${data.getString("b_3")}; buvid4=${data.getString("b_4")}"
+        }.getOrNull()?.also { buvid = it }
+        return listOfNotNull(base, id).joinToString("; ").ifBlank { null }
+    }
+    private fun rawNoCookie(url: String): ByteArray = client.newCall(Request.Builder().url(url).header("User-Agent", USER_AGENT)
+        .header("Referer", "https://www.bilibili.com/").build()).execute().use { r -> check(r.isSuccessful); r.body!!.bytes() }
     private fun signed(path: String, params: Map<String, String>): JSONObject {
         val k = keys ?: read("https://api.bilibili.com/x/web-interface/nav").optJSONObject("data")?.optJSONObject("wbi_img")?.let { image ->
             fun key(name: String) = URI(image.getString(name)).path.substringAfterLast('/').substringBefore('.')
@@ -76,15 +92,77 @@ class BilibiliReader {
         val url = VideoEvidence.publicVideoUrl(part.optString("url")) ?: error("下载地址不在公开视频域名范围")
         return JSONObject().put("url", url).put("size", part.optLong("size", -1)).put("quality", data.optInt("quality", 16))
     }
-    /** Public WBI video search for a chat topic or recorded interest. Without login B站 may refuse; that is reported, not bypassed. */
-    fun searchVideo(keyword: String): String {
-        require(keyword.isNotBlank() && keyword.length <= 100)
-        val result = signed("/x/web-interface/wbi/search/type", mapOf("search_type" to "video", "keyword" to keyword.trim(), "page" to "1"))
-        check(result.optInt("code", -1) == 0) { "B站未提供未登录搜索结果（${result.optInt("code", -1)}），没有绕过限制" }
+    /** WBI search for a chat topic or recorded interest (`search_type` video or article), best match first. */
+    fun search(keyword: String, type: String = "video", limit: Int = 8): List<JSONObject> {
+        require(keyword.isNotBlank() && keyword.length <= 100 && type in setOf("video", "article"))
+        val result = signed("/x/web-interface/wbi/search/type", mapOf("search_type" to type, "keyword" to keyword.trim(), "page" to "1", "order" to "totalrank"))
+        check(result.optInt("code", -1) == 0) { "B站搜索没有结果（${result.optInt("code", -1)}）；未登录时 B站常会拒绝搜索，请在本机扫码登录" }
         val rows = result.optJSONObject("data")?.optJSONArray("result") ?: JSONArray()
-        return (0 until rows.length()).map(rows::getJSONObject).map { it.optString("bvid") }
-            .firstOrNull { Regex("BV[0-9A-Za-z]{10}").matches(it) } ?: error("没有找到相关公开视频")
+        fun clean(text: String) = text.replace(Regex("<[^>]+>"), "").replace("&quot;", "\"").replace("&amp;", "&").trim()
+        return (0 until rows.length()).mapNotNull { rows.optJSONObject(it) }.mapNotNull { r ->
+            if (type == "video") r.optString("bvid").takeIf { Regex("BV[0-9A-Za-z]{10}").matches(it) }?.let { id ->
+                JSONObject().put("videoId", id).put("title", clean(r.optString("title"))).put("author", r.optString("author"))
+                    .put("duration", r.optString("duration")).put("play", r.optLong("play")).put("description", clean(r.optString("description")).take(200))
+            } else r.optLong("id").takeIf { it > 0 }?.let { id ->
+                JSONObject().put("articleId", id).put("title", clean(r.optString("title"))).put("author", r.optString("author_name", r.optString("author")))
+                    .put("description", clean(r.optString("desc")).take(200))
+            }
+        }.take(limit)
     }
+
+    fun searchVideo(keyword: String): String {
+        val results = search(keyword)
+        // Prefer something she can actually take in: under twenty minutes when there is a choice.
+        fun minutes(d: String) = d.split(':').mapNotNull { it.toIntOrNull() }.let { p -> if (p.size >= 2) p[p.size - 2] + (if (p.size == 3) p[0] * 60 else 0) else 0 }
+        return (results.firstOrNull { minutes(it.optString("duration")) in 1..20 } ?: results.firstOrNull())?.getString("videoId") ?: error("没有找到相关视频")
+    }
+
+    /** Hot comments under a video (people's reactions are part of understanding it). */
+    fun comments(aid: String, limit: Int = 20): List<JSONObject> {
+        val result = read("https://api.bilibili.com/x/v2/reply/main?oid=${aid.toLong()}&type=1&mode=3&next=0&ps=${limit.coerceIn(1, 30)}")
+        check(result.optInt("code", -1) == 0) { "评论区不可读取（${result.optInt("code", -1)}）" }
+        val replies = result.optJSONObject("data")?.optJSONArray("replies") ?: JSONArray()
+        return (0 until replies.length()).mapNotNull { replies.optJSONObject(it) }.map { r ->
+            JSONObject().put("user", r.optJSONObject("member")?.optString("uname").orEmpty()).put("text", r.optJSONObject("content")?.optString("message").orEmpty().take(500))
+                .put("likes", r.optLong("like"))
+        }.filter { it.getString("text").isNotBlank() }
+    }
+
+    /** Danmaku between [startSeconds] and [endSeconds], repeated lines folded. */
+    fun danmaku(cid: Long, startSeconds: Double, endSeconds: Double): List<Pair<BiliDanmaku.Line, Int>> {
+        val all = BiliDanmaku.segments(startSeconds, endSeconds).flatMap { segment ->
+            runCatching { BiliDanmaku.parse(raw("https://api.bilibili.com/x/v2/dm/web/seg.so?type=1&oid=$cid&segment_index=$segment", 8L * 1024 * 1024)) }.getOrDefault(emptyList())
+        }
+        return BiliDanmaku.window(all, startSeconds, endSeconds)
+    }
+
+    /** A 专栏 article as plain text. */
+    fun article(cvid: Long): JSONObject {
+        val result = read("https://api.bilibili.com/x/article/view?id=$cvid")
+        check(result.optInt("code", -1) == 0) { "专栏不可读取（${result.optInt("code", -1)}）" }
+        val data = result.getJSONObject("data")
+        val html = data.optString("content")
+        val text = if (html.trimStart().startsWith("{")) runCatching {
+            // Newer articles store rich-text JSON: collect every "words" run.
+            Regex("\"words\":\"((?:[^\"\\\\]|\\\\.)*)\"").findAll(html).joinToString("") { JSONObject("{\"w\":\"${it.groupValues[1]}\"}").getString("w") }
+        }.getOrDefault("") else html.replace(Regex("<(br|/p|/h\\d)[^>]*>"), "\n").replace(Regex("<[^>]+>"), "")
+            .replace("&nbsp;", " ").replace("&quot;", "\"").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+        return JSONObject().put("articleId", cvid).put("title", data.optString("title")).put("author", data.optJSONObject("author")?.optString("name").orEmpty())
+            .put("summary", data.optString("summary")).put("text", text.replace(Regex("\n{3,}"), "\n\n").trim())
+    }
+
+    /** Replies to the logged-in account's comments, newest first (`/x/msgfeed/reply`). Needs the cookie. */
+    fun replyNotices(): List<JSONObject> {
+        check(!cookie().isNullOrBlank()) { "需要先登录B站" }
+        val result = read("https://api.bilibili.com/x/msgfeed/reply?build=0&mobi_app=web")
+        check(result.optInt("code", -1) == 0) { "回复通知不可读取（${result.optInt("code", -1)}）" }
+        val items = result.optJSONObject("data")?.optJSONArray("items") ?: JSONArray()
+        return (0 until items.length()).mapNotNull { items.optJSONObject(it) }
+    }
+    companion object {
+        const val USER_AGENT = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+    }
+
     fun video(videoId: String, startSeconds: Double = 0.0, endSeconds: Double = 0.0): JSONObject {
         require(Regex("BV[0-9A-Za-z]{10}").matches(videoId))
         val metadata = read("https://api.bilibili.com/x/web-interface/view?bvid=$videoId")

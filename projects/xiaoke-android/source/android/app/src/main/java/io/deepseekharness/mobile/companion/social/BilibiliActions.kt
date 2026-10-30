@@ -40,7 +40,7 @@ internal class BilibiliActions(
     }
     private fun builder(path: String, cookie: String) = Request.Builder().url("https://api.bilibili.com$path")
         .header("Cookie", cookie).header("Referer", "https://www.bilibili.com/")
-        .header("User-Agent", "DSH-Companion/0.1 (Android; personal assistant)")
+        .header("User-Agent", io.deepseekharness.mobile.companion.BilibiliReader.USER_AGENT)
     fun verify(raw: String): JSONObject {
         check(allowed()) { "联网已关闭或助手已暂停" }
         val credentials = BiliCredential.parse(raw)
@@ -62,6 +62,11 @@ internal class BilibiliActions(
                 fields["oid"] = SocialRules.numeric(params.getString("aid")); fields["type"] = "1"; fields["plat"] = "1"
                 fields["message"] = SocialRules.bounded(params.getString("content"), 4000); "/x/v2/reply/add"
             }
+            "bili.reply" -> {
+                fields["oid"] = SocialRules.numeric(params.getString("oid")); fields["type"] = params.optInt("type", 1).toString(); fields["plat"] = "1"
+                fields["root"] = SocialRules.numeric(params.getString("root")); fields["parent"] = SocialRules.numeric(params.getString("parent"))
+                fields["message"] = SocialRules.bounded(params.getString("content"), 4000); "/x/v2/reply/add"
+            }
             else -> error("不支持的B站写入操作")
         }
         if (!allowed()) return rejected(-1, "联网已关闭或助手已暂停，未提交")
@@ -71,7 +76,7 @@ internal class BilibiliActions(
         if (code != 0) return rejected(code, "B站未接受操作，请查看权限、登录状态或平台限制；不会自动重发")
         val data = result.optJSONObject("data") ?: JSONObject()
         val ack = JSONObject()
-        if (method == "bili.comment") {
+        if (method == "bili.comment" || method == "bili.reply") {
             val rpid = data.opt("rpid")?.toString() ?: data.optJSONObject("reply")?.opt("rpid")?.toString().orEmpty()
             if (rpid.isNotBlank()) ack.put("message_id", rpid)
         }

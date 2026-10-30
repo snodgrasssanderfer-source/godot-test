@@ -153,15 +153,15 @@ class SocialRuntime(
         require(scope == "owner:local" || Regex("qq:(private|group):[A-Za-z0-9_-]{1,128}").matches(scope)) { "社交会话范围无效" }
         val account = SocialRules.numeric(input.getString("account"))
         val target = SocialRules.bounded(input.getString("target"), 160)
-        if (bilibili && kind != "bili_follow") BilibiliActions.videoId(target)
-        else if (kind != "comment") SocialRules.numeric(target)
+        if (bilibili && kind !in setOf("bili_follow", "bili_reply")) BilibiliActions.videoId(target)
+        else if (kind !in setOf("comment", "qzone_reply", "qzone_like")) SocialRules.numeric(target)
         if (kind == "post") require(target == account) { "只能发布到自己的空间" }
         // Her own drafts wait until the owner has time; owner-authored plans are acted on right away.
         val now = clock(); val expires = input.optLong("expiresAt", now + if (ownerAuthored) 15 * 60_000L else DRAFT_TTL_MS)
         require(expires in (now + 1)..(now + 7 * DAY_MS))
         val sources = strings(input.optJSONArray("sourceIds")); require(sources.size <= 32)
         val content = input.optString("content"); require(content.length <= 4000)
-        if (kind in setOf("reply", "post", "comment", "bili_comment")) SocialRules.bounded(content, 4000)
+        if (kind in setOf("reply", "post", "comment", "bili_comment", "bili_reply", "qzone_reply")) SocialRules.bounded(content, 4000)
         val token = SocialRules.bounded(input.getString("idempotencyKey"), 128)
         val payload = copy(input.optJSONObject("payload") ?: JSONObject())
         require(payload.toString().length <= 64000)
@@ -175,10 +175,21 @@ class SocialRuntime(
         return ledger.change { root ->
             check(!SocialRules.blocked(root, item)) { "动作来源已删除" }
             val config = root.optJSONObject("config") ?: JSONObject()
-            val autonomous = kind == "post" && config.optBoolean("autonomousDailyPost") || kind == "reply" && config.optBoolean("autonomousReplies") || kind == "leave_group" ||
-                kind == "bili_like" && config.optBoolean("autonomousBiliLikes") || kind == "bili_follow" && config.optBoolean("autonomousBiliFollowing")
-            if (kind in setOf("post", "comment", "bili_comment")) check(ownerAuthored || safeSources(root, sources)) { "公开表达只能使用明确可分享概要，不能直接发布私密日记或原始对话" }
-            if (bilibili) {
+            // Everything published under the owner's accounts (posts, comments, replies) waits for approval; only likes may be automatic.
+            val autonomous = kind == "post" && ownerAuthored && config.optBoolean("autonomousDailyPost") || kind == "reply" && config.optBoolean("autonomousReplies") || kind == "leave_group" ||
+                kind in setOf("bili_like", "qzone_like") && config.optBoolean("autonomousBiliLikes") || kind == "bili_follow" && config.optBoolean("autonomousBiliFollowing")
+            if (kind in setOf("post", "comment", "bili_comment", "bili_reply", "qzone_reply")) check(ownerAuthored || safeSources(root, sources)) { "公开表达只能使用明确可分享概要，不能直接发布私密日记或原始对话" }
+            if (kind == "bili_reply") {
+                val notice = rows(root, "biliNotices").getJSONObject(payload.getString("noticeId"))
+                require(target == notice.getString("oid")) { "回复目标与通知不符" }
+                require(account == rows(root, "bilibili").optString("account")) { "B站账号未核对" }
+                item.put("payload", JSONObject().put("noticeId", notice.getString("id")).put("oid", notice.getString("oid")).put("type", notice.optInt("type", 1))
+                    .put("root", notice.getString("root")).put("parent", notice.getString("parent")).put("title", notice.optString("title")).put("replyTo", notice.optString("text")))
+            } else if (kind in setOf("qzone_reply", "qzone_like")) {
+                val ref = rows(root, "qzone").getJSONObject(payload.getString("refId"))
+                require(target == ref.getString("tid")) { "空间目标与已读取内容不符" }
+                item.put("payload", copy(ref).put("refId", ref.getString("id")))
+            } else if (bilibili) {
                 require(scope == "owner:local") { "B站活动不接受群聊身份授权" }
                 val resource = rows(root, "biliResources").getJSONObject(payload.getString("resourceId"))
                 check(!SocialRules.blocked(root, resource)) { "视频来源已删除" }
@@ -270,7 +281,7 @@ class SocialRuntime(
             val ack = transport.call(claimed.getString("account"), method, params)
             val accepted = ack.optInt("retcode", -1) == 0 && ack.optString("status") == "ok"
             val external = ack.optJSONObject("data")?.let { it.optString(if (claimed.getString("kind") == "post") "tid" else "message_id") }.orEmpty()
-            val needsId = claimed.getString("kind") in setOf("reply", "post", "bili_comment")
+            val needsId = claimed.getString("kind") in setOf("reply", "post", "bili_comment", "bili_reply")
             JSONObject().put("state", if (!accepted) "failed" else if (needsId && external.isBlank()) "outcome_unknown" else "done")
                 .put("externalId", external).put("detail", if (!accepted) {
                     if (claimed.optString("platform") == "bilibili") ack.optString("message", "B站未接受操作").take(240) else "平台明确拒绝该动作"
@@ -292,7 +303,10 @@ class SocialRuntime(
             "post" -> "send_qzone_msg" to JSONObject().put("content", content).put("ugc_right", 4)
             "comment" -> "comment_qzone_public_feed" to ledger.read { root -> JSONObject().put("feed", rows(root, "feeds").getJSONObject(target).getJSONObject("feed")).put("content", content) }
             "leave_group" -> "set_group_leave" to JSONObject().put("group_id", target).put("is_dismiss", false)
-            "bili_like", "bili_follow", "bili_comment", "bili_download" -> "bili." + a.getString("kind").removePrefix("bili_") to copy(p)
+            "qzone_reply" -> "comment_qzone" to JSONObject().put("tid", target).put("target_uin", p.getString("ownerUin")).put("content", content)
+                .put("comment_id", p.getString("commentId")).put("comment_uin", p.getString("commentUin"))
+            "qzone_like" -> "like_qzone" to JSONObject().put("tid", target).put("target_uin", p.getString("ownerUin")).put("abstime", p.optLong("time"))
+            "bili_like", "bili_follow", "bili_comment", "bili_download", "bili_reply" -> "bili." + a.getString("kind").removePrefix("bili_") to copy(p)
                 .put("target", target).put("content", content).put("actionId", a.getString("id")).put("sourceIds", a.getJSONArray("sourceIds"))
             "add_friend", "join_group" -> {
                 val request = ledger.read { root -> rows(root, "events").getJSONObject(p.getString("requestEventId")).getJSONObject("data") }

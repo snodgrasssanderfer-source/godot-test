@@ -45,7 +45,7 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
         androidx.core.content.ContextCompat.registerReceiver(context.applicationContext, unlockWatcher,
             android.content.IntentFilter(android.content.Intent.ACTION_USER_PRESENT), androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
         connectivity.registerDefaultNetworkCallback(connectionWatcher)
-        clock.scheduleWithFixedDelay({ runCatching { nightlyDiary.tick() }; runCatching { consolidator.tick() }; memoryIndex.refresh() }, 1, 2, java.util.concurrent.TimeUnit.MINUTES)
+        clock.scheduleWithFixedDelay({ runCatching { nightlyDiary.tick() }; runCatching { consolidator.tick() }; memoryIndex.refresh(); runCatching { biliWatcher.tick() } }, 1, 2, java.util.concurrent.TimeUnit.MINUTES)
         refreshConnectivity()
         contentChanged()
     }

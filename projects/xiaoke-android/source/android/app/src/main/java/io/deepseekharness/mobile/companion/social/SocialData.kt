@@ -43,7 +43,7 @@ class SocialLedger(initial: JSONObject = JSONObject(), private val persist: (JSO
 internal object SocialRules {
     val effects = mapOf("reply" to "social_send", "post" to "public_post", "comment" to "public_comment",
         "add_friend" to "add_friend", "join_group" to "join_group", "leave_group" to "leave_group",
-        "bili_like" to "like", "bili_follow" to "follow", "bili_comment" to "public_comment", "bili_download" to "download", "save_media" to "save")
+        "bili_like" to "like", "bili_follow" to "follow", "bili_comment" to "public_comment", "bili_reply" to "public_comment", "qzone_reply" to "public_comment", "qzone_like" to "like", "bili_download" to "download", "save_media" to "save")
     fun owner(p: CommandPrincipal) {
         require(p.owner && (p.channel == "owner_ui" && p.scope == "owner:local" || p.channel == "owner_qq" && p.scope.startsWith("qq:private:"))) { "此操作需要宿主验证的主人身份" }
     }
