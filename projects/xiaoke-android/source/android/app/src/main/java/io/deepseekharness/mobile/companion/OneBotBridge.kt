@@ -189,9 +189,29 @@ class OneBotBridge private constructor(private val context: Context) {
         val c = store.get("conversation", scope) ?: return
         val unread = (0 until attachments.length()).count { attachments.getJSONObject(it).optString("kind") in setOf("image", "mface", "record", "video") }
         val summary = if (unread > 0) " [已读取 $read 个媒体片段；其余未读取，具体格式可能不受支持]" else ""
+        val replyTo = event.optString("replyTo")
+        val mine = c.optJSONArray("myMessageIds")?.let { a -> (0 until a.length()).map { a.optString(it) } }.orEmpty()
+        val replyToHer = replyTo.isNotBlank() && replyTo in mine
         CompanionRouting.receive(context, c, "${event.optString("sender")}（${event.getString("senderId")}）：$text$summary",
-            "OneBot 消息 ${event.getString("id")}", event.optBoolean("mentioned"), event.getString("senderId"), observationId, event.optString("platformMessageId"))
+            "OneBot 消息 ${event.getString("id")}", event.optBoolean("mentioned"), event.getString("senderId"), observationId, event.optString("platformMessageId"),
+            replyToHer, event.optBoolean("mentionsOther") || (replyTo.isNotBlank() && !replyToHer))
     }
+    /** Sticker shelf lookup by name, provided by the social module that holds the owner's media. */
+    @Volatile private var stickerSource: ((String) -> io.deepseekharness.mobile.companion.chat.OutgoingSegments.Sticker?)? = null
+    fun setStickerSource(source: ((String) -> io.deepseekharness.mobile.companion.chat.OutgoingSegments.Sticker?)?) { stickerSource = source }
+
+    private fun textOf(message: JSONArray) = (0 until message.length()).joinToString("") { message.getJSONObject(it).optJSONObject("data")?.optString("text").orEmpty() }
+
+    /** Her own message ids per chat, so a quote of one of them counts as talking to her. */
+    private fun rememberMine(scope: String, ids: List<String>) = runCatching {
+        val store = engine.store
+        synchronized(store) {
+            val c = store.get("conversation", scope) ?: return@runCatching
+            val old = c.optJSONArray("myMessageIds")?.let { a -> (0 until a.length()).map { a.optString(it) } }.orEmpty()
+            store.put("conversation", c.put("myMessageIds", JSONArray((old + ids).takeLast(100))))
+        }
+    }
+
     /** A poke reaches her like a short message from the poker, so she knows who poked whom (and can answer one aimed at her). */
     private fun receivePoke(conversation: JSONObject, poke: JSONObject, account: String) {
         val store = engine.store
@@ -285,12 +305,17 @@ class OneBotBridge private constructor(private val context: Context) {
         check(conversation.optString("route") == "onebot" && task.optString("account") == settings.optString("oneBotAccount") && conversation.optString("account") == task.optString("account")) { "账号或会话绑定已变化" }
         store.claimSend(task.getString("id"), CompanionPolicy.draftDigest(task))
         val ids = mutableListOf<String>()
-        var segments = listOf(task.getString("body"))
+        var segments = listOf(JSONArray())
         try {
-            // A longer reply goes out as a few messages with typing-like pauses (AstrBot's segmented reply).
+            // A longer reply goes out as a few messages with typing-like pauses (AstrBot's segmented reply);
+            // emoji markers become faces, stickers go out as their own picture messages.
+            val source = stickerSource
             segments = io.deepseekharness.mobile.companion.chat.ReplySegmenter.split(task.getString("body"))
+                .flatMap { io.deepseekharness.mobile.companion.chat.OutgoingSegments.build(it) { name -> source?.invoke(name) } }
+            if (segments.isEmpty()) return store.transitionTask(task.getString("id"), setOf("sending"), "failed", "回复里只有发不出去的表情标记，没有可发的内容")
+                ?: store.get("task", task.getString("id"))!!
             for ((index, segment) in segments.withIndex()) {
-                if (index > 0) Thread.sleep(io.deepseekharness.mobile.companion.chat.ReplySegmenter.pauseMs(segment))
+                if (index > 0) Thread.sleep(io.deepseekharness.mobile.companion.chat.ReplySegmenter.pauseMs(textOf(segment)))
                 check(verified && !store.settings().optBoolean("paused")) { "连接已断开或已暂停" }
                 val echo = CompanionPolicy.id()
                 val wait = Pending(); pending[echo] = wait
@@ -303,6 +328,7 @@ class OneBotBridge private constructor(private val context: Context) {
                 if (ack == null || ack.optInt("retcode", -1) != 0 || ack.optString("status") != "ok" || id.isBlank()) {
                     val state = if (ack != null && ids.isEmpty() && (ack.optInt("retcode", -1) != 0 || ack.optString("status") != "ok")) "failed" else "unknown"
                     val said = ack?.let { (it.optString("wording").ifBlank { it.optString("message") }).take(80) }.orEmpty()
+                    if (ids.isNotEmpty()) rememberMine(task.getString("scope"), ids)
                     return store.transitionTask(task.getString("id"), setOf("sending", "unknown"), state,
                         if (state == "failed") "QQ 拒绝了发送（retcode ${ack?.optInt("retcode")}${if (said.isNotBlank()) "：$said" else ""}）"
                         else if (ack == null) "已发出 ${ids.size}/${segments.size} 段，后面 15 秒没等到 QQ 确认，未自动重发"
@@ -311,6 +337,7 @@ class OneBotBridge private constructor(private val context: Context) {
                 }
                 ids.add(id)
             }
+            rememberMine(task.getString("scope"), ids)
             return store.transitionTask(task.getString("id"), setOf("sending", "unknown"), "done", "已发出 ${segments.size} 段（不等于对方已读）",
                 JSONObject().put("platformMessageId", ids.first()).put("platformMessageIds", org.json.JSONArray(ids))) ?: error("任务状态已变化")
         } catch (e: Exception) {

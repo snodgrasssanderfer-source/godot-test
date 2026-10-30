@@ -9,6 +9,14 @@ object QqFaces {
 
     fun name(id: String): String? = names[id.trim()]
 
+    /** Name → id, for sending; the first id wins when a name repeats. */
+    private val ids: Map<String, String> by lazy { names.entries.reversed().associate { it.value to it.key } }
+
+    fun id(name: String): String? = ids[name.trim().removePrefix("/")]
+
+    /** A few everyday ones, for her prompt. */
+    val COMMON = listOf("微笑", "捂脸", "斜眼笑", "doge", "笑哭", "大哭", "流泪", "害羞", "调皮", "偷笑", "白眼", "托腮", "抱抱", "赞", "OK", "爱心", "心碎", "吃瓜", "汗", "擦汗", "疑问", "晕", "敲打", "再见")
+
     private val TABLE = listOf(
         "0:惊讶|1:撇嘴|2:色|3:发呆|4:得意|5:流泪|6:害羞|7:闭嘴|8:睡|9:大哭|10:尴尬|11:发怒|12:调皮|13:呲牙|14:微笑|15:难过|16:酷|18:抓狂|19:吐|20:偷笑",
         "21:可爱|22:白眼|23:傲慢|24:饥饿|25:困|26:惊恐|27:流汗|28:憨笑|29:悠闲|30:奋斗|31:咒骂|32:疑问|33:嘘|34:晕|35:折磨|36:衰|37:骷髅|38:敲打|39:再见",

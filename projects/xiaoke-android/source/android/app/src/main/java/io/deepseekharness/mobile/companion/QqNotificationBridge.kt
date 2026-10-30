@@ -81,7 +81,8 @@ class QqNotificationBridge : NotificationListenerService() {
             val store = CompanionEngine.get(context).store
             val conversation = store.get("conversation", task.getString("scope")) ?: error("会话未绑定")
             check(conversation.optBoolean("reliable")) { "QQ 通知没有可靠会话标识，不能自动发送" }
-            val text = task.getString("body")
+            // Notification replies are plain text: emoji markers are dropped rather than sent as words.
+            val text = io.deepseekharness.mobile.companion.chat.OutgoingSegments.plain(task.getString("body")).ifBlank { task.getString("body") }
             val result = Bundle()
             target.inputs.filter { it.allowFreeFormInput }.forEach { result.putCharSequence(it.resultKey, text) }
             val intent = Intent().addFlags(Intent.FLAG_RECEIVER_FOREGROUND)

@@ -7,7 +7,7 @@ import org.json.JSONObject
 object OneBotSegments {
     fun parse(input: JSONArray, account: String): JSONObject {
         val text = StringBuilder(); val attachments = JSONArray(); val images = JSONArray()
-        var nodes = 0; var truncated = false; var mentioned = false
+        var nodes = 0; var truncated = false; var mentioned = false; var mentionsOther = false; var replyTo = ""
         fun walk(list: JSONArray, depth: Int, source: String) {
             if (depth > 4) { truncated = true; return }
             for (index in 0 until list.length()) {
@@ -17,8 +17,12 @@ object OneBotSegments {
                 val ref = "$source/$index"
                 when (kind) {
                     "text" -> text.append(data.optString("text").take(8000))
-                    "at" -> { val who = data.optString("qq"); if (depth == 0 && who == account) mentioned = true; text.append(" @").append(who.take(24)) }
-                    "reply" -> text.append(" [引用消息]")
+                    "at" -> {
+                        val who = data.optString("qq")
+                        if (depth == 0) { if (who == account) mentioned = true else if (who != "all") mentionsOther = true }
+                        text.append(" @").append(who.take(24))
+                    }
+                    "reply" -> { if (depth == 0) replyTo = data.optString("id").take(80); text.append(" [引用消息]") }
                     "face" -> {
                         val name = io.deepseekharness.mobile.companion.chat.QqFaces.name(data.optString("id"))
                         text.append(if (name != null) " [表情:$name]" else " [QQ表情]")
@@ -67,6 +71,6 @@ object OneBotSegments {
         }
         walk(input, 0, "segment")
         return JSONObject().put("text", text.toString().take(32000)).put("attachments", attachments).put("images", images)
-            .put("mentioned", mentioned).put("truncated", truncated)
+            .put("mentioned", mentioned).put("mentionsOther", mentionsOther).put("replyTo", replyTo).put("truncated", truncated)
     }
 }

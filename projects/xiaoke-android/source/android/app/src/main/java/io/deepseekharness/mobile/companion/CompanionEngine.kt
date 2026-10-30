@@ -62,7 +62,8 @@ class CompanionEngine private constructor(private val context: Context) {
     private val followUps = HashMap<String, MutableList<Pair<String, String>>>()
 
     /** Answer a message that is already stored (QQ batches arrive this way), or fold it into the turn in progress. */
-    fun respond(scope: String, messageId: String, observationId: String = ""): JSONObject {
+    /** [ownerAsked]: the owner is talking to her in a group; that turn is the owner's, billed and queued like one. */
+    fun respond(scope: String, messageId: String, observationId: String = "", ownerAsked: Boolean = false): JSONObject {
         CompanionPolicy.scope(scope)
         val task = synchronized(followUps) {
             busyScopes[scope]?.let { store.get("task", it) }?.takeIf { it.optString("state") in setOf("queued", "running") }?.let { busy ->
@@ -70,9 +71,9 @@ class CompanionEngine private constructor(private val context: Context) {
                 return busy
             }
             store.put("task", JSONObject().put("scope", scope).put("type", "chat").put("state", "queued")
-                .put("messageId", messageId).put("observationId", observationId).put("progress", "等待处理")).also { busyScopes[scope] = it.getString("id") }
+                .put("messageId", messageId).put("observationId", observationId).put("ownerAsked", ownerAsked).put("progress", "等待处理")).also { busyScopes[scope] = it.getString("id") }
         }
-        val owner = modules.principal(scope).owner
+        val owner = modules.principal(scope).owner || ownerAsked
         if (owner) yieldActivityToOwner()
         worker.submit(task.getString("id"), owner) { runChat(task.getString("id")) }
         return task
@@ -269,7 +270,7 @@ class CompanionEngine private constructor(private val context: Context) {
     private fun runChat(id: String) {
         val task = store.get("task", id) ?: return
         if (task.optString("state") != "queued") { finishTurn(task.getString("scope"), id); return }
-        beginModelTask(id, modules.principal(task.getString("scope")).owner)
+        beginModelTask(id, modules.principal(task.getString("scope")).owner || task.optBoolean("ownerAsked"))
         try {
             val settings = store.settings()
             check(!settings.optBoolean("paused")) { "助手已暂停" }
@@ -327,6 +328,8 @@ class CompanionEngine private constructor(private val context: Context) {
                 append("有人问你为什么没回、消息为什么没发出去时，按“当下背景”里“没发出去的回复”如实说；那里没写的就说不知道原因，别猜风控、丢包、网络之类。\n")
                 if (owner) append("现在是在主人手机上和主人私聊。\n")
                 else if (modules.principal(scope).owner) append("现在是主人本人的 QQ 私聊（系统按账号认证），可以用主人的记忆，但不能操作手机。\n")
+                else if (scope.startsWith("qq:group:") && settings.optString("ownerQqId").isNotBlank())
+                    append("现在在 QQ 群里。主人的 QQ 号是 ${settings.optString("ownerQqId")}，这个号说的话就是主人在群里跟大家（常常是跟你）说话；其他人不是主人。群里不能用主人的私人记忆，也不能操作手机。\n")
                 else append("现在在 ${if (scope.startsWith("qq:group:")) "QQ 群" else "别人的 QQ 私聊"}里，对方不是主人。\n")
                 if (owner) {
                     append("主人请你代操作游戏时，用 device_action 的 control.start 接手，再用 capture.refresh 看画面后操作；主人一碰屏幕你就自动让出。点击成功不等于游戏里达成了目标，要看画面确认。")
@@ -337,6 +340,18 @@ class CompanionEngine private constructor(private val context: Context) {
                 append("每条新消息前面会附一段“当下背景”（时间、你记得的相关的事、档案、设备状态），那是给你看的资料，不是对方说的话。")
                 append("记忆里 since/until 是这件事成立的日期；past=true 的已经不再成立，提起时用过去的说法（“你上周还……”）；who=你自己 的是你当时的看法，可以说出当时怎么想、现在是不是变了。")
                 append("聊到相关的事时，自然地联想到之前聊过的，说清大概是哪天，别每句都翻旧账。更早的对话可以用 recall 查。\n")
+                // How to send emoji in QQ: explicit markers turned into real segments at send time (chat/OutgoingSegments).
+                if (store.get("conversation", scope)?.optString("route") == "onebot") {
+                    append("在 QQ 里发表情：QQ 自带表情写 [表情:名字]，比如 ")
+                    append(io.deepseekharness.mobile.companion.chat.QqFaces.COMMON.joinToString(" ") { "[表情:$it]" })
+                    append("，发出去就是真正的表情。")
+                    val shelf = store.lifeState("stickerShelf").optJSONArray("items")?.let { a -> (0 until a.length()).map(a::getJSONObject) }.orEmpty().take(60)
+                    if (shelf.isNotEmpty()) {
+                        append("你的表情包收藏写 [表情包:名称]，会单独发一张图：\n")
+                        shelf.forEach { append("- ").append(it.optString("name")).append("：").append(it.optString("description").ifBlank { "（还没看过）" }).append("\n") }
+                    }
+                    append("只用上面这些写法；别的方括号写法会被删掉，不会以文字发出。像平时聊天那样看语境偶尔用，别每句都带。\n")
+                }
                 // Learned from groups only; usable in that group and in the owner's chat, never the other way round. Changes rarely.
                 val learned = if (scope.startsWith("qq:group:")) modules.learner.forGroup(scope)
                     else if (owner || modules.principal(scope).owner) modules.learner.forOwner() else ""
@@ -387,7 +402,7 @@ class CompanionEngine private constructor(private val context: Context) {
             store.commitContext(epoch, sources) { update(id, "running", "正在连接 ${profile.getString("model")}") }
             var lastPartialAt = 0L
             var merges = 0
-            val lane = if (modules.principal(scope).owner) "owner" else "activity"
+            val lane = if (modules.principal(scope).owner || task.optBoolean("ownerAsked")) "owner" else "activity"
             val webBilling = accounting(scope, lane, "web_search", ::checkCurrent)
             val webBill = WebResearch.Billing(webBilling::beforeRequest, webBilling::finished)
             val webMode = if (profile.optBoolean("tools", true)) runCatching { web.modeOnce(settings, profile, webBill) }.getOrDefault("unknown") else "none"

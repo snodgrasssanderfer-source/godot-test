@@ -43,6 +43,7 @@ object OneBotProtocol {
             .put("sender", value.optJSONObject("sender")?.optString("card")?.ifBlank { null }
                 ?: value.optJSONObject("sender")?.optString("nickname") ?: sender)
             .put("text", parsed.getString("text")).put("mentioned", parsed.getBoolean("mentioned")).put("images", parsed.getJSONArray("images"))
+            .put("mentionsOther", parsed.optBoolean("mentionsOther")).put("replyTo", parsed.optString("replyTo"))
             .put("attachments", parsed.getJSONArray("attachments")).put("truncated", parsed.getBoolean("truncated"))
     }
     /** NapCat poke notice (notice_type notify, sub_type poke): who poked whom, in a group or a private chat. Her own pokes are skipped. */
@@ -73,12 +74,20 @@ object OneBotProtocol {
         if (!allowed || u.scheme !in setOf("http", "https") || u.userInfo != null || u.port !in setOf(-1, 443) || u.fragment != null) null
         else if (u.scheme == "http") "https:" + raw.substringAfter(':') else raw
     }.getOrNull()
-    fun send(conversation: JSONObject, body: String, echo: String): JSONObject {
+    fun send(conversation: JSONObject, body: String, echo: String): JSONObject =
+        send(conversation, JSONArray().put(JSONObject().put("type", "text").put("data", JSONObject().put("text", CompanionPolicy.text(body, 4000)))), echo)
+
+    /** Only text, face and base64 image segments built by OutgoingSegments; never CQ strings or URLs from elsewhere. */
+    fun send(conversation: JSONObject, message: JSONArray, echo: String): JSONObject {
         val type = conversation.getString("targetType")
         require(type in setOf("private", "group"))
+        for (i in 0 until message.length()) message.getJSONObject(i).let { segment ->
+            require(segment.optString("type") in setOf("text", "face", "image"))
+            if (segment.optString("type") == "image") require(segment.getJSONObject("data").optString("file").startsWith("base64://"))
+            if (segment.optString("type") == "text") segment.getJSONObject("data").optString("text").let { require(it.length <= 4000 && '\u0000' !in it) { "内容超过长度限制" } }
+        }
         // NapCat SendMsgPayloadSchema uses string QQ IDs; avoid number coercion across runtimes.
-        val params = JSONObject().put(if (type == "group") "group_id" else "user_id", numeric(conversation.getString("targetId")))
-            .put("message", JSONArray().put(JSONObject().put("type", "text").put("data", JSONObject().put("text", CompanionPolicy.text(body, 4000)))))
+        val params = JSONObject().put(if (type == "group") "group_id" else "user_id", numeric(conversation.getString("targetId"))).put("message", message)
         return JSONObject().put("action", if (type == "group") "send_group_msg" else "send_private_msg").put("params", params).put("echo", echo)
     }
 }
