@@ -61,6 +61,8 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
     @Volatile private var syncTransport: HttpsSyncTransport? = null
     @Volatile private var closing = false
     private val syncing = AtomicBoolean(false)
+    private val qzone = QzoneLife(store, ports, ledger, runtime, bridge)
+    private val qzoneWorker = Executors.newSingleThreadScheduledExecutor { runnable -> Thread(runnable, "xiaoke-qzone").apply { isDaemon = true } }
     private fun networkPermitted() = !closing && store.settings().optBoolean("networkEnabled") && !store.settings().optBoolean("paused")
     private fun biliState() = ledger.read { root -> copy(rows(root, "bilibili")).put("route", "bilibili").put("platform", "bilibili")
         .put("credentialConfigured", biliSecret.configured()).put("connected", rows(root, "bilibili").optBoolean("enabled") && biliSecret.configured()) }
@@ -92,6 +94,7 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
         syncWorker.scheduleWithFixedDelay({
             if (canSync()) runCatching { runSync() }
         }, 15, 60, TimeUnit.SECONDS)
+        qzoneWorker.scheduleWithFixedDelay({ if (!closing) runCatching { qzone.tick() } }, 2, 1, TimeUnit.MINUTES)
     }
     override fun snapshot(principal: CommandPrincipal): JSONObject = runtime.snapshot(principal).also {
         it.getJSONObject("service").put("error", lastError)
@@ -432,5 +435,5 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
             .put("motivation", motivation).put("idempotencyKey", "watch-" + hash(observationId))
             .put("sourceIds", JSONArray().put(observationId)), companion)
     }
-    override fun close() { closing = true; timer.shutdownNow(); effectWorker.shutdownNow(); syncWorker.shutdownNow(); syncTransport?.cancel(); biliActions.cancel(); biliDownload.cancel(); bridge.setModuleListener(null); bridge.setEffectGate(null); QqNotificationBridge.setEffectGate(null); runtime.close() }
+    override fun close() { closing = true; qzoneWorker.shutdownNow(); timer.shutdownNow(); effectWorker.shutdownNow(); syncWorker.shutdownNow(); syncTransport?.cancel(); biliActions.cancel(); biliDownload.cancel(); bridge.setModuleListener(null); bridge.setEffectGate(null); QqNotificationBridge.setEffectGate(null); runtime.close() }
 }

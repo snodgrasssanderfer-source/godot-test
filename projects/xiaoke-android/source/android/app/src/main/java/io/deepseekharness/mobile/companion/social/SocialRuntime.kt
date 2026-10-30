@@ -81,7 +81,7 @@ class SocialRuntime(
             "social.configure" -> {
                 SocialRules.owner(principal)
                 ledger.change { root -> rows(root, "config").also { config ->
-                    listOf("autonomousDailyPost", "autonomousReplies", "autonomousBiliLikes", "autonomousBiliFollowing").forEach { key -> if (data.has(key)) config.put(key, data.getBoolean(key)) }
+                    listOf("autonomousDailyPost", "autonomousReplies", "autonomousBiliLikes", "autonomousBiliFollowing", "qzoneLife").forEach { key -> if (data.has(key)) config.put(key, data.getBoolean(key)) }
                 } }
             }
             "social.plan" -> plan(data, principal)
@@ -171,6 +171,8 @@ class SocialRuntime(
             .put("effect", SocialRules.effects.getValue(kind)).put("account", account).put("target", target)
             .put("scope", scope).put("content", content).put("payload", payload).put("sourceIds", JSONArray(sources))
             .put("expiresAt", expires).put("createdAt", now).put("ownerAuthored", ownerAuthored).put("motivation", input.optString("motivation").take(1000))
+            // Her scheduled posts go out around a planned time, never the instant they are approved. Outside the digest on purpose.
+            .put("notBefore", input.optLong("notBefore").coerceIn(0, maxOf(0L, expires - 60_000L)))
         item.put("digest", SocialRules.digest(item))
         return ledger.change { root ->
             check(!SocialRules.blocked(root, item)) { "动作来源已删除" }
@@ -242,7 +244,9 @@ class SocialRuntime(
                         rows(root, "media").optJSONObject(id)?.put("retention", "explicit")?.put("status", "cached")?.put("expiresAt", 0)
                     }
                     item.put("state", "done").put("finishedAt", clock())
-                } else item.put("state", "approved").put("grant", item.getString("digest"))
+                } else item.put("state", "approved").put("grant", item.getString("digest")).also {
+                    if (item.optLong("notBefore") > 0) item.put("notBefore", QzoneLife.afterApproval(item.optLong("notBefore"), clock()))
+                }
                     .put("grantPrincipal", JSONObject().put("actorId", principal.actorId).put("channel", principal.channel).put("scope", principal.scope))
             }
             JSONObject().put("items", JSONArray(items))
@@ -394,6 +398,7 @@ class SocialRuntime(
         if (closed) return
         val candidates = ledger.change { root -> values(rows(root, "actions")).filter { action ->
             if (action.optString("state") !in setOf("ready", "approved")) false
+            else if (action.optLong("notBefore") > clock()) false
             else if (action.getLong("expiresAt") <= clock() || SocialRules.blocked(root, action)) { action.put("state", "expired"); false }
             else true
         }.map(::copy) }

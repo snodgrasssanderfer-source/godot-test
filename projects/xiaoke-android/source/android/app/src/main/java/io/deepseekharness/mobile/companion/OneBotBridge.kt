@@ -219,7 +219,8 @@ class OneBotBridge private constructor(private val context: Context) {
     }
     /** Module-owned durable ledger must claim a write before calling. No automatic retry here. */
     fun callAction(account: String, action: String, params: JSONObject): JSONObject {
-        check(action in setOf("send_msg", "send_qzone_msg", "comment_qzone_public_feed", "set_friend_add_request", "set_group_add_request", "set_group_leave", "get_qzone_public_feeds", "get_forward_msg") + EXTRAS) { "不支持的桥动作" }
+        check(action in setOf("send_msg", "send_qzone_msg", "comment_qzone_public_feed", "set_friend_add_request", "set_group_add_request", "set_group_leave", "get_qzone_public_feeds", "get_forward_msg",
+            "get_qzone_feeds", "get_qzone_msg_list", "get_qzone_msg_detail", "comment_qzone", "like_qzone") + EXTRAS) { "不支持的桥动作" }
         val settings = engine.store.settings()
         check(verified && settings.optBoolean("oneBotEnabled") && settings.optBoolean("networkEnabled") && !settings.optBoolean("paused")) { "消息桥未连接" }
         check(OneBotProtocol.numeric(account) == settings.optString("oneBotAccount")) { "桥接账号已变化" }

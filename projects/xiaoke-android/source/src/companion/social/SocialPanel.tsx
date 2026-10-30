@@ -57,7 +57,8 @@ export function SocialPanel({ state, run, available }: ModulePanelProps) {
     {text(service, 'error') && <p role="status">{text(service, 'error')}</p>}
     <article><h3>消息连接</h3>{accounts.filter(a => text(a, 'route') !== 'bilibili').map((a, index) => <p key={index}>QQ {text(a, 'account') || '尚未配置账号'} · {text(a, 'status') || '未连接'}</p>)}
       <p>账号连接设置沿用设备页。通知入口只知道通知提供的内容；消息桥可提供稳定账号和分段附件。</p>
-      <label><input type="checkbox" disabled={disabled} checked={config.autonomousDailyPost === true} onChange={e => void act('social.configure', { autonomousDailyPost: e.target.checked, autonomousReplies: config.autonomousReplies === true })}/>允许经过隐私检查的日常空间动态自主发布</label>
+      <label><input type="checkbox" disabled={disabled} checked={config.qzoneLife !== false} onChange={e => void act('social.configure', { qzoneLife: e.target.checked })}/>QQ 空间：她偶尔写说说、回复说说下的评论、看好友动态（说说和回复都先进待审清单，发布时间在时段内随机浮动；点赞跟随B站页的“自主点赞”开关）</label>
+      <label><input type="checkbox" disabled={disabled} checked={config.autonomousDailyPost === true} onChange={e => void act('social.configure', { autonomousDailyPost: e.target.checked, autonomousReplies: config.autonomousReplies === true })}/>我自己在这里写的说说不用再确认</label>
       <label><input type="checkbox" disabled={disabled} checked={config.autonomousReplies === true} onChange={e => void act('social.configure', { autonomousDailyPost: config.autonomousDailyPost === true, autonomousReplies: e.target.checked })}/>允许在已授权会话中自主回复</label>
       <p className="social-muted">评论、加好友和加群仍列入下方审批。发布结果不明时会停下等待查证。</p>
       {text(record(service.qqActiveAdd), 'reason') && <p className="social-muted">{text(record(service.qqActiveAdd), 'reason')}。收到请求后可在这里统一核对。</p>}

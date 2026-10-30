@@ -154,3 +154,12 @@ Mobilerun 仅作为原有设备控制对照，不替换已运行的 DSH 权限�
 | 角色卡字段：post_history_instructions、extensions.depth_prompt（prompt/depth/role）、character_book（keys、secondary_keys、selective、constant、enabled、insertion_order） | SillyTavern/SillyTavern 06bde939fb1e9c4c8d8641d810f0a916b5bce127 `public/scripts/char-data.js` | AGPL-3.0 | characterCard.ts、PersonaVoice.kt |
 
 只照字段定义实现，没有复制代码；正则脚本等可执行内容不导入。深度注入最深 4 条用户消息（默认放在最新一条里），让前面的历史保持可缓存。
+
+## 2026-10-30 QQ 空间
+
+| 机制 | 来源（固定版本） | 许可证 | 本项目文件 |
+|---|---|---|---|
+| 玩法：每天一条说说，从随机几个群最近一天的聊天里找话题，基准时间加随机偏移；回复自己说说下的评论；看好友动态并点赞 | Zhalslar/astrbot_plugin_qzone 2d6d7efbe955952393832a0cb33af6d7623be687 `core/scheduler.py`、`_conf_schema.json` | GPL-3.0 | social/QzoneLife.kt |
+| 接口：get_qzone_feeds、get_qzone_msg_list、get_qzone_msg_detail、comment_qzone（tid + comment_id/comment_uin 回复）、like_qzone（tid/target_uin/abstime）、send_qzone_msg | NapNeko/NapCatQQ 49ecfe0f56c1e0649db6988444950216fd5fe792 `packages/napcat-onebot/action/extends/qzone/` | 只调用接口 | social/SocialRuntime.kt、OneBotBridge.kt |
+
+只借玩法，没有移植代码，也没有引入 aioqzone。原来接的 `get_qzone_public_feeds` 是 NapCat 的“空友爱看”推荐流，不是好友动态，这次没有用它浏览。
