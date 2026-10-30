@@ -163,3 +163,12 @@ Mobilerun 仅作为原有设备控制对照，不替换已运行的 DSH 权限�
 | 接口：get_qzone_feeds、get_qzone_msg_list、get_qzone_msg_detail、comment_qzone（tid + comment_id/comment_uin 回复）、like_qzone（tid/target_uin/abstime）、send_qzone_msg | NapNeko/NapCatQQ 49ecfe0f56c1e0649db6988444950216fd5fe792 `packages/napcat-onebot/action/extends/qzone/` | 只调用接口 | social/SocialRuntime.kt、OneBotBridge.kt |
 
 只借玩法，没有移植代码，也没有引入 aioqzone。原来接的 `get_qzone_public_feeds` 是 NapCat 的“空友爱看”推荐流，不是好友动态，这次没有用它浏览。
+
+## 2026-10-30 界面字体和图标
+
+| 用途 | 来源（固定版本） | 许可证 | 本项目文件 |
+|---|---|---|---|
+| 界面字体（常规、粗体，按 unicode-range 分片） | lxgw-wenkai-webfont 1.7.0（npm，霞鹜文楷 LXGW WenKai） | 字体 OFL-1.1，包装 MIT | src/companion/CompanionApp.tsx 引入 |
+| 界面图标 | @phosphor-icons/react 2.1.10（npm） | MIT | src/companion/ 各页面 |
+
+整包依赖，没有改动。字体打进 APK 约 9 MB，WebView 只按需加载用到的分片。工作台（DSH 原界面）仍用原来的字体和 lucide 图标。

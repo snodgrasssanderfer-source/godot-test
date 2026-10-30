@@ -21,6 +21,8 @@ PRoot, and Operit runtime materials.
 | React | Management UI | MIT |
 | xterm.js | Terminal emulator | MIT |
 | Lucide | Interface icons | ISC |
+| Phosphor Icons | Companion interface icons | MIT |
+| LXGW WenKai (lxgw-wenkai-webfont 1.7.0) | Companion interface font | SIL OFL-1.1 |
 | Vite | Web build tooling | MIT |
 | TypeScript | Type checking and compilation | Apache-2.0 |
 | ESLint | Source linting | MIT |
