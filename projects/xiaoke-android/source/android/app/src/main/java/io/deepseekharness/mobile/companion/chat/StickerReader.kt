@@ -85,7 +85,7 @@ object StickerReader {
     }.getOrNull()
 
     /** First frame, at most 512 px, as JPEG: a GIF or WebP sticker reads fine from one frame. */
-    private fun jpeg(bytes: ByteArray): ByteArray? {
+    fun jpeg(bytes: ByteArray): ByteArray? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
         if (bounds.outWidth !in 1..8000 || bounds.outHeight !in 1..8000) return null

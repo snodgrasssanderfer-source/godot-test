@@ -79,6 +79,7 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
             }
         }
         bridge.setEffectGate(legacyGate); QqNotificationBridge.setEffectGate(legacyGate)
+        bridge.setStickerSource { name -> stickerBytes(name) }
         bridge.setModuleListener { type, event ->
             runCatching {
                 runtime.onEvent(ModuleEvent(type, event.getString("scope"), event.getString("id"), event), notifyHost = true)
@@ -89,6 +90,7 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
             runCatching { NightQuiet.evaluate(app, store) }
             if (networkPermitted()) { runCatching { renewBilibili() }; runCatching { checkBiliReplies() } }
             runCatching { runtime.tick(processEffects = false) }.onFailure { lastError = "后台处理暂未完成，请查看任务状态" }
+            runCatching { tendStickerShelf() }
         }, 1, 5, TimeUnit.SECONDS)
         effectWorker.scheduleWithFixedDelay({ runCatching { runtime.tickEffects() }.onFailure { lastError = "社交动作暂未完成，请查看记录" } }, 1, 5, TimeUnit.SECONDS)
         syncWorker.scheduleWithFixedDelay({
@@ -386,6 +388,60 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
             return client.run()
         } finally { syncing.set(false); ports.emit("moduleState", JSONObject().put("domain", domain)) }
     }
+    /** The owner's curated pictures are her stickers. Name = file name without extension (numbered when it repeats). */
+    private fun shelf(): List<JSONObject> = ledger.read { root ->
+        values(rows(root, "media")).filter { it.optString("retention") == "curated" && it.optString("kind") == "image" && it.optString("status") == "cached" && it.optString("blobId").isNotBlank() }
+            .sortedBy { it.optString("id") }.map { copy(it) }
+    }.let { items ->
+        val seen = mutableMapOf<String, Int>()
+        items.onEach { item ->
+            val base = item.optString("name").substringBeforeLast('.').trim().replace(Regex("[\\[\\]\\n:：]"), "").take(16).ifBlank { "表情" }
+            val n = (seen[base] ?: 0) + 1; seen[base] = n
+            item.put("stickerName", if (n == 1) base else "$base$n")
+        }
+    }
+
+    private fun stickerBytes(name: String): io.deepseekharness.mobile.companion.chat.OutgoingSegments.Sticker? {
+        val wanted = name.trim()
+        val list = shelf()
+        val item = list.firstOrNull { it.getString("stickerName") == wanted } ?: list.singleOrNull { wanted.isNotBlank() && wanted in it.getString("stickerName") } ?: return null
+        val bytes = vault.read(item.getString("blobId")) ?: return null
+        return io.deepseekharness.mobile.companion.chat.OutgoingSegments.Sticker(Base64.getEncoder().encodeToString(bytes), item.getString("stickerName"))
+    }
+
+    private val describing = java.util.concurrent.atomic.AtomicBoolean(false)
+    /** Looks at one undescribed sticker at a time (activity budget, once per picture), and keeps her list current. */
+    private fun tendStickerShelf() {
+        val list = shelf()
+        val published = JSONArray(list.map { JSONObject().put("name", it.getString("stickerName")).put("description", it.optString("description")) })
+        if (store.lifeState("stickerShelf").optJSONArray("items")?.toString() != published.toString())
+            store.saveLifeState("stickerShelf", JSONObject().put("items", published))
+        if (!networkPermitted() || describing.get()) return
+        val next = list.firstOrNull { it.optString("description").isBlank() && System.currentTimeMillis() - it.optLong("describeFailedAt") > 3_600_000L } ?: return
+        val bytes = vault.read(next.getString("blobId")) ?: return
+        val hash = java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+        fun save(description: String?) = ledger.change { root ->
+            rows(root, "media").optJSONObject(next.getString("id"))?.let { if (description != null) it.put("description", description) else it.put("describeFailedAt", System.currentTimeMillis()) }
+        }
+        io.deepseekharness.mobile.companion.chat.StickerReader.cached(store, hash)?.let { save(it); return }
+        val jpeg = io.deepseekharness.mobile.companion.chat.StickerReader.jpeg(bytes) ?: run { save(null); return }
+        describing.set(true)
+        runCatching {
+            ports.requestModel(JSONObject().put("scope", "owner:local").put("lane", "activity").put("purpose", "sticker").put("maxOutputTokens", 200)
+                .put("parts", JSONArray().put(JSONObject().put("inlineData", JSONObject().put("mimeType", "image/jpeg").put("data", java.util.Base64.getEncoder().encodeToString(jpeg)))))
+                .put("prompt", "这是你的表情包收藏里的一张。用不超过 20 个字说出它画的是什么、适合在什么情绪或场合用，只输出这一句。")) { event ->
+                when (event.optString("type")) {
+                    "completed" -> {
+                        val text = event.optString("text").lines().firstOrNull { it.isNotBlank() }?.trim()?.take(40)
+                        if (text.isNullOrBlank()) save(null) else { save(text); io.deepseekharness.mobile.companion.chat.StickerReader.remember(store, hash, text) }
+                        describing.set(false); ports.emit("moduleState", JSONObject().put("domain", domain))
+                    }
+                    "failed", "cancelled" -> { save(null); describing.set(false) }
+                }
+            }
+        }.onFailure { save(null); describing.set(false) }
+    }
+
     private fun importMedia(data: JSONObject, principal: CommandPrincipal): JSONObject {
         SocialRules.owner(principal)
         val encoded = data.getString("base64"); require(encoded.length <= 8 * 1024 * 1024)
@@ -441,5 +497,5 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
             .put("motivation", motivation).put("idempotencyKey", "watch-" + hash(observationId))
             .put("sourceIds", JSONArray().put(observationId)), companion)
     }
-    override fun close() { closing = true; qzoneWorker.shutdownNow(); timer.shutdownNow(); effectWorker.shutdownNow(); syncWorker.shutdownNow(); syncTransport?.cancel(); biliActions.cancel(); biliDownload.cancel(); bridge.setModuleListener(null); bridge.setEffectGate(null); QqNotificationBridge.setEffectGate(null); runtime.close() }
+    override fun close() { closing = true; qzoneWorker.shutdownNow(); timer.shutdownNow(); effectWorker.shutdownNow(); syncWorker.shutdownNow(); syncTransport?.cancel(); biliActions.cancel(); biliDownload.cancel(); bridge.setModuleListener(null); bridge.setEffectGate(null); bridge.setStickerSource(null); QqNotificationBridge.setEffectGate(null); runtime.close() }
 }

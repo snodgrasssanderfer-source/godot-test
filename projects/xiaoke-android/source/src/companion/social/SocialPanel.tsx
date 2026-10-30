@@ -114,9 +114,10 @@ export function SocialPanel({ state, run, available }: ModulePanelProps) {
       </div>)}
     </Section>
     <Section icon={<Images size={20} weight="duotone"/>} title="表情和素材" summary={media.length ? `${media.length} 个` : '给她用的表情包、图片'}>
-      <label>怎么存<select value={retention} onChange={e => setRetention(e.target.value)}><option value="transient">临时用，24 小时后清掉</option><option value="curated">我给的表情／素材包</option><option value="explicit">一直留着原文件</option></select></label>
+      <label>怎么存<select value={retention} onChange={e => setRetention(e.target.value)}><option value="transient">临时用，24 小时后清掉</option><option value="curated">给她当表情包用（图片）</option><option value="explicit">一直留着原文件</option></select></label>
       <input ref={importing} aria-label="导入表达素材" type="file" accept="image/jpeg,image/png,image/webp,image/gif,audio/mpeg,audio/wav,video/mp4,application/pdf" disabled={disabled} onChange={e => { const file = e.target.files?.[0]; if (file) void importFile(file).catch(() => setError('文件读取失败')); e.target.value = '' }}/>
-      {media.map(item => <div className="social-row" key={text(item, 'id')}><strong>{text(item, 'name') || text(item, 'kind')}</strong><small>{text(item, 'status')} · {text(item, 'retention')}</small>
+      {media.map(item => <div className="social-row" key={text(item, 'id')}><strong>{text(item, 'name') || text(item, 'kind')}</strong>
+        <small>{text(item, 'retention') === 'curated' && text(item, 'kind') === 'image' ? (text(item, 'description') ? `她的表情包：${text(item, 'description')}` : '她的表情包 · 还没看过，联网时会看一眼') : `${text(item, 'status')} · ${text(item, 'retention')}`}</small>
         <div className="xk-actions">{text(item, 'status') === 'cached' && text(item, 'retention') === 'transient' && <button className="xk-btn small" disabled={disabled} onClick={() => void act('media.retain', { id: item.id, retention: 'explicit' })}>一直留着</button>}
         <button className="xk-btn small ghost danger" disabled={disabled} onClick={() => void act('media.delete', { id: item.id })}>删除</button></div></div>)}
     </Section>
