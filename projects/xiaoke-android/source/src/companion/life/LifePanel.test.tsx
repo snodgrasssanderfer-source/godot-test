@@ -14,7 +14,7 @@ describe('生活面板的真实命令边界', () => {
     fireEvent.change(screen.getByLabelText('记录内容'), { target: { value: 'fixture' } })
     fireEvent.click(screen.getByRole('button', { name: '保存记录' }))
     expect(run).not.toHaveBeenCalled()
-    expect(screen.getByText(/生活模块尚未连接/)).toBeVisible()
+    expect(screen.getByText(/生活模块还没连上/)).toBeVisible()
   })
 
   it('纠正携带当前修订号并显示权限或冲突错误', async () => {
@@ -57,7 +57,6 @@ describe('生活面板的真实命令边界', () => {
     fireEvent.click(screen.getByRole('button', { name: '额度' }))
     fireEvent.click(screen.getByRole('button', { name: '保存额度' }))
     await waitFor(() => expect(run).toHaveBeenCalledWith('budget.configure', expect.objectContaining({ ownerLimit: 80, activityLimit: 20, allowUnknownPrice: false, unknownPriceCeiling: 0 })))
-    expect(screen.getByText(/次数上限不等于金额上限/)).toBeVisible()
   })
 
   it('不打扰按钮传结构化到期状态而不执行停机指令', async () => {
@@ -65,7 +64,7 @@ describe('生活面板的真实命令边界', () => {
     render(<LifePanel state={fixture} available run={run} />)
     fireEvent.click(screen.getByRole('button', { name: '注意力' }))
     const before = Date.now()
-    fireEvent.click(screen.getByRole('button', { name: '这段时间普通事不打扰' }))
+    fireEvent.click(screen.getByRole('button', { name: '这段时间别打扰我' }))
     await waitFor(() => expect(run).toHaveBeenCalledTimes(1))
     expect(run.mock.calls[0][0]).toBe('attention.set')
     expect(run.mock.calls[0][1]).toEqual(expect.objectContaining({ mode: 'busy', maxBackgroundTasks: 2 }))
@@ -82,7 +81,7 @@ describe('生活面板的真实命令边界', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: '日记' })).toBeEnabled())
     fireEvent.click(screen.getByRole('button', { name: '日记' }))
     expect(screen.queryByLabelText('记录内容')).toBeNull()
-    expect(screen.getByText(/没有证据的经历不会补写/)).toBeVisible()
+    expect(screen.getByText(/真实发生的事/)).toBeVisible()
   })
 
   it('宿主轮询不覆盖跨会话搜索，但内容删除会清除旧结果', async () => {

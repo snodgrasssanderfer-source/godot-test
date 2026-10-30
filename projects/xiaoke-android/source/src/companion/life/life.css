@@ -1,1 +1,38 @@
-.life-panel{max-width:880px;margin:0 auto;padding:20px;color:inherit}.life-panel h2{margin:0 0 8px}.life-panel header p,.life-note,.life-empty{opacity:.7;line-height:1.6}.life-panel nav{display:flex;gap:8px;overflow-x:auto;margin:20px 0}.life-panel button{padding:9px 14px;border:1px solid #cbd5ce;border-radius:12px;background:#f6faf7;color:#214b3d;cursor:pointer}.life-panel button[aria-pressed=true]{background:#245b47;color:white}.life-panel button:disabled{opacity:.5;cursor:wait}.life-panel fieldset{margin:0;padding:0;border:0;min-width:0}.life-panel label{display:flex;flex-direction:column;gap:6px;font-size:.9rem;margin:10px 0}.life-panel input,.life-panel select,.life-panel textarea{box-sizing:border-box;width:100%;padding:10px;border:1px solid #bacac0;border-radius:10px;background:transparent;color:inherit;font:inherit}.life-panel textarea{min-height:90px;resize:vertical}.life-panel .life-check{flex-direction:row;align-items:center;line-height:1.5}.life-check input{width:auto;flex-shrink:0}.life-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.life-row label{flex:1;min-width:150px}.life-editor{padding:14px;border:1px solid #d7e1d9;border-radius:16px;margin:16px 0}.life-records article,.life-budget-cards article{padding:16px;border:1px solid #d7e1d9;border-radius:16px;margin:12px 0}.life-record-text{white-space:pre-wrap;word-break:break-word;margin:0 0 10px;line-height:1.65}.life-records small{opacity:.65}.life-records details{margin:10px 0;font-size:.8rem;overflow-wrap:anywhere}.life-actions{margin-top:12px}.life-panel .life-danger{color:#9b3c3c}.life-delete{background:#f5e8e7;padding:12px;border-radius:12px;margin-top:10px;color:#623636}.life-delete button{margin-right:8px}.life-error{color:#a82c2c;white-space:pre-wrap}.life-history{border-left:3px solid #82aa95;padding:8px 16px}.life-budget-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px}.life-budget-cards strong{font-size:1.8rem}.life-budget-cards h3{margin-top:0}.life-panel form>button{margin-top:10px}@media(max-width:500px){.life-panel{padding:14px}.life-budget-cards{grid-template-columns:1fr}.life-budget-cards article{margin:0}.life-panel nav button{white-space:nowrap}}
+.life-panel { display: flex; flex-direction: column; gap: 14px; }
+.life-panel fieldset { display: flex; flex-direction: column; gap: 14px; }
+.life-tabs { display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 2px 16px 6px; scrollbar-width: none; }
+.life-tabs::-webkit-scrollbar { display: none; }
+.life-tabs button { flex: none; padding: 8px 18px !important; min-height: 38px !important; border-radius: 99px !important; border: 1.5px solid var(--line) !important; background: var(--surface) !important; color: var(--ink-2) !important; font-weight: 700; cursor: pointer; transition: all .25s var(--ease) !important; }
+.life-tabs button[aria-pressed=true] { background: var(--ink) !important; border-color: var(--ink) !important; color: var(--bg) !important; transform: translateY(-1px); box-shadow: var(--shadow-1); }
+.life-search { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-1); }
+.life-searchbar { display: flex; gap: 8px; }
+.life-searchbar input { flex: 1; border-radius: 99px !important; padding-left: 18px !important; }
+.life-filters { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.life-filters .life-check { flex-direction: row !important; gap: 8px !important; font-size: 13.5px; color: var(--ink-2); }
+.life-filters input[type=checkbox] { width: 38px; height: 22px; }
+.life-filters input[type=checkbox]::after { width: 16px; height: 16px; }
+.life-filters input[type=checkbox]:checked::after { transform: translateX(16px); }
+.life-note, .life-empty { color: var(--muted); font-size: 13.5px; }
+.life-empty { text-align: center; padding: 28px 0; }
+.life-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.life-row label { flex: 1; min-width: 150px; }
+.life-editor { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: var(--r-lg); background: var(--accent-tint); border: 1.5px dashed var(--line-strong); }
+.life-editor textarea { min-height: 84px; background: var(--surface) !important; }
+.life-records { display: flex; flex-direction: column; gap: 10px; }
+.life-records article, .life-budget-cards article { display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-1); animation: xk-rise .4s var(--ease) both; }
+.life-records article:nth-child(2) { animation-delay: 30ms } .life-records article:nth-child(3) { animation-delay: 60ms } .life-records article:nth-child(n+4) { animation-delay: 90ms }
+.life-record-text { white-space: pre-wrap; word-break: break-word; line-height: 1.7; font-size: 15.5px; }
+.life-records details { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.life-records summary { cursor: pointer; width: fit-content; }
+.life-actions { margin-top: 6px; gap: 6px !important; }
+.life-actions button { min-height: 34px !important; padding: 5px 14px !important; font-size: 13px !important; }
+.life-panel .life-danger { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 5px 14px; border-radius: 99px; border: 1.5px solid transparent; background: var(--danger-soft); color: var(--danger); font-weight: 700; font-size: 13px; cursor: pointer; }
+.life-delete { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 14px; border-radius: 14px; background: var(--danger-soft); color: var(--danger); animation: xk-rise .3s var(--ease) both; }
+.life-delete p { flex-basis: 100%; font-size: 13.5px; }
+.life-error { color: var(--danger); white-space: pre-wrap; }
+.life-history { display: flex; flex-direction: column; gap: 6px; border-left: 3px solid var(--accent); padding: 8px 16px; background: var(--accent-tint); border-radius: 0 14px 14px 0; }
+.life-budget-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.life-budget-cards strong { font-size: 34px; line-height: 1.1; color: var(--accent-strong); }
+.life-panel form { display: flex; flex-direction: column; gap: 12px; }
+.life-panel > fieldset > form:not(.life-search):not(.life-editor) { padding: 16px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); }
+@media (max-width: 500px) { .life-budget-cards { grid-template-columns: 1fr; } }

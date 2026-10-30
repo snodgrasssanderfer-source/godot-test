@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { nativeCompanion, type Snapshot } from './bridge'
+import { nativeCompanion, type Run, type Snapshot } from './bridge'
 
-type Run = (action: string, data?: object) => Promise<unknown>
 type Lane = {limit?: number; spent?: number; held?: number; remaining?: number}
 
 /** Two numbers per day: how many model calls her own activity may use, and how many are kept for chatting with the owner. */
@@ -17,14 +16,21 @@ export function DailyBudget({snapshot, run}: {snapshot: Snapshot; run: Run}) {
       setNote('已保存，每天零点重新计数。')
     } catch (e) { setNote(e instanceof Error ? e.message : String(e)) }
   }
-  const used = (lane?: Lane) => budgets.configured ? `今天已用 ${Number(lane?.spent ?? 0) + Number(lane?.held ?? 0)} / ${lane?.limit ?? 0}` : '还没设置'
-  return <div className="card"><h2>每日额度</h2>
-    <p className="subtle">按模型调用次数算。她自己逛群、看视频、写日记用活动额度；和你聊天用你的额度，两边互不挤占。{budgets.configured && budgets.unit !== 'calls' ? '当前是按金额计的高级设置，保存后会改成按次数。' : ''}</p>
-    <div className="form-grid">
-      <label>她的活动 · 每天<input type="number" min={1} max={10000} value={activity} onChange={e => setActivity(Number(e.target.value))}/><small>{used(budgets.activity)}</small></label>
-      <label>陪你聊天 · 每天<input type="number" min={1} max={10000} value={owner} onChange={e => setOwner(Number(e.target.value))}/><small>{used(budgets.owner)}</small></label>
+  const lane = (title: string, value: number, set: (n: number) => void, used?: Lane) => {
+    const spent = Number(used?.spent ?? 0) + Number(used?.held ?? 0), limit = Number(used?.limit ?? 0)
+    return <label className="xk-budget">{title}
+      <input type="number" min={1} max={10000} value={value} onChange={e => set(Number(e.target.value))}/>
+      {budgets.configured && <><span className="xk-meter"><span style={{width: `${limit ? Math.min(100, spent / limit * 100) : 0}%`}}/></span><small>今天用了 {spent} / {limit}</small></>}
+    </label>
+  }
+  return <div className="xk-card">
+    <div className="xk-card-head"><h2>每日额度</h2><small>按模型调用次数</small></div>
+    <div className="xk-grid">
+      {lane('陪你聊天', owner, setOwner, budgets.owner)}
+      {lane('她自己活动', activity, setActivity, budgets.activity)}
     </div>
-    <button disabled={!nativeCompanion || !snapshot.modules?.life.available} onClick={() => void save()}>保存</button>
-    {note && <p role="status">{note}</p>}
+    {budgets.configured && budgets.unit !== 'calls' && <p className="xk-hint">现在是按金额计的高级设置，保存后会改成按次数。</p>}
+    <button type="button" className="xk-btn" disabled={!nativeCompanion || !snapshot.modules?.life.available} onClick={() => void save()}>保存额度</button>
+    {note && <p role="status" className="xk-hint">{note}</p>}
   </div>
 }

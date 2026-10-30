@@ -1,14 +1,10 @@
-.device-panel { display: grid; gap: 1rem; }
-.device-panel fieldset { border: 1px solid #ccd6cd; border-radius: 1rem; padding: 1rem; min-width: 0; }
-.device-panel legend { font-weight: 650; padding: 0 .4rem; }
-.device-panel label { display: grid; gap: .4rem; margin-bottom: .8rem; }
-.device-panel .device-check { display: flex; align-items: center; gap: .5rem; }
-.device-panel input { max-width: 100%; }
-.device-actions { display: flex; flex-wrap: wrap; gap: .6rem; margin: .6rem 0; }
-.device-panel button { min-height: 44px; }
-.device-panel .device-stop { background: #9d2a35; color: white; border-color: #9d2a35; }
-.device-error { color: #9d2a35; }
-.device-note { opacity: .8; font-size: .9rem; }
-.device-panel .device-frame { display: block; padding: 0; border: 0; width: min(100%, 320px); background: transparent; overflow: hidden; }
+.device-panel { display: flex; flex-direction: column; gap: 14px; }
+.device-panel fieldset { padding: 14px !important; border-radius: var(--r, 16px); background: var(--surface-2); }
+.device-panel .device-check { flex-direction: row !important; align-items: center; justify-content: space-between; }
+.device-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.device-panel .device-stop { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 9px 18px; border-radius: 99px; border: 0; background: var(--danger); color: #fff; font-weight: 700; cursor: pointer; }
+.device-error { color: var(--danger); }
+.device-note { color: var(--muted); font-size: 13px; }
+.device-panel .device-frame { display: block; padding: 0; border: 0; width: min(100%, 320px); background: transparent; overflow: hidden; border-radius: 14px; cursor: crosshair; }
 .device-frame img { display: block; width: 100%; height: auto; }
-.device-answer { white-space: pre-wrap; }
+.device-answer { white-space: pre-wrap; padding: 12px 14px; border-radius: 14px; background: var(--surface); }

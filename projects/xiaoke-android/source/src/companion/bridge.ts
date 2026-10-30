@@ -42,3 +42,4 @@ export const field = (record: Entry, key: string) => typeof record[key] === 'str
 export async function command(action: string, data: object = {}) { return (await companion.command({ action, data: {...data} })).result }
 export const profile = (model: string): Profile => ({ id: model, model, thinking: 'low', thinkingMode: 'level', maxOutputTokens: 32768, contextBudget: 65536, maxHops: 4, timeoutSeconds: 180, images: true, video: true, audio: true, pdf: true, tools: true })
 export const defaultSettings = (): Settings => ({ endpoint: 'https://api.apikey.fan/v1beta', activeModel: 'gemini-3.8-flash', profiles: [profile('gemini-3.8-flash'), profile('gemini-4-argon')], networkEnabled: false, backgroundEnabled: false, qqEnabled: false, paused: false, dailyCalls: 100, ownerQqId: '', displayName: '小克' })
+export type Run = (action: string, data?: object) => Promise<unknown>

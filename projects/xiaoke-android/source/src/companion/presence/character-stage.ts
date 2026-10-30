@@ -105,18 +105,18 @@ function drawPlaceholder(ctx: CanvasRenderingContext2D, frame: CharacterFrame): 
   ctx.translate(72, 73 + frame.breath * 144)
   ctx.rotate(frame.activity === 'thinking' ? -0.1 : frame.activity === 'listening' ? 0.06 : 0)
   ctx.globalAlpha = frame.state === 'active' ? 1 : 0.6
-  ctx.fillStyle = '#b6c9ff'
+  ctx.fillStyle = '#f4a582'
   ctx.beginPath()
   ctx.ellipse(0, 0, 49, 50, 0, 0, Math.PI * 2)
   ctx.fill()
-  ctx.strokeStyle = '#34415b'
+  ctx.strokeStyle = '#8a4127'
   ctx.lineWidth = 2.4
   ctx.stroke()
-  ctx.fillStyle = '#f0f4ff'
+  ctx.fillStyle = '#fde6da'
   ctx.beginPath()
   ctx.ellipse(-19, -24, 14, 6, -0.5, 0, Math.PI * 2)
   ctx.fill()
-  ctx.fillStyle = '#26334f'
+  ctx.fillStyle = '#3a2018'
   for (const x of [-17, 17]) {
     ctx.beginPath()
     ctx.ellipse(x + frame.gazeX * 6, -5 + frame.gazeY * 5, 4, Math.max(0.7, 6 * (1 - frame.blink)), 0, 0, Math.PI * 2)
@@ -124,20 +124,20 @@ function drawPlaceholder(ctx: CanvasRenderingContext2D, frame: CharacterFrame): 
   }
   ctx.lineCap = 'round'
   if (frame.emotion === Emotion.Happy) {
-    ctx.strokeStyle = '#798ee1'
+    ctx.strokeStyle = '#e06a4a'
     for (const x of [-29, 29]) {
       ctx.beginPath(); ctx.moveTo(x - 3, 7); ctx.lineTo(x + 3, 7); ctx.stroke()
     }
   }
   if (frame.emotion === Emotion.Sad || frame.emotion === Emotion.Angry || frame.emotion === Emotion.Think) {
-    ctx.strokeStyle = '#26334f'
+    ctx.strokeStyle = '#3a2018'
     const slope = frame.emotion === Emotion.Angry ? 4 : -4
     for (const side of [-1, 1]) {
       ctx.beginPath(); ctx.moveTo(side * 24, -18); ctx.lineTo(side * 12, -18 + slope); ctx.stroke()
     }
   }
-  ctx.strokeStyle = '#26334f'
-  ctx.fillStyle = '#26334f'
+  ctx.strokeStyle = '#3a2018'
+  ctx.fillStyle = '#3a2018'
   ctx.beginPath()
   if (frame.mouthOpen > 0.01) {
     ctx.ellipse(0, 20, 6 + frame.vowels.A * 6, 1 + frame.mouthOpen * 23, 0, 0, Math.PI * 2)

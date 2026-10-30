@@ -8,8 +8,8 @@ const object = (value: unknown): Entry => value && typeof value === 'object' && 
 const entries = (value: unknown): Entry[] => Array.isArray(value) ? value.map(object) : []
 const text = (value: unknown) => typeof value === 'string' ? value : ''
 const number = (value: unknown) => typeof value === 'number' ? value : 0
-const date = (value: unknown) => number(value) ? new Date(number(value)).toLocaleString() : '时间未记录'
-const day = (value: unknown) => new Date(number(value)).toLocaleDateString()
+const date = (value: unknown) => number(value) ? new Date(number(value)).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : ''
+const day = (value: unknown) => new Date(number(value)).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })
 /** "从 10/20 起" / "10/20 到 10/27（已过去）": facts that changed stay, marked as the past. */
 const validity = (row: Entry) => {
   const until = number(row.validUntil)
@@ -109,84 +109,78 @@ export function LifePanel({ state, run, available, saveFile, scopes }: LifePanel
   }
 
   return <section className="life-panel" aria-label="小克的生活记录">
-    <header><h2>一起积累的生活</h2><p>查看经历、纠正记忆，也给陪伴留出独立额度。</p></header>
-    {!available && <p role="status">生活模块尚未连接；此处不会模拟保存或执行。</p>}
-    <nav aria-label="生活分类">{([['memory', '记忆'], ['profile', '档案'], ['diary', '日记'], ['interest', '兴趣'], ['budget', '额度'], ['attention', '注意力'], ['backup', '备份']] as const).map(([key, label]) =>
+    {!available && <p role="status" className="life-note">生活模块还没连上。</p>}
+    <nav className="life-tabs" aria-label="生活分类">{([['memory', '记忆'], ['profile', '档案'], ['diary', '日记'], ['interest', '兴趣'], ['budget', '额度'], ['attention', '注意力'], ['backup', '备份']] as const).map(([key, label]) =>
       <button key={key} aria-pressed={tab === key} onClick={() => select(key)} disabled={busy}>{label}</button>)}</nav>
     {error && <p role="alert" className="life-error">{error}</p>}
     {notice && <p role="status">{notice}</p>}
     <fieldset disabled={!available || busy}>
       {['memory', 'profile', 'diary', 'interest'].includes(tab) && <>
         <form className="life-search" onSubmit={event => { event.preventDefault(); search() }}>
-          <label>会话范围{scopes ? <select aria-label="会话范围" value={scope} onChange={event => { setScope(event.target.value); setFound(null); setHistory(null); setEditing(null); setDraft('') }}>{scopes.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select> : <input aria-label="会话范围" value={scope} onChange={event => { setScope(event.target.value); setFound(null); setHistory(null); setEditing(null); setDraft('') }} />}</label>
-          <label>搜索内容<input aria-label="搜索内容" value={query} onChange={event => setQuery(event.target.value)} /></label>
-          <label className="life-check"><input type="checkbox" checked={showForgotten} onChange={event => setShowForgotten(event.target.checked)} />包含忘掉的记录</label>
-          <label className="life-check"><input type="checkbox" checked={showHistory} onChange={event => setShowHistory(event.target.checked)} />包含已变化的事实</label>
-          <button type="submit">搜索</button>
+          <label className="life-scope">会话范围{scopes ? <select aria-label="会话范围" value={scope} onChange={event => { setScope(event.target.value); setFound(null); setHistory(null); setEditing(null); setDraft('') }}>{scopes.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select> : <input aria-label="会话范围" value={scope} onChange={event => { setScope(event.target.value); setFound(null); setHistory(null); setEditing(null); setDraft('') }} />}</label>
+          <div className="life-searchbar"><input aria-label="搜索内容" placeholder="搜一搜…" value={query} onChange={event => setQuery(event.target.value)} /><button type="submit" className="xk-btn primary">搜索</button></div>
+          <div className="life-filters"><label className="life-check"><input type="checkbox" checked={showForgotten} onChange={event => setShowForgotten(event.target.checked)} />含忘掉的</label>
+          <label className="life-check"><input type="checkbox" checked={showHistory} onChange={event => setShowHistory(event.target.checked)} />含过去的</label></div>
         </form>
-        {tab === 'diary' && <p className="life-note">日记来自已保存的真实经历。没有证据的经历不会补写。</p>}
-        {tab === 'profile' && <p className="life-note">她对你、群友、游戏和作品的简短印象，聊天后自动更新。群友的档案只留在那个群里。</p>}
+        {tab === 'diary' && <p className="life-note">她每晚根据当天真实发生的事写一篇。</p>}
+        {tab === 'profile' && <p className="life-note">她对你、群友、游戏和作品的印象，聊着聊着会更新。</p>}
         {tab !== 'profile' && (tab !== 'diary' || editing) && <form className="life-editor" onSubmit={event => { event.preventDefault(); save() }}>
-          <label>{editing ? '纠正内容' : tab === 'interest' ? '记录兴趣' : '记下一件有意义的事'}<textarea aria-label="记录内容" required maxLength={8000} value={draft} onChange={event => setDraft(event.target.value)} /></label>
+          <label>{editing ? '改成' : tab === 'interest' ? '她可能会喜欢的' : '让她记住一件事'}<textarea aria-label="记录内容" required maxLength={8000} value={draft} onChange={event => setDraft(event.target.value)} /></label>
           {tab === 'memory' && <div className="life-row"><label>类别<select value={kind} onChange={event => setKind(event.target.value)}>
             <option value="fact">事实</option><option value="inference">推测</option><option value="preference">偏好</option><option value="event">经历</option><option value="relationship">关系</option><option value="task">任务</option><option value="opinion">她的看法</option>
-          </select></label><label>同一事实的标记（选填）<input value={factKey} maxLength={160} onChange={event => setFactKey(event.target.value)} placeholder="如：喜欢的饮料" /></label></div>}
+          </select></label><label>标签（选填）<input value={factKey} maxLength={160} onChange={event => setFactKey(event.target.value)} placeholder="如：喜欢的饮料" /></label></div>}
           <div className="life-row"><button type="submit" disabled={!draft.trim()}>{editing ? '保存纠正' : '保存记录'}</button>{editing && <button type="button" onClick={() => { setEditing(null); setDraft('') }}>取消编辑</button>}</div>
         </form>}
-        <div className="life-records">{displayed.length === 0 && <p className="life-empty">还没有符合条件的记录。</p>}{displayed.map(row => <article key={text(row.id)}>
+        <div className="life-records">{displayed.length === 0 && <p className="life-empty">这里还空着。</p>}{displayed.map(row => <article key={text(row.id)}>
           {tab === 'profile' && <h3>{text(row.name)}</h3>}
           <p className="life-record-text">{text(tab === 'profile' ? row.summary : row.text)}</p>
           {tab === 'memory' && (number(row.validFrom) > 0 || number(row.validUntil) > 0) && <small>{validity(row)}</small>}
-          {tab !== 'profile' && <small>{date(row.occurredAt ?? row.createdAt)} · {row.forgotten || row.suppressed ? '已忘掉，不主动提起' : row.superseded ? '已有新事实' : text(row.kind) === 'inference' ? '有来源的推测' : text(row.status) === 'unverified' ? '自动记录，仍可纠正' : '已记录'}</small>}
-          {Boolean(row.evidenceMissing) && <p className="life-note">部分来源已不可用；这里仅保留当时的记录，不补造缺失经历。</p>}
-          {entries(row.sourceRefs).length > 0 && <details><summary>查看来源</summary>{entries(row.sourceRefs).map(ref => <p key={text(ref.kind) + ':' + text(ref.id)}>{text(ref.kind)} · {text(ref.scope)} · {text(ref.id)}</p>)}</details>}
+          {tab !== 'profile' && <small>{date(row.occurredAt ?? row.createdAt)} · {row.forgotten || row.suppressed ? '已忘掉' : row.superseded ? '已经变了' : text(row.kind) === 'inference' ? '她猜的' : text(row.status) === 'unverified' ? '她自己记的' : '记住了'}</small>}
+          {Boolean(row.evidenceMissing) && <p className="life-note">部分来源已经不在了。</p>}
+          {entries(row.sourceRefs).length > 0 && <details><summary>来源</summary>{entries(row.sourceRefs).map(ref => <p key={text(ref.kind) + ':' + text(ref.id)}>{text(ref.kind)} · {text(ref.scope)} · {text(ref.id)}</p>)}</details>}
           <div className="life-row life-actions">
             {tab !== 'profile' && <button onClick={() => { setEditing(row); setDraft(text(row.text)); setFactKey(text(row.factKey)); setKind(text(row.kind) || 'fact'); setScope(text(row.scope) || scope) }}>纠正</button>}
-            {tab === 'memory' && <><button onClick={() => void act('memory.forget', { id: row.id, scope: row.scope, forgotten: !row.forgotten }, () => setFound(null), true)}>{row.forgotten ? '恢复主动记忆' : '忘掉'}</button>
+            {tab === 'memory' && <><button onClick={() => void act('memory.forget', { id: row.id, scope: row.scope, forgotten: !row.forgotten }, () => setFound(null), true)}>{row.forgotten ? '想起来' : '忘掉'}</button>
               <button onClick={() => void act('memory.history', { id: row.id, scope: row.scope }, result => { setHistory(entries(result.items)) })}>变化记录</button></>}
             <button className="life-danger" onClick={() => setDeleteId(text(row.id))}>删除</button>
           </div>
           {deleteId === row.id && <div role="group" aria-label="确认删除" className="life-delete">
-            <p>{tab === 'memory' ? '这会清理该事实的来源消息和所有派生记录，包括可能保留它的旧回复。' : '这会清理此记录及其派生内容，包括可能保留它的旧回复。'}此设备保留删除记录，恢复旧备份时会继续排除它。</p>
+            <p>{tab === 'memory' ? '会连同来源消息和所有派生记录一起删掉。' : '会连同派生内容一起删掉。'}恢复旧备份也不会回来。</p>
             <button className="life-danger" onClick={() => void act(dataKind + '.delete', { id: row.id, scope: row.scope }, () => { setDeleteId(''); setFound(null); setHistory(null) }, true)}>确认彻底删除</button>
             <button onClick={() => setDeleteId('')}>保留</button>
           </div>}
         </article>)}</div>
-        {history && <aside className="life-history"><h3>事实的变化</h3>{history.map((row, index) => <p key={index}>{date(row.occurredAt ?? row.updatedAt)}：{text(row.text)}</p>)}<button onClick={() => setHistory(null)}>收起</button></aside>}
+        {history && <aside className="life-history"><h3>变化</h3>{history.map((row, index) => <p key={index}>{date(row.occurredAt ?? row.updatedAt)}：{text(row.text)}</p>)}<button onClick={() => setHistory(null)}>收起</button></aside>}
       </>}
       {tab === 'budget' && <>
-        <p>主人陪聊和自主活动分别记账。此处为当前账本累计额度，不会按天自动清零。</p>
-        <div className="life-budget-cards">{[['owner', '主人陪聊'], ['activity', '自主活动']].map(([key, label]) => { const value = object(budgets[key]); return <article key={key}><h3>{label}</h3><strong>{number(value.remaining)}</strong><p>剩余 / 总额 {number(value.limit)}</p><small>已用 {number(value.spent)} · 在途保留 {number(value.held)} · 费用未知 {number(value.unknownRequests)} 笔</small>
-          {number(object(value.tokens).prompt) > 0 && <small>输入 {number(object(value.tokens).prompt)} tokens，其中缓存 {number(object(value.tokens).cached)}（{number(object(value.tokens).cacheRate)}%）；输出 {number(object(value.tokens).output)}</small>}</article> })}</div>
-        {Boolean(budgets.stopActivity) && <p role="status">自主收费活动已停止；主人陪聊使用独立额度。</p>}
-        <p className="life-note">次数上限不等于金额上限。未知价格时保留授权上界；取消请求不保证服务端退款。</p>
+        <div className="life-budget-cards">{[['owner', '陪你聊天'], ['activity', '她自己活动']].map(([key, label]) => { const value = object(budgets[key]); return <article key={key}><h3>{label}</h3><strong>{number(value.remaining)}</strong><p>剩余 / 共 {number(value.limit)}</p><span className="xk-meter"><span style={{ width: `${number(value.limit) ? Math.min(100, (number(value.spent) + number(value.held)) / number(value.limit) * 100) : 0}%` }} /></span><small>已用 {number(value.spent)}{number(value.held) ? ` · 进行中 ${number(value.held)}` : ''}</small>
+          {number(object(value.tokens).prompt) > 0 && <small>缓存命中 {number(object(value.tokens).cacheRate)}%</small>}</article> })}</div>
+        {Boolean(budgets.stopActivity) && <p role="status">她自己的额度用完了，陪你聊天不受影响。</p>}
         <form onSubmit={event => { event.preventDefault(); void act('budget.configure', { unit, currency: unit === 'calls' ? '' : currency, ownerLimit: Number(ownerLimit), activityLimit: Number(activityLimit), warningRemaining: Number(warning), allowUnknownPrice: unknown, unknownPriceCeiling: unknown ? Number(ceiling) : 0,
             ...(unit === 'micros' ? { inputPrice: Number(inputPrice || 0), cachedInputPrice: Number(cachedPrice || 0), outputPrice: Number(outputPrice || 0) } : {}) }) }}>
-          <label>预算单位<select value={unit} onChange={event => setUnit(event.target.value)}><option value="calls">调用次数</option><option value="micros">金额微单位（一元为 1000000）</option></select></label>
+          <label>预算单位<select value={unit} onChange={event => setUnit(event.target.value)}><option value="calls">调用次数</option><option value="micros">金额（微单位，一元 = 1000000）</option></select></label>
           {unit === 'micros' && <label>币种<input value={currency} pattern="[A-Z]{3}" onChange={event => setCurrency(event.target.value.toUpperCase())} /></label>}
-          <div className="life-row"><label>主人额度<input aria-label="主人额度" type="number" min="0" max="1000000000000" step="1" required value={ownerLimit} onChange={event => setOwnerLimit(event.target.value)} /></label><label>活动额度<input aria-label="活动额度" type="number" min="0" max="1000000000000" step="1" required value={activityLimit} onChange={event => setActivityLimit(event.target.value)} /></label></div>
+          <div className="life-row"><label>陪你聊天<input aria-label="主人额度" type="number" min="0" max="1000000000000" step="1" required value={ownerLimit} onChange={event => setOwnerLimit(event.target.value)} /></label><label>她自己活动<input aria-label="活动额度" type="number" min="0" max="1000000000000" step="1" required value={activityLimit} onChange={event => setActivityLimit(event.target.value)} /></label></div>
           {unit === 'micros' && <div className="life-row">
-            <label>输入单价（每百万 tokens，微单位）<input aria-label="输入单价" type="number" min="0" step="1" value={inputPrice} onChange={event => setInputPrice(event.target.value)} /></label>
+            <label>输入单价（每百万 tokens）<input aria-label="输入单价" type="number" min="0" step="1" value={inputPrice} onChange={event => setInputPrice(event.target.value)} /></label>
             <label>缓存输入单价<input aria-label="缓存输入单价" type="number" min="0" step="1" value={cachedPrice} onChange={event => setCachedPrice(event.target.value)} /></label>
             <label>输出单价<input aria-label="输出单价" type="number" min="0" step="1" value={outputPrice} onChange={event => setOutputPrice(event.target.value)} /></label>
           </div>}
-          {unit === 'micros' && <p className="life-note">填了单价，每次请求按实际用量记账，命中缓存的输入按缓存价算；不填则只按上限预留。</p>}
-          <label>活动剩余多少时提示并停止<input type="number" min="0" max="1000000000000" step="1" required value={warning} onChange={event => setWarning(event.target.value)} /></label>
-          <label className="life-check"><input type="checkbox" checked={unknown} onChange={event => setUnknown(event.target.checked)} />我允许未知价格调用使用下面的保守上限，理解这不保证实际金额</label>
-          {unknown && <label>未知价格单次上限<input type="number" min="1" max={unit === 'calls' ? '1' : '1000000000000'} step="1" required value={ceiling} onChange={event => setCeiling(event.target.value)} /></label>}
+          <label>她的额度剩多少时停下<input type="number" min="0" max="1000000000000" step="1" required value={warning} onChange={event => setWarning(event.target.value)} /></label>
+          <label className="life-check"><input type="checkbox" checked={unknown} onChange={event => setUnknown(event.target.checked)} />不知道价格的调用也允许</label>
+          {unknown && <label>这类调用单次最多<input type="number" min="1" max={unit === 'calls' ? '1' : '1000000000000'} step="1" required value={ceiling} onChange={event => setCeiling(event.target.value)} /></label>}
           <button type="submit">保存额度</button>
         </form>
       </>}
       {tab === 'attention' && <>
-        <p>当前：{text(attention.mode) === 'busy' ? '这段时间普通事不打扰' : text(attention.mode) === 'quiet' ? '安静陪伴，普通事暂存' : '可以自然交流'}</p>
-        {number(attention.until) > 0 && <p>约定结束时间：{date(attention.until)}</p>}
-        <label>暂时去玩多久（分钟）<input type="number" min="1" max="10080" value={minutes} onChange={event => setMinutes(event.target.value)} /></label>
-        <div className="life-row"><button onClick={() => void act('attention.set', { mode: 'busy', until: Date.now() + Number(minutes) * 60000, maxBackgroundTasks: 2 })}>这段时间普通事不打扰</button><button onClick={() => void act('attention.set', { mode: 'available', maxBackgroundTasks: 2 })}>我回来啦</button><button onClick={() => void act('attention.set', { mode: 'quiet', maxBackgroundTasks: 2 })}>安静陪伴</button></div>
-        <p className="life-note">这里只更改明确的陪伴约定；关闭浮球或停止操作不会一并关闭陪聊。</p>
-        <p>暂存事件：{entries(attention.pendingEvents).length} 条</p>
+        <p>当前：{text(attention.mode) === 'busy' ? '先不打扰你' : text(attention.mode) === 'quiet' ? '安静陪着' : '随时可以聊'}</p>
+        {number(attention.until) > 0 && <p className="life-note">到 {date(attention.until)}</p>}
+        <label>多久（分钟）<input type="number" min="1" max="10080" value={minutes} onChange={event => setMinutes(event.target.value)} /></label>
+        <div className="life-row"><button onClick={() => void act('attention.set', { mode: 'busy', until: Date.now() + Number(minutes) * 60000, maxBackgroundTasks: 2 })}>这段时间别打扰我</button><button onClick={() => void act('attention.set', { mode: 'available', maxBackgroundTasks: 2 })}>我回来啦</button><button onClick={() => void act('attention.set', { mode: 'quiet', maxBackgroundTasks: 2 })}>安静陪伴</button></div>
+        {entries(attention.pendingEvents).length > 0 && <p className="life-note">攒着 {entries(attention.pendingEvents).length} 件事等你回来说</p>}
       </>}
       {tab === 'backup' && <>
-        <p>备份先在手机端加密。保存文件后自行保管口令；密钥和真实资料不进入源码仓库。旧备份文件本身不会因本机删除而改变；换设备时应使用带最新删除记录的备份。</p>
+        <p className="life-note">备份在手机上加密，口令自己记好。</p>
         <label>备份口令<input aria-label="备份口令" type="password" minLength={8} maxLength={256} value={password} onChange={event => setPassword(event.target.value)} autoComplete="off" /></label>
         <button disabled={password.length < 8} onClick={() => void act('backup.export', { password }, result => { setBackup(text(result.text)); setPassword('') })}>生成加密备份</button>
         <button type="button" onClick={()=>importFile.current?.click()}>选择已有加密备份</button>
@@ -197,7 +191,7 @@ export function LifePanel({ state, run, available, saveFile, scopes }: LifePanel
         }}/>
         <label>加密备份内容<textarea aria-label="加密备份内容" value={backup} onChange={event => setBackup(event.target.value)} rows={7} /></label>
         <div className="life-row"><button disabled={!backup || !saveFile} onClick={() => void saveBackupFile()}>保存加密文件</button><button disabled={!backup || password.length < 8} onClick={() => setRestoreConfirm(true)}>恢复备份</button></div>
-        {restoreConfirm && <div className="life-delete"><p>恢复会合并较新的资料、保留删除屏蔽与已用额度，并暂停联网。请先停止在途任务。</p><button onClick={() => void act('backup.restore', { text: backup, password }, () => { setRestoreConfirm(false); setPassword(''); setBackup('') })}>确认合并恢复</button><button onClick={() => setRestoreConfirm(false)}>取消</button></div>}
+        {restoreConfirm && <div className="life-delete"><p>会和现在的资料合并，恢复后暂停联网。</p><button onClick={() => void act('backup.restore', { text: backup, password }, () => { setRestoreConfirm(false); setPassword(''); setBackup('') })}>确认合并恢复</button><button onClick={() => setRestoreConfirm(false)}>取消</button></div>}
       </>}
     </fieldset>
   </section>

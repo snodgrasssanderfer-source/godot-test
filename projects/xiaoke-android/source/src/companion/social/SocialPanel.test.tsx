@@ -46,6 +46,6 @@ describe('SocialPanel', () => {
   it('does not expose usable operations when the native module is unavailable', () => {
     render(<SocialPanel available={false} run={vi.fn()} state={{}}/> )
     expect(screen.getByRole('button',{name:'保存并启用加密同步'})).toBeDisabled()
-    expect(screen.getByText(/尚未接入社交模块/)).toBeInTheDocument()
+    expect(screen.getByText(/社交模块还没连上/)).toBeInTheDocument()
   })
 })
