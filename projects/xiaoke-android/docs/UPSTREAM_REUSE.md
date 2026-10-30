@@ -172,3 +172,12 @@ Mobilerun 仅作为原有设备控制对照，不替换已运行的 DSH 权限�
 | 界面图标 | @phosphor-icons/react 2.1.10（npm） | MIT | src/companion/ 各页面 |
 
 整包依赖，没有改动。字体打进 APK 约 9 MB，WebView 只按需加载用到的分片。工作台（DSH 原界面）仍用原来的字体和 lucide 图标。
+
+## 2026-10-30 QQ 表情和戳一戳
+
+| 用途 | 来源（固定版本） | 许可证 | 本项目文件 |
+|---|---|---|---|
+| QQ 表情编号 → 名字（QSid → QDes，275 条） | koishijs/QFace，npm qface 1.4.1 `lib/data.json` | MIT | chat/QqFaces.kt（由数据生成） |
+| 戳一戳通知字段（notice_type=notify、sub_type=poke、user_id、target_id、group_id、raw_info） | NapNeko/NapCatQQ 49ecfe0f56c1e0649db6988444950216fd5fe792 | 只读事件格式 | OneBotProtocol.kt |
+
+只取数据，没有引入依赖。
