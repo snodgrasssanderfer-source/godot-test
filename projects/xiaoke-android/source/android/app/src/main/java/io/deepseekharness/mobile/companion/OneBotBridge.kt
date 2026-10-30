@@ -156,6 +156,16 @@ class OneBotBridge private constructor(private val context: Context) {
         }
         if (!allowed()) return
         val attachments = event.optJSONArray("attachments") ?: JSONArray()
+        var text = event.getString("text")
+        // Voice: NapCat's own speech-to-text first; the audio itself is only read when that gives nothing.
+        store.get("conversation", scope)?.let { c ->
+            for (i in 0 until attachments.length()) attachments.getJSONObject(i).takeIf { it.optString("kind") == "record" }?.let { a ->
+                io.deepseekharness.mobile.companion.chat.QqExtras.voiceText(context, c, event.optString("platformMessageId"))?.let { heard ->
+                    text = text.replaceFirst(" [语音待理解]", " [语音转文字：$heard]")
+                    a.put("kind", "record-text").put("status", "transcribed")
+                }
+            }
+        }
         val (parts, read) = media.fetchSegments(attachments, ::allowed)
         if (!allowed()) return
         moduleListener?.invoke("conversation.message", JSONObject(event.toString()))
@@ -167,9 +177,10 @@ class OneBotBridge private constructor(private val context: Context) {
                 .put("createdAt", System.currentTimeMillis()).put("analyzed", false).put("parts", parts)).getString("id")
         }
         val c = store.get("conversation", scope) ?: return
-        val summary = if (attachments.length() > 0) " [已读取 $read 个媒体片段；其余未读取，具体格式可能不受支持]" else ""
-        CompanionRouting.receive(context, c, "${event.optString("sender")}（${event.getString("senderId")}）：${event.getString("text")}$summary",
-            "OneBot 消息 ${event.getString("id")}", event.optBoolean("mentioned"), event.getString("senderId"), observationId)
+        val unread = (0 until attachments.length()).count { attachments.getJSONObject(it).optString("kind") in setOf("image", "mface", "record", "video") }
+        val summary = if (unread > 0) " [已读取 $read 个媒体片段；其余未读取，具体格式可能不受支持]" else ""
+        CompanionRouting.receive(context, c, "${event.optString("sender")}（${event.getString("senderId")}）：$text$summary",
+            "OneBot 消息 ${event.getString("id")}", event.optBoolean("mentioned"), event.getString("senderId"), observationId, event.optString("platformMessageId"))
     }
     /** Trust the certificate the owner just compared on the server, then reconnect. */
     @Synchronized fun trustCertificate(fingerprint: String) {
@@ -208,7 +219,7 @@ class OneBotBridge private constructor(private val context: Context) {
     }
     /** Module-owned durable ledger must claim a write before calling. No automatic retry here. */
     fun callAction(account: String, action: String, params: JSONObject): JSONObject {
-        check(action in setOf("send_msg", "send_qzone_msg", "comment_qzone_public_feed", "set_friend_add_request", "set_group_add_request", "set_group_leave", "get_qzone_public_feeds", "get_forward_msg")) { "不支持的桥动作" }
+        check(action in setOf("send_msg", "send_qzone_msg", "comment_qzone_public_feed", "set_friend_add_request", "set_group_add_request", "set_group_leave", "get_qzone_public_feeds", "get_forward_msg") + EXTRAS) { "不支持的桥动作" }
         val settings = engine.store.settings()
         check(verified && settings.optBoolean("oneBotEnabled") && settings.optBoolean("networkEnabled") && !settings.optBoolean("paused")) { "消息桥未连接" }
         check(OneBotProtocol.numeric(account) == settings.optString("oneBotAccount")) { "桥接账号已变化" }
@@ -220,6 +231,14 @@ class OneBotBridge private constructor(private val context: Context) {
             return wait.response ?: error("桥响应未确认")
         } finally { pending.remove(echo) }
     }
+    /** NapCat extras (reaction, typing, poke, read, voice text) for a conversation already bound to this account. */
+    fun extra(conversation: JSONObject, action: String, params: JSONObject): JSONObject {
+        require(action in EXTRAS)
+        val settings = engine.store.settings()
+        check(conversation.optString("route") == "onebot" && conversation.optString("account") == settings.optString("oneBotAccount")) { "账号或会话绑定已变化" }
+        return callAction(conversation.getString("account"), action, params)
+    }
+
     fun send(task: JSONObject): JSONObject {
         check(effectGate?.invoke(JSONObject(task.toString())) == true) { "宿主尚未授权此消息发送" }
         val store = engine.store
@@ -258,6 +277,7 @@ class OneBotBridge private constructor(private val context: Context) {
         }
     }
     companion object {
+        private val EXTRAS = setOf("fetch_ptt_text", "set_msg_emoji_like", "set_input_status", "send_poke", "mark_msg_as_read")
         @Volatile private var instance: OneBotBridge? = null
         fun get(context: Context) = instance ?: synchronized(this) { instance ?: OneBotBridge(context.applicationContext).also { instance = it } }
     }

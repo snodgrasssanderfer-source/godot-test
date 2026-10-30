@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit
  * the group's target frequency; an @ or her name forces a reply; the owner's own chat always gets one. */
 object ReplyScheduler {
     private val timer = Executors.newSingleThreadScheduledExecutor { runnable -> Thread(runnable, "xiaoke-reply-timing").apply { isDaemon = true } }
-    private class Pending(val messageId: String, val text: String, val sender: String, val mentioned: Boolean, val observationId: String)
+    private class Pending(val messageId: String, val text: String, val sender: String, val mentioned: Boolean, val observationId: String, val platformId: String)
     private class State {
         val debouncer = MessageDebouncer()
         val gate = DynamicReplyGate()
@@ -26,20 +26,20 @@ object ReplyScheduler {
     }
     private val states = ConcurrentHashMap<String, State>()
 
-    fun receive(context: Context, incoming: JSONObject, text: String, source: String, mentioned: Boolean, senderId: String = "", observationId: String = "") {
+    fun receive(context: Context, incoming: JSONObject, text: String, source: String, mentioned: Boolean, senderId: String = "", observationId: String = "", platformId: String = "") {
         val engine = CompanionEngine.get(context)
         val store = engine.store
         val conversation = store.get("conversation", incoming.getString("scope")) ?: return
         if (!ParticipationPolicy.mayReceive(conversation)) return
         val scope = conversation.getString("scope")
-        val message = store.message(scope, "user", text, source).let { store.put("message", it.put("actorId", senderId).put("observationId", observationId)) }
+        val message = store.message(scope, "user", text, source).let { store.put("message", it.put("actorId", senderId).put("observationId", observationId).put("platformMessageId", platformId)) }
         runCatching { engine.modules.learner.observe(scope) }
         val name = store.persona().optString("name", "小克")
         val called = mentioned || (name.isNotBlank() && text.contains(name))
         val words = text.substringAfter('：').substringBefore(" [已读取").trim()
         val state = states.getOrPut(scope) { State() }
         synchronized(state) {
-            state.batch.add(Pending(message.getString("id"), text, senderId.ifBlank { "owner" }, called, observationId))
+            state.batch.add(Pending(message.getString("id"), text, senderId.ifBlank { "owner" }, called, observationId, platformId))
             val now = SystemClock.elapsedRealtime()
             val mode = when (conversation.optString("debounce", "natural")) { "off" -> null; "fast" -> MessageDebouncer.Mode.FAST; "steady" -> MessageDebouncer.Mode.STEADY; else -> MessageDebouncer.Mode.NATURAL }
             val deadline = mode?.let { state.debouncer.observe(senderId.ifBlank { "owner" }, observationId.isNotBlank() && words.isBlank(), false, called, now, it) } ?: now
@@ -57,6 +57,10 @@ object ReplyScheduler {
         val conversation = store.get("conversation", scope) ?: return
         val settings = store.settings()
         if (settings.optBoolean("paused") || !settings.optBoolean("networkEnabled") || !conversation.optBoolean("reliable")) return
+        val onebot = conversation.optString("route") == "onebot"
+        // She has looked at this batch, whatever she does next.
+        if (onebot) QqExtras.markRead(context, conversation, batch.last().platformId)
+        var react = false
         val now = System.currentTimeMillis()
         val clock = SystemClock.elapsedRealtime()
         val called = batch.any { it.mentioned }
@@ -78,9 +82,14 @@ object ReplyScheduler {
                 else -> {
                     val p = probability(store, scope, batch, now)
                     state.gate.recordDemand(p, clock)
-                    state.gate.evaluate(p, conversation.optDouble("replyFrequency", settings.optDouble("groupReplyFrequency", 0.5)), clock).trigger
+                    val decision = state.gate.evaluate(p, conversation.optDouble("replyFrequency", settings.optDouble("groupReplyFrequency", 0.5)), clock)
+                    when (QqExtras.tier(p, decision.threshold, decision.trigger)) { "reply" -> true; "react" -> { react = true; false }; else -> false }
                 }
             }
+        }
+        if (react && onebot) {
+            val target = batch.lastOrNull { it.platformId.isNotBlank() }
+            if (target != null) QqExtras.react(context, conversation, target.platformId, QqExtras.reaction(target.text.substringAfter('：').substringBefore(" [已读取"), target.observationId.isNotBlank()))
         }
         if (!trigger) return
         val hour = now / 3_600_000
@@ -88,6 +97,7 @@ object ReplyScheduler {
         store.put("conversation", conversation.put("hour", hour).put("hourCount", used + 1).put("lastReplyAt", now).put("messagesSinceReply", 0))
         state.gate.recordReply(clock)
         engine.respond(scope, last.messageId, batch.lastOrNull { it.observationId.isNotBlank() }?.observationId.orEmpty())
+        if (onebot) QqExtras.typingWhile(context, conversation)
     }
 
     /** MaiBot's fitted reply likelihood, fed with what actually happened in this chat over the last five minutes. */

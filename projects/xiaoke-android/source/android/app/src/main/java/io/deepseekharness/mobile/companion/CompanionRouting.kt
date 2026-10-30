@@ -5,8 +5,8 @@ import org.json.JSONObject
 
 object CompanionRouting {
     /** QQ messages go through debounce, follow-up merge and the dynamic frequency gate (see chat/ReplyScheduler). */
-    fun receive(context: Context, incoming: JSONObject, text: String, source: String, mentioned: Boolean, senderId: String = "", observationId: String = "") =
-        io.deepseekharness.mobile.companion.chat.ReplyScheduler.receive(context, incoming, text, source, mentioned, senderId, observationId)
+    fun receive(context: Context, incoming: JSONObject, text: String, source: String, mentioned: Boolean, senderId: String = "", observationId: String = "", platformMessageId: String = "") =
+        io.deepseekharness.mobile.companion.chat.ReplyScheduler.receive(context, incoming, text, source, mentioned, senderId, observationId, platformMessageId)
 
     // Segmented sends pause between pieces; never on the model worker.
     private val sender = java.util.concurrent.Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "xiaoke-qq-send").apply { isDaemon = true } }

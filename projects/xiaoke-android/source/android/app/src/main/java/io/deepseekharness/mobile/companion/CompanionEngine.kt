@@ -75,6 +75,8 @@ class CompanionEngine private constructor(private val context: Context) {
         worker.submit(task.getString("id"), owner) { runChat(task.getString("id")) }
         return task
     }
+    /** A reply for [scope] is queued or being written right now. */
+    fun responding(scope: String): Boolean = synchronized(followUps) { busyScopes[scope]?.let { store.get("task", it)?.optString("state") in setOf("queued", "running") } == true }
     private fun takeFollowUps(scope: String): List<Pair<String, String>> = synchronized(followUps) { followUps.remove(scope).orEmpty() }
     private fun finishTurn(scope: String, id: String) {
         val leftover = synchronized(followUps) {
@@ -483,6 +485,13 @@ class CompanionEngine private constructor(private val context: Context) {
             modules.memoryIndex.refresh()
             saved
         }
+        "poke" -> {
+            val conversation = store.get("conversation", scope) ?: error("会话不存在")
+            check(conversation.optString("route") == "onebot") { "这里不能戳" }
+            val target = if (conversation.optString("targetType") == "private") conversation.getString("targetId")
+                else store.get("message", sourceId)?.optString("actorId")?.removePrefix("qq:")?.takeIf { it.isNotBlank() } ?: error("不知道该戳谁")
+            io.deepseekharness.mobile.companion.chat.QqExtras.poke(context, conversation, target, modules.principal(scope).owner)
+        }
         "recall" -> JSONObject().put("memories", recallMemories(scope, args.optString("query"))).put("messages", searchMessages(scope, args.optString("query")))
         "life_action" -> {
             val action = args.getString("action")
@@ -627,6 +636,8 @@ class CompanionEngine private constructor(private val context: Context) {
                     listOf("memory.search", "diary.list", "interest.list", "interest.upsert", "attention.status", "attention.set")))
                 if (scope != CompanionPolicy.OWNER && !modules.principal(scope).owner)
                     a.put(decl("propose_save", "聊天里有人发的图片值得留作参考时，提议存进主人的资料库（进待审清单，主人确认才存）。title 简短说明是什么图，reason 为什么值得留", listOf("title", "reason")))
+                if (store.get("conversation", scope)?.optString("route") == "onebot")
+                    a.put(decl("poke", "QQ 戳一戳正在和你说话的人。朋友间偶尔的小动作：主人私聊里偶尔用（每天最多 3 次），群里很少用（每个群每天最多 1 次），别和文字说同一个意思", emptyList()))
                 if (scope == CompanionPolicy.OWNER || scope.startsWith("qq:group:"))
                     a.put(decl("watch_bilibili", "对聊到的话题感兴趣时，自己去 B站看一部相关公开视频（videoId=BV 号，或 query 关键词）。后台进行、用活动额度；只读字幕和关键帧，看完记成你自己的观察并写明实际看了哪部分", listOf("videoId", "query", "reason"), listOf("reason")))
                 if (modules.router.available("social")) {

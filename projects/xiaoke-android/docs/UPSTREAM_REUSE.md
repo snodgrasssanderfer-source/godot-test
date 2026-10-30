@@ -123,3 +123,7 @@ Mobilerun 仅作为原有设备控制对照，不替换已运行的 DSH 权限�
 | ONNX Runtime | com.microsoft.onnxruntime:onnxruntime-android 1.22.0 | MIT | LocalEmbedder |
 
 没有引入图数据库，记忆仍存在原来的 SQLite 记录里；向量单独一张表，不进备份、不进提示词。分词按模型的 tokenizer.json（BertNormalizer 不转小写 + WordPiece）实现，单测与 HF tokenizers 0.23.3 的输出逐个比对。
+
+## 2026-10-30 QQ 能力补全（`chat/QqExtras.kt`）
+
+只按 NapNeko/NapCatQQ 49ecfe0f56c1e0649db6988444950216fd5fe792 的接口定义调用，不含它的代码（它的许可证限制再分发）。核对过的参数：`fetch_ptt_text {message_id}`、`set_msg_emoji_like {message_id, emoji_id, set}`（emoji_id 超过三位按 Unicode 表情）、`set_input_status {user_id, event_type: 1}`（仅私聊）、`send_poke {user_id, group_id?}`、`mark_msg_as_read {message_id | group_id | user_id}`。
