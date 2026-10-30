@@ -35,8 +35,10 @@ class LifeModule(@Suppress("UNUSED_PARAMETER") context: Context, private val sto
             .put("interests", entries("interest", scope, "", includeHidden = LifePolicy.owner(principal)))
             .put("attention", if (LifePolicy.owner(principal)) attention() else JSONObject().put("mode", "private"))
             .put("budgets", if (LifePolicy.owner(principal)) BudgetLedger(store.lifeState("budget")).status() else JSONObject().put("private", true))
+            .put("profiles", if (LifePolicy.owner(principal)) profiles(scope) else JSONArray())
             .put("contentEpoch", store.contentEpoch())
     }
+    private fun profiles(scope: String) = store.list("profile", scope, 500)
 
     override fun execute(action: String, data: JSONObject, principal: CommandPrincipal): JSONObject {
         val result = when (action) {
@@ -50,6 +52,8 @@ class LifeModule(@Suppress("UNUSED_PARAMETER") context: Context, private val sto
                 JSONObject().put("items", store.lifeHistory("memory", scope, data.getString("id")))
                     .put("legacy", store.memoryHistory(scope, data.getString("id")))
             }
+            "profile.list" -> { LifePolicy.requireOwner(principal); JSONObject().put("items", profiles(LifePolicy.scope(data, principal))) }
+            "profile.delete" -> { LifePolicy.requireOwner(principal); memory.delete("profile", LifePolicy.scope(data, principal), data.getString("id")) }
             "diary.list", "interest.list" -> {
                 val scope = LifePolicy.scope(data, principal)
                 JSONObject().put("items", entries(if (action.startsWith("diary")) "diary" else "interest", scope, data.optString("query"), LifePolicy.owner(principal)))
@@ -87,7 +91,7 @@ class LifeModule(@Suppress("UNUSED_PARAMETER") context: Context, private val sto
         }
         if (action !in READ_ACTIONS) {
             emit("moduleState", JSONObject().put("domain", domain))
-            if (action.startsWith("memory.") || action.startsWith("diary.") || action.startsWith("interest.") || action == "backup.restore") {
+            if (action.startsWith("memory.") || action.startsWith("profile.") || action.startsWith("diary.") || action.startsWith("interest.") || action == "backup.restore") {
                 val event = JSONObject().put("contentEpoch", store.contentEpoch()).put("action", action)
                 result.optJSONArray("deleted")?.let { event.put("deleted", it) }
                 emit("life.contentChanged", event)
@@ -218,6 +222,6 @@ class LifeModule(@Suppress("UNUSED_PARAMETER") context: Context, private val sto
     }
 
     companion object {
-        private val READ_ACTIONS = setOf("memory.search", "memory.history", "diary.list", "interest.list", "attention.status", "budget.status", "backup.export")
+        private val READ_ACTIONS = setOf("profile.list", "memory.search", "memory.history", "diary.list", "interest.list", "attention.status", "budget.status", "backup.export")
     }
 }

@@ -7,7 +7,7 @@ import org.json.JSONObject
 
 /** Restore planning is pure so tombstone precedence is tested without a mocked database. */
 object LifeBackup {
-    val kinds = listOf("persona", "personaVersion", "memory", "message", "observation", "task", "diary", "interest", "lifeEvent", "lifeState")
+    val kinds = listOf("persona", "personaVersion", "memory", "message", "observation", "task", "diary", "interest", "lifeEvent", "lifeState", "profile")
     data class Plan(val rows: List<Pair<String, JSONObject>>, val tombstones: List<JSONObject>, val revisions: List<JSONObject>)
 
     fun rows(data: JSONObject): List<Pair<String, JSONObject>> = kinds.flatMap { kind ->

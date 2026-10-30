@@ -9,10 +9,18 @@ const entries = (value: unknown): Entry[] => Array.isArray(value) ? value.map(ob
 const text = (value: unknown) => typeof value === 'string' ? value : ''
 const number = (value: unknown) => typeof value === 'number' ? value : 0
 const date = (value: unknown) => number(value) ? new Date(number(value)).toLocaleString() : '时间未记录'
+const day = (value: unknown) => new Date(number(value)).toLocaleDateString()
+/** "从 10/20 起" / "10/20 到 10/27（已过去）": facts that changed stay, marked as the past. */
+const validity = (row: Entry) => {
+  const until = number(row.validUntil)
+  const from = number(row.validFrom) ? '从 ' + day(row.validFrom) : ''
+  if (until > 0 && until <= Date.now()) return (from ? from + ' ' : '') + '到 ' + day(until) + '（已过去）'
+  return from + ' 起' + (until > 0 ? '，到 ' + day(until) + ' 为止' : '') + (text(row.kind) === 'opinion' ? ' · 她的看法' : '')
+}
 
 /** Real host commands only. Root imports this optional panel and reloads module state after changes. */
 export function LifePanel({ state, run, available, saveFile, scopes }: LifePanelProps) {
-  const [tab, setTab] = useState<'memory' | 'diary' | 'interest' | 'budget' | 'attention' | 'backup'>('memory')
+  const [tab, setTab] = useState<'memory' | 'profile' | 'diary' | 'interest' | 'budget' | 'attention' | 'backup'>('memory')
   const [query, setQuery] = useState('')
   const [scope, setScope] = useState('owner:local')
   const [showForgotten, setShowForgotten] = useState(false)
@@ -77,8 +85,8 @@ export function LifePanel({ state, run, available, saveFile, scopes }: LifePanel
   function select(next: typeof tab) {
     setTab(next); setFound(null); setHistory(null); setEditing(null); setDraft(''); setDeleteId(''); setError(''); setNotice('')
   }
-  const dataKind = tab === 'diary' ? 'diary' : tab === 'interest' ? 'interest' : 'memory'
-  const all = found ?? entries(state[tab === 'interest' ? 'interests' : tab === 'diary' ? 'diary' : 'memories']).filter(row => text(row.scope) === scope)
+  const dataKind = tab === 'diary' ? 'diary' : tab === 'interest' ? 'interest' : tab === 'profile' ? 'profile' : 'memory'
+  const all = found ?? entries(state[tab === 'interest' ? 'interests' : tab === 'diary' ? 'diary' : tab === 'profile' ? 'profiles' : 'memories']).filter(row => text(row.scope) === scope)
   const displayed = all.filter(row => (showForgotten || (!row.forgotten && !row.suppressed)) && (showHistory || !row.superseded))
   function listAction() { return tab === 'memory' ? 'memory.search' : dataKind + '.list' }
   function searchData() { return { scope, query, includeForgotten: showForgotten, includeHistory: showHistory } }
@@ -102,12 +110,12 @@ export function LifePanel({ state, run, available, saveFile, scopes }: LifePanel
   return <section className="life-panel" aria-label="小克的生活记录">
     <header><h2>一起积累的生活</h2><p>查看经历、纠正记忆，也给陪伴留出独立额度。</p></header>
     {!available && <p role="status">生活模块尚未连接；此处不会模拟保存或执行。</p>}
-    <nav aria-label="生活分类">{([['memory', '记忆'], ['diary', '日记'], ['interest', '兴趣'], ['budget', '额度'], ['attention', '注意力'], ['backup', '备份']] as const).map(([key, label]) =>
+    <nav aria-label="生活分类">{([['memory', '记忆'], ['profile', '档案'], ['diary', '日记'], ['interest', '兴趣'], ['budget', '额度'], ['attention', '注意力'], ['backup', '备份']] as const).map(([key, label]) =>
       <button key={key} aria-pressed={tab === key} onClick={() => select(key)} disabled={busy}>{label}</button>)}</nav>
     {error && <p role="alert" className="life-error">{error}</p>}
     {notice && <p role="status">{notice}</p>}
     <fieldset disabled={!available || busy}>
-      {['memory', 'diary', 'interest'].includes(tab) && <>
+      {['memory', 'profile', 'diary', 'interest'].includes(tab) && <>
         <form className="life-search" onSubmit={event => { event.preventDefault(); search() }}>
           <label>会话范围{scopes ? <select aria-label="会话范围" value={scope} onChange={event => { setScope(event.target.value); setFound(null); setHistory(null); setEditing(null); setDraft('') }}>{scopes.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select> : <input aria-label="会话范围" value={scope} onChange={event => { setScope(event.target.value); setFound(null); setHistory(null); setEditing(null); setDraft('') }} />}</label>
           <label>搜索内容<input aria-label="搜索内容" value={query} onChange={event => setQuery(event.target.value)} /></label>
@@ -116,20 +124,23 @@ export function LifePanel({ state, run, available, saveFile, scopes }: LifePanel
           <button type="submit">搜索</button>
         </form>
         {tab === 'diary' && <p className="life-note">日记来自已保存的真实经历。没有证据的经历不会补写。</p>}
-        {(tab !== 'diary' || editing) && <form className="life-editor" onSubmit={event => { event.preventDefault(); save() }}>
+        {tab === 'profile' && <p className="life-note">她对你、群友、游戏和作品的简短印象，聊天后自动更新。群友的档案只留在那个群里。</p>}
+        {tab !== 'profile' && (tab !== 'diary' || editing) && <form className="life-editor" onSubmit={event => { event.preventDefault(); save() }}>
           <label>{editing ? '纠正内容' : tab === 'interest' ? '记录兴趣' : '记下一件有意义的事'}<textarea aria-label="记录内容" required maxLength={8000} value={draft} onChange={event => setDraft(event.target.value)} /></label>
           {tab === 'memory' && <div className="life-row"><label>类别<select value={kind} onChange={event => setKind(event.target.value)}>
-            <option value="fact">事实</option><option value="inference">推测</option><option value="preference">偏好</option><option value="event">经历</option><option value="relationship">关系</option><option value="task">任务</option>
+            <option value="fact">事实</option><option value="inference">推测</option><option value="preference">偏好</option><option value="event">经历</option><option value="relationship">关系</option><option value="task">任务</option><option value="opinion">她的看法</option>
           </select></label><label>同一事实的标记（选填）<input value={factKey} maxLength={160} onChange={event => setFactKey(event.target.value)} placeholder="如：喜欢的饮料" /></label></div>}
           <div className="life-row"><button type="submit" disabled={!draft.trim()}>{editing ? '保存纠正' : '保存记录'}</button>{editing && <button type="button" onClick={() => { setEditing(null); setDraft('') }}>取消编辑</button>}</div>
         </form>}
         <div className="life-records">{displayed.length === 0 && <p className="life-empty">还没有符合条件的记录。</p>}{displayed.map(row => <article key={text(row.id)}>
-          <p className="life-record-text">{text(row.text)}</p>
-          <small>{date(row.occurredAt ?? row.createdAt)} · {row.forgotten || row.suppressed ? '已忘掉，不主动提起' : row.superseded ? '已有新事实' : text(row.kind) === 'inference' ? '有来源的推测' : text(row.status) === 'unverified' ? '自动记录，仍可纠正' : '已记录'}</small>
+          {tab === 'profile' && <h3>{text(row.name)}</h3>}
+          <p className="life-record-text">{text(tab === 'profile' ? row.summary : row.text)}</p>
+          {tab === 'memory' && (number(row.validFrom) > 0 || number(row.validUntil) > 0) && <small>{validity(row)}</small>}
+          {tab !== 'profile' && <small>{date(row.occurredAt ?? row.createdAt)} · {row.forgotten || row.suppressed ? '已忘掉，不主动提起' : row.superseded ? '已有新事实' : text(row.kind) === 'inference' ? '有来源的推测' : text(row.status) === 'unverified' ? '自动记录，仍可纠正' : '已记录'}</small>}
           {Boolean(row.evidenceMissing) && <p className="life-note">部分来源已不可用；这里仅保留当时的记录，不补造缺失经历。</p>}
           {entries(row.sourceRefs).length > 0 && <details><summary>查看来源</summary>{entries(row.sourceRefs).map(ref => <p key={text(ref.kind) + ':' + text(ref.id)}>{text(ref.kind)} · {text(ref.scope)} · {text(ref.id)}</p>)}</details>}
           <div className="life-row life-actions">
-            <button onClick={() => { setEditing(row); setDraft(text(row.text)); setFactKey(text(row.factKey)); setKind(text(row.kind) || 'fact'); setScope(text(row.scope) || scope) }}>纠正</button>
+            {tab !== 'profile' && <button onClick={() => { setEditing(row); setDraft(text(row.text)); setFactKey(text(row.factKey)); setKind(text(row.kind) || 'fact'); setScope(text(row.scope) || scope) }}>纠正</button>}
             {tab === 'memory' && <><button onClick={() => void act('memory.forget', { id: row.id, scope: row.scope, forgotten: !row.forgotten }, () => setFound(null), true)}>{row.forgotten ? '恢复主动记忆' : '忘掉'}</button>
               <button onClick={() => void act('memory.history', { id: row.id, scope: row.scope }, result => { setHistory(entries(result.items)) })}>变化记录</button></>}
             <button className="life-danger" onClick={() => setDeleteId(text(row.id))}>删除</button>

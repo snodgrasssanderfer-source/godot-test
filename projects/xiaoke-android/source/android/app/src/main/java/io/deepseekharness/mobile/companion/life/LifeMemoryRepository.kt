@@ -5,11 +5,11 @@ import io.deepseekharness.mobile.companion.CompanionStore
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** Uses the original store as the sole content source. No second memory database or remote embedding. */
+/** Uses the original store as the sole content source. Vectors are a derived index kept beside it (memory_vectors). */
 class LifeMemoryRepository(private val store: CompanionStore) {
     fun upsertMemory(scope: String, input: JSONObject, fromModel: Boolean = false, sourceScope: String = scope): JSONObject = store.lifeTransaction {
         CompanionPolicy.scope(scope)
-        val content = CompanionPolicy.text(input.getString("text"), 8000)
+        var content = CompanionPolicy.text(input.getString("text"), 8000)
         val id = input.optString("id").ifBlank { CompanionPolicy.id() }
         val old = store.get("memory", id)
         check(old == null || old.getString("scope") == scope) { "不能跨会话修改记忆" }
@@ -24,7 +24,7 @@ class LifeMemoryRepository(private val store: CompanionStore) {
             if (duplicate != null) return@lifeTransaction duplicate
         }
         val kind = input.optString("kind", "fact")
-        require(kind in setOf("fact", "inference", "preference", "relationship", "event", "task")) { "记忆类别无效" }
+        require(kind in KINDS) { "记忆类别无效" }
         val now = System.currentTimeMillis()
         val supplied = JSONObject(input.toString()).put("scope", scope).put("sourceScope", sourceScope)
         val refs = LifePolicy.sources(supplied)
@@ -35,6 +35,9 @@ class LifeMemoryRepository(private val store: CompanionStore) {
         } ?: now
         require(occurredAt in 0..now + 300000) { "事实发生时间无效" }
         val primarySource = refs.firstOrNull()?.let { store.get(it.kind, it.id) }
+        // "昨天" is pinned to the day it was said, not the day she happens to recall it.
+        val saidAt = primarySource?.optLong("createdAt", now) ?: now
+        if (fromModel) content = io.deepseekharness.mobile.companion.memory.TimeAnchor.resolve(content, io.deepseekharness.mobile.companion.memory.TimeAnchor.date(saidAt))
         val actorId = primarySource?.optString("actorId", primarySource.optString("senderId")).orEmpty().ifBlank {
             if (sourceScope == CompanionPolicy.OWNER || sourceScope.startsWith("qq:private:")) sourceScope else ""
         }
@@ -55,6 +58,16 @@ class LifeMemoryRepository(private val store: CompanionStore) {
             .put("forgotten", old?.optBoolean("forgotten") ?: false).put("suppressed", old?.optBoolean("suppressed") ?: false)
             .put("suppressedBy", old?.optJSONArray("suppressedBy") ?: JSONArray()).put("superseded", false)
             .put("evidenceType", if (fromModel) "source_linked_candidate" else "owner_corrected")
+        // Temporal validity (graphiti's valid_at / invalid_at): a fact that stops being true is ended, never erased.
+        val validFrom = if (input.has("validFrom")) input.getLong("validFrom") else old?.optLong("validFrom", occurredAt) ?: occurredAt
+        val validUntil = if (input.has("validUntil")) input.getLong("validUntil") else old?.optLong("validUntil") ?: 0L
+        require(validUntil == 0L || validUntil >= validFrom) { "有效期结束早于开始" }
+        value.put("validFrom", validFrom).put("validUntil", validUntil).put("endedBy", input.optString("endedBy", old?.optString("endedBy").orEmpty()))
+            .put("holder", input.optString("holder", old?.optString("holder") ?: if (kind == "opinion") "her" else "").take(40))
+            .put("entities", JSONArray((input.optJSONArray("entities") ?: old?.optJSONArray("entities") ?: JSONArray()).let { a ->
+                (0 until a.length()).map { a.optString(it).trim().take(24) }.filter { it.length >= 2 }.distinct().take(8) }))
+        val links = input.optJSONArray("links") ?: old?.optJSONArray("links") ?: JSONArray()
+        value.put("links", JSONArray((0 until links.length()).map(links::optString).filter { it != id && store.get("memory", it)?.optString("scope") == scope }.distinct().take(10)))
         if (kind == "preference") value.put("stability", input.optString("stability", "developing").also { require(it in setOf("developing", "stable", "situational")) })
         if (!fromModel) {
             value.put("shareSummary", input.optString("shareSummary", old?.optString("shareSummary").orEmpty()).take(1000))
@@ -71,6 +84,18 @@ class LifeMemoryRepository(private val store: CompanionStore) {
         store.get("memory", saved.getString("id"))!!
     }
 
+    /** The fact or view stopped being true at [until]; it stays as history so she can say "你上周还……" or "我当时觉得……". */
+    fun end(scope: String, id: String, until: Long, byId: String = ""): JSONObject? = store.lifeTransaction {
+        val old = store.get("memory", id) ?: return@lifeTransaction null
+        check(old.getString("scope") == scope) { "不能跨会话修改记忆" }
+        if (old.optLong("validUntil") in 1..until) return@lifeTransaction old
+        store.recordRevision("memory", old)
+        val saved = store.put("memory", old.put("validUntil", maxOf(until, old.optLong("validFrom"))).put("endedBy", byId)
+            .put("revision", old.optInt("revision", 1) + 1))
+        store.bumpContentEpoch()
+        saved
+    }
+
     private fun reconcileFact(scope: String, factKey: String, insertedId: String): Boolean {
         if (factKey.isBlank()) return false
         val all = store.list("memory", scope, 10000)
@@ -85,6 +110,10 @@ class LifeMemoryRepository(private val store: CompanionStore) {
             }
         }
         return changedExisting
+    }
+
+    companion object {
+        val KINDS = setOf("fact", "inference", "preference", "relationship", "event", "task", "opinion")
     }
 
     fun validateSources(refs: List<RecordRef>, sourceScope: String) {

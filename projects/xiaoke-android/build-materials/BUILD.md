@@ -27,6 +27,16 @@
 
 rootfs 的哈希与清单里的 `rootfs.sha256` 一致才能用。两个 PRoot .so 不变，仍按下一节从旧 APK 提取。
 
+## 本地向量模型（0.8.0 起）
+中转没有向量接口时，记忆检索用手机本地的 bge-small-zh-v1.5（BAAI，MIT）。两个文件放到 `source/android/app/src/main/assets/embedding/`，不入库：
+
+| 文件 | 来源 | 字节 | SHA-256 |
+|---|---|---|---|
+| bge-small-zh-v1.5.onnx | https://huggingface.co/Xenova/bge-small-zh-v1.5/resolve/75c43b069aac4d136ba6bc1122f995fedcfd2781/onnx/model_quantized.onnx | 24010842 | 15b717c382bcb518ba457b93ea6850ede7f4f1cd8937454aa06972366cd19bcc |
+| vocab.txt | 同一提交的 vocab.txt | 109540 | 45bbac6b341c319adc98a532532882e91a9cefc0329aa57bac9ae761c27b291c |
+
+缺了这两个文件也能构建，只是中转不支持向量时退回关键词和实体检索。
+
 ## 从旧 APK 提取运行环境（PRoot .so；0.6.0 及以前的 rootfs）
 
 没有自行重建 PRoot 时，可以从此前构建的旧 APK 中取出运行环境文件。旧 APK 和取出的文件都放在仓库目录之外的工作目录，**绝不提交**（已由 .gitignore 排除）。

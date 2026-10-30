@@ -56,6 +56,8 @@ android/app/src/main/assets/runtime/runtime-manifest.json
 android/app/src/main/assets/runtime/runtime-manifest.json.bak
 android/app/src/main/assets/runtime/rootfs.bundle
 android/app/src/main/assets/runtime/rootfs.bundle.bak
+# On-device embedding model (bge-small-zh-v1.5 ONNX + vocab), see build-materials/BUILD.md
+android/app/src/main/assets/embedding/
 android/app/src/main/jniLibs/**/*.so
 android/gradle/wrapper/gradle-wrapper.jar
 *.apk

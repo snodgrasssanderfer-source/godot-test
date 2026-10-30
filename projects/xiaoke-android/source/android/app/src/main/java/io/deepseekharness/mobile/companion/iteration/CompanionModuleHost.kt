@@ -30,6 +30,9 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
     val biliWatcher = io.deepseekharness.mobile.companion.BilibiliWatcher(context, store, this)
     private val nightlyDiary = NightlyDiary(store, this)
     val learner = io.deepseekharness.mobile.companion.chat.ChatLearner(store, this)
+    val profiles = io.deepseekharness.mobile.companion.memory.Profiles(store)
+    val memoryIndex = io.deepseekharness.mobile.companion.memory.MemoryIndex(store, io.deepseekharness.mobile.companion.memory.Embeddings(context.applicationContext, store, engine.secrets))
+    private val consolidator = io.deepseekharness.mobile.companion.memory.MemoryConsolidator(store, this, memoryIndex, profiles)
     private val clock = java.util.concurrent.Executors.newSingleThreadScheduledExecutor { runnable -> Thread(runnable, "companion-clock").apply { isDaemon = true } }
     private val unlockWatcher = object : android.content.BroadcastReceiver() {
         override fun onReceive(receiver: Context, intent: android.content.Intent) {
@@ -42,7 +45,7 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
         androidx.core.content.ContextCompat.registerReceiver(context.applicationContext, unlockWatcher,
             android.content.IntentFilter(android.content.Intent.ACTION_USER_PRESENT), androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
         connectivity.registerDefaultNetworkCallback(connectionWatcher)
-        clock.scheduleWithFixedDelay({ runCatching { nightlyDiary.tick() } }, 1, 2, java.util.concurrent.TimeUnit.MINUTES)
+        clock.scheduleWithFixedDelay({ runCatching { nightlyDiary.tick() }; runCatching { consolidator.tick() }; memoryIndex.refresh() }, 1, 2, java.util.concurrent.TimeUnit.MINUTES)
         refreshConnectivity()
         contentChanged()
     }

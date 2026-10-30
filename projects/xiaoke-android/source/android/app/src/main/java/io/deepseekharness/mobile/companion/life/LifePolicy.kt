@@ -9,7 +9,7 @@ data class RecordRef(val kind: String, val id: String, val scope: String) {
     fun json() = JSONObject().put("kind", kind).put("id", id).put("scope", scope)
     val key get() = "$kind\u0000$id"
     companion object {
-        val kinds = setOf("memory", "message", "observation", "diary", "interest", "task", "lifeEvent")
+        val kinds = setOf("memory", "message", "observation", "diary", "interest", "task", "lifeEvent", "profile")
         fun parse(value: JSONObject): RecordRef {
             val ref = RecordRef(value.getString("kind"), value.getString("id"), CompanionPolicy.scope(value.getString("scope")))
             require(ref.kind in kinds && ref.id.length in 1..160 && !ref.id.contains('\u0000')) { "来源引用无效" }

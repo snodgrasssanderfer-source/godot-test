@@ -173,11 +173,11 @@ class LifeCoreTest {
         assertEquals(setOf("legacy"), LifePolicy.legacyOutputs(setOf(root), rows).map { it.id }.toSet())
     }
 
-    @Test fun forgottenPinnedAndSupersededMemoryNeverEntersAutomaticRanking() {
+    @Test fun forgottenAndSuppressedNeverRankedSupersededKeptAsPast() {
         val records = JSONArray().put(row("forgotten").put("forgotten", true).put("pinned", true))
             .put(row("suppressed").put("suppressed", true)).put(row("old").put("superseded", true)).put(row("current"))
         val result = MemoryRanking.rank(records, "current")
-        assertEquals(1, result.length()); assertEquals("current", result.getJSONObject(0).getString("id"))
+        assertEquals(listOf("current", "old"), (0 until result.length()).map { result.getJSONObject(it).getString("id") })
     }
 
     @Test fun staleRevisionDoesNotOverwriteUserCorrection() {

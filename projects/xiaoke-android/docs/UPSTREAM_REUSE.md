@@ -110,3 +110,16 @@ Mobilerun 仅作为原有设备控制对照，不替换已运行的 DSH 权限�
 - 它的识别和动作都由 Pipeline 资源驱动，资源要按 Project Interface V2 在构建时打进 APK（MaaFwApp 也是这样）。小克要玩的是主人临时说的任意游戏，没有现成资源，模型也不能在运行时写出可靠的 Pipeline。
 - 原生库要通过 JNI 桥和一个特权助手进程接入，依赖 OpenCV、ONNX Runtime 和 OCR 模型；体积没有实测，但会在已有约 300 MB 的包上再加一层原生依赖，而这些在没有真机的构建环境里无法验证。
 - 真正需要的“快眼”只有两件事：判断是不是同一个画面、在画面里找到一个按钮。用纯 Kotlin 做了（FrameMatcher.kt：灰度缩小到 320 宽，差值哈希判同屏，归一化互相关粗到细找模板），不需要原生库。OCR 仍交给多模态模型看图。
+
+## 2026-10-30 记忆升级（`companion/memory/`）
+
+| 机制 | 来源（固定版本） | 许可证 | 本项目文件 |
+|---|---|---|---|
+| 混合检索：语义 + sigmoid 归一化 BM25 + 实体加分，按启用的信号数相除 | mem0ai/mem0 26cdefb46600c0fa5953c4b5ee5003c125539fc4 `mem0/utils/scoring.py`、`memory/main.py` `_search_vector_store` | Apache-2.0 | MemoryRanking.kt、MemoryIndex.kt |
+| 聊完再整理：只新增、关联已有记忆、按观察日期换算相对时间 | 同上 `mem0/configs/prompts.py` ADDITIVE_EXTRACTION_PROMPT | Apache-2.0 | MemoryConsolidator.kt、TimeAnchor.kt |
+| 有效期：valid_at / invalid_at，只有新旧不能同时成立才让旧的失效，旧的保留 | getzep/graphiti 72b5c59c06607e09ea855be61b6ff5a3446fc951 `graphiti_core/prompts/extract_edges.py`、`dedupe_edges.py`、`utils/maintenance/edge_operations.py` | Apache-2.0 | LifeMemoryRepository.end、MemoryConsolidator |
+| 档案（实体摘要，随新信息合并重写） | 同上 `graphiti_core/prompts/summarize_nodes.py` | Apache-2.0 | Profiles.kt |
+| 本地中文向量模型 | BAAI/bge-small-zh-v1.5（Xenova ONNX 量化版 75c43b069aac4d136ba6bc1122f995fedcfd2781） | MIT | LocalEmbedder、WordPiece.kt |
+| ONNX Runtime | com.microsoft.onnxruntime:onnxruntime-android 1.22.0 | MIT | LocalEmbedder |
+
+没有引入图数据库，记忆仍存在原来的 SQLite 记录里；向量单独一张表，不进备份、不进提示词。分词按模型的 tokenizer.json（BertNormalizer 不转小写 + WordPiece）实现，单测与 HF tokenizers 0.23.3 的输出逐个比对。

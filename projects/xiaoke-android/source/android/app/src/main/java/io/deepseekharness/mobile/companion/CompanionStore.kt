@@ -18,7 +18,7 @@ import io.deepseekharness.mobile.companion.life.RecordRef
  * 2026-10-29: v2 migration, revision/lineage preservation, conservative legacy-output purge,
  * deletion fences, scoped life records and transaction-backed budget/attention state.
  */
-class CompanionStore(private val context: Context, databaseName: String = "companion.db") : SQLiteOpenHelper(context, databaseName, null, 2) {
+class CompanionStore(private val context: Context, databaseName: String = "companion.db") : SQLiteOpenHelper(context, databaseName, null, 3) {
     private var lastSocialPrune = 0L
     private val temporaryObservations = TemporaryObservations()
     private val committingSources = ThreadLocal<List<RecordRef>?>()
@@ -29,12 +29,53 @@ class CompanionStore(private val context: Context, databaseName: String = "compa
         db.execSQL("CREATE TABLE memory_history(id INTEGER PRIMARY KEY AUTOINCREMENT,memory_id TEXT NOT NULL,scope TEXT NOT NULL,previous_value TEXT,new_value TEXT,action TEXT NOT NULL,created_at INTEGER NOT NULL,is_deleted INTEGER NOT NULL DEFAULT 0)")
         db.execSQL("CREATE INDEX memory_revisions ON memory_history(scope,memory_id,id)")
         createLifeSchema(db)
+        createVectorSchema(db)
     }
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        check(oldVersion == 1 && newVersion == 2) { "未知数据库升级版本，保留原数据并停止升级" }
-        createLifeSchema(db)
-        db.execSQL("INSERT OR IGNORE INTO life_tombstones(kind,id,scope,deleted_at,epoch,media_pending) SELECT kind,id,scope,updated,1,0 FROM records WHERE deleted=1")
+        check(oldVersion in 1..2 && newVersion == 3) { "未知数据库升级版本，保留原数据并停止升级" }
+        if (oldVersion == 1) {
+            createLifeSchema(db)
+            db.execSQL("INSERT OR IGNORE INTO life_tombstones(kind,id,scope,deleted_at,epoch,media_pending) SELECT kind,id,scope,updated,1,0 FROM records WHERE deleted=1")
+        }
+        createVectorSchema(db)
     }
+    /** Memory vectors live apart from the records so they never ride along into prompts, backups or exports. */
+    private fun createVectorSchema(db: SQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS memory_vectors(memory_id TEXT NOT NULL,model TEXT NOT NULL,hash TEXT NOT NULL,vec BLOB NOT NULL,PRIMARY KEY(memory_id,model))")
+    }
+
+    @Synchronized fun saveVector(memoryId: String, model: String, hash: String, vector: FloatArray) {
+        if (get("memory", memoryId) == null) return
+        val bytes = java.nio.ByteBuffer.allocate(vector.size * 4).order(java.nio.ByteOrder.LITTLE_ENDIAN).also { b -> vector.forEach(b::putFloat) }.array()
+        writableDatabase.insertWithOnConflict("memory_vectors", null, ContentValues().apply {
+            put("memory_id", memoryId); put("model", model); put("hash", hash); put("vec", bytes)
+        }, SQLiteDatabase.CONFLICT_REPLACE)
+    }
+
+    /** Current vectors only: a memory whose text changed since it was embedded is skipped until re-embedded. */
+    @Synchronized fun vectors(model: String, memories: List<JSONObject>): Map<String, FloatArray> {
+        val wanted = memories.associate { it.optString("id") to vectorHash(it) }
+        val out = HashMap<String, FloatArray>()
+        readableDatabase.rawQuery("SELECT memory_id,hash,vec FROM memory_vectors WHERE model=?", arrayOf(model)).use { c ->
+            while (c.moveToNext()) {
+                if (wanted[c.getString(0)] != c.getString(1)) continue
+                val b = java.nio.ByteBuffer.wrap(c.getBlob(2)).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                out[c.getString(0)] = FloatArray(b.remaining() / 4) { b.float }
+            }
+        }
+        return out
+    }
+
+    /** Memories (any scope) that still need a vector from [model]. */
+    @Synchronized fun unembedded(model: String, limit: Int): List<JSONObject> {
+        val have = HashMap<String, String>()
+        readableDatabase.rawQuery("SELECT memory_id,hash FROM memory_vectors WHERE model=?", arrayOf(model)).use { c -> while (c.moveToNext()) have[c.getString(0)] = c.getString(1) }
+        val all = list("memory", null, 10000)
+        return (0 until all.length()).map(all::getJSONObject)
+            .filter { !it.optBoolean("forgotten") && have[it.optString("id")] != vectorHash(it) }.take(limit)
+    }
+
+    fun vectorHash(memory: JSONObject) = CompanionPolicy.digest(memory.optString("text")).take(16)
     private fun createLifeSchema(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE IF NOT EXISTS life_tombstones(kind TEXT NOT NULL,id TEXT NOT NULL,scope TEXT NOT NULL,deleted_at INTEGER NOT NULL,epoch INTEGER NOT NULL,media_pending INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(kind,id))")
         db.execSQL("CREATE TABLE IF NOT EXISTS life_revisions(kind TEXT NOT NULL,id TEXT NOT NULL,revision INTEGER NOT NULL,scope TEXT NOT NULL,json TEXT NOT NULL,PRIMARY KEY(kind,id,revision))")
@@ -125,7 +166,10 @@ class CompanionStore(private val context: Context, databaseName: String = "compa
             writableDatabase.insertWithOnConflict("life_tombstones", null, values, SQLiteDatabase.CONFLICT_IGNORE)
             writableDatabase.delete("records", "kind=? AND id=?", arrayOf(ref.kind, ref.id))
             writableDatabase.delete("life_revisions", "kind=? AND id=?", arrayOf(ref.kind, ref.id))
-            if (ref.kind == "memory") writableDatabase.delete("memory_history", "memory_id=?", arrayOf(ref.id))
+            if (ref.kind == "memory") {
+                writableDatabase.delete("memory_history", "memory_id=?", arrayOf(ref.id))
+                writableDatabase.delete("memory_vectors", "memory_id=?", arrayOf(ref.id))
+            }
             if (ref.kind == "observation") temporaryObservations.remove(ref.id)
         }
         // Durable tombstones are also the cleanup queue. Read/output exclusion does not wait for filesystem cleanup.
@@ -287,13 +331,13 @@ class CompanionStore(private val context: Context, databaseName: String = "compa
 
     fun ownerPrivate(scope: String): Boolean = scope.isNotBlank() && CompanionPolicy.ownerPrivate(scope, get("conversation", scope), settings())
 
-    fun memoriesFor(scope: String, query: String = ""): JSONArray {
+    fun memoriesFor(scope: String, query: String = "", limit: Int = 80): JSONArray {
         val rows = list("memory", scope, 10000)
         // Outside the owner private domain, drop anything derived from it before ranking or model context.
         val readable = if (ownerPrivate(scope)) rows else JSONArray().also { out ->
             for (i in 0 until rows.length()) rows.getJSONObject(i).let { if (!LifePolicy.touchesPrivate(it, ::ownerPrivate)) out.put(it) }
         }
-        return withEvidenceStatus(MemoryRanking.rank(readable, query)).also { rows ->
+        return withEvidenceStatus(MemoryRanking.rank(readable, query, limit)).also { rows ->
             // The model gets concise provenance; complete lineage remains in the owner review/store.
             for (i in 0 until rows.length()) { rows.getJSONObject(i).remove("sourceRefs"); rows.getJSONObject(i).remove("suppressedBy") }
         }
@@ -475,6 +519,7 @@ class CompanionStore(private val context: Context, databaseName: String = "compa
             CompanionPolicy.scope(row.getString("scope")); require(row.getString("id").length in 1..160)
         }
         val epoch = bumpContentEpoch()
+        writableDatabase.delete("memory_vectors", null, null) // Rebuilt in the background from the restored text.
         plan.tombstones.forEach { row ->
             val ref = RecordRef.parse(row)
             val values = ContentValues().apply {
@@ -510,7 +555,7 @@ class CompanionStore(private val context: Context, databaseName: String = "compa
     }
 
     companion object {
-        private val BACKUP_KINDS = listOf("persona", "personaVersion", "memory", "message", "observation", "task", "diary", "interest", "lifeEvent", "lifeState")
+        private val BACKUP_KINDS = listOf("persona", "personaVersion", "memory", "message", "observation", "task", "diary", "interest", "lifeEvent", "lifeState", "profile")
         private val KINDS = BACKUP_KINDS + listOf("settings", "conversation", "usage")
     }
 }
