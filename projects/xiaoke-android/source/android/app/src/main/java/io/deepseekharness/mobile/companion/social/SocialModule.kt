@@ -72,7 +72,7 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
             if (current == null || !CompanionPolicy.canSend(current, System.currentTimeMillis()) || CompanionPolicy.draftDigest(task) != CompanionPolicy.draftDigest(current)) false
             else {
                 // Authority is derived only from the native store's exact, unexpired owner grant.
-                val principal = if (current.optBoolean("automaticGrant")) CommandPrincipal("companion", "background", current.getString("scope"), false)
+                val principal = if (current.optBoolean("automaticGrant") && !current.optBoolean("ownerRequested")) CommandPrincipal("companion", "background", current.getString("scope"), false)
                     else CommandPrincipal("owner", "owner_ui", "owner:local", true)
                 ports.authorizeEffect(JSONObject().put("type", "social_send").put("target", current.getString("target"))
                     .put("scope", current.getString("scope")).put("contentDigest", CompanionPolicy.draftDigest(current)).put("requestId", current.getString("id")), principal).optBoolean("allowed")
@@ -356,6 +356,12 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
                 values(rows(root, "events")).forEach { it.put("pendingSync", true) }
                 values(rows(root, "tombstones")).forEach { it.put("acked", false) }
             }
+            // Nothing is queued while sync is off; turning it (back) on queues what exists, once.
+            if (enabled && !previous.optBoolean("enabled")) {
+                values(rows(root, "events")).forEach { it.put("pendingSync", true) }
+                values(rows(root, "tombstones")).forEach { it.put("acked", false) }
+            }
+            if (!enabled) values(rows(root, "events")).forEach { it.put("pendingSync", false) }
             sync.put("enabled", enabled).put("endpoint", endpoint)
             if (syncKey.configured()) sync.put("vault", hash(syncKey.read()).take(32))
             copy(sync)

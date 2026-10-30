@@ -2,7 +2,10 @@ package io.deepseekharness.mobile.companion
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -25,9 +28,35 @@ class CompanionStartupTest {
             val engine = CompanionEngine.get(context)
             assertNotNull(engine.store.settings())
             assertNotNull(engine.modules.router)
+            failuresAreTold(engine.store)
+            ownerRequestedSendIgnoresGroupReplySettings(engine.store)
         } catch (e: Throwable) {
             // Stack traces cannot be formatted inside the sandbox on this JDK; carry the cause chain as text.
             throw AssertionError(generateSequence(e) { it.cause }.joinToString(" <- ") { "${it.javaClass.name}: ${it.message}" })
         } finally { java.security.Security.removeProvider("AndroidKeyStore") }
+    }
+
+    /** She sees why a reply did not go out; a group only sees its own failures, the owner sees all. */
+    private fun failuresAreTold(store: CompanionStore) {
+        store.put("conversation", org.json.JSONObject().put("id", "qq:group:a").put("scope", "qq:group:a").put("title", "测试群"))
+        io.deepseekharness.mobile.companion.chat.DeliveryLog.record(store, "qq:group:a", "model", "模型请求失败（中转在返回流里报错）")
+        io.deepseekharness.mobile.companion.chat.DeliveryLog.record(store, "qq:group:b", "send", "QQ 拒绝了发送", "晚安")
+        val owner = io.deepseekharness.mobile.companion.chat.DeliveryLog.describe(store, "owner:local", ownerView = true)
+        assertTrue(owner.contains("测试群") && owner.contains("中转在返回流里报错") && owner.contains("晚安"))
+        val group = io.deepseekharness.mobile.companion.chat.DeliveryLog.describe(store, "qq:group:a", ownerView = false)
+        assertTrue(group.contains("测试群") && !group.contains("晚安"))
+    }
+
+    /** The owner's own chat (or "say this in that group") must go out even when the chat was first seen as a quiet one. */
+    private fun ownerRequestedSendIgnoresGroupReplySettings(store: CompanionStore) {
+        store.saveSettings(store.settings().put("networkEnabled", true).put("paused", false).put("oneBotEnabled", true).put("oneBotUrl", "wss://bridge.example.test:3001").put("oneBotAccount", "10001"))
+        val scope = "qq:private:owner-test"
+        store.put("conversation", org.json.JSONObject().put("id", scope).put("scope", scope).put("captureEnabled", true).put("mode", "quiet").put("autoReply", false).put("route", "onebot"))
+        fun task(owner: Boolean) = store.put("task", org.json.JSONObject().put("scope", scope).put("type", "send").put("state", "draft").put("body", "在呢")
+            .put("target", "主人的 QQ").put("package", "com.tencent.mobileqq").put("account", "10001").put("route", "onebot").put("ownerRequested", owner))
+        val mine = task(true).let { store.approveDraft(it.getString("id"), CompanionPolicy.draftDigest(it), automatic = true) }
+        assertEquals("sending", store.claimSend(mine.getString("id"), CompanionPolicy.draftDigest(mine)).getString("state"))
+        val theirs = task(false).let { store.approveDraft(it.getString("id"), CompanionPolicy.draftDigest(it), automatic = true) }
+        assertThrows(IllegalStateException::class.java) { store.claimSend(theirs.getString("id"), CompanionPolicy.draftDigest(theirs)) }
     }
 }

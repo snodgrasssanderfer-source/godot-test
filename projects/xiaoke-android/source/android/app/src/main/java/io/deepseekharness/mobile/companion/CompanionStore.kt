@@ -440,7 +440,10 @@ class CompanionStore(private val context: Context, databaseName: String = "compa
         if (current.optString("route") == "onebot") check(current.optString("account") == settings.optString("oneBotAccount") && settings.optBoolean("oneBotEnabled")) { "消息桥账号或开关已变化" }
         if (current.optBoolean("automaticGrant")) {
             val c = get("conversation", current.getString("scope")) ?: error("会话不存在")
-            check(c.optBoolean("captureEnabled") && c.optBoolean("autoReply") && c.optString("mode") != "quiet" &&
+            // Asked for by the owner (her reply in the owner's QQ chat, or "go say this in that group"): the chat only needs
+            // to be open; reply mode and cooldowns are for her own group chatter.
+            if (current.optBoolean("ownerRequested")) check(c.optBoolean("captureEnabled")) { "主人的 QQ 私聊没开接收" }
+            else check(c.optBoolean("captureEnabled") && c.optBoolean("autoReply") && c.optString("mode") != "quiet" &&
                 now - c.optLong("humanActivityAt") > 120000) { "自动发送范围已撤销，或主人正在回复此会话" }
         }
         return put("task", current.put("state", "sending").put("submittedAt", now).removeGrant())
