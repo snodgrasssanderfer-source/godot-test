@@ -29,7 +29,7 @@ object CompanionPolicy {
     }
 
     fun scope(value: String): String {
-        require(value == OWNER || Regex("(qq|bili):(private|group|public|unresolved):[A-Za-z0-9_-]{1,128}").matches(value)) { "会话范围无效" }
+        require(value == OWNER || Regex("(qq|bili|web):(private|group|public|unresolved):[A-Za-z0-9_-]{1,128}").matches(value)) { "会话范围无效" }
         return value
     }
 

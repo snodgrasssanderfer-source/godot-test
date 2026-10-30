@@ -14,6 +14,7 @@ class ModelAccounting(
 ) {
     private var current: String? = null
     private var unit = ""
+    private var pricing: JSONObject? = null
 
     fun beforeRequest() {
         check(current == null) { "上一笔请求费用尚未处理" }
@@ -22,6 +23,7 @@ class ModelAccounting(
         if (!status.optBoolean("configured") && lane == "owner") { legacyRequestGuard(); return }
         check(status.optBoolean("configured")) { "活动额度还没设置，先不做自主活动" }
         unit = status.getString("unit")
+        pricing = status.optJSONObject("pricing")?.takeIf { it.optLong("inputPrice") > 0 || it.optLong("outputPrice") > 0 }
         // This relay has no verified price/invoice contract. Never label a guessed token estimate known.
         val maximum = if (unit == "calls") 1L else {
             val config = status.optJSONObject("config") ?: status
@@ -48,9 +50,13 @@ class ModelAccounting(
     fun finished(result: GeminiClient.AttemptResult) {
         val id = current ?: return
         try {
-            val settlement = JSONObject().put("requestId", id)
+            val tokens = io.deepseekharness.mobile.companion.life.BudgetLedger.tokens(result.usage)
+            val settlement = JSONObject().put("requestId", id).put("tokens", tokens)
+            val prices = pricing
             if (!result.transmitted) settlement.put("actualKnown", true).put("actual", 0)
             else if (unit == "calls") settlement.put("actualKnown", true).put("actual", 1)
+            // With token prices configured and usage reported, the cost is known; cached input counts at the cached price.
+            else if (prices != null && tokens.optLong("prompt") > 0) settlement.put("actualKnown", true).put("actual", io.deepseekharness.mobile.companion.life.BudgetLedger.cost(tokens, prices))
             else settlement.put("actualKnown", false)
             ledger("budget.settle", settlement)
         } finally { current = null }

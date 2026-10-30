@@ -16,13 +16,24 @@ import java.util.concurrent.atomic.AtomicBoolean
  * same original request, token at request root; concatenate parts only after hops.
  */
 object GeminiWire {
-    fun request(profile: JSONObject, contents: JSONArray, system: String, tools: JSONArray): JSONObject {
+    /**
+     * Built-in Google tools (google_search, url_context) ride along when [builtins] is set. With function declarations
+     * present, server-side tool calls are echoed back in the content so later turns can replay them (js-genai ToolConfig).
+     */
+    fun request(profile: JSONObject, contents: JSONArray, system: String, tools: JSONArray, builtins: Boolean = false): JSONObject {
         val generation = JSONObject().put("maxOutputTokens", profile.getInt("maxOutputTokens"))
         if (profile.optString("thinkingMode", "level") == "level") generation.put("thinkingConfig",
             JSONObject().put("thinkingLevel", profile.getString("thinking").uppercase()).put("includeThoughts", false))
         return JSONObject().put("contents", contents).put("generationConfig", generation)
             .put("systemInstruction", JSONObject().put("parts", JSONArray().put(JSONObject().put("text", system))))
-            .also { if (profile.optBoolean("tools", true) && tools.length() > 0) it.put("tools", JSONArray().put(JSONObject().put("functionDeclarations", tools))) }
+            .also {
+                val declared = profile.optBoolean("tools", true) && tools.length() > 0
+                val list = JSONArray()
+                if (declared) list.put(JSONObject().put("functionDeclarations", tools))
+                if (builtins) list.put(JSONObject().put("googleSearch", JSONObject())).put(JSONObject().put("urlContext", JSONObject()))
+                if (list.length() > 0) it.put("tools", list)
+                if (builtins && declared) it.put("toolConfig", JSONObject().put("includeServerSideToolInvocations", true))
+            }
     }
     fun text(parts: JSONArray) = (0 until parts.length()).map { parts.getJSONObject(it) }
         .filter { !it.optBoolean("thought") && it.has("text") }.joinToString("") { it.optString("text") }
@@ -38,12 +49,25 @@ object GeminiWire {
         var finish = ""
         var continuation: String? = null
         var usage = JSONObject()
+        /** Where search answers came from and which pages were actually read. */
+        val sources = JSONArray()
+        val pages = JSONArray()
         fun accept(response: JSONObject) {
             if (response.has("error")) error("模型返回协议错误；请核对该模型在站点的能力配置")
             val prompt = response.optJSONObject("promptFeedback")
             if (prompt?.has("blockReason") == true) error("模型未生成内容：${prompt.optString("blockReason")}")
             if (response.has("usageMetadata")) usage = response.getJSONObject("usageMetadata")
             val candidate = response.optJSONArray("candidates")?.optJSONObject(0) ?: return
+            candidate.optJSONObject("groundingMetadata")?.optJSONArray("groundingChunks")?.let { chunks ->
+                for (i in 0 until chunks.length()) chunks.optJSONObject(i)?.optJSONObject("web")?.let { web ->
+                    if (sources.length() < 20) sources.put(JSONObject().put("title", web.optString("title").take(200)).put("uri", web.optString("uri").take(500)))
+                }
+            }
+            candidate.optJSONObject("urlContextMetadata")?.optJSONArray("urlMetadata")?.let { list ->
+                for (i in 0 until list.length()) list.optJSONObject(i)?.let { m ->
+                    if (pages.length() < 20) pages.put(JSONObject().put("url", m.optString("retrievedUrl").take(500)).put("status", m.optString("urlRetrievalStatus")))
+                }
+            }
             val incoming = candidate.optJSONObject("content")?.optJSONArray("parts") ?: JSONArray()
             for (i in 0 until incoming.length()) {
                 check(parts.length() < 8192) { "模型返回过多内容片段" }
@@ -61,7 +85,7 @@ object GeminiWire {
             if (candidate.has("continuationToken")) continuation = candidate.getString("continuationToken")
         }
         fun result(model: String) = JSONObject().put("role", "model").put("parts", parts)
-            .put("modelId", model).put("finishReason", finish).put("usageMetadata", usage)
+            .put("modelId", model).put("finishReason", finish).put("usageMetadata", usage).put("sources", sources).put("pages", pages)
     }
 
     fun calls(parts: JSONArray): List<JSONObject> {
@@ -76,6 +100,9 @@ object GeminiWire {
     }
 }
 
+/** The relay or model refused the request shape itself (400/404/422/501): a capability problem, not a transient one. */
+class ModelRejected(val status: Int, message: String) : IllegalStateException(message)
+
 class GeminiClient internal constructor(private val readKey: () -> String, private val transport: OkHttpClient? = null) {
     data class AttemptResult(val outcome: String, val usage: JSONObject, val transmitted: Boolean, val httpStatus: Int?)
     constructor(secrets: CompanionSecrets): this(secrets::read)
@@ -87,12 +114,12 @@ class GeminiClient internal constructor(private val readKey: () -> String, priva
 
     fun generate(settings: JSONObject, profile: JSONObject, contents: JSONArray, system: String, tools: JSONArray,
                  progress: (String) -> Unit, beforeRequest: () -> Unit = {}, onText: (String) -> Unit = {},
-                 onAttemptFinished: (AttemptResult) -> Unit = {}): JSONObject {
+                 onAttemptFinished: (AttemptResult) -> Unit = {}, builtins: Boolean = false): JSONObject {
         check(settings.optBoolean("networkEnabled")) { "模型联网尚未启用，请在设置中明确开启" }
         checkCancelled()
         val base = CompanionPolicy.endpoint(settings.getString("endpoint"))
         val model = CompanionPolicy.modelId(profile.getString("model"))
-        val original = GeminiWire.request(profile, contents, system, tools)
+        val original = GeminiWire.request(profile, contents, system, tools, builtins)
         val aggregate = GeminiWire.Accumulator()
         var token: String? = null
         val client = (transport?.newBuilder() ?: OkHttpClient.Builder()).connectTimeout(20, TimeUnit.SECONDS)
@@ -129,6 +156,8 @@ class GeminiClient internal constructor(private val readKey: () -> String, priva
                             repeat((wait * 10).toInt()) { checkCancelled(); Thread.sleep(100) }
                             return@use
                         }
+                        if (response.code in setOf(400, 404, 422, 501)) throw ModelRejected(response.code,
+                            "模型或请求能力不被站点支持（HTTP ${response.code}），请核对模型 ID/工具/思考配置")
                         check(response.isSuccessful) { when (response.code) {
                             401, 403 -> "模型鉴权失败，请在本机核对密钥与站点权限"
                             400, 404 -> "模型或请求能力不被站点支持（HTTP ${response.code}），请核对模型 ID/工具/思考配置"
@@ -180,6 +209,8 @@ class GeminiClient internal constructor(private val readKey: () -> String, priva
             }
             check(completed) { "模型请求未完成" }
             for (i in 0 until one.parts.length()) aggregate.parts.put(one.parts.getJSONObject(i))
+            for (i in 0 until one.sources.length()) aggregate.sources.put(one.sources.get(i))
+            for (i in 0 until one.pages.length()) aggregate.pages.put(one.pages.get(i))
             aggregate.finish = one.finish
             aggregate.usage = one.usage
             if (one.finish != "CONTINUATION") {

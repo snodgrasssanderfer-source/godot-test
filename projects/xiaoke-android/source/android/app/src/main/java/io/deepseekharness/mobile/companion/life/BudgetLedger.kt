@@ -43,6 +43,9 @@ class BudgetLedger(encoded: JSONObject = JSONObject()) {
             .put("ownerLimit", ownerLimit).put("activityLimit", activityLimit).put("warningRemaining", warning)
             .put("allowUnknownPrice", input.optBoolean("allowUnknownPrice")).put("unknownPriceCeiling", ceiling)
             .put("daily", input.optBoolean("daily", state.optBoolean("daily")))
+        // Optional token prices (currency micro-units per million tokens). With them a request's cost is known from its
+        // usage; cached input tokens are charged at the cached price.
+        for (key in listOf("inputPrice", "cachedInputPrice", "outputPrice")) state.put(key, if (input.has(key)) amount(input, key) else state.optLong(key))
         return status()
     }
 
@@ -97,6 +100,7 @@ class BudgetLedger(encoded: JSONObject = JSONObject()) {
     @Synchronized fun settle(input: JSONObject, now: Long): JSONObject {
         val hold = holds.optJSONObject(input.getString("requestId")) ?: error("预留不存在")
         val before = hold.getString("state")
+        input.optJSONObject("tokens")?.let { hold.put("tokens", it) }
         if (!input.getBoolean("actualKnown")) {
             check(before != "released" && before != "settled") { "已完成结算，不能退回未知状态" }
             hold.put("state", "outcome_unknown").put("updatedAt", now)
@@ -143,6 +147,7 @@ class BudgetLedger(encoded: JSONObject = JSONObject()) {
             var held = 0L
             var unknown = 0
             var overrun = false
+            var prompt = 0L; var cached = 0L; var output = 0L
             holds.keys().forEach { id ->
                 val h = holds.getJSONObject(id)
                 val counts = !daily || day(h.optLong("createdAt")) == today || h.getString("state") in setOf("reserved", "sent")
@@ -151,14 +156,18 @@ class BudgetLedger(encoded: JSONObject = JSONObject()) {
                     if (h.getString("state") in setOf("reserved", "sent", "outcome_unknown")) held = Math.addExact(held, h.getLong("maximum"))
                     if (h.getString("state") == "outcome_unknown") unknown++
                     if (h.optBoolean("overrun")) overrun = true
+                    h.optJSONObject("tokens")?.let { t -> prompt += t.optLong("prompt"); cached += t.optLong("cached"); output += t.optLong("output") }
                 }
             }
             val limit = state.optLong(lane + "Limit")
             result.put(lane, JSONObject().put("limit", limit).put("spent", spent).put("held", held)
-                .put("remaining", limit - spent - held).put("unknownRequests", unknown).put("overrun", overrun))
+                .put("remaining", limit - spent - held).put("unknownRequests", unknown).put("overrun", overrun)
+                .put("tokens", JSONObject().put("prompt", prompt).put("cached", cached).put("output", output)
+                    .put("cacheRate", if (prompt > 0) cached * 100 / prompt else 0)))
         }
         val activity = result.getJSONObject("activity")
         result.put("warningRemaining", state.optLong("warningRemaining")).put("daily", daily)
+            .put("pricing", JSONObject().put("inputPrice", state.optLong("inputPrice")).put("cachedInputPrice", state.optLong("cachedInputPrice")).put("outputPrice", state.optLong("outputPrice")))
         result.put("stopActivity", !configured || activity.optBoolean("overrun") ||
             activity.getLong("remaining") <= state.optLong("warningRemaining"))
         result.put("stopOwner", !configured || result.getJSONObject("owner").optBoolean("overrun") || result.getJSONObject("owner").getLong("remaining") <= 0)
@@ -174,6 +183,20 @@ class BudgetLedger(encoded: JSONObject = JSONObject()) {
 
     companion object {
         const val MAX_AMOUNT = 1_000_000_000_000L
+
+        /** Token usage of one response: prompt (including cached), cached, and output (answer plus thinking). */
+        fun tokens(usage: JSONObject): JSONObject = JSONObject().put("prompt", usage.optLong("promptTokenCount"))
+            .put("cached", usage.optLong("cachedContentTokenCount")).put("output", usage.optLong("candidatesTokenCount") + usage.optLong("thoughtsTokenCount"))
+
+        /** Cost in currency micro-units from per-million prices; cached input at the cached price, rounded up. */
+        fun cost(tokens: JSONObject, pricing: JSONObject): Long {
+            val cached = tokens.optLong("cached").coerceIn(0, tokens.optLong("prompt"))
+            val fresh = tokens.optLong("prompt") - cached
+            val total = java.math.BigInteger.valueOf(fresh).multiply(java.math.BigInteger.valueOf(pricing.optLong("inputPrice")))
+                .add(java.math.BigInteger.valueOf(cached).multiply(java.math.BigInteger.valueOf(pricing.optLong("cachedInputPrice"))))
+                .add(java.math.BigInteger.valueOf(tokens.optLong("output")).multiply(java.math.BigInteger.valueOf(pricing.optLong("outputPrice"))))
+            return total.add(java.math.BigInteger.valueOf(999_999)).divide(java.math.BigInteger.valueOf(1_000_000)).toLong().coerceAtMost(MAX_AMOUNT)
+        }
         fun identifier(value: String): String {
             require(Regex("[A-Za-z0-9_.:-]{1,160}").matches(value)) { "请求编号格式无效" }
             return value

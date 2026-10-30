@@ -45,6 +45,7 @@ export function LifePanel({ state, run, available, saveFile, scopes }: LifePanel
   const [unknown, setUnknown] = useState(false)
   const [ceiling, setCeiling] = useState('1')
   const [minutes, setMinutes] = useState('30')
+  const [inputPrice, setInputPrice] = useState(''), [cachedPrice, setCachedPrice] = useState(''), [outputPrice, setOutputPrice] = useState('')
   const [password, setPassword] = useState('')
   const [backup, setBackup] = useState('')
   const [restoreConfirm, setRestoreConfirm] = useState(false)
@@ -155,13 +156,21 @@ export function LifePanel({ state, run, available, saveFile, scopes }: LifePanel
       </>}
       {tab === 'budget' && <>
         <p>主人陪聊和自主活动分别记账。此处为当前账本累计额度，不会按天自动清零。</p>
-        <div className="life-budget-cards">{[['owner', '主人陪聊'], ['activity', '自主活动']].map(([key, label]) => { const value = object(budgets[key]); return <article key={key}><h3>{label}</h3><strong>{number(value.remaining)}</strong><p>剩余 / 总额 {number(value.limit)}</p><small>已用 {number(value.spent)} · 在途保留 {number(value.held)} · 费用未知 {number(value.unknownRequests)} 笔</small></article> })}</div>
+        <div className="life-budget-cards">{[['owner', '主人陪聊'], ['activity', '自主活动']].map(([key, label]) => { const value = object(budgets[key]); return <article key={key}><h3>{label}</h3><strong>{number(value.remaining)}</strong><p>剩余 / 总额 {number(value.limit)}</p><small>已用 {number(value.spent)} · 在途保留 {number(value.held)} · 费用未知 {number(value.unknownRequests)} 笔</small>
+          {number(object(value.tokens).prompt) > 0 && <small>输入 {number(object(value.tokens).prompt)} tokens，其中缓存 {number(object(value.tokens).cached)}（{number(object(value.tokens).cacheRate)}%）；输出 {number(object(value.tokens).output)}</small>}</article> })}</div>
         {Boolean(budgets.stopActivity) && <p role="status">自主收费活动已停止；主人陪聊使用独立额度。</p>}
         <p className="life-note">次数上限不等于金额上限。未知价格时保留授权上界；取消请求不保证服务端退款。</p>
-        <form onSubmit={event => { event.preventDefault(); void act('budget.configure', { unit, currency: unit === 'calls' ? '' : currency, ownerLimit: Number(ownerLimit), activityLimit: Number(activityLimit), warningRemaining: Number(warning), allowUnknownPrice: unknown, unknownPriceCeiling: unknown ? Number(ceiling) : 0 }) }}>
+        <form onSubmit={event => { event.preventDefault(); void act('budget.configure', { unit, currency: unit === 'calls' ? '' : currency, ownerLimit: Number(ownerLimit), activityLimit: Number(activityLimit), warningRemaining: Number(warning), allowUnknownPrice: unknown, unknownPriceCeiling: unknown ? Number(ceiling) : 0,
+            ...(unit === 'micros' ? { inputPrice: Number(inputPrice || 0), cachedInputPrice: Number(cachedPrice || 0), outputPrice: Number(outputPrice || 0) } : {}) }) }}>
           <label>预算单位<select value={unit} onChange={event => setUnit(event.target.value)}><option value="calls">调用次数</option><option value="micros">金额微单位（一元为 1000000）</option></select></label>
           {unit === 'micros' && <label>币种<input value={currency} pattern="[A-Z]{3}" onChange={event => setCurrency(event.target.value.toUpperCase())} /></label>}
           <div className="life-row"><label>主人额度<input aria-label="主人额度" type="number" min="0" max="1000000000000" step="1" required value={ownerLimit} onChange={event => setOwnerLimit(event.target.value)} /></label><label>活动额度<input aria-label="活动额度" type="number" min="0" max="1000000000000" step="1" required value={activityLimit} onChange={event => setActivityLimit(event.target.value)} /></label></div>
+          {unit === 'micros' && <div className="life-row">
+            <label>输入单价（每百万 tokens，微单位）<input aria-label="输入单价" type="number" min="0" step="1" value={inputPrice} onChange={event => setInputPrice(event.target.value)} /></label>
+            <label>缓存输入单价<input aria-label="缓存输入单价" type="number" min="0" step="1" value={cachedPrice} onChange={event => setCachedPrice(event.target.value)} /></label>
+            <label>输出单价<input aria-label="输出单价" type="number" min="0" step="1" value={outputPrice} onChange={event => setOutputPrice(event.target.value)} /></label>
+          </div>}
+          {unit === 'micros' && <p className="life-note">填了单价，每次请求按实际用量记账，命中缓存的输入按缓存价算；不填则只按上限预留。</p>}
           <label>活动剩余多少时提示并停止<input type="number" min="0" max="1000000000000" step="1" required value={warning} onChange={event => setWarning(event.target.value)} /></label>
           <label className="life-check"><input type="checkbox" checked={unknown} onChange={event => setUnknown(event.target.checked)} />我允许未知价格调用使用下面的保守上限，理解这不保证实际金额</label>
           {unknown && <label>未知价格单次上限<input type="number" min="1" max={unit === 'calls' ? '1' : '1000000000000'} step="1" required value={ceiling} onChange={event => setCeiling(event.target.value)} /></label>}
