@@ -34,11 +34,30 @@ export async function readCharacterCard(file: File): Promise<Omit<Persona, 'vers
   const card = value as Record<string, unknown>
   const data = card.data && typeof card.data === 'object' ? card.data as Record<string, unknown> : card
   const sections: [string, string][] = [
-    ['description', '角色描述'], ['personality', '性格资料'], ['scenario', '情境'], ['mes_example', '对话示例'], ['creator_notes', '创作者说明'],
+    ['system_prompt', '系统提示'], ['description', '角色描述'], ['personality', '性格资料'], ['scenario', '情境'], ['mes_example', '对话示例'], ['creator_notes', '创作者说明'],
   ]
   const text = typeof data.text === 'string' ? data.text : sections.filter(([key]) => typeof data[key] === 'string' && data[key]).map(([key, title]) => `${title}\n${typeof data[key] === 'string' ? data[key] : ''}`).join('\n\n')
   if (typeof data.name !== 'string' || !data.name.trim() || data.name.length > 40 || text.length > 64000) throw new Error('名称需为 1–40 字，正文不能超过 64000 字')
-  return {name: data.name, text, source: `主人导入：${file.name.slice(0, 120)}；请自行确认来源与使用许可`}
+  return {name: data.name, text, source: `主人导入：${file.name.slice(0, 120)}；请自行确认来源与使用许可`, extras: data.extras && typeof data.extras === 'object' && !Array.isArray(data.extras) ? data.extras as Record<string, unknown> : cardExtras(data, card)}
+}
+
+/** What SillyTavern keeps beside the main text (char-data.js): post-history instructions, depth prompt, lorebook. */
+export function cardExtras(data: Record<string, unknown>, card: Record<string, unknown> = data): Record<string, unknown> {
+  const obj = (v: unknown) => v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : undefined
+  const str = (v: unknown) => typeof v === 'string' ? v : ''
+  const strings = (v: unknown) => Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+  const extensions = obj(data.extensions) ?? obj(card.extensions) ?? {}
+  const out: Record<string, unknown> = {}
+  if (str(data.post_history_instructions).trim()) out.postHistory = str(data.post_history_instructions)
+  const depth = obj(extensions.depth_prompt)
+  if (depth && str(depth.prompt).trim()) out.depthPrompt = { prompt: str(depth.prompt), depth: typeof depth.depth === 'number' ? depth.depth : 4, role: str(depth.role) || 'system' }
+  const book = obj(data.character_book)
+  const entries = Array.isArray(book?.entries) ? book.entries.map(obj).filter((e): e is Record<string, unknown> => !!e) : []
+  if (entries.length) out.characterBook = { name: str(book?.name), entries: entries.map(e => ({
+    keys: strings(e.keys), secondaryKeys: strings(e.secondary_keys), content: str(e.content), constant: e.constant === true,
+    selective: e.selective === true, enabled: e.enabled !== false, order: typeof e.insertion_order === 'number' ? e.insertion_order : 100, comment: str(e.comment),
+  })) }
+  return out
 }
 
 export function downloadText(name: string, text: string) {

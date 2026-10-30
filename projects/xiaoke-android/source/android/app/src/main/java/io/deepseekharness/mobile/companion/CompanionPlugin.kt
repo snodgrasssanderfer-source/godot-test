@@ -171,12 +171,12 @@ class CompanionPlugin : Plugin() {
                         CompanionService.start(context)
                         engine.submit(scope, "请先用 recall 查找原消息和消息 ID，再检查当前会话与已有记忆，把尚未记下、且有本会话证据的稳定偏好、关系或重要事件用 remember 自主保存有来源的条目并提供原消息 sourceId。避免重复，不把推测、思考过程、密钥或授权当事实。不要替其他会话整理。最后简要说明新增项目与尚待澄清的矛盾。", "主人在本机要求整理本会话记忆")
                     }
-                    "persona" -> store.savePersona(data.getString("name"), data.getString("text"), data.optString("source", "主人编辑"))
+                    "persona" -> store.savePersona(data.getString("name"), data.getString("text"), data.optString("source", "主人编辑"), data.optJSONObject("extras"))
                     "saveCharacter" -> CompanionCharacterStore.save(context, data.getString("base64"), data.getString("layout"))
                     "clearCharacter" -> CompanionCharacterStore.clear(context)
                     "restorePersona" -> {
                         val version = store.get("personaVersion", data.getString("id")) ?: error("角色版本不存在")
-                        store.savePersona(version.getString("name"), version.getString("text"), "恢复版本 ${version.getInt("version")}")
+                        store.savePersona(version.getString("name"), version.getString("text"), "恢复版本 ${version.getInt("version")}", version.optJSONObject("extras"))
                     }
                     "memory" -> store.saveMemory(data.getString("scope"), data)
                     "deleteMemory" -> { store.deleteMemory(data.getString("scope"), data.getString("id")); JSONObject().put("ok", true) }

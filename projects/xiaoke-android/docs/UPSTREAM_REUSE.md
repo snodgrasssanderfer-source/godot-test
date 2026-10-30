@@ -146,3 +146,11 @@ Mobilerun 仅作为原有设备控制对照，不替换已运行的 DSH 权限�
 | 内置工具 googleSearch / urlContext，和函数一起用时的 `toolConfig.includeServerSideToolInvocations`；groundingMetadata、urlContextMetadata；usageMetadata.cachedContentTokenCount | googleapis/js-genai df2994493dd07c0d9900e7c46e768e525abc6277 `src/types.ts` | Apache-2.0 | GeminiClient.kt、WebResearch.kt |
 
 中转是否支持、能否和函数调用同时用，由手机第一次用时各发一个极小的探测请求确定，结果按“中转地址 + 模型”记一周：都支持就直接带在聊天请求里；只支持单用就拆成 `web_research` 函数另发一次；都不支持就不提供。构建环境没有主人的密钥，没有实测中转。
+
+## 2026-10-30 人设稳定
+
+| 机制 | 来源（固定版本） | 许可证 | 本项目文件 |
+|---|---|---|---|
+| 角色卡字段：post_history_instructions、extensions.depth_prompt（prompt/depth/role）、character_book（keys、secondary_keys、selective、constant、enabled、insertion_order） | SillyTavern/SillyTavern 06bde939fb1e9c4c8d8641d810f0a916b5bce127 `public/scripts/char-data.js` | AGPL-3.0 | characterCard.ts、PersonaVoice.kt |
+
+只照字段定义实现，没有复制代码；正则脚本等可执行内容不导入。深度注入最深 4 条用户消息（默认放在最新一条里），让前面的历史保持可缓存。

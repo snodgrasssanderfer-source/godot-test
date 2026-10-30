@@ -1,5 +1,6 @@
 package io.deepseekharness.mobile.companion.presence
 
+import io.deepseekharness.mobile.companion.PersonaVoice
 import android.Manifest
 import android.app.KeyguardManager
 import android.content.Context
@@ -335,6 +336,7 @@ class CompanionPresenceController(context: Context, private val onEvent: (JSONOb
                 else "可以随着当前画面和对话自然聊。") +
             (if (EmergencyHold.ordinaryHeld) "主人刚长按悬浮球急停了点击和输入（对话照常）。告诉主人你已经停手，问一句是你点错了还是主人有别的事。" else "") +
             "这里只聊天，不操作手机。只说画面、转写和记忆里有依据的事，没看到的不编。自动触发且没什么值得说时只返回[[SILENT]]。主人的记忆：$memories"
+        PersonaVoice.inject(contents, PersonaVoice.reminder(engine.store, engine.modules::requestModel), 0, PersonaVoice.postHistory(persona))
         engine.enqueuePresence(PresenceModelJob("presence:$turn", contents, system, { valid(turn) },
             onPartial = { text -> main.post { consume(turn, text, false) } },
             onComplete = { text -> main.post { consume(turn, text, true) } },

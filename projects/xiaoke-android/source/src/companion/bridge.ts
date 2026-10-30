@@ -18,7 +18,7 @@ export interface Settings {
   activityEnabled?: boolean
 }
 export interface Entry { id: string; scope: string; [field: string]: unknown }
-export interface Persona { name: string; text: string; version: number; source?: string }
+export interface Persona { name: string; text: string; version: number; source?: string; extras?: Record<string, unknown> }
 export interface Snapshot {
   settings: Settings; keyConfigured: boolean; persona: Persona; personaVersions: Entry[]
   memories: Entry[]; conversations: Entry[]; tasks: Entry[]; messages: Entry[]; observations: Entry[]
