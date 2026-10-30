@@ -6,7 +6,7 @@ import org.json.JSONObject
 /** What each failed model attempt of a chat turn looked like, shown on the task so the owner can screenshot it. */
 object ChatDiagnostics {
     /** Fallback steps of a chat turn, in order. */
-    val LEVELS = listOf("原样", "不带联网工具", "换 flash 模型", "不带工具")
+    val LEVELS = listOf("原样", "同一模型再试一次", "换 flash（不带联网工具）", "不带工具")
 
     class Failed(override val cause: ModelFailure, val attempts: JSONArray) : IllegalStateException(cause.message, cause)
 

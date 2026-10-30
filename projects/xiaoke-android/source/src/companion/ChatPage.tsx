@@ -76,6 +76,7 @@ export function ChatPage({snapshot, presence, run, onSetup}: {snapshot: Snapshot
         : <Messages messages={messages} seen={seen.current}/>}
       {active && <div className="xk-msg-row assistant xk-new">
         <div className="xk-bubble assistant">{partial ? <>{partial}<span className="xk-caret"/></> : <span className="xk-dots" aria-label="正在输入"><i/><i/><i/></span>}</div>
+        {!partial && /还在想|重试|降级|换个方式/.test(field(active, 'progress')) && <small className="xk-meta">{field(active, 'progress')}</small>}
         <button className="xk-chip-btn" onClick={() => void run('cancel', {id: active.id}).catch(() => undefined)}>停下</button>
       </div>}
     </div>

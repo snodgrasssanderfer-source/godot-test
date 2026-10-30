@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ArrowLeft, ArrowRight, Check } from '@phosphor-icons/react'
-import { nativeCompanion, type Run, type Snapshot } from './bridge'
+import { nativeCompanion, profile, type Run, type Snapshot } from './bridge'
 import { KeepAlive } from './KeepAlive'
 import { DailyBudget } from './DailyBudget'
 import { QqConnection } from './Connections'
@@ -16,7 +16,8 @@ export function Onboarding({snapshot, run, onClose}: {snapshot: Snapshot; run: R
   async function saveModel() {
     setSaving(true); setNote('')
     try {
-      await run('settings', {...snapshot.settings, endpoint, activeModel: model, networkEnabled: true})
+      const profiles = snapshot.settings.profiles.some(p => p.model === model) ? snapshot.settings.profiles : [...snapshot.settings.profiles, profile(model)]
+      await run('settings', {...snapshot.settings, endpoint, activeModel: model, profiles, networkEnabled: true})
       if (key.trim()) { await run('saveKey', {key: key.trim()}); setKey('') }
       setStep(1)
     } catch (e) { setNote(e instanceof Error ? e.message : String(e)) }
@@ -37,7 +38,8 @@ export function Onboarding({snapshot, run, onClose}: {snapshot: Snapshot; run: R
         <p className="xk-hint">{lines[step]}</p>
         {step === 0 && <div className="xk-card">
           <label>API 地址<input value={endpoint} onChange={e => setEndpoint(e.target.value)} inputMode="url" autoCapitalize="none" spellCheck={false}/></label>
-          <label>日常模型<select value={model} onChange={e => setModel(e.target.value)}>{snapshot.settings.profiles.map(p => <option key={p.model}>{p.model}</option>)}</select></label>
+          <label>日常模型<input value={model} list="xk-models" onChange={e => setModel(e.target.value.trim())} autoCapitalize="none" spellCheck={false}/>
+            <datalist id="xk-models">{snapshot.settings.profiles.map(p => <option key={p.model} value={p.model}/>)}</datalist></label>
           <label>密钥<input type="password" autoComplete="new-password" value={key} disabled={!nativeCompanion} onChange={e => setKey(e.target.value)} placeholder={snapshot.keyConfigured ? '已保存，留空不变' : '你的中转密钥'}/></label>
           <button className="xk-btn primary" disabled={saving || !nativeCompanion} onClick={() => void saveModel()}>保存并联网</button>
         </div>}

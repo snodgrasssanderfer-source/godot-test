@@ -225,7 +225,7 @@ class CompanionEngine private constructor(private val context: Context) {
                     onText = { text -> checkCurrent(); store.commitContext(epoch) { emit("delta", text) } }, onAttemptFinished = billing::finished)
                 checkCurrent()
                 check(GeminiWire.calls(reply.getJSONArray("parts")).isEmpty()) { "模块请求不能直接执行模型工具" }
-                store.commitContext(epoch) { emit("completed", GeminiWire.text(reply.getJSONArray("parts")), usage = reply.optJSONObject("usageMetadata")) }
+                store.commitContext(epoch) { emit("completed", GeminiWire.visible(GeminiWire.text(reply.getJSONArray("parts"))).first, usage = reply.optJSONObject("usageMetadata")) }
             } catch (e: Exception) {
                 emit(if (cancelled.get() || id in preempted) "cancelled" else "failed", error = when {
                     id in preempted -> "为主人交流暂停活动；费用待核对，不自动重放请求"
@@ -359,7 +359,11 @@ class CompanionEngine private constructor(private val context: Context) {
                 if (learned.isNotBlank()) append(if (scope.startsWith("qq:group:")) "你在这个群里留意到的（自然地用，别硬套）：\n$learned\n" else "你在群里学到的说法（聊天时可以用）：\n$learned\n")
             }
             val situation = buildString {
-                append("【当下背景】现在是 ${java.time.LocalDateTime.now().withSecond(0).withNano(0)}。\n")
+                append("【当下背景】现在是 ${java.time.LocalDateTime.now().withSecond(0).withNano(0)}。")
+                // Asked "你用的什么模型", she answers from this, not from what she guesses the setting is.
+                val lastModel = all.take(end).lastOrNull { it.optString("role") == "assistant" }?.optString("source")?.removePrefix("模型 ")?.takeIf { it.startsWith("gemini") }
+                append("这一轮用的模型是 ${profile.getString("model")}（日常设置：${settings.optString("activeModel")}；失败时会自动换 flash）")
+                append(if (lastModel != null) "，你上一条回复实际用的是 $lastModel。\n" else "。\n")
                 if (owner) {
                     val device = modules.device.snapshot(modules.localOwner)
                     append("手机控制状态：${device.optJSONObject("control")}；正在看的应用：${device.optJSONObject("capture")?.optString("packageName")}。\n")
@@ -410,13 +414,12 @@ class CompanionEngine private constructor(private val context: Context) {
             val webBill = WebResearch.Billing(webBilling::beforeRequest, webBilling::finished)
             val webMode = if (profile.optBoolean("tools", true)) runCatching { web.modeOnce(settings, profile, webBill) }.getOrDefault("unknown") else "none"
             activeWeb = Triple(settings, profile, webBill)
-            // When the relay refuses or fails, step down instead of giving up: first the web tool goes, then the
-            // flash model, then her own tools. Every failed attempt stays on the task so the owner can see the cause.
+            // When the relay refuses or fails, step down instead of giving up: the same model once more (argon is slow
+            // and its streams get cut), then flash without the web tool, then no tools. Every failed attempt stays on the task.
             val flash = flashProfile(settings, profile)
             var level = 0
             fun nextLevel(): Int? {
                 var n = level + 1
-                if (n == 1 && webMode != "split") n = 2
                 if (n == 2 && flash.getString("model") == profile.getString("model")) n = 3
                 if (n == 3 && turnHistory.length() > 0) return null // tool calls already made need their declarations
                 return n.takeIf { it <= 3 }
@@ -427,10 +430,12 @@ class CompanionEngine private constructor(private val context: Context) {
             while (round < 6) {
                 checkCurrent()
                 used = if (level >= 2) flash else profile
-                val declared = if (level >= 3) JSONArray() else declarations(scope, webMode == "split" && level == 0)
+                val declared = if (level >= 3) JSONArray() else declarations(scope, webMode == "split" && level <= 1)
                 check(ProviderHistoryPrivacy.estimatedInput(contents) + CompanionContext.cost(system) + used.getInt("maxOutputTokens") + 1024 <= used.optInt("contextBudget", 65536)) { "新增资料超过当前模型上下文预算，请减少材料" }
                 val billing = accounting(scope, lane, "chat", ::checkCurrent)
-                val reply = try { model.generate(settings, used, contents, system, declared,
+                // Another model cannot verify this one's thought signatures; Gemini's documented placeholder skips the check.
+                val sent = if (used === profile) contents else GeminiWire.foreignSignatures(contents)
+                val reply = try { model.generate(settings, used, sent, system, declared,
                     progress = { update(id, "running", it) }, beforeRequest = billing::beforeRequest,
                     onText = { text ->
                         checkCurrent()
@@ -466,7 +471,8 @@ class CompanionEngine private constructor(private val context: Context) {
                     }
                 }
                 if (calls.isEmpty()) {
-                    val text = GeminiWire.text(parts).ifBlank { "模型本轮没有可见回答。" }
+                    val (text, cut) = GeminiWire.visible(GeminiWire.text(parts).ifBlank { "模型本轮没有可见回答。" })
+                    if (cut) android.util.Log.w("Xiaoke", "reply carried unmarked reasoning; kept only the final part (${used.optString("model")})")
                     var draft: JSONObject? = null
                     val message = store.commitContext(epoch, sources) {
                         val storedFingerprint = if (used === profile) fingerprint else CompanionPolicy.sessionFingerprint(settings, used)
@@ -476,7 +482,10 @@ class CompanionEngine private constructor(private val context: Context) {
                         if (observationId.isNotBlank()) store.get("observation", observationId)?.let {
                             store.put("observation", it.put("analysis", text).put("analyzed", true))
                         }
-                        update(id, "done", if (reply.optString("finishReason") == "MAX_TOKENS") "已到本轮输出预算；回答可能不完整" else if (attempts.length() > 0) "完成（降级后成功：${ChatDiagnostics.LEVELS[level]}）" else "完成")
+                        update(id, "done", listOfNotNull(
+                            if (reply.optString("finishReason") == "MAX_TOKENS") "已到本轮输出预算；回答可能不完整" else "完成",
+                            if (attempts.length() > 0) "降级后成功：${ChatDiagnostics.LEVELS[level]}（${used.optString("model")}）" else null,
+                            if (cut) "回复里混进了思考过程，已只保留最后的正文" else null).joinToString("；"))
                         if (unmentioned.isNotEmpty()) store.saveLifeState("approvalMention", JSONObject().put("ids", JSONArray(pendingReview)))
                         saved
                     }

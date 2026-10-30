@@ -23,7 +23,9 @@ object GeminiWire {
     fun request(profile: JSONObject, contents: JSONArray, system: String, tools: JSONArray, builtins: Boolean = false): JSONObject {
         val generation = JSONObject().put("maxOutputTokens", profile.getInt("maxOutputTokens"))
         if (profile.optString("thinkingMode", "level") == "level") generation.put("thinkingConfig",
-            JSONObject().put("thinkingLevel", profile.getString("thinking").uppercase()).put("includeThoughts", false))
+            // includeThoughts:true so reasoning comes back marked thought:true and is filtered out; with false, one relay let
+            // argon write its reasoning into the visible text.
+            JSONObject().put("thinkingLevel", profile.getString("thinking").uppercase()).put("includeThoughts", true))
         return JSONObject().put("contents", contents).put("generationConfig", generation)
             .put("systemInstruction", JSONObject().put("parts", JSONArray().put(JSONObject().put("text", system))))
             .also {
@@ -37,6 +39,28 @@ object GeminiWire {
     }
     fun text(parts: JSONArray) = (0 until parts.length()).map { parts.getJSONObject(it) }
         .filter { !it.optBoolean("thought") && it.has("text") }.joinToString("") { it.optString("text") }
+
+    /** History written by another model, with its thought signatures replaced by the placeholder the API accepts. */
+    fun foreignSignatures(contents: JSONArray): JSONArray = JSONArray(contents.toString()).also { copy ->
+        for (i in 0 until copy.length()) copy.optJSONObject(i)?.optJSONArray("parts")?.let { parts ->
+            for (j in 0 until parts.length()) parts.optJSONObject(j)?.let { if (it.has("thoughtSignature")) it.put("thoughtSignature", "skip_thought_signature_validator") }
+        }
+    }
+
+    private val selfCheck = Regex("检查一下|自检|直接输出|非常稳妥|有没有反问|符合人设|按要求输出|现在输出|最终回复[:：]")
+
+    /**
+     * Last line of defence when reasoning arrives unmarked: a <think> block, a reply opening with "💭", or self-check
+     * paragraphs ("检查一下……直接输出") keep only what follows them. Returns the text and whether anything was cut.
+     */
+    fun visible(text: String): Pair<String, Boolean> {
+        var out = text.replace(Regex("(?s)<think(?:ing)?>.*?</think(?:ing)?>"), "").trim()
+        val paragraphs = out.split(Regex("\\n\\s*\\n")).map { it.trim() }.filter { it.isNotBlank() }
+        val last = paragraphs.indexOfLast { it.startsWith("💭") || selfCheck.containsMatchIn(it) }
+        if (last >= 0 && paragraphs.size > 1) out = paragraphs.drop(last + 1).ifEmpty { listOf(paragraphs.last()) }.joinToString("\n\n")
+        else if (out.startsWith("💭") && paragraphs.size > 1) out = paragraphs.last()
+        return out to (out != text.trim())
+    }
 
     fun toolResponse(call: JSONObject, response: JSONObject): JSONObject {
         val result = JSONObject().put("name", call.getString("name")).put("response", response)
@@ -109,6 +133,8 @@ open class ModelFailure(val status: Int?, message: String, val detail: String = 
 /** The relay or model refused the request itself (400/404/422/501, or an error event in the stream). */
 class ModelRejected(status: Int, message: String, detail: String = "") : ModelFailure(status, message, detail)
 
+private val SLOW_TIMER = java.util.concurrent.Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "xiaoke-model-slow").apply { isDaemon = true } }
+
 class GeminiClient internal constructor(private val readKey: () -> String, private val transport: OkHttpClient? = null) {
     data class AttemptResult(val outcome: String, val usage: JSONObject, val transmitted: Boolean, val httpStatus: Int?)
     constructor(secrets: CompanionSecrets): this(secrets::read)
@@ -152,6 +178,10 @@ class GeminiClient internal constructor(private val readKey: () -> String, priva
                 activeCall = call
                 var transmitted = false
                 var httpStatus: Int? = null
+                val startedAt = System.currentTimeMillis()
+                val firstData = java.util.concurrent.atomic.AtomicLong(0L)
+                // Slow models (argon through this relay takes 20-30 s) look dead; after 30 s without a word, say so.
+                val slow = SLOW_TIMER.schedule({ if (firstData.get() == 0L) progress("还在想…（模型 30 秒还没出第一个字）") }, 30, TimeUnit.SECONDS)
                 try {
                     checkCancelled() // Close cancel-before-activeCall assignment race.
                     transmitted = true
@@ -194,6 +224,7 @@ class GeminiClient internal constructor(private val readKey: () -> String, priva
                             val line = source.readUtf8Line() ?: break
                             bytes += line.length
                             check(bytes < 24 * 1024 * 1024) { "模型响应超过本机限制" }
+                            if (line.startsWith("data:")) firstData.compareAndSet(0L, System.currentTimeMillis())
                             if (line.isEmpty()) flushEvent()
                             else if (line.startsWith("data:")) {
                                 if (data.isNotEmpty()) data.append('\n')
@@ -205,11 +236,16 @@ class GeminiClient internal constructor(private val readKey: () -> String, priva
                         completed = true
                     }
                     if (completed) break
-                } catch (_: IOException) {
+                } catch (e: IOException) {
                     checkCancelled()
                     // Not replayed here; tools only run after a complete answer, so the caller may retry the whole round.
-                    throw ModelFailure(null, "模型连接中断")
+                    val waited = (System.currentTimeMillis() - startedAt) / 1000
+                    val heard = if (firstData.get() == 0L) "一个字都没收到" else "第 ${(firstData.get() - startedAt) / 1000} 秒开始有数据"
+                    val detail = "${e.javaClass.simpleName}: ${e.message.orEmpty().take(200)}；等了 $waited 秒，$heard"
+                    android.util.Log.w("Xiaoke", "model stream broke ($model): $detail")
+                    throw ModelFailure(null, "模型连接中断（${e.javaClass.simpleName}，$waited 秒）", detail)
                 } finally {
+                    slow.cancel(false)
                     activeCall = null
                     onAttemptFinished(AttemptResult(
                         when { !transmitted -> "not_sent"; completed -> "completed"; httpStatus != null && httpStatus !in 200..299 -> "rejected"; else -> "unknown" },
