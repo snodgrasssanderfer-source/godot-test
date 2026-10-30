@@ -37,13 +37,20 @@ class BilibiliReader(private val cookie: () -> String? = { null }) {
         val request = Request.Builder().url(url).header("Referer", "https://www.bilibili.com/").header("User-Agent", USER_AGENT)
         cookieHeader(uri.host)?.let { request.header("Cookie", it) }
         client.newCall(request.build()).execute().use { response ->
+            check(response.code != 412) { RISK_CONTROL }
             check(response.isSuccessful) { "B站内容接口暂不可用（HTTP ${response.code}），没有进行绕过或重复发布" }
             val source = response.body?.source() ?: error("内容响应为空")
             require(!source.request(limit + 1)) { "内容响应过大" }
             return source.readByteArray()
         }
     }
-    private fun read(url: String): JSONObject = JSONObject(String(raw(url), Charsets.UTF_8))
+    /** B站 answers risk control with -412, a v_voucher challenge, or an HTML error page instead of JSON. */
+    private fun read(url: String): JSONObject {
+        val body = String(raw(url), Charsets.UTF_8)
+        val json = runCatching { JSONObject(body) }.getOrElse { error(if (body.trimStart().startsWith("<")) RISK_CONTROL else "B站返回了看不懂的内容") }
+        check(json.optInt("code") != -412 && json.optJSONObject("data")?.has("v_voucher") != true) { RISK_CONTROL }
+        return json
+    }
 
     /** The owner's cookie plus a device id; without buvid3 the search API answers -412. */
     private fun cookieHeader(host: String): String? {
@@ -160,6 +167,7 @@ class BilibiliReader(private val cookie: () -> String? = { null }) {
         return (0 until items.length()).mapNotNull { items.optJSONObject(it) }
     }
     companion object {
+        const val RISK_CONTROL = "B站风控（-412 / v_voucher），可能需要国内网络"
         const val USER_AGENT = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
     }
 

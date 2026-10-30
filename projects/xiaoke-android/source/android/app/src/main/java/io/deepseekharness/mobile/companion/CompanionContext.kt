@@ -30,8 +30,12 @@ object CompanionContext {
             val saved = wire?.optJSONArray("turns")
             val group = if (message.optString("role") == "assistant" && wire?.optString("fingerprint") == fingerprint && saved != null)
                 (0 until saved.length()).map { JSONObject(saved.getJSONObject(it).toString()) }
-            else listOf(JSONObject().put("role", if (message.optString("role") == "assistant") "model" else "user")
-                .put("parts", JSONArray().put(JSONObject().put("text", message.optString("text")))))
+            else listOf(JSONObject().put("role", if (message.optString("role") == "assistant") "model" else "user").put("parts", JSONArray().also { parts ->
+                // Another model wrote this turn (or it carried media): its signatures cannot be replayed, but what she did can.
+                wire?.optString("summary")?.takeIf { it.isNotBlank() && message.optString("role") == "assistant" }
+                    ?.let { parts.put(JSONObject().put("text", "（这一轮你用过的工具，系统记录）\n$it")) }
+                parts.put(JSONObject().put("text", message.optString("text")))
+            }))
             val length = group.sumOf { cost(it.toString()) }
             if (used + length > budget) {
                 check(turns.isNotEmpty()) { "最新消息超过本机上下文预算，请缩短内容或提高预算" }

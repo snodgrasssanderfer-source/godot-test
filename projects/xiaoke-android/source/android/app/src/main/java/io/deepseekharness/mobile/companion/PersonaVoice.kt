@@ -99,7 +99,8 @@ object PersonaVoice {
     }
 
     /** Always part of the reminder: how she works inside is not small talk. */
-    const val DISCRETION = "不谈论自己的后台设置、触发机制、模型配置，除非主人在私聊里问起。"
+    const val DISCRETION = "不谈论自己的后台设置、触发机制、模型配置，除非主人在私聊里问起。" +
+        "没有观看记录的视频和文章，不能说自己看过；不知道某件事为什么没结果，就说不知道，不编原因。"
 
     /** Until her own points are ready: only mechanics of chat style, nothing about who she is. */
     const val GENERIC = "像真人发消息那样说话：口语、短句，不用列表和小标题，不说“作为 AI”，不在结尾总结或主动列出能帮的事。"

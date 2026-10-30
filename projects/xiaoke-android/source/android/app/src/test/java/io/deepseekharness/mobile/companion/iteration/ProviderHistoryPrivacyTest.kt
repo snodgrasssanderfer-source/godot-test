@@ -7,7 +7,9 @@ import org.junit.Test
 class ProviderHistoryPrivacyTest {
     @Test fun screenFramesStayEphemeralAcrossToolContinuation() {
         val turns = JSONArray("""[{"role":"model","parts":[{"functionCall":{"name":"device_action","args":{}},"thoughtSignature":"opaque"}]},{"role":"user","parts":[{"functionResponse":{"name":"device_action","response":{"frameId":"synthetic"}}},{"inlineData":{"mimeType":"image/jpeg","data":"synthetic"}}]}]""")
-        assertNull(ProviderHistoryPrivacy.forStorage("profile", turns))
+        val saved = ProviderHistoryPrivacy.forStorage("profile", turns)!!
+        assertFalse(saved.has("turns") || saved.toString().contains("inlineData") || saved.toString().contains("opaque"))
+        assertTrue(saved.getString("summary").contains("device_action")) // what she did survives as text
         assertTrue(turns.toString().contains("inlineData")) // The live request still has actual vision input.
     }
     @Test fun textOnlyToolPairsRemainIntactForGeminiReplay() {

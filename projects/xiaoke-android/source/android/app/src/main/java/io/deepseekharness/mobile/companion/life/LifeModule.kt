@@ -195,14 +195,11 @@ class LifeModule(@Suppress("UNUSED_PARAMETER") context: Context, private val sto
                         val refs = JSONArray().put(ref.json())
                         memory.upsertMemory(event.scope, JSONObject().put("id", "$key-memory").put("text", summary.take(8000)).put("kind", "inference")
                             .put("sourceRefs", refs).put("source", "已保存观察的摘要"), fromModel = true)
-                        memory.diary(event.scope, "$key-diary", "我记录了一段观察摘要：${summary.take(7900)}", listOf(ref), "observation_summary")
+                        memory.diary(event.scope, "$key-diary", summary.take(7900), listOf(ref), "observation_summary")
                     }
                 }
-                "action.completed" -> {
-                    check(source.optString("state") == "done") { "任务尚未完成，不能写成已完成的日记" }
-                    val description = source.optString("progress", source.optString("type", "任务")).take(7900)
-                    memory.diary(event.scope, "$key-diary", "我完成了一项任务，已记录的结果是：$description", listOf(ref), "completed_task")
-                }
+                // Task results are told back to the chat that asked (BackgroundJobs); they are not diary material.
+                "action.completed" -> Unit
             }
             val attention = attention()
             store.put("lifeEvent", JSONObject().put("id", key).put("scope", event.scope).put("type", event.type)

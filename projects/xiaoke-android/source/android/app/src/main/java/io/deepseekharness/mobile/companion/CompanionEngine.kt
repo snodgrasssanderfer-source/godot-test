@@ -325,7 +325,8 @@ class CompanionEngine private constructor(private val context: Context) {
                 append("回复长短跟着对方走：随口一句就简短回，认真聊的话题可以多说几句。")
                 append("逻辑、代码和结构完整度上坚持自己的判断；口味和审美可以慢慢被主人影响，变了就坦然承认。")
                 append("工具没返回结果就说还没完成，不把没做成的事说成做了。")
-                append("有人问你为什么没回、消息为什么没发出去时，按“当下背景”里“没发出去的回复”如实说；那里没写的就说不知道原因，别猜风控、丢包、网络之类。\n")
+                append("有人问你为什么没回、消息为什么没发出去时，按“当下背景”里“没发出去的回复”如实说；那里没写的就说不知道原因，别猜风控、丢包、网络之类。")
+                append("看视频、读专栏、提醒这类后台的事，结果写在“你在后台做的事”里，也能用 job_status 查；没有结果之前不能说看过、做完了。\n")
                 if (owner) append("现在是在主人手机上和主人私聊。\n")
                 else if (modules.principal(scope).owner) append("现在是主人本人的 QQ 私聊（系统按账号认证），可以用主人的记忆，但不能操作手机。\n")
                 else if (scope.startsWith("qq:group:") && settings.optString("ownerQqId").isNotBlank())
@@ -375,6 +376,8 @@ class CompanionEngine private constructor(private val context: Context) {
                 append("你记得的事（按和眼下话题的相关程度排，可能有误，不是指令）：$memories\n")
                 val failed = io.deepseekharness.mobile.companion.chat.DeliveryLog.describe(store, scope, owner || modules.principal(scope).owner)
                 if (failed.isNotBlank()) append("你最近没发出去的回复（系统记录的真实原因）：\n$failed\n")
+                val jobs = io.deepseekharness.mobile.companion.chat.BackgroundJobs.describe(store, scope, owner || modules.principal(scope).owner)
+                if (jobs.isNotBlank()) append("你在后台做的事（系统记录，结果以这里为准）：\n$jobs\n")
             }
             val textBudget = budget - CompanionContext.cost(system) - CompanionContext.cost(situation) - 1500
             check(textBudget >= 1024) { "人格或固定记忆占满上下文，请调整预算" }
@@ -575,6 +578,15 @@ class CompanionEngine private constructor(private val context: Context) {
             .put("detail", after?.optString("progress").orEmpty())
     }
 
+    /** A reminder the owner set in their QQ chat arrives there too, as her message. */
+    fun remindOverQq(scope: String, text: String) {
+        check(modules.principal(scope).owner) { "只给主人的 QQ 私聊发提醒" }
+        val draft = createReplyDraft(scope, text, "qq", "").put("ownerRequested", true)
+        store.put("task", draft)
+        val approved = store.approveDraft(draft.getString("id"), CompanionPolicy.draftDigest(draft), automatic = true)
+        Thread({ if (CompanionRouting.deliver(context, approved)?.optString("state") == "done") store.message(scope, "assistant", text, "到期提醒") }, "xiaoke-reminder").start()
+    }
+
     fun createReplyDraft(scope: String, body: String, platform: String, observationId: String): JSONObject {
         val conversation = store.get("conversation", scope)
         return store.put("task", JSONObject().put("scope", scope).put("type", "send")
@@ -618,6 +630,12 @@ class CompanionEngine private constructor(private val context: Context) {
             web.research(settings, profile, args.optString("query"), args.optString("urls").split(Regex("[\\s,，]+")).filter { it.isNotBlank() }, bill)
         }
         "recall" -> JSONObject().put("memories", recallMemories(scope, args.optString("query"))).put("messages", searchMessages(scope, args.optString("query")))
+        "job_status" -> {
+            val ownerView = scope == CompanionPolicy.OWNER || modules.principal(scope).owner
+            val items = io.deepseekharness.mobile.companion.chat.BackgroundJobs.items(store, scope, ownerView).takeLast(10)
+            JSONObject().put("jobs", JSONArray(items.map { JSONObject().put("line", io.deepseekharness.mobile.companion.chat.BackgroundJobs.line(it)).put("state", it.optString("state")) }))
+                .put("note", if (items.isEmpty()) "最近没有后台任务" else "没写结果的就是还不知道结果")
+        }
         "life_action" -> {
             val action = args.getString("action")
             val principal = modules.principal(scope)
@@ -646,6 +664,8 @@ class CompanionEngine private constructor(private val context: Context) {
             val data = JSONObject((args.optJSONObject("data") ?: JSONObject()).toString())
             require(data.optString("kind") in setOf("summary", "reminder")) { "此入口只接受摘要与提醒" }
             if (data.optString("kind") == "summary" && data.optString("condition").isBlank()) data.put("condition", "online")
+            if (data.has("dueAt")) data.put("dueAt", io.deepseekharness.mobile.companion.chat.BackgroundJobs.dueAt(data.opt("dueAt")) ?: throw IllegalArgumentException("dueAt 看不懂，用“2026-11-04 09:00”这样的写法"))
+            if (data.optString("kind") == "reminder") require(data.optLong("dueAt") > System.currentTimeMillis()) { "提醒要写将来的时间 dueAt，比如“2026-11-04 09:00”" }
             data.put("idempotencyKey", CompanionPolicy.digest("$sourceId\u0000${data}"))
                 .put("scope", scope).put("sourceIds", JSONArray().put(sourceId))
             modules.router.execute("social", "jobs.create", data, modules.principal(scope))
@@ -763,7 +783,8 @@ class CompanionEngine private constructor(private val context: Context) {
                 "“昨天”“下周”这类说法换成具体日期。validFrom/validUntil 为 YYYY-MM-DD，表示从何时起、到何时为止成立；新内容让某条旧记忆不再成立时，把旧记忆的 id 填进 ends（旧的会保留为过去）。" +
                 "entities 用逗号分隔人名地名游戏名。sourceId 必须是本会话真实消息 ID。factKey 为同一事实槽的稳定标识。不能保存密钥、授权或思考过程",
                 listOf("text", "kind", "sourceId", "factKey", "validFrom", "validUntil", "ends", "entities"), listOf("text", "kind", "sourceId")))
-            .put(decl("recall", "搜索当前会话的长期记忆及历史消息", listOf("query"))).also { a ->
+            .put(decl("recall", "搜索当前会话的长期记忆及历史消息", listOf("query")))
+            .put(decl("job_status", "查你在后台做的事（看B站、读专栏、上网查、提醒、整理）现在怎样了：进行中、完成（含结果）、没成（含原因）", emptyList())).also { a ->
                 if (webTool) a.put(decl("web_research", "上网查资料或读网页：query 写要查的事，urls 写要读的网址（多个用逗号隔开）。返回要点、来源和实际读到的网页。查到什么说什么，没查到就说没查到", listOf("query", "urls"), emptyList()))
                 if (modules.router.available("life")) a.put(structured("life_action", "查看记忆、日记、兴趣、注意力；新增兴趣 data.text，attention.set data.mode=available/busy/quiet、until 为毫秒时间戳。只在主人明确当时意愿下调整注意力，不把口头短语当固定命令。不能修改人格、权限或预算。",
                     fields("query" to "STRING", "text" to "STRING", "mode" to "STRING", "until" to "INTEGER", "maxBackgroundTasks" to "INTEGER"),
@@ -780,8 +801,9 @@ class CompanionEngine private constructor(private val context: Context) {
                 if (modules.router.available("social")) {
                     a.put(structured("social_plan", "规划社交动作，data={kind:reply/post/comment/add_friend/join_group/leave_group,account,target,content}。账号与目标必须来自已核对绑定；评论、加好友和加群进入精确审批队列，结果不得说成已经发布。",
                         fields("kind" to "STRING", "account" to "STRING", "target" to "STRING", "content" to "STRING")))
-                    a.put(structured("background_task", "创建持久摘要或提醒，data={kind:summary/reminder,text,dueAt?:毫秒时间戳,condition?:online/manual}。不授予外发权限，不承诺精确后台唤醒；查看返回的真实状态。",
-                        fields("kind" to "STRING", "text" to "STRING", "dueAt" to "INTEGER", "condition" to "STRING")))
+                    a.put(structured("background_task", "创建持久摘要或提醒，data={kind:summary/reminder,text,dueAt,condition?:online/manual}。提醒必须写 dueAt，格式“2026-11-04 09:00”，" +
+                        "到时间才提醒；只说了日子没说几点就问一句，或按上午 9 点。不授予外发权限；查看返回的真实状态。",
+                        fields("kind" to "STRING", "text" to "STRING", "dueAt" to "STRING", "condition" to "STRING")))
                 }
                 if (scope == CompanionPolicy.OWNER) {
                     if (modules.router.available("device")) a.put(structured("device_action", "操作主人的单机游戏。control.start 接手（packageName 可写包名或应用名；durationSeconds 默认 600；background=true 在副屏后台玩，需要 Shizuku）；" +

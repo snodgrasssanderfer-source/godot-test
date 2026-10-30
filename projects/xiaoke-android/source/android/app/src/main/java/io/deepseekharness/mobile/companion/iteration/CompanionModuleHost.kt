@@ -194,13 +194,16 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
             val source = store.get("message", ids.getString(i)) ?: continue
             if (source.optString("scope") == scope) refs.put(JSONObject().put("kind", "message").put("id", source.getString("id")).put("scope", scope))
         }
-        val task = store.put("task", JSONObject().put("id", id).put("scope", scope).put("type", if (reminder) "reminder" else "summary")
+        store.put("task", JSONObject().put("id", id).put("scope", scope).put("type", if (reminder) "reminder" else "summary")
             .put("state", state).put("progress", text).put("sourceRefs", refs))
-        if (state == "done") router.event(ModuleEvent("action.completed", scope, id, task))
-        val attention = life.execute("attention.status", JSONObject(), localOwner)
-        if (reminder && scope == CompanionPolicy.OWNER && attention.optBoolean("mayInterruptOrdinary")) {
-            store.message(scope, "notice", "提醒：$text", "已到期的本机提醒")
-        }
+        // The result goes back to the chat that asked (she sees it next turn), never into the diary: a reminder's
+        // text is often private ("复查别跟别人说").
+        io.deepseekharness.mobile.companion.chat.BackgroundJobs.record(store, scope, if (reminder) "reminder" else "summary",
+            if (reminder) "提醒：${text.take(40)}" else "整理资料", state == "done", if (reminder) "已到时间提醒" else text.take(200))
+        // A reminder is what the owner asked for at that time: it is delivered whatever the attention mode says.
+        if (reminder && scope == CompanionPolicy.OWNER) store.message(scope, "notice", "提醒：$text", "已到期的本机提醒")
+        else if (reminder && principal(scope).owner) runCatching { engine.remindOverQq(scope, "提醒：$text") }
+            .onFailure { android.util.Log.w("Xiaoke", "reminder over QQ failed: ${it.message}") }
         router.signal("all", "job.outcome")
     }
     /** Owner review list: social actions awaiting approval plus legacy send drafts. Used for the ball badge and one mention. */

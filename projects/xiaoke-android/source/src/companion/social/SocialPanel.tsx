@@ -101,9 +101,9 @@ export function SocialPanel({ state, run, available }: ModulePanelProps) {
       <form onSubmit={e => { e.preventDefault(); void act('jobs.create', { idempotencyKey: crypto.randomUUID(), kind: jobKind, text: jobText, ...(dueAt ? { dueAt: new Date(dueAt).getTime() } : {}), condition }).then(result => { if (result !== undefined) setJobText('') }) }}>
         <label>做什么<select value={jobKind} onChange={e => setJobKind(e.target.value)}><option value="summary">整理一段资料</option><option value="reminder">提醒我</option></select></label>
         <label>内容<textarea required maxLength={12000} value={jobText} onChange={e => setJobText(e.target.value)}/></label>
-        <div className="xk-grid"><label>什么时候（留空就现在）<input type="datetime-local" value={dueAt} onChange={e => setDueAt(e.target.value)}/></label>
+        <div className="xk-grid"><label>{jobKind === 'reminder' ? '什么时候提醒' : '什么时候（留空就现在）'}<input type="datetime-local" value={dueAt} onChange={e => setDueAt(e.target.value)}/></label>
           <label>等什么<select value={condition} onChange={e => setCondition(e.target.value)}><option value="">不用等</option><option value="online">有网时</option><option value="manual">我说继续</option></select></label></div>
-        <button className="xk-btn primary" disabled={disabled || !jobText.trim()}>保存任务</button>
+        <button className="xk-btn primary" disabled={disabled || !jobText.trim() || jobKind === 'reminder' && !dueAt}>保存任务</button>
       </form>
       {jobs.map(job => <div className="social-row" key={text(job, 'id')}><div className="xk-card-head"><p>{text(job, 'text')}</p><span className="xk-pill">{labels[text(job, 'state')] ?? text(job, 'state')}</span></div>{text(job, 'result') && <blockquote>{text(job, 'result')}</blockquote>}{text(job, 'error') && <p className="xk-error-text">{text(job, 'error')}</p>}
         <div className="xk-actions">

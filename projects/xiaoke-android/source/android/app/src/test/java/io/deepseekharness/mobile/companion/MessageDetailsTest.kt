@@ -56,3 +56,19 @@ class MessageDetailsTest {
         assertTrue(contents.getJSONObject(0).getJSONArray("parts").getJSONObject(1).getString("text").contains(PersonaVoice.DISCRETION))
     }
 }
+
+class BackgroundJobsTest {
+    private val zone = java.time.ZoneId.of("Asia/Shanghai")
+    private val now = java.time.LocalDateTime.of(2026, 10, 31, 12, 0)
+    private fun at(y: Int, m: Int, d: Int, h: Int, min: Int) = java.time.LocalDateTime.of(y, m, d, h, min).atZone(zone).toInstant().toEpochMilli()
+
+    @Test fun `提醒时间认得常见写法，没写几点按上午九点`() {
+        val jobs = io.deepseekharness.mobile.companion.chat.BackgroundJobs
+        assertEquals(at(2026, 11, 4, 9, 0), jobs.dueAt("2026-11-04 09:00", now, zone))
+        assertEquals(at(2026, 11, 4, 9, 0), jobs.dueAt("2026-11-04", now, zone))
+        assertEquals(at(2026, 11, 4, 15, 30), jobs.dueAt("2026/11/04T15:30", now, zone))
+        assertEquals(at(2027, 1, 2, 8, 0), jobs.dueAt("01-02 08:00", now, zone))
+        assertEquals(1_800_000_000_000L, jobs.dueAt(1_800_000_000_000L, now, zone))
+        assertEquals(null, jobs.dueAt("下周三", now, zone))
+    }
+}

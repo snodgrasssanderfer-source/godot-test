@@ -122,7 +122,7 @@ class SocialRuntimeTest {
         val host=Host(); val rt=runtime(host=host)
         rt.onEvent(ModuleEvent("connectivity.changed","owner:local","net",JSONObject().put("online",false)))
         val j=rt.execute("jobs.create",job().put("condition","manual"),owner)
-        rt.execute("jobs.create",job("remind").put("kind","reminder").put("condition","online"),owner); rt.tick()
+        rt.execute("jobs.create",job("remind").put("kind","reminder").put("dueAt",1000L).put("condition","online"),owner); rt.tick()
         assertTrue(host.requests.isEmpty()); assertFalse(host.emitted.any { it.first=="social.reminder" })
         rt.execute("jobs.resume",JSONObject().put("id",j.getString("id")),owner); rt.tick(); assertTrue(host.requests.isEmpty())
         rt.onEvent(ModuleEvent("connectivity.changed","owner:local","net2",JSONObject().put("online",true)));rt.tick(); assertEquals(1,host.requests.size)
@@ -149,9 +149,13 @@ class SocialRuntimeTest {
         now+=2*24*60*60_000;rt.tick();assertTrue(deleted.isEmpty())
         rt.execute("media.delete",JSONObject().put("id",mediaId),owner);assertEquals(listOf("blob"),deleted)
     }
+    @Test fun reminderWithoutATimeIsRefused() {
+        val rt=runtime(host=Host())
+        assertThrows(IllegalArgumentException::class.java) { rt.execute("jobs.create",job("no-time").put("kind","reminder"),owner) }
+    }
     @Test fun undeliveredReminderSurvivesRestartWithoutRepeatingItsTask() {
         val ledger=SocialLedger();val host=Host().apply { failReminder=true };val rt=runtime(ledger,host)
-        rt.execute("jobs.create",job().put("kind","reminder"),owner);rt.tick()
+        rt.execute("jobs.create",job().put("kind","reminder").put("dueAt",1000L),owner);rt.tick()
         assertEquals(1,ledger.read { rows(it,"notifications").length() })
         val next=Host();val restarted=runtime(SocialLedger(ledger.exportEncryptedInput()),next);restarted.tick();restarted.tick()
         assertEquals(1,next.emitted.count { it.first=="social.reminder" });assertTrue(next.requests.isEmpty())

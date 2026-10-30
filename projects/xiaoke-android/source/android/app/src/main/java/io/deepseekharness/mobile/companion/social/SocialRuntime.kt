@@ -329,6 +329,8 @@ class SocialRuntime(
         val text = SocialRules.bounded(input.getString("text"), 12000)
         val now = clock(); val due = input.optLong("dueAt", now)
         require(due in 0..(now + 366L * 24 * 60 * 60_000))
+        // A reminder without a time used to fire on the spot.
+        if (kind == "reminder") require(input.has("dueAt") && due > now - 60_000) { "提醒需要一个将来的时间" }
         val condition = input.optString("condition"); require(condition in setOf("", "online", "manual"))
         val job = JSONObject().put("id", "job-" + hash(principal.actorId + "\u0000" + SocialRules.bounded(input.getString("idempotencyKey"), 128)))
             .put("kind", kind).put("text", text).put("scope", scope).put("actorId", principal.actorId).put("dueAt", due)
