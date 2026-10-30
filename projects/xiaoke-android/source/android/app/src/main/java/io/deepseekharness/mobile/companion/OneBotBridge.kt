@@ -95,6 +95,14 @@ class OneBotBridge private constructor(private val context: Context) {
                         catch (_: java.util.concurrent.RejectedExecutionException) { status = "请求接收繁忙，请稍后查看平台" }
                         return
                     }
+                    if (value.optString("post_type") == "notice") {
+                        val poke = OneBotProtocol.poke(value, account) ?: return
+                        val c = engine.store.get("conversation", poke.getString("scope")) ?: return
+                        if (!ParticipationPolicy.mayReceive(c)) return
+                        try { receiveWorker.execute { if (gen == generation) receivePoke(c, poke, account) } }
+                        catch (_: java.util.concurrent.RejectedExecutionException) { status = "消息接收繁忙，部分消息未处理；没有自动补发" }
+                        return
+                    }
                     val address = OneBotProtocol.address(value, account) ?: return
                     val scope = address.getString("scope")
                     val store = engine.store
@@ -166,6 +174,8 @@ class OneBotBridge private constructor(private val context: Context) {
                 }
             }
         }
+        text = io.deepseekharness.mobile.companion.chat.StickerReader.describe(engine, scope, text, attachments, allowed("image"))
+        if (!allowed()) return
         val (parts, read) = media.fetchSegments(attachments, ::allowed)
         if (!allowed()) return
         moduleListener?.invoke("conversation.message", JSONObject(event.toString()))
@@ -182,6 +192,32 @@ class OneBotBridge private constructor(private val context: Context) {
         CompanionRouting.receive(context, c, "${event.optString("sender")}（${event.getString("senderId")}）：$text$summary",
             "OneBot 消息 ${event.getString("id")}", event.optBoolean("mentioned"), event.getString("senderId"), observationId, event.optString("platformMessageId"))
     }
+    /** A poke reaches her like a short message from the poker, so she knows who poked whom (and can answer one aimed at her). */
+    private fun receivePoke(conversation: JSONObject, poke: JSONObject, account: String) {
+        val store = engine.store
+        val scope = poke.getString("scope")
+        val c = store.get("conversation", scope) ?: return
+        val old = c.optJSONArray("seen") ?: JSONArray()
+        val seen = (0 until old.length()).map { old.getString(it) }
+        if (poke.getString("id") in seen) return
+        store.put("conversation", c.put("seen", JSONArray((seen + poke.getString("id")).takeLast(256))))
+        val owner = store.settings().optString("ownerQqId")
+        val group = if (poke.getString("targetType") == "group") poke.getString("targetId") else ""
+        fun name(id: String): String = when (id) {
+            account -> "你"
+            owner -> "主人"
+            else -> runCatching {
+                val info = if (group.isNotBlank()) callAction(account, "get_group_member_info", JSONObject().put("group_id", group).put("user_id", id))
+                    else callAction(account, "get_stranger_info", JSONObject().put("user_id", id))
+                info.optJSONObject("data")?.let { it.optString("card").ifBlank { it.optString("nickname") } }?.takeIf { it.isNotBlank() }
+            }.getOrNull()?.take(30) ?: id
+        }
+        val poker = poke.getString("poker")
+        val who = name(poker)
+        val text = "$who（$poker）：[戳一戳] $who ${poke.optString("action", "戳了戳")} ${name(poke.getString("target"))}${poke.optString("suffix")}"
+        CompanionRouting.receive(context, conversation, text, "OneBot 戳一戳 ${poke.getString("id")}", poke.optBoolean("atSelf"), poker)
+    }
+
     /** Trust the certificate the owner just compared on the server, then reconnect. */
     @Synchronized fun trustCertificate(fingerprint: String) {
         check(fingerprint.isNotBlank() && fingerprint.equals(untrustedCertificate, ignoreCase = true)) { "证书指纹已变化，请重新连接后再核对" }
@@ -219,7 +255,7 @@ class OneBotBridge private constructor(private val context: Context) {
     }
     /** Module-owned durable ledger must claim a write before calling. No automatic retry here. */
     fun callAction(account: String, action: String, params: JSONObject): JSONObject {
-        check(action in setOf("send_msg", "send_qzone_msg", "comment_qzone_public_feed", "set_friend_add_request", "set_group_add_request", "set_group_leave", "get_qzone_public_feeds", "get_forward_msg",
+        check(action in setOf("send_msg", "send_qzone_msg", "get_group_member_info", "get_stranger_info", "comment_qzone_public_feed", "set_friend_add_request", "set_group_add_request", "set_group_leave", "get_qzone_public_feeds", "get_forward_msg",
             "get_qzone_feeds", "get_qzone_msg_list", "get_qzone_msg_detail", "comment_qzone", "like_qzone") + EXTRAS) { "不支持的桥动作" }
         val settings = engine.store.settings()
         check(verified && settings.optBoolean("oneBotEnabled") && settings.optBoolean("networkEnabled") && !settings.optBoolean("paused")) { "消息桥未连接" }
@@ -248,10 +284,11 @@ class OneBotBridge private constructor(private val context: Context) {
         val conversation = store.get("conversation", task.getString("scope")) ?: error("会话不存在")
         check(conversation.optString("route") == "onebot" && task.optString("account") == settings.optString("oneBotAccount") && conversation.optString("account") == task.optString("account")) { "账号或会话绑定已变化" }
         store.claimSend(task.getString("id"), CompanionPolicy.draftDigest(task))
-        // A longer reply goes out as a few messages with typing-like pauses (AstrBot's segmented reply).
-        val segments = io.deepseekharness.mobile.companion.chat.ReplySegmenter.split(task.getString("body"))
         val ids = mutableListOf<String>()
+        var segments = listOf(task.getString("body"))
         try {
+            // A longer reply goes out as a few messages with typing-like pauses (AstrBot's segmented reply).
+            segments = io.deepseekharness.mobile.companion.chat.ReplySegmenter.split(task.getString("body"))
             for ((index, segment) in segments.withIndex()) {
                 if (index > 0) Thread.sleep(io.deepseekharness.mobile.companion.chat.ReplySegmenter.pauseMs(segment))
                 check(verified && !store.settings().optBoolean("paused")) { "连接已断开或已暂停" }
@@ -265,16 +302,19 @@ class OneBotBridge private constructor(private val context: Context) {
                 val id = ack?.optJSONObject("data")?.optString("message_id").orEmpty()
                 if (ack == null || ack.optInt("retcode", -1) != 0 || ack.optString("status") != "ok" || id.isBlank()) {
                     val state = if (ack != null && ids.isEmpty() && (ack.optInt("retcode", -1) != 0 || ack.optString("status") != "ok")) "failed" else "unknown"
+                    val said = ack?.let { (it.optString("wording").ifBlank { it.optString("message") }).take(80) }.orEmpty()
                     return store.transitionTask(task.getString("id"), setOf("sending", "unknown"), state,
-                        if (state == "failed") "桥明确拒绝提交，请检查桥状态" else "已发出 ${ids.size}/${segments.size} 段，后面的结果不确定，未自动重发",
+                        if (state == "failed") "QQ 拒绝了发送（retcode ${ack?.optInt("retcode")}${if (said.isNotBlank()) "：$said" else ""}）"
+                        else if (ack == null) "已发出 ${ids.size}/${segments.size} 段，后面 15 秒没等到 QQ 确认，未自动重发"
+                        else "已发出 ${ids.size}/${segments.size} 段，后面的结果不确定，未自动重发",
                         JSONObject().put("platformMessageIds", org.json.JSONArray(ids))) ?: error("任务状态已变化")
                 }
                 ids.add(id)
             }
             return store.transitionTask(task.getString("id"), setOf("sending", "unknown"), "done", "已发出 ${segments.size} 段（不等于对方已读）",
                 JSONObject().put("platformMessageId", ids.first()).put("platformMessageIds", org.json.JSONArray(ids))) ?: error("任务状态已变化")
-        } catch (_: Exception) {
-            return store.transitionTask(task.getString("id"), setOf("sending"), "unknown", "提交过程被中断（已发出 ${ids.size}/${segments.size} 段），不自动重发") ?: store.get("task", task.getString("id"))!!
+        } catch (e: Exception) {
+            return store.transitionTask(task.getString("id"), setOf("sending"), "unknown", "提交过程被中断（${e.message?.take(60) ?: "未知原因"}；已发出 ${ids.size}/${segments.size} 段），不自动重发") ?: store.get("task", task.getString("id"))!!
         }
     }
     companion object {

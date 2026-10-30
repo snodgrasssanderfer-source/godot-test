@@ -19,14 +19,33 @@ object OneBotSegments {
                     "text" -> text.append(data.optString("text").take(8000))
                     "at" -> { val who = data.optString("qq"); if (depth == 0 && who == account) mentioned = true; text.append(" @").append(who.take(24)) }
                     "reply" -> text.append(" [引用消息]")
-                    "face" -> { text.append(" [QQ表情]"); attachments.put(JSONObject().put("kind", "face").put("platformId", data.optString("id").take(80)).put("source", ref).put("status", "typed")) }
-                    "image", "mface", "record", "video", "file" -> {
-                        text.append(when(kind) { "record" -> " [语音待理解]"; "video" -> " [视频待理解]"; "file" -> " [文件未下载]"; else -> " [图片附件]" })
+                    "face" -> {
+                        val name = io.deepseekharness.mobile.companion.chat.QqFaces.name(data.optString("id"))
+                        text.append(if (name != null) " [表情:$name]" else " [QQ表情]")
+                        attachments.put(JSONObject().put("kind", "face").put("platformId", data.optString("id").take(80)).put("source", ref).put("status", "typed"))
+                    }
+                    // Market stickers, and pictures QQ marks as stickers (sub_type 1): looked at once, then remembered by hash.
+                    "mface", "image" -> if (kind == "mface" || data.optString("sub_type") == "1") {
+                        val summary = data.optString("summary").trim().removePrefix("[").removeSuffix("]").take(30)
+                        val placeholder = " [表情包${if (summary.isNotBlank() && summary != "动画表情") "：$summary" else ""}#${attachments.length()}]"
+                        text.append(placeholder)
+                        if (attachments.length() < 64) attachments.put(JSONObject().put("kind", "sticker").put("source", ref).put("status", "unread")
+                            .put("url", data.optString("url").take(4096)).put("summary", summary).put("placeholder", placeholder))
+                        else truncated = true
+                    } else {
+                        text.append(" [图片附件]")
                         val item = JSONObject().put("kind", kind).put("source", ref).put("status", "unread")
                             .put("url", data.optString("url").take(4096)).put("platformId", data.optString("file_id", data.optString("file")).take(512))
                             .put("name", data.optString("name").take(160)).put("retention", "transient")
                         if (attachments.length() < 64) attachments.put(item) else truncated = true
-                        if (kind in setOf("image", "mface") && images.length() < 3) images.put(JSONObject().put("url", item.optString("url")))
+                        if (images.length() < 3) images.put(JSONObject().put("url", item.optString("url")))
+                    }
+                    "record", "video", "file" -> {
+                        text.append(when(kind) { "record" -> " [语音待理解]"; "video" -> " [视频待理解]"; else -> " [文件未下载]" })
+                        val item = JSONObject().put("kind", kind).put("source", ref).put("status", "unread")
+                            .put("url", data.optString("url").take(4096)).put("platformId", data.optString("file_id", data.optString("file")).take(512))
+                            .put("name", data.optString("name").take(160)).put("retention", "transient")
+                        if (attachments.length() < 64) attachments.put(item) else truncated = true
                     }
                     "forward", "node" -> {
                         val nested = data.optJSONArray("content") ?: data.optJSONArray("message")
