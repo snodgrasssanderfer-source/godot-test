@@ -27,6 +27,9 @@
 
 rootfs 的哈希与清单里的 `rootfs.sha256` 一致才能用。两个 PRoot .so 不变，仍按下一节从旧 APK 提取。
 
+## 瘦包
+完整包超过 400 MiB 时（0.8.0 起约 421 MiB），给已装过同版本运行环境的手机可以交付不带 rootfs 的瘦包：临时把 `assets/runtime/rootfs.bundle` 移走，删掉 `app/build/outputs/apk/debug` 和 `app/build/intermediates/apk/debug`（增量打包会留着旧条目的空间），再 `:app:assembleDebug`，打完放回。上游支持这种包：没有内置 rootfs 时不提示内置更新，已安装的运行环境照常使用。
+
 ## 本地向量模型（0.8.0 起）
 中转没有向量接口时，记忆检索用手机本地的 bge-small-zh-v1.5（BAAI，MIT）。两个文件放到 `source/android/app/src/main/assets/embedding/`，不入库：
 
