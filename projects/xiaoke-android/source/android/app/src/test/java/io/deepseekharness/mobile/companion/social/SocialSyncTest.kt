@@ -16,7 +16,7 @@ class SocialSyncTest {
         override fun authorizeEffect(effect:JSONObject,principal:CommandPrincipal)=JSONObject().put("allowed",false)
     }
     private fun setup():Pair<SocialLedger,SocialRuntime> {
-        val ledger=SocialLedger();ledger.change { rows(it,"sync").put("vault","0".repeat(32)) }
+        val ledger=SocialLedger();ledger.change { rows(it,"sync").put("vault","0".repeat(32)).put("enabled",true) }
         val runtime=SocialRuntime(ledger,ports,SocialTransport { _,_,_->error("sync must not send social actions") })
         runtime.onEvent(ModuleEvent("model.completed","owner:local","source-one",JSONObject().put("text","private synthetic memory")))
         return ledger to runtime
@@ -49,6 +49,11 @@ class SocialSyncTest {
         assertThrows(IllegalStateException::class.java) { sync.run() }
         assertTrue(ledger.read { values(rows(it,"events")).single().getBoolean("pendingSync") })
         assertThrows(IllegalStateException::class.java) { SocialSync(runtime,SyncCipher(ByteArray(32){3}),SyncTransport { throw IllegalStateException("offline") }).run() }
+    }
+    @Test fun nothingIsQueuedWhileSyncIsOff() {
+        val ledger=SocialLedger();val runtime=SocialRuntime(ledger,ports,SocialTransport { _,_,_->error("no sends") })
+        runtime.onEvent(ModuleEvent("model.completed","owner:local","source-off",JSONObject().put("text","synthetic")))
+        assertFalse(ledger.read { values(rows(it,"events")).single().getBoolean("pendingSync") })
     }
     @Test fun endpointDisallowsCleartextCredentialsAndQuery() {
         listOf("http://127.0.0.1","https://user:secret@example.test","https://example.test?token=secret").forEach { value ->

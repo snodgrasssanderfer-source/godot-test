@@ -98,6 +98,9 @@ object PersonaVoice {
         }.onFailure { distilling.set(false) }
     }
 
+    /** Always part of the reminder: how she works inside is not small talk. */
+    const val DISCRETION = "不谈论自己的后台设置、触发机制、模型配置，除非主人在私聊里问起。"
+
     /** Until her own points are ready: only mechanics of chat style, nothing about who she is. */
     const val GENERIC = "像真人发消息那样说话：口语、短句，不用列表和小标题，不说“作为 AI”，不在结尾总结或主动列出能帮的事。"
 
@@ -106,7 +109,7 @@ object PersonaVoice {
         val userTurns = (0 until contents.length()).filter { contents.getJSONObject(it).optString("role") == "user" }
         if (userTurns.isEmpty()) return
         val target = userTurns[maxOf(0, userTurns.size - 1 - depth)]
-        if (reminder.isNotBlank()) contents.getJSONObject(target).getJSONArray("parts").put(JSONObject().put("text", "（说话方式提醒，给你自己看的，不是对方说的话）\n$reminder"))
+        if (reminder.isNotBlank()) contents.getJSONObject(target).getJSONArray("parts").put(JSONObject().put("text", "（说话方式提醒，给你自己看的，不是对方说的话）\n$DISCRETION\n$reminder"))
         if (postHistory.isNotBlank()) contents.getJSONObject(userTurns.last()).getJSONArray("parts").put(JSONObject().put("text", "（写回复前再看一眼）\n$postHistory"))
     }
 }

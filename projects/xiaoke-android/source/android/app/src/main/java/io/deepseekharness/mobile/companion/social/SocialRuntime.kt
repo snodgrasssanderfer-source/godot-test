@@ -68,8 +68,9 @@ class SocialRuntime(
         values(rows(root, "actions")).filter { it.optString("state") == "pending" && it.optLong("expiresAt") > clock() }.map { it.getString("id") }
     }
     private fun syncStatus(root: JSONObject): JSONObject = copy(root.optJSONObject("sync") ?: JSONObject()).also { result ->
-        result.put("pending", values(rows(root, "events")).count { it.optBoolean("pendingSync") })
-        result.put("pendingDeletions", values(rows(root, "tombstones")).count { !it.optBoolean("acked") })
+        val on = result.optBoolean("enabled")
+        result.put("pending", if (on) values(rows(root, "events")).count { it.optBoolean("pendingSync") } else 0)
+        result.put("pendingDeletions", if (on) values(rows(root, "tombstones")).count { !it.optBoolean("acked") } else 0)
     }
     fun execute(action: String, data: JSONObject, principal: CommandPrincipal): JSONObject {
         check(!closed) { "社交模块已关闭" }
@@ -459,7 +460,7 @@ class SocialRuntime(
         val accepted = ledger.change { root ->
             val item = JSONObject().put("id", "event-" + hash(event.type + "\u0000" + event.scope + "\u0000" + event.sourceId))
                 .put("type", event.type).put("scope", event.scope).put("sourceId", event.sourceId).put("sourceIds", event.data.optJSONArray("sourceIds") ?: JSONArray())
-                .put("data", event.data).put("observedAt", clock()).put("pendingSync", true)
+                .put("data", event.data).put("observedAt", clock()).put("pendingSync", rows(root, "sync").optBoolean("enabled"))
             if (!SocialRules.blocked(root, item) && !rows(root, "events").has(item.getString("id"))) {
                 rows(root, "events").put(item.getString("id"), item)
                 if (notifyHost) queueHostEvent(root, item)
