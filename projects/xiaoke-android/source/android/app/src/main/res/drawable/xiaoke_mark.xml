@@ -1,4 +1,8 @@
+<!-- 小克: a chat bubble with a face. Eyes and smile are even-odd holes, so the same path works as the themed (monochrome) icon. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#36523C" android:pathData="M30,27H41V51L62,27H77L52,54L79,81H63L41,59V81H30Z" />
-    <path android:fillColor="#A0B77E" android:pathData="M76,17C88,17 92,24 88,34C79,34 73,29 76,17Z" />
+    <path android:fillColor="#D6704A" android:fillType="evenOdd"
+        android:pathData="M44,29H64A16,16 0,0 1,80,45V56A16,16 0,0 1,64,72H49L36,82.5L38.5,71Q28,68 28,56V45A16,16 0,0 1,44,29Z
+            M42.2,48.5a3.8,3.8 0,1 0,7.6 0a3.8,3.8 0,1 0,-7.6 0Z
+            M58.2,48.5a3.8,3.8 0,1 0,7.6 0a3.8,3.8 0,1 0,-7.6 0Z
+            M45.5,56.5Q54,67 62.5,56.5Q54,61 45.5,56.5Z" />
 </vector>

@@ -16,7 +16,7 @@
       静态值按系统深色模式给（本目录=浅色、values-night=深色），
       这样「浅色主题 + 深色系统」在应用启动的那一瞬间不会先闪一下深色。
     -->
-    <color name="app_window_decoration">#F3F5F8</color>
+    <color name="app_window_decoration">#FAF5EF</color>
 
     <!-- Native overlay surfaces resolve the saved theme before showing. -->
     <color name="overlay_panel_background">#F3F5F8</color>

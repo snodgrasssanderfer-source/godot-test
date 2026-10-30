@@ -12,7 +12,7 @@
       与 Web 侧深色背景色以及 AppThemePreference.DARK_BAR_COLOR 同一取值：
       三处不一致就会在状态栏与页面之间露出一条色带。
     -->
-    <color name="app_window_decoration">#111315</color>
+    <color name="app_window_decoration">#181412</color>
 
     <color name="overlay_panel_background">#0F1317</color>
     <color name="overlay_panel_foreground">#F4F6F5</color>

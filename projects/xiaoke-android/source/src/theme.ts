@@ -37,12 +37,11 @@ const ACCENT_MODES: readonly AccentMode[] = ['ocean', 'mint', 'amber', 'rose']
 
 /**
  * theme-color 与各自主题的页面背景取同一个值，否则 Android 状态栏会和页面顶部
- * 拼出一条明显的色带。深色沿用 index.html 里原有的 #111315（不借改主题顺手
- * 改掉状态栏观感），浅色取浅色背景 --bg。
+ * 拼出一条明显的色带。取小克界面（companion.css）的 --bg。
  */
 export const THEME_COLORS: Readonly<Record<ResolvedTheme, string>> = {
-  light: '#f3f5f8',
-  dark: '#111315',
+  light: '#faf5ef',
+  dark: '#181412',
 }
 
 const THEME_EVENT = 'dsh-theme-change'

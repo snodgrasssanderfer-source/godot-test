@@ -34,10 +34,10 @@ internal object AppThemePreference {
     private val MODES = setOf(MODE_SYSTEM, MODE_LIGHT, MODE_DARK)
 
     /** 深色状态栏底色：与 `values/colors.xml` 及 Web 侧深色 `--bg` 同一取值。 */
-    const val DARK_BAR_COLOR = 0xFF111315.toInt()
+    const val DARK_BAR_COLOR = 0xFF181412.toInt()
 
     /** 浅色状态栏底色：与 Web 侧浅色 `--bg` 同一取值，避免状态栏与页面之间出现色带。 */
-    const val LIGHT_BAR_COLOR = 0xFFF3F5F8.toInt()
+    const val LIGHT_BAR_COLOR = 0xFFFAF5EF.toInt()
 
     /** 保存主题模式；非法值直接拒绝（调用方必须给出受控取值，不做「猜一个」）。 */
     fun save(context: Context, mode: String): Boolean {

@@ -187,13 +187,13 @@ class CompanionOverlayService : Service() {
             main.postDelayed(this, 1000)
         }
     }
-    private fun background(fill: Int = Color.rgb(246, 249, 239)) = GradientDrawable().apply { setColor(fill); cornerRadius = dp(18).toFloat(); setStroke(dp(1), Color.rgb(161, 181, 155)) }
+    private fun background(fill: Int = Color.rgb(255, 250, 245)) = GradientDrawable().apply { setColor(fill); cornerRadius = dp(18).toFloat(); setStroke(dp(1), Color.rgb(226, 196, 176)) }
     /** Hold colour (red while input is held, amber while only sensitive effects are) and the pending-approval badge. */
     private fun refreshBubble() {
         val fill = when {
             EmergencyHold.ordinaryHeld -> Color.rgb(239, 154, 154)
             EmergencyHold.sensitiveHeld -> Color.rgb(255, 213, 128)
-            else -> Color.rgb(246, 249, 239)
+            else -> Color.rgb(255, 250, 245)
         }
         bubbleLabel?.background = background(fill)
         val now = SystemClock.elapsedRealtime()
@@ -210,10 +210,10 @@ class CompanionOverlayService : Service() {
         val params = WindowManager.LayoutParams(size, size, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH, PixelFormat.TRANSLUCENT).apply { gravity = Gravity.TOP or Gravity.START; x = 0; y = dp(180) }
         val view = FrameLayout(theme)
-        val label = TextView(theme).apply { text = "小克"; gravity = Gravity.CENTER; textSize = 15f; background = background() }
+        val label = TextView(theme).apply { text = "小克"; gravity = Gravity.CENTER; textSize = 15f; setTextColor(Color.rgb(191, 90, 53)); typeface = android.graphics.Typeface.DEFAULT_BOLD; background = background() }
         val badge = TextView(theme).apply {
             textSize = 10f; gravity = Gravity.CENTER; setTextColor(Color.WHITE); minWidth = dp(18); setPadding(dp(4), 0, dp(4), 0); visibility = View.GONE
-            background = GradientDrawable().apply { setColor(Color.rgb(211, 47, 47)); cornerRadius = dp(9).toFloat() }
+            background = GradientDrawable().apply { setColor(Color.rgb(198, 76, 69)); cornerRadius = dp(9).toFloat() }
         }
         view.addView(label, FrameLayout.LayoutParams(-1, -1))
         view.addView(badge, FrameLayout.LayoutParams(-2, dp(18), Gravity.TOP or Gravity.END))
@@ -274,7 +274,7 @@ class CompanionOverlayService : Service() {
         web.loadUrl("https://xiaoke.local/presence-overlay.html")
         return wrapper
     }
-    private fun label(text: String) = TextView(theme).apply { this.text = text; textSize = 14f; setTextColor(Color.rgb(37, 65, 47)); setPadding(0, dp(6), 0, dp(6)) }
+    private fun label(text: String) = TextView(theme).apply { this.text = text; textSize = 14f; setTextColor(Color.rgb(46, 37, 32)); setPadding(0, dp(6), 0, dp(6)) }
     private fun button(text: String, action: () -> Unit) = Button(theme).apply { this.text = text; isAllCaps = false; setOnClickListener { action() } }
     /** Chat first: conversation on top, input at the bottom, everything else under "更多". The panel only takes focus while typing,
      * so the game underneath keeps its input and back key the rest of the time. */
@@ -308,9 +308,9 @@ class CompanionOverlayService : Service() {
         header.addView(smallButton("更多") { toggleExtras() })
         header.addView(smallButton("收起") { closePanel() })
         root.addView(header)
-        stateText = TextView(theme).apply { textSize = 12f; setTextColor(Color.rgb(90, 110, 95)) }
+        stateText = TextView(theme).apply { textSize = 12f; setTextColor(Color.rgb(154, 138, 126)) }
         root.addView(stateText)
-        val transcriptView = TextView(theme).apply { textSize = 15f; setTextColor(Color.rgb(37, 45, 40)); setTextIsSelectable(false) }
+        val transcriptView = TextView(theme).apply { textSize = 15f; setTextColor(Color.rgb(46, 37, 32)); setTextIsSelectable(false) }
         transcript = transcriptView
         val transcriptScroll = ScrollView(theme).apply { addView(transcriptView) }
         transcriptBox = transcriptScroll

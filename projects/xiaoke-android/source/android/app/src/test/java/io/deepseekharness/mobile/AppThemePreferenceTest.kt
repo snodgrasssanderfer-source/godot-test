@@ -37,7 +37,7 @@ class AppThemePreferenceTest {
     @Test
     fun `深浅两套底色与 Web 侧的 --bg 取值一致`() {
         // 取值写错会在状态栏与页面之间露出一条色带，因此把数值本身钉住。
-        assertEquals(0xFF111315.toInt(), AppThemePreference.DARK_BAR_COLOR)
-        assertEquals(0xFFF3F5F8.toInt(), AppThemePreference.LIGHT_BAR_COLOR)
+        assertEquals(0xFF181412.toInt(), AppThemePreference.DARK_BAR_COLOR)
+        assertEquals(0xFFFAF5EF.toInt(), AppThemePreference.LIGHT_BAR_COLOR)
     }
 }

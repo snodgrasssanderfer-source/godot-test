@@ -39,7 +39,7 @@ const BROWSER_CANDIDATES = [
 // 一变，`<html data-theme>` 与状态栏色都必须跟着变。这两个色值必须与 src/theme.ts 的
 // THEME_COLORS 一致，scripts/mobile-layout-contract.test.mjs 会比对两处字面量。
 const THEMES = ['light', 'dark']
-const THEME_COLORS = { light: '#f3f5f8', dark: '#111315' }
+const THEME_COLORS = { light: '#faf5ef', dark: '#181412' }
 
 class LayoutFailure extends Error {}
 
