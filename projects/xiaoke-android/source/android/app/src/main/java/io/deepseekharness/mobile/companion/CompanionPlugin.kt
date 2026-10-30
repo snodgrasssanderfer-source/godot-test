@@ -28,13 +28,27 @@ class CompanionPlugin : Plugin() {
     private val engine get() = CompanionEngine.get(context)
     private val presenceListener: (JSONObject) -> Unit = { event -> notifyListeners("presenceState", JSObject(event.toString())) }
     private val moduleListener: (JSONObject) -> Unit = { event -> notifyListeners("moduleState", JSObject(event.toString())) }
-    override fun load() { super.load(); CompanionPresenceHost.subscribe(presenceListener); engine.modules.router.subscribe(moduleListener) }
+    /** Why startup failed, shown in the app instead of Capacitor's bare "plugin is not implemented". */
+    @Volatile private var startupError: String? = null
+    override fun load() {
+        super.load()
+        // A throw here would unregister the whole plugin; keep it registered and report the cause instead.
+        try { CompanionPresenceHost.subscribe(presenceListener); engine.modules.router.subscribe(moduleListener) }
+        catch (e: Throwable) { startupError = "${e.javaClass.simpleName}: ${e.message}".take(300) }
+    }
     override fun handleOnDestroy() { CompanionPresenceHost.unsubscribe(presenceListener); engine.modules.router.unsubscribe(moduleListener); executor.shutdownNow(); super.handleOnDestroy() }
 
     @PluginMethod fun state(call: PluginCall) {
         executor.execute {
-            try { call.resolve(JSObject(snapshot().toString())) }
-            catch (_: Exception) { call.reject("无法读取助手数据") }
+            try {
+                startupError?.let { error ->
+                    // Try again: the cause may have been transient (storage busy right after an update).
+                    runCatching { engine.modules.router.subscribe(moduleListener) }.onSuccess { startupError = null }
+                        .onFailure { return@execute call.reject("小克启动失败：$error") }
+                }
+                call.resolve(JSObject(snapshot().toString()))
+            }
+            catch (e: Exception) { call.reject("无法读取助手数据：${e.javaClass.simpleName}: ${e.message}".take(300)) }
         }
     }
 

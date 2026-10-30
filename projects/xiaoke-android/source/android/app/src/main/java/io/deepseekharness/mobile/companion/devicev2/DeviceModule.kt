@@ -52,7 +52,8 @@ class DeviceModule(context: Context, private val ports: HostPorts, store: io.dee
     @Volatile private var audioConfig = runCatching { JSONObject(preferences.getString("audio", "{}")!!) }.getOrDefault(JSONObject())
 
     init {
-        check(active == null) { "设备模块已存在" }
+        // A module host that failed half-way through construction leaves its device module behind; retire it so a retry can start.
+        active?.let { old -> runCatching { old.close() } }
         active = this; DeviceAudioSession.onChanged = ::changed
         EmergencyHold.attach(app)
     }

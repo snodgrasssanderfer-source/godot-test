@@ -139,6 +139,12 @@ def generatePersonaAsset = tasks.register('generatePersonaAsset') {
 }
 
 android {
+    // Robolectric startup test: the companion plugin must load with every module built.
+    testOptions { unitTests {
+        includeAndroidResources = true
+        // Offline Robolectric when Maven Central rate-limits: ROBOLECTRIC_DEPS holds android-all-instrumented jars.
+        all { if (System.getenv('ROBOLECTRIC_DEPS')) { systemProperty 'robolectric.offline', 'true'; systemProperty 'robolectric.dependency.dir', System.getenv('ROBOLECTRIC_DEPS') } }
+    } }
     namespace 'io.deepseekharness.mobile'
     compileSdk 35
     ndkVersion '29.0.14033849-beta4'
@@ -159,8 +165,8 @@ android {
         minSdk 26
         targetSdk 35
         // 每次给主人安装的新版都把 versionCode 加一；Android 不允许降级覆盖。
-        versionCode 9
-        versionName '0.9.0-companion-private'
+        versionCode 10
+        versionName '0.9.1-companion-private'
 
         buildConfigField 'String', 'DEFAULT_MANIFEST_URL', envBuildValue('DSH_RUNTIME_MANIFEST_URL')
         buildConfigField 'String', 'DEFAULT_MANIFEST_SHA256', envBuildValue('DSH_RUNTIME_MANIFEST_SHA256')
@@ -290,6 +296,8 @@ dependencies {
 
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.json:json:20240303'
+    testImplementation 'org.robolectric:robolectric:4.14.1'
+    testImplementation 'androidx.test:core:1.6.1'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
 }

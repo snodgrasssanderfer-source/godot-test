@@ -22,7 +22,11 @@ class CompanionStore(private val context: Context, databaseName: String = "compa
     private var lastSocialPrune = 0L
     private val temporaryObservations = TemporaryObservations()
     private val committingSources = ThreadLocal<List<RecordRef>?>()
-    override fun onConfigure(db: SQLiteDatabase) { db.setForeignKeyConstraintsEnabled(true); db.execSQL("PRAGMA secure_delete=ON") }
+    override fun onConfigure(db: SQLiteDatabase) {
+        db.setForeignKeyConstraintsEnabled(true)
+        // This PRAGMA answers with a row; execSQL refuses statements that return rows, so it must go through rawQuery.
+        db.rawQuery("PRAGMA secure_delete=ON", null).use { it.moveToFirst() }
+    }
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE records(kind TEXT NOT NULL,id TEXT NOT NULL,scope TEXT NOT NULL,json TEXT NOT NULL,updated INTEGER NOT NULL,deleted INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(kind,id))")
         db.execSQL("CREATE INDEX scoped_records ON records(kind,scope,deleted,updated)")

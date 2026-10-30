@@ -1,6 +1,6 @@
 # 现状
 
-版本 0.9.0（versionCode 9），用固定签名，带完整 PRoot/Ubuntu 运行环境的 debug 包约 421 MiB。**还没装到真机上跑过**，下面写的都是代码层面的状态。
+版本 0.9.1（versionCode 10），用固定签名，带完整 PRoot/Ubuntu 运行环境的 debug 包约 421 MiB。**还没装到真机上跑过**，下面写的都是代码层面的状态。
 
 ## 已经有的
 - 聊天、记忆、日记、兴趣、预算分池。主人私聊域的记忆在读取层隔离，外部会话拿不到。预算没设置时照样能和主人聊，只有自主活动会停。
@@ -39,4 +39,4 @@
 - 真机验收：权限流程、后台存活、游戏代操作手感、语音。
 
 ## 验证
-每轮跑 `compileDebugKotlin`、`compileDebugAndroidTestKotlin`、`testDebugUnitTest`、`assembleDebug`。最近一次全部通过。
+每轮跑 `compileDebugKotlin`、`compileDebugAndroidTestKotlin`、`testDebugUnitTest`、`assembleDebug`。最近一次全部通过。`CompanionStartupTest` 用 Robolectric 在 JVM 上把引擎和全部模块建一遍，能抓到“插件加载失败”这类启动问题。
