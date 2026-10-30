@@ -47,6 +47,8 @@ class MessageDetailsTest {
         assertNotNull(StickerReader.stickerUrl("https://gxh.vip.qq.com/club/item/parcel/item/ab/abcd/raw300.gif"))
         assertNotNull(StickerReader.stickerUrl("https://multimedia.nt.qq.com/download?appid=1407"))
         assertNull(StickerReader.stickerUrl("https://example.com/a.gif"))
+        assertNotNull(OneBotProtocol.imageUrl("https://multimedia.nt.qq.com.cn/download?appid=1406&fileid=x")) // NapCat 4.18 hands out .cn
+        assertNotNull(io.deepseekharness.mobile.companion.social.MediaFormats.remoteUrl("https://multimedia.nt.qq.com.cn/download?appid=1402"))
         assertNull(StickerReader.stickerUrl("https://gxh.vip.qq.com.evil.test/a.gif"))
     }
 

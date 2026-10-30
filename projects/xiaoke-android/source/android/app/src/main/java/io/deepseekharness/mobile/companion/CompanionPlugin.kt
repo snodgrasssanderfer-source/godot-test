@@ -35,7 +35,15 @@ class CompanionPlugin : Plugin() {
         // A throw here would unregister the whole plugin; keep it registered and report the cause instead.
         try { CompanionPresenceHost.subscribe(presenceListener); engine.modules.router.subscribe(moduleListener) }
         catch (e: Throwable) { startupError = "${e.javaClass.simpleName}: ${e.message}".take(300) }
+        startResident()
     }
+    override fun handleOnResume() { super.handleOnResume(); startResident() }
+
+    /** Opening the app brings the resident service (and with it the QQ bridge) back; only the boot broadcast did before. */
+    private fun startResident() = runCatching {
+        val settings = engine.store.settings()
+        if ((settings.optBoolean("backgroundEnabled") || settings.optBoolean("oneBotEnabled")) && !settings.optBoolean("paused")) CompanionService.start(context)
+    }.onFailure { android.util.Log.w("Xiaoke", "resident service not started: ${it.message}") }
     override fun handleOnDestroy() { CompanionPresenceHost.unsubscribe(presenceListener); engine.modules.router.unsubscribe(moduleListener); executor.shutdownNow(); super.handleOnDestroy() }
 
     @PluginMethod fun state(call: PluginCall) {

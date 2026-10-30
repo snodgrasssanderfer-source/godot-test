@@ -58,6 +58,7 @@ export function SocialPanel({ state, run, available }: ModulePanelProps) {
   const account = text(accounts[0] ?? {}, 'account')
   const disabled = busy || !available
   const pendingApprovals = approvals.filter(a => text(a, 'state') === 'pending')
+  const qzoneMissing = Array.isArray(state.qzoneUnsupported) ? (state.qzoneUnsupported as string[]) : []
   const bili = record(state.bilibili)
   return <section className="social-panel" aria-label="社交与后台">
     {!available && <p role="status" className="xk-hint">社交模块还没连上。</p>}
@@ -80,7 +81,8 @@ export function SocialPanel({ state, run, available }: ModulePanelProps) {
       </div> })}
       {pendingApprovals.length > 1 && <button className="xk-btn" disabled={disabled} onClick={() => void act('approvals.approveBatch', { items: pendingApprovals.map(a => ({ id: text(a, 'id'), digest: text(a, 'digest') })) })}>全部放行</button>}
     </article>
-    <Section icon={<Planet size={20} weight="duotone"/>} title="QQ 与空间" summary={accounts.filter(a => text(a, 'route') !== 'bilibili').map(a => text(a, 'status')).filter(Boolean)[0] || '说说、评论、自主回复'}>
+    <Section icon={<Planet size={20} weight="duotone"/>} title="QQ 与空间" summary={qzoneMissing.length ? '空间需要升级 NapCat' : accounts.filter(a => text(a, 'route') !== 'bilibili').map(a => text(a, 'status')).filter(Boolean)[0] || '说说、评论、自主回复'}>
+      {qzoneMissing.length > 0 && <p className="xk-notice-card">现在的 NapCat 不支持读取 QQ 空间（{qzoneMissing.join('、')}），看动态、回评论、点赞都用不了，她也不再每半小时去试。升级 NapCat 后会自动恢复（每 6 小时检查一次）。</p>}
       <label><input type="checkbox" disabled={disabled} checked={config.qzoneLife !== false} onChange={e => void act('social.configure', { qzoneLife: e.target.checked })}/>QQ 空间：偶尔写说说、回评论、看好友动态</label>
       <label><input type="checkbox" disabled={disabled} checked={config.autonomousReplies === true} onChange={e => void act('social.configure', { autonomousDailyPost: config.autonomousDailyPost === true, autonomousReplies: e.target.checked })}/>在允许的群里自己回复</label>
       <label><input type="checkbox" disabled={disabled} checked={config.autonomousDailyPost === true} onChange={e => void act('social.configure', { autonomousDailyPost: e.target.checked, autonomousReplies: config.autonomousReplies === true })}/>我在这里写的说说直接发</label>

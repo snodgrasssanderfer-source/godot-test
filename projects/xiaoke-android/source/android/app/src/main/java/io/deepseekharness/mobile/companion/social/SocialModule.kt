@@ -104,6 +104,7 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
             .put("tokenConfigured", syncToken.configured()).put("keyConfigured", syncKey.configured())
         if (runCatching { SocialRules.owner(principal) }.isSuccess) {
             it.put("bilibili", biliState()); it.getJSONArray("accounts").put(biliState())
+            it.put("qzoneUnsupported", JSONArray(qzone.unsupported()))
             it.getJSONObject("service").put("qqActiveAdd", JSONObject().put("supported", false).put("reason", "当前 NapCat 协议只处理实际收到的好友请求和群邀请，不提供主动申请接口"))
         }
         if (runCatching { SocialRules.owner(principal) }.isSuccess) it.getJSONObject("service").put("conversations", JSONArray(objects(store.list("conversation"))

@@ -70,7 +70,7 @@ object OneBotProtocol {
     fun imageUrl(raw: String): String? = runCatching {
         val u = java.net.URI(raw)
         val host = u.host?.lowercase().orEmpty()
-        val allowed = host == "qpic.cn" || host.endsWith(".qpic.cn") || host == "qlogo.cn" || host.endsWith(".qlogo.cn") || host == "multimedia.nt.qq.com"
+        val allowed = host == "qpic.cn" || host.endsWith(".qpic.cn") || host == "qlogo.cn" || host.endsWith(".qlogo.cn") || host == "multimedia.nt.qq.com" || host == "multimedia.nt.qq.com.cn"
         if (!allowed || u.scheme !in setOf("http", "https") || u.userInfo != null || u.port !in setOf(-1, 443) || u.fragment != null) null
         else if (u.scheme == "http") "https:" + raw.substringAfter(':') else raw
     }.getOrNull()

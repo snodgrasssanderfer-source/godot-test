@@ -30,6 +30,7 @@ internal class QzoneLife(
     private val zone = ZoneId.systemDefault()
 
     private fun state() = ledger.read { copy(rows(it, "qzoneState")) }
+    private fun strings(a: JSONArray?) = if (a == null) emptyList() else (0 until a.length()).map { a.optString(it) }
     private fun save(change: (JSONObject) -> Unit) = ledger.change { change(rows(it, "qzoneState")) }
     private fun account() = store.settings().optString("oneBotAccount")
 
@@ -42,12 +43,27 @@ internal class QzoneLife(
     }
 
     private fun call(action: String, params: JSONObject): JSONObject? = runCatching {
-        bridge.callAction(account(), action, params).takeIf { it.optInt("retcode", -1) == 0 }?.optJSONObject("data")
+        val answer = bridge.callAction(account(), action, params)
+        // Official NapCat (4.18.x) has no qzone read API and answers 1404 "不支持的API"; remember it instead of polling.
+        if (answer.optInt("retcode", -1) == 1404) {
+            save { it.put("unsupported", JSONArray((strings(it.optJSONArray("unsupported")) + action).distinct())).put("unsupportedAt", System.currentTimeMillis()) }
+            android.util.Log.i("Xiaoke", "NapCat lacks $action (1404); qzone reading paused")
+        }
+        answer.takeIf { it.optInt("retcode", -1) == 0 }?.optJSONObject("data")
     }.getOrNull()
+
+    /** Read APIs this NapCat does not have; empty when all is well or after a fresh check. */
+    fun unsupported(now: Long = System.currentTimeMillis()): List<String> = state().let { s ->
+        if (now - s.optLong("unsupportedAt") > RECHECK_MS) emptyList() else strings(s.optJSONArray("unsupported"))
+    }
 
     fun tick(now: Long = System.currentTimeMillis()) {
         if (!allowed()) return
         runCatching { maybeDraftPost(now) }
+        // Without the read APIs, check again a few times a day (a NapCat upgrade turns it back on) instead of every 30 minutes.
+        val missing = unsupported(now)
+        if (missing.isNotEmpty()) return
+        if (state().optLong("unsupportedAt") > 0) save { it.remove("unsupported"); it.remove("unsupportedAt") }
         runCatching { checkComments(now) }
         runCatching { browseFriends(now) }
     }
@@ -218,6 +234,7 @@ internal class QzoneLife(
     }
 
     companion object {
+        const val RECHECK_MS = 6 * 3_600_000L
         /** Today's publishing slot: one to four hours after drafting, never after 22:30; otherwise tomorrow late morning. */
         fun publishTime(now: Long, zone: ZoneId = ZoneId.systemDefault(), random: Random = Random): Long {
             val candidate = now + random.nextLong(3_600_000L, 4 * 3_600_000L)

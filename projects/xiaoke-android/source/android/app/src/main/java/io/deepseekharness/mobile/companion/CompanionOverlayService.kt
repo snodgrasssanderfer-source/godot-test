@@ -196,6 +196,12 @@ class CompanionOverlayService : Service() {
             else -> Color.rgb(255, 250, 245)
         }
         bubbleLabel?.background = background(fill)
+        // QQ silently dropped (heartbeat says offline): the ball says so, since that is where the owner looks.
+        val qqDown = runCatching { engine.store.settings().optBoolean("oneBotEnabled") && !OneBotBridge.get(this).online }.getOrDefault(false)
+        bubbleLabel?.apply {
+            text = if (qqDown) "QQ\n掉线" else "小克"; textSize = if (qqDown) 11f else 15f
+            setTextColor(if (qqDown) Color.rgb(198, 76, 69) else Color.rgb(191, 90, 53))
+        }
         val now = SystemClock.elapsedRealtime()
         if (now - badgeCheckedAt >= 5_000) { badgeCheckedAt = now; pendingCount = runCatching { engine.modules.pendingApprovals().size }.getOrDefault(0) }
         val pending = pendingCount
@@ -516,6 +522,7 @@ class CompanionOverlayService : Service() {
         fun observedPackage() = if (running && SystemClock.elapsedRealtime() < deadline) allowedPackage else ""
         fun permits(pkg: String) = (running && pkg.isNotBlank() && pkg == allowedPackage && SystemClock.elapsedRealtime() < deadline) || DeviceModule.permitsObservation(pkg)
         /** Bring the ball back if the owner left it on (called by the resident service; may be refused in the background). */
+        fun refreshBadge(@Suppress("UNUSED_PARAMETER") context: Context) { activeService?.let { service -> service.main.post { service.refreshBubble() } } }
         fun restoreIfWanted(context: Context) {
             if (running || !Settings.canDrawOverlays(context) || !context.getSharedPreferences("companion-overlay", Context.MODE_PRIVATE).getBoolean("ball", false)) return
             runCatching { start(context) }

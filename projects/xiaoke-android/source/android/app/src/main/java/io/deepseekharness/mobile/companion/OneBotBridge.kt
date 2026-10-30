@@ -33,13 +33,24 @@ class OneBotBridge private constructor(private val context: Context) {
     fun setEffectGate(gate: ((JSONObject) -> Boolean)?) { effectGate = gate }
     /** Fingerprint of a certificate the server presented that is not trusted yet; the owner confirms it once. */
     @Volatile private var untrustedCertificate = ""
-    fun state() = JSONObject().put("connected", verified).put("status", status)
+    // Heartbeat watch: NapCat sends meta_event heartbeats (every 30 s) with status.online; a QQ login revoked by Tencent
+    // keeps the socket open, so the socket alone says nothing about whether messages still arrive.
+    @Volatile private var lastHeartbeat = 0L
+    @Volatile private var heartbeatInterval = 30_000L
+    @Volatile private var qqOnline = true
+    private val watch = java.util.concurrent.Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "xiaoke-qq-watch").apply { isDaemon = true } }
+    @Volatile private var watchTask: java.util.concurrent.ScheduledFuture<*>? = null
+    /** Socket verified and QQ itself online. */
+    val online get() = verified && qqOnline
+
+    fun state() = JSONObject().put("connected", verified && qqOnline).put("status", status).put("qqOnline", qqOnline).put("lastHeartbeat", lastHeartbeat)
         .put("tokenConfigured", CompanionSecrets(context, "onebot").configured())
         .put("account", engine.store.settings().optString("oneBotAccount")).put("untrustedCertificate", untrustedCertificate)
     @Synchronized fun ensureStarted() { if (socket == null) runCatching { start() }.onFailure { status = "配置不完整，请重新连接" } }
 
     @Synchronized fun stop() {
         generation++; verified = false; socket?.cancel(); socket = null
+        watchTask?.cancel(false); watchTask = null
         handler.removeCallbacksAndMessages(null); status = "已断开"
         receiveWorker.queue.clear()
         pending.values.forEach { it.latch.countDown() }; pending.clear()
@@ -77,10 +88,15 @@ class OneBotBridge private constructor(private val context: Context) {
                         }
                         if (account.isBlank()) { account = OneBotProtocol.numeric(loggedIn); engine.store.saveSettings(engine.store.settings().put("oneBotAccount", account)) }
                         untrustedCertificate = ""
-                        verified = true; failures = 0; status = "已连接 · 小克的 QQ $account"
+                        verified = true; failures = 0; status = "已连接 · 小克的 QQ $account"; qqOnline = true; lastHeartbeat = System.currentTimeMillis()
+                        startWatch(gen, account)
                         applyTargets(engine.store); return
                     }
                     pending.remove(echo)?.let { it.response = value; it.latch.countDown(); return }
+                    if (value.optString("post_type") == "meta_event") {
+                        if (value.optString("meta_event_type") == "heartbeat") heartbeat(value.optJSONObject("status"), value.optLong("interval", 30_000L))
+                        return
+                    }
                     if (!verified || engine.store.settings().optBoolean("paused")) return
                     if (value.optString("post_type") == "request" && value.optString("self_id") == account) {
                         val kind = value.optString("request_type")
@@ -187,8 +203,15 @@ class OneBotBridge private constructor(private val context: Context) {
                 .put("createdAt", System.currentTimeMillis()).put("analyzed", false).put("parts", parts)).getString("id")
         }
         val c = store.get("conversation", scope) ?: return
-        val unread = (0 until attachments.length()).count { attachments.getJSONObject(it).optString("kind") in setOf("image", "mface", "record", "video") }
-        val summary = if (unread > 0) " [已读取 $read 个媒体片段；其余未读取，具体格式可能不受支持]" else ""
+        val missed = (0 until attachments.length()).map { attachments.getJSONObject(it) }
+            .filter { it.optString("kind") in setOf("image", "mface", "record", "video") && it.optString("status") != "bytes_ready_for_model" }
+        val why = missed.map { a -> when (a.optString("status")) {
+            "not_authorized" -> "这个会话没开读图/听语音"
+            "batch_limit" -> "一条消息最多读三个"
+            "cache_limit" -> "太大了放不下"
+            else -> a.optString("reason").ifBlank { "没读到" }
+        } }.distinct()
+        val summary = if (missed.isNotEmpty()) " [已读取 $read 个媒体片段；${missed.size} 个没读到：${why.joinToString("；")}]" else ""
         val replyTo = event.optString("replyTo")
         val mine = c.optJSONArray("myMessageIds")?.let { a -> (0 until a.length()).map { a.optString(it) } }.orEmpty()
         val replyToHer = replyTo.isNotBlank() && replyTo in mine
@@ -196,6 +219,40 @@ class OneBotBridge private constructor(private val context: Context) {
             "OneBot 消息 ${event.getString("id")}", event.optBoolean("mentioned"), event.getString("senderId"), observationId, event.optString("platformMessageId"),
             replyToHer, event.optBoolean("mentionsOther") || (replyTo.isNotBlank() && !replyToHer))
     }
+    private fun heartbeat(status: JSONObject?, interval: Long) {
+        lastHeartbeat = System.currentTimeMillis()
+        heartbeatInterval = interval.coerceIn(5_000L, 300_000L)
+        val nowOnline = status?.let { if (it.has("online") && !it.isNull("online")) it.optBoolean("online") else true } ?: true
+        if (nowOnline != qqOnline) setQqOnline(nowOnline, if (nowOnline) "QQ 重新在线" else "QQ 已掉线（NapCat 报告不在线），需要在服务器上重新扫码登录")
+    }
+
+    private fun setQqOnline(value: Boolean, why: String) {
+        qqOnline = value
+        status = if (value) "已连接 · 小克的 QQ ${engine.store.settings().optString("oneBotAccount")}" else why
+        android.util.Log.w("Xiaoke", "QQ online=$value: $why")
+        runCatching { engine.modules.router.signal("all", "bridge.state") }
+        CompanionOverlayService.refreshBadge(context)
+    }
+
+    /** Every heartbeat period: two missed heartbeats mean offline; every five minutes ask get_status directly. */
+    private fun startWatch(gen: Int, account: String) {
+        watchTask?.cancel(false)
+        var ticks = 0
+        watchTask = watch.scheduleWithFixedDelay({
+            if (gen != generation || !verified) return@scheduleWithFixedDelay
+            val silent = System.currentTimeMillis() - lastHeartbeat
+            if (silent > 2 * heartbeatInterval + 5_000L && qqOnline) setQqOnline(false, "超过两个心跳周期（${silent / 1000} 秒）没收到 NapCat 心跳，可能已掉线")
+            if (++ticks % 10 == 0 || !qqOnline) runCatching {
+                val data = callAction(account, "get_status", JSONObject()).optJSONObject("data")
+                if (data != null && data.has("online")) {
+                    val online = data.optBoolean("online")
+                    if (online) lastHeartbeat = System.currentTimeMillis()
+                    if (online != qqOnline) setQqOnline(online, if (online) "QQ 重新在线" else "QQ 已掉线（get_status 报告不在线），需要在服务器上重新扫码登录")
+                }
+            }
+        }, 30, 30, TimeUnit.SECONDS)
+    }
+
     /** Sticker shelf lookup by name, provided by the social module that holds the owner's media. */
     @Volatile private var stickerSource: ((String) -> io.deepseekharness.mobile.companion.chat.OutgoingSegments.Sticker?)? = null
     fun setStickerSource(source: ((String) -> io.deepseekharness.mobile.companion.chat.OutgoingSegments.Sticker?)?) { stickerSource = source }
@@ -275,7 +332,7 @@ class OneBotBridge private constructor(private val context: Context) {
     }
     /** Module-owned durable ledger must claim a write before calling. No automatic retry here. */
     fun callAction(account: String, action: String, params: JSONObject): JSONObject {
-        check(action in setOf("send_msg", "send_qzone_msg", "get_group_member_info", "get_stranger_info", "comment_qzone_public_feed", "set_friend_add_request", "set_group_add_request", "set_group_leave", "get_qzone_public_feeds", "get_forward_msg",
+        check(action in setOf("send_msg", "send_qzone_msg", "get_group_member_info", "get_stranger_info", "get_status", "comment_qzone_public_feed", "set_friend_add_request", "set_group_add_request", "set_group_leave", "get_qzone_public_feeds", "get_forward_msg",
             "get_qzone_feeds", "get_qzone_msg_list", "get_qzone_msg_detail", "comment_qzone", "like_qzone") + EXTRAS) { "不支持的桥动作" }
         val settings = engine.store.settings()
         check(verified && settings.optBoolean("oneBotEnabled") && settings.optBoolean("networkEnabled") && !settings.optBoolean("paused")) { "消息桥未连接" }

@@ -82,6 +82,8 @@ export function CompanionApp() {
       </button>)}
     </nav>
     <main className="xk-main" key={tab}>
+      {snapshot.settings.oneBotEnabled && snapshot.messageBridge && !snapshot.messageBridge.connected &&
+        <button className="xk-offline" onClick={() => setTab('device')}>QQ 没连上：{snapshot.messageBridge.status}</button>}
       {tab === 'chat' && <ChatPage snapshot={snapshot} presence={presence} run={run} onSetup={() => setTab('settings')}/>}
       {tab === 'memory' && <div className="xk-scroll"><div className="xk-page"><PageHeader title="生活"/>
         <LifePanel state={snapshot.modules?.life ?? {}} available={nativeCompanion && snapshot.modules?.life.available === true} scopes={lifeScopes} run={(action, data) => run('module', {domain: 'life', action, data: data ?? {}})} saveFile={(file, text) => run('saveDocument', {name: file, text})}/>

@@ -5,7 +5,7 @@ import java.net.URI
 object MediaFormats {
     fun remoteUrl(raw: String): String? = runCatching {
         val uri = URI(raw); val host = uri.host?.lowercase().orEmpty()
-        val approved = host == "qpic.cn" || host.endsWith(".qpic.cn") || host == "qlogo.cn" || host.endsWith(".qlogo.cn") || host in setOf("multimedia.nt.qq.com", "grouptalk.c2c.qq.com")
+        val approved = host == "qpic.cn" || host.endsWith(".qpic.cn") || host == "qlogo.cn" || host.endsWith(".qlogo.cn") || host in setOf("multimedia.nt.qq.com", "multimedia.nt.qq.com.cn", "grouptalk.c2c.qq.com")
         if (!approved || uri.scheme !in setOf("https", "http") || uri.userInfo != null || uri.port !in setOf(-1,443) || uri.fragment != null) null
         else if (uri.scheme == "http") "https:" + raw.substringAfter(':') else raw
     }.getOrNull()
