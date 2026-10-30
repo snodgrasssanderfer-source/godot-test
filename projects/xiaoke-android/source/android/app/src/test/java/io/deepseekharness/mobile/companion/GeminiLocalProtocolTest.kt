@@ -75,6 +75,16 @@ class GeminiLocalProtocolTest {
         replies = listOf(200 to event(JSONArray("""[{"functionCall":{"name":"recall","partialArgs":[{"text":"x"}],"willContinue":true}}]"""), "STOP"))
         assertThrows(IllegalStateException::class.java) { generate() }; assertEquals(1, requests.size)
     }
+    @Test fun relayErrorInsideTheStreamKeepsWhatTheRelaySaid() {
+        replies = listOf(200 to "data: {\"error\":{\"message\":\"upstream service request failed\",\"code\":\"upstream_service_error\"},\"type\":\"error\"}\n\n")
+        val error = assertThrows(ModelRejected::class.java) { generate() }
+        assertEquals(200, error.status); assertTrue(error.detail.contains("upstream_service_error")); assertEquals(1, requests.size)
+    }
+    @Test fun rejectedRequestCarriesTheRelayBodyForTheOwner() {
+        replies = listOf(400 to "{\"error\":{\"message\":\"Function calling with search is unsupported\"}}")
+        val error = assertThrows(ModelRejected::class.java) { generate() }
+        assertEquals(400, error.status); assertTrue(error.detail.contains("unsupported")); assertFalse(error.message.orEmpty().contains("unsupported"))
+    }
     @Test fun authFailureDoesNotExposeResponseBodyOrRetry() {
         replies = listOf(403 to "private upstream diagnostic")
         val error = assertThrows(IllegalStateException::class.java) { generate() }

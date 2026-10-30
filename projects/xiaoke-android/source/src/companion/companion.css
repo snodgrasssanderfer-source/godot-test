@@ -336,3 +336,5 @@
 .xk-step-row.ok .xk-state { color: var(--ok); }
 .xk-step-row:not(.ok) .xk-state { color: var(--accent-strong); }
 .xk-scope { align-items: flex-start !important; }
+.xk-diag { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); font-size: 13.5px; overflow-wrap: anywhere; }
+.xk-diag pre { max-height: 180px; font-size: 11.5px; }

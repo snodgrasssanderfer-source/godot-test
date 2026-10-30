@@ -8,10 +8,11 @@ import org.json.JSONObject
  *
  * Whether the relay passes them through, and whether the model accepts them next to our own function declarations,
  * is found out on the phone: one tiny probe per relay+model, remembered for a week. Then:
- * - "combined": the chat request carries the built-ins directly;
  * - "split": she gets a `web_research` function, and each use is a separate request with only the built-ins,
  *   billed to the same pool as the turn that asked (owner chat → owner, groups and her own activity → activity);
  * - "none": the relay does not support them; no web tool is offered.
+ * Built-ins are never sent next to our own functions: relays that do not handle the mix answer with an error event
+ * inside an HTTP 200 stream (seen on new-api relays), and a probe that once passed is no promise for the next request.
  */
 class WebResearch(private val store: CompanionStore, private val client: GeminiClient) {
     data class Billing(val before: () -> Unit, val after: (GeminiClient.AttemptResult) -> Unit)
@@ -21,6 +22,7 @@ class WebResearch(private val store: CompanionStore, private val client: GeminiC
     fun cached(settings: JSONObject, profile: JSONObject): String? {
         val state = store.lifeState("geminiWeb").optJSONObject(key(settings, profile)) ?: return null
         return state.optString("mode").takeIf { System.currentTimeMillis() - state.optLong("checkedAt") < 7 * 86_400_000L && it.isNotBlank() }
+            ?.let { if (it == "combined") "split" else it } // remembered by earlier versions
     }
 
     fun remember(settings: JSONObject, profile: JSONObject, mode: String) = store.lifeTransaction {
@@ -36,21 +38,15 @@ class WebResearch(private val store: CompanionStore, private val client: GeminiC
         return mode(settings, profile, billing).also { if (it == "unknown") unknownUntil = System.currentTimeMillis() + 3_600_000L }
     }
 
-    /** Finds out (at most two small requests) and remembers. Transient failures are not remembered. */
+    /** Finds out (one small request with only the built-ins) and remembers. Transient failures are not remembered. */
     fun mode(settings: JSONObject, profile: JSONObject, billing: Billing): String {
         cached(settings, profile)?.let { return it }
         if (settings.optString("webSearch", "auto") == "off") return "none"
-        val probe = JSONObject(profile.toString()).put("maxOutputTokens", 32).put("maxHops", 1).put("thinkingMode", "none").put("tools", true)
+        val probe = JSONObject(profile.toString()).put("maxOutputTokens", 256).put("maxHops", 1).put("tools", false)
         val contents = JSONArray().put(JSONObject().put("role", "user").put("parts", JSONArray().put(JSONObject().put("text", "只回复 OK"))))
-        val noop = JSONArray().put(JSONObject().put("name", "noop").put("description", "不要调用").put("parameters", JSONObject().put("type", "OBJECT").put("properties", JSONObject())))
-        fun attempt(tools: JSONArray): Boolean? = try {
-            client.generate(settings, probe, contents, "测试", tools, progress = {}, beforeRequest = billing.before, onAttemptFinished = billing.after, builtins = true); true
-        } catch (_: ModelRejected) { false } catch (_: Exception) { null }
-        val mode = when (attempt(noop)) {
-            true -> "combined"
-            false -> when (attempt(JSONArray())) { true -> "split"; false -> "none"; null -> return "unknown" }
-            null -> return "unknown"
-        }
+        val mode = try {
+            client.generate(settings, probe, contents, "测试", JSONArray(), progress = {}, beforeRequest = billing.before, onAttemptFinished = billing.after, builtins = true); "split"
+        } catch (e: ModelRejected) { if (e.status == 200) return "unknown" else "none" } catch (_: Exception) { return "unknown" }
         remember(settings, profile, mode)
         return mode
     }

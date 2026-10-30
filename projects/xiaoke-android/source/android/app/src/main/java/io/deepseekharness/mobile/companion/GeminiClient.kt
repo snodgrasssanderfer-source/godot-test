@@ -53,7 +53,9 @@ object GeminiWire {
         val sources = JSONArray()
         val pages = JSONArray()
         fun accept(response: JSONObject) {
-            if (response.has("error")) error("模型返回协议错误；请核对该模型在站点的能力配置")
+            // Relays (new-api and the like) report upstream failures as an error event inside an HTTP 200 stream.
+            if (response.has("error")) throw ModelRejected(200, "中转在返回流里报错：" +
+                (response.optJSONObject("error")?.optString("message") ?: response.optString("error")).take(160), response.toString().take(800))
             val prompt = response.optJSONObject("promptFeedback")
             if (prompt?.has("blockReason") == true) error("模型未生成内容：${prompt.optString("blockReason")}")
             if (response.has("usageMetadata")) usage = response.getJSONObject("usageMetadata")
@@ -100,8 +102,12 @@ object GeminiWire {
     }
 }
 
-/** The relay or model refused the request shape itself (400/404/422/501): a capability problem, not a transient one. */
-class ModelRejected(val status: Int, message: String) : IllegalStateException(message)
+/** The model call did not produce an answer. [status] is the HTTP status (200 for an error inside the stream, null when
+ * the connection broke); [detail] is the start of what the relay sent back, kept so the owner can see the real cause. */
+open class ModelFailure(val status: Int?, message: String, val detail: String = "") : IllegalStateException(message)
+
+/** The relay or model refused the request itself (400/404/422/501, or an error event in the stream). */
+class ModelRejected(status: Int, message: String, detail: String = "") : ModelFailure(status, message, detail)
 
 class GeminiClient internal constructor(private val readKey: () -> String, private val transport: OkHttpClient? = null) {
     data class AttemptResult(val outcome: String, val usage: JSONObject, val transmitted: Boolean, val httpStatus: Int?)
@@ -109,6 +115,8 @@ class GeminiClient internal constructor(private val readKey: () -> String, priva
     @Volatile private var activeCall: Call? = null
     private val cancelled = AtomicBoolean(false)
     fun cancel() { cancelled.set(true); activeCall?.cancel() }
+    /** Relay text shown to the owner; the key never appears in it even if a relay echoes the request. */
+    private fun redact(body: String) = runCatching { readKey() }.getOrDefault("").let { key -> if (key.length >= 8) body.replace(key, "***") else body }.take(800)
     fun reset() { cancelled.set(false) }
     fun checkCancelled() { check(!cancelled.get() && !Thread.currentThread().isInterrupted) { "任务已取消" } }
 
@@ -150,14 +158,14 @@ class GeminiClient internal constructor(private val readKey: () -> String, priva
                     call.execute().use { response ->
                         httpStatus = response.code
                         if (response.code == 429 || response.code in 500..599) {
-                            if (attempt == 2) error("模型服务暂不可用（HTTP ${response.code}），请稍后重试")
+                            if (attempt == 2) throw ModelFailure(response.code, "模型服务暂不可用（HTTP ${response.code}）", redact(response.peekBody(4096).string()))
                             val wait = response.header("Retry-After")?.toLongOrNull()?.coerceIn(1, 30) ?: (attempt + 1).toLong()
                             progress("服务繁忙，${wait} 秒后重试（${attempt + 1}/2）")
                             repeat((wait * 10).toInt()) { checkCancelled(); Thread.sleep(100) }
                             return@use
                         }
                         if (response.code in setOf(400, 404, 422, 501)) throw ModelRejected(response.code,
-                            "模型或请求能力不被站点支持（HTTP ${response.code}），请核对模型 ID/工具/思考配置")
+                            "中转拒绝了这次请求（HTTP ${response.code}）", redact(response.peekBody(4096).string()))
                         check(response.isSuccessful) { when (response.code) {
                             401, 403 -> "模型鉴权失败，请在本机核对密钥与站点权限"
                             400, 404 -> "模型或请求能力不被站点支持（HTTP ${response.code}），请核对模型 ID/工具/思考配置"
@@ -171,7 +179,8 @@ class GeminiClient internal constructor(private val readKey: () -> String, priva
                             if (data.isNotEmpty()) {
                                 val payload = data.toString().trim()
                                 if (payload != "[DONE]") {
-                                    one.accept(JSONObject(payload))
+                                    val event = runCatching { JSONObject(payload) }.getOrElse { throw ModelRejected(200, "中转返回了看不懂的内容", payload.take(800)) }
+                                    one.accept(event)
                                     if (System.currentTimeMillis() - lastPreviewAt > 400) {
                                         onText((GeminiWire.text(aggregate.parts) + GeminiWire.text(one.parts)).take(64000))
                                         lastPreviewAt = System.currentTimeMillis()
@@ -192,14 +201,14 @@ class GeminiClient internal constructor(private val readKey: () -> String, priva
                             }
                         }
                         flushEvent()
-                        check(one.finish.isNotEmpty()) { "模型流中断，未提交任何工具动作；可手动重试" }
+                        if (one.finish.isEmpty()) throw ModelFailure(response.code, "回答没有正常结束（流被截断）")
                         completed = true
                     }
                     if (completed) break
                 } catch (_: IOException) {
                     checkCancelled()
-                    // Do not replay a partially consumed stream or tool calls after uncertain network loss.
-                    error("模型连接中断，已停止本轮；未执行尚未完成的工具结果，请手动重试")
+                    // Not replayed here; tools only run after a complete answer, so the caller may retry the whole round.
+                    throw ModelFailure(null, "模型连接中断")
                 } finally {
                     activeCall = null
                     onAttemptFinished(AttemptResult(
