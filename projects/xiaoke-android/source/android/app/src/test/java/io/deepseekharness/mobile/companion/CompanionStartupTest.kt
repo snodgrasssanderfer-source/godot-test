@@ -2,6 +2,7 @@ package io.deepseekharness.mobile.companion
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertThrows
@@ -31,10 +32,31 @@ class CompanionStartupTest {
             failuresAreTold(engine.store)
             ownerRequestedSendIgnoresGroupReplySettings(engine.store)
             personaVersionsCountUpOnceAndAliasesCount(engine.store)
+            claudeOnlyWhereTurnedOn(engine.store)
         } catch (e: Throwable) {
             // Stack traces cannot be formatted inside the sandbox on this JDK; carry the cause chain as text.
             throw AssertionError(generateSequence(e) { it.cause }.joinToString(" <- ") { "${it.javaClass.name}: ${it.message}" })
         } finally { java.security.Security.removeProvider("AndroidKeyStore") }
+    }
+
+    /** Groups stay on Gemini unless the owner switches that one group; any outage sends everything back to Gemini. */
+    private fun claudeOnlyWhereTurnedOn(store: CompanionStore) {
+        val chat = io.deepseekharness.mobile.companion.claude.ClaudeChat
+        val group = org.json.JSONObject().put("id", "qq:group:a")
+        assertEquals("gemini", chat.engineFor(store, CompanionPolicy.OWNER, true, null, installed = true)) // not enabled yet
+        chat.saveSettings(store, org.json.JSONObject().put("enabled", true).put("model", "default").put("effort", "high"))
+        assertEquals("claude", chat.engineFor(store, CompanionPolicy.OWNER, true, null, installed = true))
+        assertEquals("gemini", chat.engineFor(store, CompanionPolicy.OWNER, true, null, installed = false))
+        assertEquals("gemini", chat.engineFor(store, "qq:group:a", false, group, installed = true))
+        assertEquals("claude", chat.engineFor(store, "qq:group:a", false, JSONObject(group.toString()).put("engine", "claude"), installed = true))
+        assertEquals("gemini", chat.engineFor(store, "qq:private:x", false, org.json.JSONObject().put("engine", "claude"), installed = true))
+        assertTrue(chat.recordOutage(store, io.deepseekharness.mobile.companion.claude.ClaudeStream.Failure.LIMIT, "limit", null))
+        assertTrue(!chat.recordOutage(store, io.deepseekharness.mobile.companion.claude.ClaudeStream.Failure.LIMIT, "limit", null)) // told once
+        assertEquals("gemini", chat.engineFor(store, CompanionPolicy.OWNER, true, null, installed = true))
+        chat.saveSettings(store, org.json.JSONObject().put("enabled", true).put("model", "opus").put("effort", "max"))
+        assertEquals("claude", chat.engineFor(store, CompanionPolicy.OWNER, true, null, installed = true))
+        assertThrows(IllegalArgumentException::class.java) { chat.saveSettings(store, org.json.JSONObject().put("model", "x; rm").put("effort", "high")) }
+        chat.saveSettings(store, org.json.JSONObject().put("enabled", false).put("model", "default").put("effort", "medium"))
     }
 
     /** She sees why a reply did not go out; a group only sees its own failures, the owner sees all. */

@@ -3,10 +3,11 @@ import { ArrowCounterClockwise, CaretRight, Check, CircleHalf, Compass, Download
 import { field, nativeCompanion, profile, type Entry, type Persona, type Run, type Settings, type Snapshot } from './bridge'
 import { downloadText, readCharacterCard } from './characterCard'
 import { DailyBudget } from './DailyBudget'
+import { ClaudePanel } from './ClaudePanel'
 import { readThemeMode, saveThemeMode, type ThemeMode } from '../theme'
 import { Avatar, PageHeader, Section, Segmented } from './ui'
 
-type Pane = 'model' | 'persona' | 'more'
+type Pane = 'model' | 'claude' | 'persona' | 'more'
 
 export function SettingsPage({snapshot, run, onSetup, onWorkbench}: {snapshot: Snapshot; run: Run; onSetup: () => void; onWorkbench: () => void}) {
   const [pane, setPane] = useState<Pane>('model')
@@ -17,9 +18,10 @@ export function SettingsPage({snapshot, run, onSetup, onWorkbench}: {snapshot: S
       <Avatar name={name} size={64} live={snapshot.settings.networkEnabled && !snapshot.settings.paused}/>
       <div><strong>{name}</strong><small>{snapshot.settings.activeModel}{snapshot.persona.version ? ` · 人设 v${snapshot.persona.version}` : ''}</small></div>
     </div>
-    <Segmented label="设置分类" value={pane} onChange={setPane} options={[['model', '模型'], ['persona', '人设'], ['more', '其他']]}/>
+    <Segmented label="设置分类" value={pane} onChange={setPane} options={[['model', 'Gemini'], ['claude', 'Claude'], ['persona', '人设'], ['more', '其他']]}/>
     <div className="xk-pane" key={pane}>
       {pane === 'model' && <Models snapshot={snapshot} run={run}/>}
+      {pane === 'claude' && <ClaudePanel run={run}/>}
       {pane === 'persona' && <PersonaEditor value={snapshot.persona} versions={snapshot.personaVersions} run={run}/>}
       {pane === 'more' && <More run={run} onSetup={onSetup} onWorkbench={onWorkbench}/>}
     </div>

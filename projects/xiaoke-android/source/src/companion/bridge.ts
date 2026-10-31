@@ -27,7 +27,19 @@ export interface Snapshot {
   character?: {path?: string; version?: number; layout?: 'portrait'|'sprite-4x6'}
   overlaySession?: {running: boolean; package: string; remainingSeconds: number}
   messageBridge?: {connected: boolean; status: string; tokenConfigured: boolean; account?: string; untrustedCertificate?: string}
+  claude?: ClaudeSnapshot
   permissions: { accessibility: { serviceStatus: string; allowedPackages: string[] }; notificationAccess: boolean; overlay: boolean; microphone?: boolean; postNotifications?: boolean; onDeviceSpeech?: boolean; batteryExempt?: boolean; shizuku?: 'ready' | 'no_permission' | 'not_running'; androidVersion: string; abis: string[] }
+}
+export interface ClaudePermission { id: string; taskId: string; scope: string; tool: string; summary: string; at: number }
+export interface ClaudeSettings { enabled: boolean; model: string; effort: 'low' | 'medium' | 'high' | 'xhigh' | 'max' }
+export interface ClaudeSnapshot { installed: string | null; settings: ClaudeSettings; permissions: ClaudePermission[]; outage: {reason: string; detail: string; until: number} | null }
+interface ClaudeWindow { utilization: number; resetsAt: number }
+export interface ClaudeStatus extends ClaudeSnapshot {
+  runtimeReady: boolean; version: string | null; loggedIn: boolean; authMethod: string; authNote: string
+  install: {phase: 'idle' | 'checking' | 'downloading' | 'verifying' | 'done' | 'failed'; done?: number; total?: number; error?: string; version?: string}
+  login: {running: boolean; exit?: number | null; output?: string; url?: string | null}
+  usage: {status?: string; type?: string; updatedAt?: number; fiveHour?: ClaudeWindow; sevenDay?: ClaudeWindow; sevenDayOpus?: ClaudeWindow}
+  workspace: {path: string; exists: boolean; repo?: string; branch?: string; dirty?: boolean}
 }
 interface Bridge {
   addListener(eventName: 'presenceState', listener: (state: PresenceState) => void): Promise<{remove(): Promise<void>}>

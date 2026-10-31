@@ -14,6 +14,7 @@ import io.deepseekharness.mobile.companion.iteration.ModelAccounting
 import io.deepseekharness.mobile.companion.iteration.CommandPrincipal
 import io.deepseekharness.mobile.companion.iteration.ProviderHistoryPrivacy
 import io.deepseekharness.mobile.companion.life.LifeMemoryRepository
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -25,6 +26,10 @@ class CompanionEngine private constructor(private val context: Context) {
     @Volatile private var activeWeb: Triple<JSONObject, JSONObject, WebResearch.Billing>? = null
     private val model = GeminiClient(secrets)
     private val worker = ModelWorkQueue()
+    /** Claude turns run beside Gemini, not behind it: a long coding task must not hold up group replies. */
+    private val claudeWorker = ModelWorkQueue()
+    val claude by lazy { io.deepseekharness.mobile.companion.claude.ClaudeRuntime(context) }
+    private val claudeTurns = ConcurrentHashMap<String, io.deepseekharness.mobile.companion.claude.ClaudeTurn>()
     val modules by lazy { CompanionModuleHost(context, this, store) }
     private val moduleRequests = ConcurrentHashMap<String, AtomicBoolean>()
     private val preempted = ConcurrentHashMap.newKeySet<String>()
@@ -70,12 +75,18 @@ class CompanionEngine private constructor(private val context: Context) {
                 followUps.getOrPut(scope) { mutableListOf() }.add(messageId to observationId)
                 return busy
             }
-            store.put("task", JSONObject().put("scope", scope).put("type", "chat").put("state", "queued")
+            // The engine is fixed here, for this whole reply; a changed setting applies from the next message.
+            val engine = io.deepseekharness.mobile.companion.claude.ClaudeChat.engineFor(store, scope, modules.principal(scope).owner,
+                store.get("conversation", scope), runCatching { claude.version() != null }.getOrDefault(false))
+            store.put("task", JSONObject().put("scope", scope).put("type", "chat").put("state", "queued").put("engine", engine)
                 .put("messageId", messageId).put("observationId", observationId).put("ownerAsked", ownerAsked).put("progress", "等待处理")).also { busyScopes[scope] = it.getString("id") }
         }
         val owner = modules.principal(scope).owner || ownerAsked
-        if (owner) yieldActivityToOwner()
-        worker.submit(task.getString("id"), owner) { runChat(task.getString("id")) }
+        if (task.optString("engine") == io.deepseekharness.mobile.companion.claude.ClaudeChat.ENGINE_CLAUDE) claudeWorker.submit(task.getString("id"), owner) { runChat(task.getString("id")) }
+        else {
+            if (owner) yieldActivityToOwner()
+            worker.submit(task.getString("id"), owner) { runChat(task.getString("id")) }
+        }
         return task
     }
     /** A reply for [scope] is queued or being written right now. */
@@ -92,6 +103,9 @@ class CompanionEngine private constructor(private val context: Context) {
 
     fun cancel(id: String) {
         worker.cancelQueued(id)
+        claudeWorker.cancelQueued(id)
+        claudeTurns[id]?.cancel()
+        io.deepseekharness.mobile.companion.claude.ClaudePermissions.dropTask(id)
         synchronized(modelLease) { if (id == activeTask) model.cancel() }
         store.cancelTask(id)
     }
@@ -271,7 +285,10 @@ class CompanionEngine private constructor(private val context: Context) {
     private fun runChat(id: String) {
         val task = store.get("task", id) ?: return
         if (task.optString("state") != "queued") { finishTurn(task.getString("scope"), id); return }
-        beginModelTask(id, modules.principal(task.getString("scope")).owner || task.optBoolean("ownerAsked"))
+        val viaClaude = task.optString("engine") == io.deepseekharness.mobile.companion.claude.ClaudeChat.ENGINE_CLAUDE
+        // Claude has its own process per turn; the Gemini lease (and its preemption) is only for Gemini turns.
+        if (!viaClaude) beginModelTask(id, modules.principal(task.getString("scope")).owner || task.optBoolean("ownerAsked"))
+        var handedOver = false
         try {
             val settings = store.settings()
             check(!settings.optBoolean("paused")) { "助手已暂停" }
@@ -363,8 +380,12 @@ class CompanionEngine private constructor(private val context: Context) {
                 append("【当下背景】现在是 ${java.time.LocalDateTime.now().withSecond(0).withNano(0)}。")
                 // Asked "你用的什么模型", she answers from this, not from what she guesses the setting is.
                 val lastModel = all.take(end).lastOrNull { it.optString("role") == "assistant" }?.optString("source")?.removePrefix("模型 ")?.takeIf { it.startsWith("gemini") }
-                append("这一轮用的模型是 ${profile.getString("model")}（日常设置：${settings.optString("activeModel")}；失败时会自动换 flash）")
-                append(if (lastModel != null) "，你上一条回复实际用的是 $lastModel。\n" else "。\n")
+                if (viaClaude) append("这一轮由 Claude（经主人登录的 Claude Code）来回答；Claude 不可用时会换回 Gemini。\n")
+                else {
+                    append("这一轮用的模型是 ${profile.getString("model")}（日常设置：${settings.optString("activeModel")}；失败时会自动换 flash）")
+                    append(if (lastModel != null) "，你上一条回复实际用的是 $lastModel。\n" else "。\n")
+                    task.optString("fallbackReason").takeIf { it.isNotBlank() }?.let { append("这一轮本该由 Claude 回答，但$it，所以换成了 Gemini。主人问起再说。\n") }
+                }
                 if (owner) {
                     val device = modules.device.snapshot(modules.localOwner)
                     append("手机控制状态：${device.optJSONObject("control")}；正在看的应用：${device.optJSONObject("capture")?.optString("packageName")}。\n")
@@ -407,6 +428,23 @@ class CompanionEngine private constructor(private val context: Context) {
             }
             // Her voice, close to the newest messages so long chats do not drift.
             PersonaVoice.inject(contents, PersonaVoice.reminder(store, modules::requestModel), PersonaVoice.depth(persona), PersonaVoice.postHistory(persona))
+            if (viaClaude) {
+                val media = if (observationId.isNotBlank()) store.observationParts(observationId) else JSONArray()
+                val images = (0 until media.length()).mapNotNull { media.getJSONObject(it).optJSONObject("inlineData") }
+                // Claude reads pictures but not video or audio: such a turn goes to Gemini without counting as an outage.
+                val reason = if (images.any { !it.optString("mimeType").startsWith("image/") }) "这条带了 Claude 读不了的视频或音频"
+                    else claudeReply(id, scope, epoch, sources, system, situation, all.take(end + 1), boundId, observationId,
+                        images.map { it.optString("mimeType") to it.optString("data") }, unmentioned, pendingReview)
+                if (reason == null) return
+                if (store.transitionTask(id, setOf("queued", "running"), "queued", "Claude 不可用（$reason），换成 Gemini") != null) {
+                    store.get("task", id)?.let { store.put("task", it.put("engine", io.deepseekharness.mobile.companion.claude.ClaudeChat.ENGINE_GEMINI).put("fallbackReason", reason).put("messageId", boundId).put("observationId", observationId)) }
+                    handedOver = true
+                    val owner = modules.principal(scope).owner || task.optBoolean("ownerAsked")
+                    if (owner) yieldActivityToOwner()
+                    worker.submit(id, owner) { runChat(id) }
+                }
+                return
+            }
             store.commitContext(epoch, sources) { update(id, "running", "正在连接 ${profile.getString("model")}") }
             var lastPartialAt = 0L
             var merges = 0
@@ -504,29 +542,7 @@ class CompanionEngine private constructor(private val context: Context) {
                 val responses = JSONArray()
                 for (call in calls) {
                     checkCurrent()
-                    val result = try {
-                        // Sending waits on QQ for seconds; it must not hold the store while it does.
-                        if (call.optString("name") == "say_in_group") sayInGroup(scope, call.optJSONObject("args") ?: JSONObject()) { block -> store.commitContext(epoch, sources, block) }
-                        else store.commitContext(epoch, sources) { tool(scope, boundId, call.getString("name"), call.optJSONObject("args") ?: JSONObject()) }
-                    }
-                    catch (e: IllegalArgumentException) { JSONObject().put("error", e.message?.take(180) ?: "参数不正确") }
-                    catch (e: IllegalStateException) { JSONObject().put("error", e.message?.take(180) ?: "操作不可用") }
-                    if (call.optString("name") == "recall") {
-                        for ((key, kind) in listOf("memories" to "memory", "messages" to "message")) {
-                            val recalled = result.optJSONArray(key) ?: continue
-                            for (i in 0 until recalled.length()) recalled.getJSONObject(i).let { item ->
-                                sources.put(JSONObject().put("kind", kind).put("id", item.getString("id")).put("scope", item.optString("scope", scope)))
-                            }
-                        }
-                    }
-                    if (call.optString("name") == "life_action") {
-                        val action = call.optJSONObject("args")?.optString("action").orEmpty()
-                        val items = result.optJSONArray("items") ?: JSONArray()
-                        val kind = when (action) { "memory.search" -> "memory"; "diary.list" -> "diary"; "interest.list" -> "interest"; else -> "" }
-                        if (kind.isNotBlank()) for (i in 0 until items.length()) items.getJSONObject(i).let { item ->
-                            sources.put(JSONObject().put("kind", kind).put("id", item.getString("id")).put("scope", item.optString("scope", scope)))
-                        }
-                    }
+                    val result = executeTool(scope, boundId, epoch, sources, call.getString("name"), call.optJSONObject("args") ?: JSONObject())
                     responses.put(GeminiWire.toolResponse(call, result))
                     if (call.optString("name") == "device_action") {
                         val frame = if (result.has("preview")) result else result.optJSONObject("after")
@@ -556,7 +572,139 @@ class CompanionEngine private constructor(private val context: Context) {
                 if (e.message?.let { "取消" in it || "暂停" in it || "任务已停止" in it } != true)
                     io.deepseekharness.mobile.companion.chat.DeliveryLog.record(store, scope, "model", if (failure != null) "模型请求失败（$reason）" else reason)
             }
-        } finally { endModelTask(id); finishTurn(task.getString("scope"), id) }
+        } finally { if (!viaClaude) endModelTask(id); if (!handedOver) finishTurn(task.getString("scope"), id) }
+    }
+
+    /** One tool call, the same for Gemini and Claude (over MCP): scope rules live in [tool]; what it read is recorded as a source. */
+    private fun executeTool(scope: String, boundId: String, epoch: Long, sources: JSONArray, name: String, args: JSONObject): JSONObject {
+        val result = try {
+            // Sending waits on QQ for seconds; it must not hold the store while it does.
+            if (name == "say_in_group") sayInGroup(scope, args) { block -> store.commitContext(epoch, sources, block) }
+            else store.commitContext(epoch, sources) { tool(scope, boundId, name, args) }
+        }
+        catch (e: IllegalArgumentException) { JSONObject().put("error", e.message?.take(180) ?: "参数不正确") }
+        catch (e: IllegalStateException) { JSONObject().put("error", e.message?.take(180) ?: "操作不可用") }
+        synchronized(sources) {
+            if (name == "recall") {
+                for ((key, kind) in listOf("memories" to "memory", "messages" to "message")) {
+                    val recalled = result.optJSONArray(key) ?: continue
+                    for (i in 0 until recalled.length()) recalled.getJSONObject(i).let { item ->
+                        sources.put(JSONObject().put("kind", kind).put("id", item.getString("id")).put("scope", item.optString("scope", scope)))
+                    }
+                }
+            }
+            if (name == "life_action") {
+                val items = result.optJSONArray("items") ?: JSONArray()
+                val kind = when (args.optString("action")) { "memory.search" -> "memory"; "diary.list" -> "diary"; "interest.list" -> "interest"; else -> "" }
+                if (kind.isNotBlank()) for (i in 0 until items.length()) items.getJSONObject(i).let { item ->
+                    sources.put(JSONObject().put("kind", kind).put("id", item.getString("id")).put("scope", item.optString("scope", scope)))
+                }
+            }
+        }
+        return result
+    }
+
+    /**
+     * Claude's reply for a chat task, or why it could not give one (the task then goes to Gemini). Memory, profiles,
+     * learned group style and the situation block are the same ones Gemini gets; Claude keeps its own session per
+     * conversation and is sent whatever it has not seen since its last turn, including replies Gemini wrote meanwhile.
+     */
+    private fun claudeReply(id: String, scope: String, epoch: Long, sources: JSONArray, system: String, situation: String, history: List<JSONObject>,
+                            boundId: String, observationId: String, images: List<Pair<String, String>>, unmentioned: List<String>, pendingReview: List<String>): String? {
+        val chat = io.deepseekharness.mobile.companion.claude.ClaudeChat
+        val ownerChat = scope == CompanionPolicy.OWNER || modules.principal(scope).owner
+        if (claude.version() == null) return chat.describe(io.deepseekharness.mobile.companion.claude.ClaudeStream.Failure.NOT_INSTALLED)
+        val settings = chat.settings(store)
+        // Transcripts from before a correction, "forget" or deletion are removed from the rootfs, not just abandoned.
+        chat.staleSessions(store, epoch).forEach { sid -> runCatching {
+            File(claude.hostDirectory(), "root/.claude/projects").listFiles()?.forEach { File(it, "$sid.jsonl").delete() }
+        } }
+        chat.forgetSessions(store, epoch)
+        val saved = chat.session(store, scope, epoch)
+        val cwd = saved?.optString("cwd")?.takeIf { it.isNotBlank() } ?: chat.cwd(scope, ownerChat)
+        File(claude.hostDirectory(), cwd.removePrefix("/")).mkdirs()
+        val name = store.persona().optString("name", "小克")
+        val claudeSystem = system + "\n【在 Claude Code 里怎么做】你是$name，现在通过 Claude Code 运行。你最后写出的正文就是发给对方的消息，不要写成报告，也不要提“工具”“MCP”。" +
+            "你的记忆、日记、QQ、手机、B站、待审清单这些能力在 xiaoke 这组工具里（remember、recall、job_status、say_in_group 等），用法和平时一样。" +
+            (if (ownerChat) "主人交代代码的事时：工作区在 ${io.deepseekharness.mobile.companion.claude.ClaudeRuntime.WORKSPACE_DIR}，读代码随意；改文件、跑命令会弹到主人手机上等主人点允许。" +
+                "改代码一律在新分支上做（git switch -c 起个说明用途的名字），改完提交，用几句话告诉主人改了什么、在哪个分支、怎么验证的；不碰 main，不碰签名和密钥。没有推送凭据就说已提交在本地，请主人推送。\n"
+            else "这里不是主人的私聊：只回这个对话里该说的话，不写代码、不读写文件、不提主人的私事。\n")
+        val lastSeen = saved?.optString("lastMessageId")
+        val transcript = chat.transcript(history, lastSeen, 24_000) { m ->
+            if (m.optString("role") == "assistant") "你（$name）" else m.optString("source").ifBlank { "对方" }.take(40)
+        }
+        val content = io.deepseekharness.mobile.companion.claude.ClaudeStream.content(
+            situation + "\n" + (if (lastSeen == null) "【最近的对话】\n" else "【你上次回复之后的新消息】\n") + transcript +
+                (if (observationId.isNotBlank()) "\n（附了画面截图，只据这些图判断，不可假称看过完整视频。）" else "") + "\n\n请回复最后一条消息。", images)
+        val grant = io.deepseekharness.mobile.companion.claude.XiaokeMcp.Grant(scope, declarations(scope, webTool = false)) { tool, args ->
+            checkClaudeCurrent(id, epoch); executeTool(scope, boundId, epoch, sources, tool, args)
+        }
+        val token = io.deepseekharness.mobile.companion.claude.XiaokeMcpServer.register(grant)
+        var lastPartialAt = 0L
+        var model = settings.optString("model")
+        try {
+            store.commitContext(epoch, sources) { update(id, "running", "正在连接 Claude") }
+            fun attempt(resume: String?): io.deepseekharness.mobile.companion.claude.ClaudeTurn.Outcome {
+                val turn = io.deepseekharness.mobile.companion.claude.ClaudeTurn(claude, id)
+                claudeTurns[id] = turn
+                try {
+                    return turn.run(io.deepseekharness.mobile.companion.claude.ClaudeTurn.Options(claudeSystem, content, resume, settings.optString("model"), settings.optString("effort"),
+                        ownerTools = ownerChat, cwd = cwd, mcpPort = io.deepseekharness.mobile.companion.claude.XiaokeMcpServer.port(), mcpToken = token,
+                        timeoutMs = if (ownerChat) 45 * 60_000L else 4 * 60_000L),
+                        onText = { text ->
+                            if (runCatching { checkClaudeCurrent(id, epoch) }.isFailure) turn.cancel()
+                            val now = android.os.SystemClock.elapsedRealtime()
+                            if (now - lastPartialAt >= 350) { lastPartialAt = now; runCatching { store.commitContext(epoch) { store.transitionTask(id, setOf("running"), "running", "正在生成", JSONObject().put("partialText", text)) } } }
+                        },
+                        onTool = { tool -> runCatching { store.transitionTask(id, setOf("running"), "running", if (tool.startsWith("mcp__")) "正在用自己的能力（${tool.substringAfterLast("__")}）" else "正在用 $tool") } },
+                        onUsage = { usage -> store.saveLifeState("claudeUsage", io.deepseekharness.mobile.companion.claude.ClaudeStream.mergeUsage(store.lifeState("claudeUsage"), usage)) },
+                        onPermission = { tool, input ->
+                            // Only the owner's own chats get Claude Code's tools at all; a group never reaches this.
+                            ownerChat && io.deepseekharness.mobile.companion.claude.ClaudePermissions.ask(context, id, scope, tool,
+                                io.deepseekharness.mobile.companion.claude.ClaudeStream.describe(tool, input)) { turn.isCancelled || runCatching { checkClaudeCurrent(id, epoch) }.isFailure }
+                        })
+                } finally { claudeTurns.remove(id, turn) }
+            }
+            var outcome = attempt(saved?.optString("id"))
+            // A session Claude Code no longer has (cleared, or the rootfs was reinstalled): start a fresh one once.
+            if (outcome.failure != null && saved != null && "no conversation found" in outcome.detail.lowercase()) outcome = attempt(null)
+            if (store.get("task", id)?.optString("state") !in setOf("running", "queued")) return null // cancelled or paused meanwhile
+            val failure = outcome.failure
+            if (failure != null) {
+                XLog.w("claude turn failed in ${scope.take(24)}: ${failure.name} ${outcome.detail.take(200)}")
+                if (chat.recordOutage(store, failure, outcome.detail, outcome.usage))
+                    chat.notifyOwner(context, "${chat.describe(failure)}，先由 Gemini 回复。" + when (failure) {
+                        io.deepseekharness.mobile.companion.claude.ClaudeStream.Failure.LOGIN -> "到 我的 → Claude 重新登录后会换回来。"
+                        io.deepseekharness.mobile.companion.claude.ClaudeStream.Failure.LIMIT -> "额度恢复后会自动换回来。"
+                        else -> "过一会儿会再试 Claude。"
+                    })
+                return chat.describe(failure)
+            }
+            chat.clearOutage(store)
+            val text = io.deepseekharness.mobile.companion.chat.OutgoingSegments.stripInternal(outcome.text.trim()).ifBlank { "（Claude 这轮没有写出回复）" }
+            model = model.takeIf { it != "default" } ?: "默认模型"
+            var draft: JSONObject? = null
+            val message = store.commitContext(epoch, sources) {
+                val savedMessage = store.message(scope, "assistant", text, "Claude $model", null, boundId)
+                if (scope.startsWith("qq:")) draft = createReplyDraft(scope, text, "qq", "").let { d ->
+                    if (d.optBoolean("ownerRequested")) store.approveDraft(d.getString("id"), CompanionPolicy.draftDigest(d), automatic = true) else d
+                }
+                if (observationId.isNotBlank()) store.get("observation", observationId)?.let { store.put("observation", it.put("analysis", text).put("analyzed", true)) }
+                update(id, "done", "完成（Claude）")
+                if (unmentioned.isNotEmpty()) store.saveLifeState("approvalMention", JSONObject().put("ids", JSONArray(pendingReview)))
+                chat.saveSession(store, scope, outcome.sessionId, epoch, savedMessage.getString("id"), cwd)
+                savedMessage
+            }
+            modules.router.event(ModuleEvent("conversation.message", scope, message.getString("id"), JSONObject(message.toString()).apply { remove("wire") }))
+            draft?.let { checkEpoch(epoch); CompanionRouting.maybeAutoSend(context, it) }
+            return null
+        } finally { io.deepseekharness.mobile.companion.claude.XiaokeMcpServer.revoke(token) }
+    }
+
+    private fun checkClaudeCurrent(id: String, epoch: Long) {
+        check(store.get("task", id)?.optString("state") in setOf("queued", "running")) { "任务已停止" }
+        check(!store.settings().optBoolean("paused")) { "助手已暂停" }
+        checkEpoch(epoch)
     }
 
     /** The owner asked her to say something in one of the groups she is allowed in. Their asking is the approval. */

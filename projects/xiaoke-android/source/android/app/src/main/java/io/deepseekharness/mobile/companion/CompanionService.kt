@@ -45,6 +45,8 @@ class CompanionService : Service() {
         // This resident service is what keeps the process, and so the module host's unlock listener for proactive sharing, alive.
         engine.modules
         CompanionOverlayService.restoreIfWanted(this)
+        if (intent?.action == io.deepseekharness.mobile.companion.claude.ClaudePermissions.ACTION)
+            io.deepseekharness.mobile.companion.claude.ClaudePermissions.answer(intent.getStringExtra("id").orEmpty(), intent.getBooleanExtra("allow", false))
         if (intent?.action == "pause") {
             engine.store.saveSettings(engine.store.settings().put("paused", true))
             engine.activeTask?.let(engine::cancel)

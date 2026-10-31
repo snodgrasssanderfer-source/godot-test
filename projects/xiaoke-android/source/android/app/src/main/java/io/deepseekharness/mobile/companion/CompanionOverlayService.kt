@@ -49,6 +49,8 @@ class CompanionOverlayService : Service() {
     private var content: LinearLayout? = null
     private var transcript: TextView? = null
     private var stateText: TextView? = null
+    private var permissionBox: LinearLayout? = null
+    private var shownPermission = ""
     private var composer: EditText? = null
     private var panelParams: WindowManager.LayoutParams? = null
     private var transcriptBox: View? = null
@@ -167,6 +169,7 @@ class CompanionOverlayService : Service() {
                 "观察剩余 ${(deadline - SystemClock.elapsedRealtime()) / 60000 + 1} 分钟".takeIf { hasSession() },
                 localStatus.takeIf { it.isNotBlank() }, presenceState?.optString("statusMessage")?.takeIf { it.isNotBlank() }).joinToString(" · ")
             stateText?.text = status; stateText?.visibility = if (status.isBlank()) View.GONE else View.VISIBLE
+            refreshPermission()
             if (transcript != null) {
                 val name = engine.store.persona().optString("name", "小克")
                 val messages = engine.store.list("message", CompanionPolicy.OWNER, 12)
@@ -210,7 +213,7 @@ class CompanionOverlayService : Service() {
             setTextColor(if (qqDown) Color.rgb(198, 76, 69) else Color.rgb(191, 90, 53))
         }
         val now = SystemClock.elapsedRealtime()
-        if (now - badgeCheckedAt >= 5_000) { badgeCheckedAt = now; pendingCount = runCatching { engine.modules.pendingApprovals().size }.getOrDefault(0) }
+        if (now - badgeCheckedAt >= 5_000) { badgeCheckedAt = now; pendingCount = runCatching { engine.modules.pendingApprovals().size }.getOrDefault(0) + io.deepseekharness.mobile.companion.claude.ClaudePermissions.count() }
         val pending = pendingCount
         bubbleBadge?.text = if (pending > 99) "99+" else pending.toString()
         bubbleBadge?.visibility = if (pending > 0) View.VISIBLE else View.GONE
@@ -311,6 +314,21 @@ class CompanionOverlayService : Service() {
         web.loadUrl("https://xiaoke.local/presence-overlay.html")
         return wrapper
     }
+    /** Claude asking to edit a file or run a command: the oldest question, answerable right here on the panel. */
+    private fun refreshPermission() {
+        val box = permissionBox ?: return
+        val first = io.deepseekharness.mobile.companion.claude.ClaudePermissions.list().optJSONObject(0)
+        val id = first?.optString("id").orEmpty()
+        if (id == shownPermission) return
+        shownPermission = id; box.removeAllViews()
+        box.visibility = if (first == null) View.GONE else View.VISIBLE
+        if (first == null) return
+        box.addView(label("想${first.optString("summary")}"))
+        val row = LinearLayout(theme).apply { orientation = LinearLayout.HORIZONTAL }
+        row.addView(smallButton("允许") { io.deepseekharness.mobile.companion.claude.ClaudePermissions.answer(id, true); refreshPermission() })
+        row.addView(smallButton("拒绝") { io.deepseekharness.mobile.companion.claude.ClaudePermissions.answer(id, false); refreshPermission() })
+        box.addView(row)
+    }
     private fun label(text: String) = TextView(theme).apply { this.text = text; textSize = 14f; setTextColor(Color.rgb(46, 37, 32)); setPadding(0, dp(6), 0, dp(6)) }
     private fun button(text: String, action: () -> Unit) = Button(theme).apply { this.text = text; isAllCaps = false; setOnClickListener { action() } }
     /** Chat first: conversation on top, input at the bottom, everything else under "更多". The panel only takes focus while typing,
@@ -347,6 +365,8 @@ class CompanionOverlayService : Service() {
         root.addView(header)
         stateText = TextView(theme).apply { textSize = 12f; setTextColor(Color.rgb(154, 138, 126)) }
         root.addView(stateText)
+        permissionBox = LinearLayout(theme).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
+        root.addView(permissionBox); shownPermission = ""
         val transcriptView = TextView(theme).apply { textSize = 15f; setTextColor(Color.rgb(46, 37, 32)); setTextIsSelectable(false) }
         transcript = transcriptView
         val transcriptScroll = ScrollView(theme).apply { addView(transcriptView) }
@@ -527,7 +547,7 @@ class CompanionOverlayService : Service() {
     }
     private fun closePanel() {
         panel?.let { getSystemService(android.view.inputmethod.InputMethodManager::class.java).hideSoftInputFromWindow(it.windowToken, 0); runCatching { windows.removeView(it) } }
-        panel = null; panelParams = null; content = null; transcript = null; transcriptBox = null; extrasBox = null; stateText = null; composer = null; typing = false; lastTranscript = ""
+        panel = null; panelParams = null; content = null; transcript = null; transcriptBox = null; extrasBox = null; stateText = null; permissionBox = null; composer = null; typing = false; lastTranscript = ""
     }
     override fun onDestroy() {
         cancelHold?.invoke(); cancelHold = null; if (activeService === this) activeService = null

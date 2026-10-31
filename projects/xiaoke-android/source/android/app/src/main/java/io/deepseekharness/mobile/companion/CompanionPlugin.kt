@@ -20,6 +20,10 @@ import com.getcapacitor.annotation.ActivityCallback
 import io.deepseekharness.mobile.accessibility.AccessibilityAutomationStore
 import org.json.JSONArray
 import org.json.JSONObject
+import io.deepseekharness.mobile.companion.claude.ClaudeChat
+import io.deepseekharness.mobile.companion.claude.ClaudeLogin
+import io.deepseekharness.mobile.companion.claude.ClaudePermissions
+import io.deepseekharness.mobile.companion.claude.ClaudeSetup
 import java.util.concurrent.Executors
 
 @CapacitorPlugin(name = "Companion", permissions = [Permission(alias = "notifications", strings = [Manifest.permission.POST_NOTIFICATIONS]), Permission(alias = "microphone", strings = [Manifest.permission.RECORD_AUDIO])])
@@ -246,6 +250,22 @@ class CompanionPlugin : Plugin() {
                     }
                     "clearConversation" -> { check(engine.activeTask == null) { "请先停止当前任务" }; store.clearConversation(data.getString("scope")); JSONObject().put("ok", true) }
                     "silenceGroups" -> engine.silenceGroups()
+                    "conversationEngine" -> {
+                        val previous = store.get("conversation", data.getString("id")) ?: error("会话不存在")
+                        require(previous.getString("id").startsWith("qq:group:")) { "只有群能单独选；主人的私聊默认用 Claude" }
+                        val value = data.getString("engine")
+                        require(value in setOf(ClaudeChat.ENGINE_CLAUDE, ClaudeChat.ENGINE_GEMINI))
+                        store.put("conversation", previous.put("engine", value))
+                    }
+                    "claudeStatus" -> ClaudeSetup.status(context, data.optBoolean("refresh"))
+                    "claudeInstall" -> ClaudeSetup.install(context, data.optString("channel", "stable"))
+                    "claudeCancelInstall" -> { ClaudeSetup.cancelInstall(); JSONObject().put("ok", true) }
+                    "claudeSettings" -> ClaudeChat.saveSettings(store, data)
+                    "claudeLogin" -> ClaudeLogin.start(context, data.optString("method", "claudeai"))
+                    "claudeLoginInput" -> { ClaudeLogin.input(data.getString("text")); ClaudeLogin.state() }
+                    "claudeLoginStop" -> { ClaudeLogin.stop(); ClaudeLogin.state() }
+                    "claudeLogout" -> ClaudeLogin.logout(context)
+                    "claudePermission" -> JSONObject().put("ok", ClaudePermissions.answer(data.getString("id"), data.getBoolean("allow")))
                     "editDraft" -> {
                         store.editDraft(data.getString("id"), data.getString("body"), if (data.has("account")) data.getString("account") else null)
                     }
@@ -513,6 +533,9 @@ class CompanionPlugin : Plugin() {
                 .put("abis", JSONArray(Build.SUPPORTED_ABIS.toList())))
             .put("presence", CompanionPresenceHost.state())
             .put("overlaySession", CompanionOverlayService.state()).put("messageBridge", OneBotBridge.get(context).state())
+            .put("claude", JSONObject().put("installed", runCatching { engine.claude.version() }.getOrNull() ?: JSONObject.NULL)
+                .put("settings", ClaudeChat.settings(store)).put("permissions", ClaudePermissions.list())
+                .put("outage", ClaudeChat.outage(store) ?: JSONObject.NULL))
     }
     private fun thinObservation(value: JSONObject) = JSONObject(value.toString()).apply { remove("parts"); remove("frames") }
 

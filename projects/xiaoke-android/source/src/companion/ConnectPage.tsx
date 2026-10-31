@@ -39,7 +39,7 @@ export function ConnectPage({snapshot, run}: {snapshot: Snapshot; run: Run}) {
         <QqConnection snapshot={snapshot} run={run} bare/>
         {snapshot.conversations.length > 0 && <div className="xk-stack">
           <h3 className="xk-list-title">会话</h3>
-          {snapshot.conversations.map(c => <Conversation key={c.id} value={c} run={run}/>)}
+          {snapshot.conversations.map(c => <Conversation key={c.id} value={c} run={run} claudeReady={Boolean(snapshot.claude?.installed && snapshot.claude.settings.enabled)}/>)}
         </div>}
         <div className="xk-actions"><button className="xk-btn" onClick={() => quiet('silenceGroups')}>所有群先静音</button><button className="xk-btn ghost" onClick={() => quiet('openApp', {package: 'com.tencent.mobileqq'})}>打开 QQ</button></div>
         <details className="xk-more"><summary>备用：通过 QQ 通知收消息</summary>
@@ -93,14 +93,18 @@ function Observation({value: o, execute}: {value: Entry; execute: (action: strin
   </article>
 }
 
-function Conversation({value, run}: {value: Entry; run: Run}) {
+function Conversation({value, run, claudeReady}: {value: Entry; run: Run; claudeReady: boolean}) {
   const [draft, setDraft] = useState(''), [capture, setCapture] = useState(Boolean(value.captureEnabled)), [night, setNight] = useState(value.nightQuiet !== false), [images, setImages] = useState(Boolean(value.allowImages))
+  const [engine, setEngine] = useState(field(value, 'engine') === 'claude' ? 'claude' : 'gemini')
+  const group = value.id.startsWith('qq:group:')
   const [mode, setMode] = useState(field(value, 'mode') || 'quiet'), [cooldown, setCooldown] = useState(Number(value.cooldownSeconds) || 60), [hourly, setHourly] = useState(Number(value.hourlyLimit) || 10), [auto, setAuto] = useState(Boolean(value.autoReply)), [saved, setSaved] = useState(false)
   return <Section title={field(value, 'title')} summary={value.reliable ? ({quiet: '只看不说', mention: '@她才回', natural: '自然参与'} as Record<string, string>)[mode] : '还没识别，不能自动回'}>
     <form onSubmit={e => { e.preventDefault(); void run('conversation', {id: value.id, mode, cooldownSeconds: cooldown, hourlyLimit: hourly, autoReply: auto, threshold: 0.65, captureEnabled: capture, nightQuiet: night, allowImages: images, retentionDays: 30}).then(() => setSaved(true)).catch(() => undefined) }}>
       <label className="xk-switch-row"><span>接收这个会话</span><input type="checkbox" checked={capture} onChange={e => setCapture(e.target.checked)}/></label>
       <label className="xk-switch-row"><span>夜里只回你的 @<small>0 点到 8 点</small></span><input type="checkbox" checked={night} onChange={e => setNight(e.target.checked)}/></label>
       <label className="xk-switch-row"><span>看图片</span><input type="checkbox" checked={images} onChange={e => setImages(e.target.checked)}/></label>
+      {group && <label className="xk-switch-row"><span>用 Claude 回复<small>{engine === 'claude' ? (claudeReady ? '下一条消息起由 Claude 回；Claude 不可用时换回 Gemini' : '已选 Claude，但 我的 → Claude 还没装好或没打开，现在仍用 Gemini') : '默认 Gemini；关着时这个群的消息不经过 Claude'}</small></span>
+        <input type="checkbox" checked={engine === 'claude'} onChange={e => { const next = e.target.checked ? 'claude' : 'gemini'; void run('conversationEngine', {id: value.id, engine: next}).then(() => setEngine(next)).catch(() => undefined) }}/></label>}
       <label>参与方式<select value={mode} disabled={!value.reliable} onChange={e => { setMode(e.target.value); setSaved(false) }}><option value="quiet">只看不说</option><option value="mention">@她才回</option><option value="natural">自然参与</option></select></label>
       <div className="xk-grid"><label>最短间隔（秒）<input type="number" min={10} max={86400} value={cooldown} onChange={e => setCooldown(Number(e.target.value))}/></label><label>每小时最多<input type="number" min={1} max={60} value={hourly} onChange={e => setHourly(Number(e.target.value))}/></label></div>
       <label className="xk-switch-row"><span>直接发出回复<small>关掉时先进待审</small></span><input type="checkbox" checked={auto} disabled={!value.reliable || mode === 'quiet'} onChange={e => setAuto(e.target.checked)}/></label>

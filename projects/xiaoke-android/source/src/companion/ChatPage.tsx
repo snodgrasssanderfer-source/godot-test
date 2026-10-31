@@ -1,3 +1,4 @@
+import { ClaudePermissions } from './ClaudePanel'
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { CaretRight, ChatCircleDots, FileText, Key, Microphone, Pause, PaperPlaneRight, Play, Plus, SpeakerHigh, SpeakerSlash, Stop, X } from '@phosphor-icons/react'
 import { field, nativeCompanion, ownerScope, type Entry, type Run, type Snapshot } from './bridge'
@@ -70,6 +71,7 @@ export function ChatPage({snapshot, presence, run, onSetup}: {snapshot: Snapshot
     </div>}
 
     <div className="xk-chat-list" ref={list} onScroll={e => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80 }}>
+      {ownScope && <ClaudePermissions items={snapshot.claude?.permissions ?? []} run={run}/>}
       {!snapshot.keyConfigured && ownScope && <button className="xk-banner" onClick={onSetup}><Key size={24} weight="duotone"/><span><strong>先连上模型</strong><small>填好地址和密钥，她就能回你了</small></span><CaretRight size={18} weight="bold"/></button>}
       {messages.length === 0 && !active
         ? <Empty icon={<ChatCircleDots size={34} weight="duotone"/>} title={ownScope ? `和${name}打个招呼吧` : '这里还没有消息'}/>
