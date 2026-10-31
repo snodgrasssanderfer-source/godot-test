@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import shutil
 import sys
 import time
 
@@ -285,16 +286,24 @@ def report(directory):
                       "planned_scored_replies": manifest["planned_scored_replies"],
                       "generated_scored_replies": len(records), "judged_scored_replies": sum("judge_scores" in r for r in combined),
                       "failures": failures, "manifest_sha256": digest(manifest)}
-    save(directory / "summary.json", summary)
+    save(directory / "unfiltered-summary.json", summary)
     save(directory / "scored-records.json", combined)
     header = (f"# 小克人设一致性评测\n\n范围：{'完整语料' if manifest['full_corpus'] else '选取子集'}；"
               f"已生成 {len(records)}/{manifest['planned_scored_replies']} 个评分回复；"
               f"评委完成 {sum('judge_scores' in r for r in combined)}；失败/缺失 {len(failures)}。\n\n"
               "采用生产提示词与结果展示处理，工具和记忆结果使用虚构固定资料；没有实际控制设备或发送 QQ。\n\n"
               "评委按固定表对同一探针 A/B 盲评，温度 0；模型名已匿名化，标签按固定 seed 分配。两条回复分别绝对打分，允许同分。\n\n")
-    (directory / "report.md").write_text(header + render_markdown(summary), encoding="utf-8")
-    (directory / "summary.csv").write_text(render_csv(summary), encoding="utf-8")
-    print(f"报告：{directory / 'report.md'}；真实回复 {len(records)}；失败/缺失 {len(failures)}")
+    (directory / "unfiltered-report.md").write_text(header + render_markdown(summary), encoding="utf-8")
+    (directory / "unfiltered-summary.csv").write_text(render_csv(summary), encoding="utf-8")
+    from strict_report import write_strict_reports
+    strict = write_strict_reports(directory)
+    for source, target in (("strict-report.md", "report.md"), ("strict-summary.json", "summary.json"),
+                           ("strict-summary.csv", "summary.csv")):
+        shutil.copyfile(directory / source, directory / target)
+        (directory / target).chmod(0o600)
+    counts = strict["counts"]
+    print(f"严格报告：{directory / 'report.md'}；真实回复 {len(records)}；失败/缺失 {len(failures)}；"
+          f"有效配对案例 {counts['clean']}；版本未知 {counts['unknown']}；排除 {counts['excluded']}")
     return len(failures)
 
 

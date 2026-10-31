@@ -2,6 +2,7 @@
 import copy
 import http.client
 import json
+import os
 import re
 import socket
 import time
@@ -49,6 +50,104 @@ def parse_sse(text):
     return events
 
 
+class NativeSseBoundary:
+    """Recognize complete terminal JSON events without decoding incomplete UTF-8 chunks."""
+    separators = re.compile(rb"\r\n|\r|\n")
+
+    def __init__(self):
+        self.line_parts, self.data = [], []
+        self.skip_lf = False
+
+    def feed(self, chunk):
+        start = 1 if self.skip_lf and chunk.startswith(b"\n") else 0
+        self.skip_lf = False
+        for separator in self.separators.finditer(chunk, start):
+            self.line_parts.append(chunk[start:separator.start()])
+            line = b"".join(self.line_parts)
+            self.line_parts = []
+            start = separator.end()
+            self.skip_lf = separator.group() == b"\r" and start == len(chunk)
+            if not line:
+                payload = b"\n".join(self.data).strip()
+                self.data = []
+                if payload == b"[DONE]":
+                    return start
+                if payload:
+                    try:
+                        event = json.loads(payload)
+                    except (ValueError, UnicodeError):
+                        raise ModelError("invalid_response") from None
+                    candidates = event.get("candidates", []) if isinstance(event, dict) else []
+                    if isinstance(candidates, list) and candidates and isinstance(candidates[0], dict) and candidates[0].get("finishReason"):
+                        return start
+            elif line.startswith(b"data:"):
+                self.data.append(line[5:].lstrip())
+        if start < len(chunk):
+            self.line_parts.append(chunk[start:])
+        return None
+
+
+def read_response(response, deadline, native_sse=False, limit=24 * 1024 * 1024):
+    # HTTPResponse.read1 performs at most one body read; read(n) can wait forever on a dripping stream.
+    reader = getattr(response, "read1", None)
+    if not callable(reader):
+        reader = response.read
+    boundary = NativeSseBoundary() if native_sse else None
+    chunks, size = [], 0
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("response_deadline")
+        # CPython HTTPResponse.fp is socket.makefile('rb'); SocketIO owns the underlying socket.
+        raw_socket = getattr(getattr(getattr(response, "fp", None), "raw", None), "_sock", None)
+        if raw_socket is not None:
+            raw_socket.settimeout(remaining)
+        chunk = reader(min(64 * 1024, limit + 1 - size))
+        if time.monotonic() >= deadline:
+            raise TimeoutError("response_deadline")
+        if not chunk:
+            return b"".join(chunks)
+        stop = boundary.feed(chunk) if boundary else None
+        if stop is not None:
+            chunk = chunk[:stop]
+        size += len(chunk)
+        if size > limit:
+            raise ModelError("response_too_large")
+        chunks.append(chunk)
+        if stop is not None:
+            return b"".join(chunks)
+
+
+def malformed_native_response(events):
+    return isinstance(events, list) and any(
+        isinstance(event, dict) and isinstance(event.get("candidates"), list) and event["candidates"] and
+        isinstance(event["candidates"][0], dict) and event["candidates"][0].get("finishReason") == "MALFORMED_RESPONSE"
+        for event in events
+    )
+
+
+def quarantine_cached_response(path, response_hash):
+    # Link then unlink is an atomic no-overwrite move on this sibling filesystem.
+    rejected = path.parent / "rejected-responses"
+    rejected.mkdir(parents=True, exist_ok=True, mode=0o700)
+    raw = path.read_bytes()
+    base = rejected / (path.stem + "-" + response_hash + ".json")
+    target = base
+    while True:
+        try:
+            os.link(path, target)
+            break
+        except FileExistsError:
+            if target.read_bytes() == raw:
+                break
+            if target != base:
+                raise ModelError("cache_quarantine_conflict")
+            # Preserve distinct audit metadata even when the response body hash matches.
+            target = rejected / (path.stem + "-" + response_hash + "-" + digest(raw) + ".json")
+    path.unlink()
+    return target.relative_to(path.parent).as_posix()
+
+
 class Client:
     def __init__(self, base, key, protocol, cache, timeout=210, retries=2):
         self.base = endpoint(base, protocol)
@@ -71,14 +170,20 @@ class Client:
             raise ValueError("模型名称格式无效")
         request_key = digest({"endpoint": self.base, "protocol": self.protocol, "model": model, "body": body})
         path = self.cache / (request_key + ".json")
+        attempts = []
         if path.exists():
             saved = json.loads(path.read_text(encoding="utf-8"))
             if saved.get("request_hash") != request_key or digest(saved["response"]) != saved.get("response_hash"):
                 raise ModelError("cache_integrity_error")
-            return saved["response"], request_key
+            if self.protocol == "gemini" and malformed_native_response(saved["response"]):
+                rejected = quarantine_cached_response(path, saved["response_hash"])
+                attempts.append({"error": "malformed_response", "cached": True,
+                                 "native_operation": saved.get("native_operation", "streamGenerateContent"),
+                                 "response_hash": saved["response_hash"], "quarantine": rejected})
+            else:
+                return saved["response"], request_key
         # Both native routes use the same model, prompt and logical cache identity.
         operations = ("streamGenerateContent", "generateContent") if self.protocol == "gemini" else (None,)
-        attempts = []
         for operation in operations:
             suffix = ("/models/" + urllib.parse.quote(model, safe="") + ":" + operation +
                       ("?alt=sse" if operation == "streamGenerateContent" else "")) if operation else "/chat/completions"
@@ -89,9 +194,7 @@ class Client:
                 try:
                     req = urllib.request.Request(self.base + suffix, data=canonical(body).encode(), headers=headers, method="POST")
                     with self.opener.open(req, timeout=self.timeout) as response:
-                        raw = response.read(24 * 1024 * 1024 + 1)
-                        if len(raw) > 24 * 1024 * 1024:
-                            raise ModelError("response_too_large")
+                        raw = read_response(response, started + self.timeout, native_sse=operation == "streamGenerateContent")
                         decoded = raw.decode("utf-8")
                         result = parse_sse(decoded) if self.protocol == "gemini" else json.loads(decoded)
                         has_error = any("error" in event for event in result) if isinstance(result, list) else "error" in result
@@ -99,6 +202,8 @@ class Client:
                             raise ModelError("provider_error_in_http_200")
                         if self.protocol == "gemini" and any(event.get("promptFeedback", {}).get("blockReason") for event in result):
                             raise ModelError("prompt_blocked")
+                        if self.protocol == "gemini" and malformed_native_response(result):
+                            raise ModelError("malformed_response")
                         if self.protocol == "gemini" and not any(
                             event.get("candidates", [{}])[0].get("finishReason")
                             for event in result if event.get("candidates")
@@ -121,7 +226,7 @@ class Client:
                     code, retry = "invalid_response", False
                 except ModelError as error:
                     code = str(error)
-                    retry = code in {"provider_error_in_http_200", "incomplete_stream"}
+                    retry = code in {"provider_error_in_http_200", "incomplete_stream", "malformed_response"}
                 attempts.append({"error": code, "native_operation": operation,
                                  "seconds": round(time.monotonic() - started, 3)})
                 save(self.cache / (request_key + ".failure.json"), {"request_hash": request_key, "attempts": attempts})
@@ -129,7 +234,7 @@ class Client:
                     raise ModelError(code)
                 if attempt == self.retries:
                     alternate_route = operation == "streamGenerateContent" and (
-                        code in {"provider_error_in_http_200", "incomplete_stream", "network_or_timeout"} or code.startswith("http_5")
+                        code in {"provider_error_in_http_200", "incomplete_stream", "malformed_response", "network_or_timeout"} or code.startswith("http_5")
                     )
                     if alternate_route:
                         break

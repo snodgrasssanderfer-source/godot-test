@@ -5,13 +5,14 @@ import json
 from pathlib import Path
 import tempfile
 import threading
+from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock, patch
 import urllib.error
 import urllib.request
 
 from runtime import digest
-from transport import Client, ModelError, NoRedirect, endpoint, gemini_reply, parse_sse
+from transport import Client, ModelError, NoRedirect, endpoint, gemini_reply, parse_sse, read_response
 
 
 class Response:
@@ -19,15 +20,23 @@ class Response:
         self.body = body.encode() if isinstance(body, str) else body
         self.status = status
         self.headers = {"x-request-id": "fiction-request"}
+        self.offset, self.closed = 0, False
 
     def __enter__(self):
+        self.offset, self.closed = 0, False
         return self
 
     def __exit__(self, *_):
+        self.closed = True
         return False
 
     def read(self, limit):
-        return self.body[:limit]
+        chunk = self.body[self.offset:self.offset + limit]
+        self.offset += len(chunk)
+        return chunk
+
+    def read1(self, limit):
+        return self.read(limit)
 
 
 def generated(text, finish="STOP", continuation=None):
@@ -138,6 +147,7 @@ class TransportTest(unittest.TestCase):
         broken = Mock()
         broken.__enter__ = Mock(return_value=broken)
         broken.__exit__ = Mock(return_value=False)
+        broken.read1 = None
         broken.read.side_effect = http.client.IncompleteRead(b"fiction-private-partial", 200)
         client.opener = Mock()
         client.opener.open.side_effect = [broken, Response(json.dumps(generated("重试成功")))]
@@ -282,6 +292,199 @@ class TransportTest(unittest.TestCase):
                 self.assertEqual(response, [generated("原模型完成")])
                 self.assertEqual(client.opener.open.call_count, 4)
                 self.assertTrue(client.opener.open.call_args.args[0].full_url.endswith("/models/gemini-4-argon:generateContent"))
+
+    def test_malformed_native_response_retries_before_cache_then_falls_back(self):
+        for failures in (1, 3):
+            with self.subTest(failures=failures):
+                cache = self.cache / str(failures)
+                client = Client("https://relay.invalid", "fiction-secret", "gemini", cache)
+                client.opener = Mock()
+                bad = generated("fiction-private-malformed-part", "MALFORMED_RESPONSE")
+                good = generated("完整的虚构回复")
+                client.opener.open.side_effect = [Response(json.dumps(bad)) for _ in range(failures)] + [Response(json.dumps(good))]
+                body = {"contents": [{"role": "user", "parts": [{"text": "虚构长对话探针"}]}]}
+                with patch("transport.time.sleep"):
+                    response, key = client.post("gemini-4-argon", body)
+                self.assertEqual(response, [good])
+                requests = [call.args[0] for call in client.opener.open.call_args_list]
+                self.assertEqual(len(requests), failures + 1)
+                self.assertEqual({request.data for request in requests}, {requests[0].data})
+                self.assertTrue(all("/models/gemini-4-argon:" in request.full_url for request in requests))
+                expected = "generateContent" if failures == 3 else "streamGenerateContent"
+                saved = json.loads((cache / (key + ".json")).read_text())
+                self.assertEqual(saved["native_operation"], expected)
+                self.assertEqual([a["error"] for a in saved["attempts"][:-1]], ["malformed_response"] * failures)
+                self.assertEqual(saved["response"], [good])
+                self.assertFalse(any("fiction-private-malformed-part" in p.read_text() for p in cache.glob("*.json")))
+                self.assertEqual(client.post("gemini-4-argon", body), (response, key))
+                self.assertEqual(client.opener.open.call_count, failures + 1)
+
+    def test_cached_malformed_response_is_preserved_then_replaced_with_valid_result(self):
+        client = self.client()
+        body = {"contents": []}
+        key = digest({"endpoint": client.base, "protocol": "gemini", "model": "gemini-4-argon", "body": body})
+        response = [generated("fiction-private-old-malformed", "MALFORMED_RESPONSE")]
+        old = {"request_hash": key, "request": body, "model": "gemini-4-argon", "protocol": "gemini",
+               "response": response, "response_hash": digest(response), "attempts": [{"status": 200, "seconds": 1.5}]}
+        path = self.cache / (key + ".json")
+        raw = json.dumps(old, ensure_ascii=False, indent=2).encode()
+        path.write_bytes(raw)
+        client.opener = Mock()
+        good = generated("完整结果")
+        client.opener.open.return_value = Response(json.dumps(good))
+        result, actual_key = client.post("gemini-4-argon", body)
+        self.assertEqual((result, actual_key), ([good], key))
+        destination = self.cache / "rejected-responses" / (key + "-" + old["response_hash"] + ".json")
+        self.assertEqual(destination.read_bytes(), raw)
+        saved = json.loads(path.read_text())
+        self.assertEqual(saved["response"], [good])
+        self.assertEqual(saved["attempts"][0]["error"], "malformed_response")
+        self.assertTrue(saved["attempts"][0]["cached"])
+        self.assertEqual(saved["attempts"][0]["quarantine"], destination.relative_to(self.cache).as_posix())
+        self.assertNotIn("fiction-private-old-malformed", json.dumps(saved))
+        self.assertEqual(client.opener.open.call_count, 1)
+
+    def test_quarantine_collision_preserves_both_distinct_original_audits(self):
+        client = self.client()
+        key = digest({"endpoint": client.base, "protocol": "gemini", "model": "gemini-4-argon", "body": {}})
+        response = [generated("fiction-private-malformed", "MALFORMED_RESPONSE")]
+        old = {"request_hash": key, "response": response, "response_hash": digest(response), "attempts": [{"status": 200}]}
+        path = self.cache / (key + ".json")
+        old_bytes = json.dumps(old).encode()
+        path.write_bytes(old_bytes)
+        rejected = self.cache / "rejected-responses"
+        rejected.mkdir()
+        previous = rejected / (key + "-" + old["response_hash"] + ".json")
+        previous_bytes = json.dumps(old | {"attempts": [{"status": 200, "seconds": 5}]}).encode()
+        previous.write_bytes(previous_bytes)
+        client.opener = Mock()
+        client.opener.open.return_value = Response(json.dumps(generated("完整结果")))
+        client.post("gemini-4-argon", {})
+        self.assertEqual(previous.read_bytes(), previous_bytes)
+        self.assertEqual({p.read_bytes() for p in rejected.iterdir()}, {old_bytes, previous_bytes})
+        self.assertEqual(len(list(rejected.iterdir())), 2)
+
+    def test_unknown_finish_is_not_retried_or_treated_as_stop(self):
+        client = Client("https://relay.invalid", "fiction-secret", "gemini", self.cache)
+        client.opener = Mock()
+        client.opener.open.return_value = Response(json.dumps(generated("fiction-private-body", "UNRECOGNIZED_FINISH")))
+        bridge = Mock()
+        bridge.call.return_value = bridge_result("fiction-private-body", "UNRECOGNIZED_FINISH")
+        with patch("transport.time.sleep") as sleep, self.assertRaisesRegex(ModelError, "^incomplete_generation_unknown$"):
+            gemini_reply(client, bridge, "gemini-4-argon", {})
+        self.assertEqual(client.opener.open.call_count, 1)
+        sleep.assert_not_called()
+
+    def test_read_deadline_stops_dripping_progress_and_reduces_socket_timeout(self):
+        clock = [0.0]
+        response = Response(b"")
+        sock = Mock()
+        response.fp = SimpleNamespace(raw=SimpleNamespace(_sock=sock))
+        def drip(_limit):
+            clock[0] += 0.4
+            return b": keepalive\n\n"
+        response.read1 = Mock(side_effect=drip)
+        with patch("transport.time.monotonic", side_effect=lambda: clock[0]), self.assertRaises(TimeoutError):
+            with response:
+                read_response(response, deadline=1.0, native_sse=True)
+        self.assertTrue(response.closed)
+        self.assertEqual(response.read1.call_count, 3)
+        timeouts = [call.args[0] for call in sock.settimeout.call_args_list]
+        self.assertEqual(len(timeouts), 3)
+        self.assertAlmostEqual(timeouts[0], 1.0)
+        self.assertAlmostEqual(timeouts[1], 0.6)
+        self.assertAlmostEqual(timeouts[2], 0.2)
+
+    def test_native_terminal_event_closes_before_keepalive_and_preserves_usage_utf8(self):
+        event = generated("完整中文回复 finishReason 不会在正文里终止")
+        event["usageMetadata"] = {"promptTokenCount": 17, "candidatesTokenCount": 9}
+        first = {"candidates": [{"content": {"parts": [{"text": "正文中的 finishReason 和 [DONE] 都不是结束信号"}]}}]}
+        prefix = ("data: " + json.dumps(first, ensure_ascii=False) + "\r\n\r\n").encode()
+        terminal = ("data: " + json.dumps(event, ensure_ascii=False) + "\r\n\r\n").encode()
+        raw = prefix + terminal
+        chinese = raw.index("完整".encode())
+        # Split within UTF-8, within JSON, and between CR/LF event delimiters.
+        cuts = [13, len(prefix) - 1, len(prefix), chinese + 1, chinese + 2, len(raw) - 3, len(raw) - 1]
+        chunks, start = [], 0
+        for end in cuts + [len(raw)]:
+            chunks.append(raw[start:end]); start = end
+        response = Response(b"")
+        response.read1 = Mock(side_effect=chunks + [AssertionError("must not wait for keepalive EOF")])
+        with patch("transport.time.monotonic", return_value=0):
+            with response:
+                collected = read_response(response, deadline=10, native_sse=True)
+        self.assertTrue(response.closed)
+        events = parse_sse(collected.decode("utf-8"))
+        self.assertEqual(events, [first, event])
+        self.assertEqual(events[-1]["usageMetadata"], event["usageMetadata"])
+        self.assertLessEqual(response.read1.call_count, len(chunks))
+
+    def test_done_event_is_terminal_only_after_complete_event_delimiter(self):
+        first = generated("虚构正文")
+        first["candidates"][0].pop("finishReason")
+        stream = ("data: " + json.dumps(first) + "\n\ndata: [DONE]\n\n").encode()
+        response = Response(b"")
+        response.read1 = Mock(side_effect=[stream[:-1], stream[-1:], AssertionError("EOF must not be read")])
+        with patch("transport.time.monotonic", return_value=0):
+            with response:
+                collected = read_response(response, deadline=10, native_sse=True)
+        self.assertEqual(collected, stream)
+        self.assertEqual(response.read1.call_count, 2)
+        self.assertTrue(response.closed)
+
+    def test_read_compatibility_and_size_limit_do_not_split_utf8(self):
+        response = Response("虚构中文".encode())
+        response.read1 = None
+        with patch("transport.time.monotonic", return_value=0):
+            self.assertEqual(read_response(response, deadline=10).decode(), "虚构中文")
+            with self.assertRaisesRegex(ModelError, "response_too_large"):
+                read_response(Response(b"x" * 33), deadline=10, limit=32)
+
+    def test_total_deadline_retries_then_falls_back_without_changing_body(self):
+        clock = [0.0]
+        responses = []
+        def opening(request, **_kwargs):
+            response = Response(json.dumps(generated("非流式完成")))
+            if ":streamGenerateContent" in request.full_url:
+                def drip(_limit):
+                    clock[0] += 0.6
+                    return b": ongoing\n\n"
+                response.read1 = Mock(side_effect=drip)
+            responses.append(response)
+            return response
+        client = Client("https://relay.invalid", "fiction-secret", "gemini", self.cache, timeout=1, retries=1)
+        client.opener = Mock()
+        client.opener.open.side_effect = opening
+        body = {"contents": [{"role": "user", "parts": [{"text": "虚构问题"}]}]}
+        with patch("transport.time.monotonic", side_effect=lambda: clock[0]), patch("transport.time.sleep"):
+            result, key = client.post("gemini-3.8-flash", body)
+        self.assertEqual(result, [generated("非流式完成")])
+        requests = [call.args[0] for call in client.opener.open.call_args_list]
+        self.assertEqual(len(requests), 3)
+        self.assertTrue(requests[-1].full_url.endswith(":generateContent"))
+        self.assertEqual({request.data for request in requests}, {requests[0].data})
+        self.assertTrue(all(response.closed for response in responses))
+        saved = json.loads((self.cache / (key + ".json")).read_text())
+        self.assertEqual([a.get("error") for a in saved["attempts"][:-1]], ["network_or_timeout"] * 2)
+
+    def test_openai_dripping_body_obeys_same_total_deadline(self):
+        clock = [0.0]
+        responses = []
+        def opening(*_args, **_kwargs):
+            response = Response(b"")
+            def drip(_limit):
+                clock[0] += 0.6
+                return b" "
+            response.read1 = Mock(side_effect=drip)
+            responses.append(response)
+            return response
+        client = Client("https://relay.invalid", "fiction-secret", "openai", self.cache, timeout=1, retries=0)
+        client.opener = Mock()
+        client.opener.open.side_effect = opening
+        with patch("transport.time.monotonic", side_effect=lambda: clock[0]), self.assertRaisesRegex(ModelError, "network_or_timeout"):
+            client.post("fiction-judge", {})
+        self.assertEqual(client.opener.open.call_count, 1)
+        self.assertTrue(responses[0].closed)
 
     def test_schema_and_safety_failures_do_not_retry(self):
         for index, (body, code) in enumerate([
