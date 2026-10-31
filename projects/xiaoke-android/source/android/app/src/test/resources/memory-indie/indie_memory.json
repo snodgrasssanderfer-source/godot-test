@@ -1,0 +1,2316 @@
+{
+ "now": 1793419200000,
+ "memories": [
+  {
+   "id": "m01",
+   "scope": "owner:local",
+   "kind": "fact",
+   "holder": "owner",
+   "text": "主人养了一只叫“豆腐”的橘猫，三岁，是从小区楼下捡回来的。",
+   "entities": [
+    "豆腐"
+   ],
+   "validFrom": 1791086400000,
+   "validUntil": 0,
+   "occurredAt": 1791086400000,
+   "createdAt": 1791086400000,
+   "updatedAt": 1791086400000,
+   "superseded": false
+  },
+  {
+   "id": "m02",
+   "scope": "owner:local",
+   "kind": "preference",
+   "holder": "owner",
+   "text": "豆腐很挑食，只肯吃鸡肉味的罐头，鱼味的一口不碰。",
+   "entities": [
+    "豆腐"
+   ],
+   "validFrom": 1791259200000,
+   "validUntil": 0,
+   "occurredAt": 1791259200000,
+   "createdAt": 1791259200000,
+   "updatedAt": 1791259200000,
+   "superseded": false
+  },
+  {
+   "id": "m03",
+   "scope": "owner:local",
+   "kind": "event",
+   "holder": "owner",
+   "text": "10月20日豆腐打了第二针疫苗，回来一整天都没精神。",
+   "entities": [
+    "豆腐"
+   ],
+   "validFrom": 1792468800000,
+   "validUntil": 0,
+   "occurredAt": 1792468800000,
+   "createdAt": 1792468800000,
+   "updatedAt": 1792468800000,
+   "superseded": false
+  },
+  {
+   "id": "m04",
+   "scope": "owner:local",
+   "kind": "fact",
+   "holder": "owner",
+   "text": "主人在一家给手游做音效的小工作室上班，经常改需求到深夜。",
+   "entities": [],
+   "validFrom": 1788235200000,
+   "validUntil": 1792382400000,
+   "occurredAt": 1788235200000,
+   "createdAt": 1788235200000,
+   "updatedAt": 1788235200000,
+   "superseded": true,
+   "currentFactId": "m05",
+   "endedBy": "m05"
+  },
+  {
+   "id": "m05",
+   "scope": "owner:local",
+   "kind": "fact",
+   "holder": "owner",
+   "text": "10月19日起主人换到一家做地图导航软件的公司，负责语音播报的声音设计。",
+   "entities": [],
+   "validFrom": 1792382400000,
+   "validUntil": 0,
+   "occurredAt": 1792382400000,
+   "createdAt": 1792382400000,
+   "updatedAt": 1792382400000,
+   "superseded": false
+  },
+  {
+   "id": "m06",
+   "scope": "owner:local",
+   "kind": "fact",
+   "holder": "owner",
+   "text": "主人以前住在城东老小区的六楼，没有电梯，搬东西很累。",
+   "entities": [],
+   "validFrom": 1786507200000,
+   "validUntil": 1791691200000,
+   "occurredAt": 1786507200000,
+   "createdAt": 1786507200000,
+   "updatedAt": 1786507200000,
+   "superseded": true,
+   "currentFactId": "m07",
+   "endedBy": "m07"
+  },
+  {
+   "id": "m07",
+   "scope": "owner:local",
+   "kind": "fact",
+   "holder": "owner",
+   "text": "主人10月11日搬进了离地铁站步行五分钟的新公寓，在十二楼。",
+   "entities": [],
+   "validFrom": 1791691200000,
+   "validUntil": 0,
+   "occurredAt": 1791691200000,
+   "createdAt": 1791691200000,
+   "updatedAt": 1791691200000,
+   "superseded": false
+  },
+  {
+   "id": "m08",
+   "scope": "owner:local",
+   "kind": "preference",
+   "holder": "owner",
+   "text": "主人不吃香菜，连香菜味的薯片都受不了。",
+   "entities": [
+    "香菜"
+   ],
+   "validFrom": 1791172800000,
+   "validUntil": 0,
+   "occurredAt": 1791172800000,
+   "createdAt": 1791172800000,
+   "updatedAt": 1791172800000,
+   "superseded": false
+  },
+  {
+   "id": "m09",
+   "scope": "owner:local",
+   "kind": "event",
+   "holder": "owner",
+   "text": "主人最近在学做日式咖喱，第一次把土豆煮成了泥。",
+   "entities": [
+    "咖喱"
+   ],
+   "validFrom": 1792641600000,
+   "validUntil": 0,
+   "occurredAt": 1792641600000,
+   "createdAt": 1792641600000,
+   "updatedAt": 1792641600000,
+   "superseded": false
+  },
+  {
+   "id": "m10",
+   "scope": "owner:local",
+   "kind": "opinion",
+   "holder": "her",
+   "text": "我觉得《雾港》的结局太仓促了，像是赶工。",
+   "entities": [
+    "雾港"
+   ],
+   "validFrom": 1791518400000,
+   "validUntil": 1792900800000,
+   "occurredAt": 1791518400000,
+   "createdAt": 1791518400000,
+   "updatedAt": 1791518400000,
+   "superseded": true,
+   "currentFactId": "m11",
+   "endedBy": "m11"
+  },
+  {
+   "id": "m11",
+   "scope": "owner:local",
+   "kind": "opinion",
+   "holder": "her",
+   "text": "重看《雾港》之后我改了看法，觉得结局的留白其实很好，给人想象空间。",
+   "entities": [
+    "雾港"
+   ],
+   "validFrom": 1792900800000,
+   "validUntil": 0,
+   "occurredAt": 1792900800000,
+   "createdAt": 1792900800000,
+   "updatedAt": 1792900800000,
+   "superseded": false
+  },
+  {
+   "id": "m12",
+   "scope": "owner:local",
+   "kind": "opinion",
+   "holder": "owner",
+   "text": "主人以前觉得跑步又累又无聊，坚持不了三天。",
+   "entities": [],
+   "validFrom": 1789963200000,
+   "validUntil": 1792123200000,
+   "occurredAt": 1789963200000,
+   "createdAt": 1789963200000,
+   "updatedAt": 1789963200000,
+   "superseded": true,
+   "currentFactId": "m13",
+   "endedBy": "m13"
+  },
+  {
+   "id": "m13",
+   "scope": "owner:local",
+   "kind": "fact",
+   "holder": "owner",
+   "text": "主人现在每周跑三次步，一次五公里，说跑完脑子很清醒。",
+   "entities": [],
+   "validFrom": 1792123200000,
+   "validUntil": 0,
+   "occurredAt": 1792123200000,
+   "createdAt": 1792123200000,
+   "updatedAt": 1792123200000,
+   "superseded": false
+  },
+  {
+   "id": "m14",
+   "scope": "owner:local",
+   "kind": "preference",
+   "holder": "owner",
+   "text": "主人很喜欢恐怖游戏，尤其是带解谜的那种。",
+   "entities": [],
+   "validFrom": 1791345600000,
+   "validUntil": 0,
+   "occurredAt": 1791345600000,
+   "createdAt": 1791345600000,
+   "updatedAt": 1791345600000,
+   "superseded": false
+  },
+  {
+   "id": "m15",
+   "scope": "owner:local",
+   "kind": "opinion",
+   "holder": "her",
+   "text": "我觉得恐怖游戏太吓人了，陪主人玩的时候只敢看攻略。",
+   "entities": [],
+   "validFrom": 1791345600000,
+   "validUntil": 0,
+   "occurredAt": 1791345600000,
+   "createdAt": 1791345600000,
+   "updatedAt": 1791345600000,
+   "superseded": false
+  },
+  {
+   "id": "m16",
+   "scope": "owner:local",
+   "kind": "preference",
+   "holder": "owner",
+   "text": "主人觉得猫比狗好，猫不用天天遛。",
+   "entities": [],
+   "validFrom": 1791432000000,
+   "validUntil": 0,
+   "occurredAt": 1791432000000,
+   "createdAt": 1791432000000,
+   "updatedAt": 1791432000000,
+   "superseded": false
+  },
+  {
+   "id": "m17",
+   "scope": "owner:local",
+   "kind": "opinion",
+   "holder": "her",
+   "text": "我更喜欢狗，觉得狗见到人那种开心很治愈。",
+   "entities": [],
+   "validFrom": 1791432000000,
+   "validUntil": 0,
+   "occurredAt": 1791432000000,
+   "createdAt": 1791432000000,
+   "updatedAt": 1791432000000,
+   "superseded": false
+  },
+  {
+   "id": "m18",
+   "scope": "owner:local",
+   "kind": "relationship",
+   "holder": "owner",
+   "text": "主人的妹妹叫小满，在美院读大二，学视觉传达。",
+   "entities": [
+    "小满"
+   ],
+   "validFrom": 1791604800000,
+   "validUntil": 0,
+   "occurredAt": 1791604800000,
+   "createdAt": 1791604800000,
+   "updatedAt": 1791604800000,
+   "superseded": false
+  },
+  {
+   "id": "m19",
+   "scope": "owner:local",
+   "kind": "event",
+   "holder": "owner",
+   "text": "小满上周寄来一张她自己设计的明信片，画的是豆腐。",
+   "entities": [
+    "小满",
+    "豆腐"
+   ],
+   "validFrom": 1792987200000,
+   "validUntil": 0,
+   "occurredAt": 1792987200000,
+   "createdAt": 1792987200000,
+   "updatedAt": 1792987200000,
+   "superseded": false
+  },
+  {
+   "id": "m20",
+   "scope": "owner:local",
+   "kind": "relationship",
+   "holder": "owner",
+   "text": "主人的同事老周总是最后一个下班，主人有点担心老周的身体。",
+   "entities": [
+    "老周"
+   ],
+   "validFrom": 1792555200000,
+   "validUntil": 0,
+   "occurredAt": 1792555200000,
+   "createdAt": 1792555200000,
+   "updatedAt": 1792555200000,
+   "superseded": false
+  },
+  {
+   "id": "m21",
+   "scope": "owner:local",
+   "kind": "task",
+   "holder": "owner",
+   "text": "主人计划十二月中旬去哈尔滨看冰雕，已经在看机票了。",
+   "entities": [
+    "哈尔滨"
+   ],
+   "validFrom": 1792728000000,
+   "validUntil": 0,
+   "occurredAt": 1792728000000,
+   "createdAt": 1792728000000,
+   "updatedAt": 1792728000000,
+   "superseded": false
+  },
+  {
+   "id": "m22",
+   "scope": "owner:local",
+   "kind": "event",
+   "holder": "owner",
+   "text": "主人10月初跑步时扭伤了左膝，休息了一周。",
+   "entities": [],
+   "validFrom": 1791086400000,
+   "validUntil": 1791691200000,
+   "occurredAt": 1791086400000,
+   "createdAt": 1791086400000,
+   "updatedAt": 1791086400000,
+   "superseded": true,
+   "currentFactId": "m23",
+   "endedBy": "m23"
+  },
+  {
+   "id": "m23",
+   "scope": "owner:local",
+   "kind": "fact",
+   "holder": "owner",
+   "text": "主人的膝盖已经好了，医生说可以正常运动。",
+   "entities": [],
+   "validFrom": 1791864000000,
+   "validUntil": 0,
+   "occurredAt": 1791864000000,
+   "createdAt": 1791864000000,
+   "updatedAt": 1791864000000,
+   "superseded": false
+  },
+  {
+   "id": "m24",
+   "scope": "owner:local",
+   "kind": "preference",
+   "holder": "owner",
+   "text": "主人喝咖啡只喝美式，不加糖不加奶。",
+   "entities": [],
+   "validFrom": 1790827200000,
+   "validUntil": 0,
+   "occurredAt": 1790827200000,
+   "createdAt": 1790827200000,
+   "updatedAt": 1790827200000,
+   "superseded": false
+  },
+  {
+   "id": "m25",
+   "scope": "owner:local",
+   "kind": "fact",
+   "holder": "owner",
+   "text": "主人以前每天早上都要喝两杯咖啡。",
+   "entities": [],
+   "validFrom": 1790827200000,
+   "validUntil": 1792728000000,
+   "occurredAt": 1790827200000,
+   "createdAt": 1790827200000,
+   "updatedAt": 1790827200000,
+   "superseded": true,
+   "currentFactId": "m26",
+   "endedBy": "m26"
+  },
+  {
+   "id": "m26",
+   "scope": "owner:local",
+   "kind": "fact",
+   "holder": "owner",
+   "text": "主人这周开始戒咖啡因，改喝大麦茶，说晚上睡得好多了。",
+   "entities": [
+    "大麦茶"
+   ],
+   "validFrom": 1792728000000,
+   "validUntil": 0,
+   "occurredAt": 1792728000000,
+   "createdAt": 1792728000000,
+   "updatedAt": 1792728000000,
+   "superseded": false
+  },
+  {
+   "id": "m27",
+   "scope": "owner:local",
+   "kind": "opinion",
+   "holder": "her",
+   "text": "我觉得主人戒咖啡因是好事，但别一下子戒得太猛。",
+   "entities": [],
+   "validFrom": 1792814400000,
+   "validUntil": 0,
+   "occurredAt": 1792814400000,
+   "createdAt": 1792814400000,
+   "updatedAt": 1792814400000,
+   "superseded": false
+  },
+  {
+   "id": "m28",
+   "scope": "owner:local",
+   "kind": "event",
+   "holder": "owner",
+   "text": "10月25日主人去看了独立乐队“灯塔信号”的现场，回来说鼓手特别好。",
+   "entities": [
+    "灯塔信号"
+   ],
+   "validFrom": 1792900800000,
+   "validUntil": 0,
+   "occurredAt": 1792900800000,
+   "createdAt": 1792900800000,
+   "updatedAt": 1792900800000,
+   "superseded": false
+  },
+  {
+   "id": "m29",
+   "scope": "owner:local",
+   "kind": "preference",
+   "holder": "owner",
+   "text": "主人最喜欢的歌手是唱民谣的女歌手林溪。",
+   "entities": [
+    "林溪"
+   ],
+   "validFrom": 1791777600000,
+   "validUntil": 0,
+   "occurredAt": 1791777600000,
+   "createdAt": 1791777600000,
+   "updatedAt": 1791777600000,
+   "superseded": false
+  },
+  {
+   "id": "m30",
+   "scope": "owner:local",
+   "kind": "fact",
+   "holder": "owner",
+   "text": "主人在用一台二手的胶片相机拍照，是一台旧理光。",
+   "entities": [
+    "理光"
+   ],
+   "validFrom": 1791950400000,
+   "validUntil": 0,
+   "occurredAt": 1791950400000,
+   "createdAt": 1791950400000,
+   "updatedAt": 1791950400000,
+   "superseded": false
+  },
+  {
+   "id": "m31",
+   "scope": "owner:local",
+   "kind": "event",
+   "holder": "owner",
+   "text": "主人在海边拍日出，胶卷洗出来有三张过曝了。",
+   "entities": [],
+   "validFrom": 1792209600000,
+   "validUntil": 0,
+   "occurredAt": 1792209600000,
+   "createdAt": 1792209600000,
+   "updatedAt": 1792209600000,
+   "superseded": false
+  },
+  {
+   "id": "m32",
+   "scope": "owner:local",
+   "kind": "opinion",
+   "holder": "owner",
+   "text": "主人认为胶片的颜色比手机滤镜更有温度。",
+   "entities": [],
+   "validFrom": 1792209600000,
+   "validUntil": 0,
+   "occurredAt": 1792209600000,
+   "createdAt": 1792209600000,
+   "updatedAt": 1792209600000,
+   "superseded": false
+  },
+  {
+   "id": "m33",
+   "scope": "owner:local",
+   "kind": "opinion",
+   "holder": "her",
+   "text": "我觉得手机拍照方便多了，胶片太贵也太慢。",
+   "entities": [],
+   "validFrom": 1792209600000,
+   "validUntil": 0,
+   "occurredAt": 1792209600000,
+   "createdAt": 1792209600000,
+   "updatedAt": 1792209600000,
+   "superseded": false
+  },
+  {
+   "id": "m34",
+   "scope": "owner:local",
+   "kind": "fact",
+   "holder": "owner",
+   "text": "主人的生日是三月七号。",
+   "entities": [],
+   "validFrom": 1790913600000,
+   "validUntil": 0,
+   "occurredAt": 1790913600000,
+   "createdAt": 1790913600000,
+   "updatedAt": 1790913600000,
+   "superseded": false
+  },
+  {
+   "id": "m35",
+   "scope": "owner:local",
+   "kind": "task",
+   "holder": "owner",
+   "text": "主人答应小满十一月帮她搬宿舍。",
+   "entities": [
+    "小满"
+   ],
+   "validFrom": 1793073600000,
+   "validUntil": 0,
+   "occurredAt": 1793073600000,
+   "createdAt": 1793073600000,
+   "updatedAt": 1793073600000,
+   "superseded": false
+  },
+  {
+   "id": "m36",
+   "scope": "owner:local",
+   "kind": "preference",
+   "holder": "owner",
+   "text": "主人周末喜欢睡到十点，不喜欢早上被消息吵醒。",
+   "entities": [],
+   "validFrom": 1791000000000,
+   "validUntil": 0,
+   "occurredAt": 1791000000000,
+   "createdAt": 1791000000000,
+   "updatedAt": 1791000000000,
+   "superseded": false
+  },
+  {
+   "id": "m37",
+   "scope": "owner:local",
+   "kind": "fact",
+   "holder": "owner",
+   "text": "主人对芒果过敏，吃了嘴会肿。",
+   "entities": [
+    "芒果"
+   ],
+   "validFrom": 1791172800000,
+   "validUntil": 0,
+   "occurredAt": 1791172800000,
+   "createdAt": 1791172800000,
+   "updatedAt": 1791172800000,
+   "superseded": false
+  },
+  {
+   "id": "m38",
+   "scope": "owner:local",
+   "kind": "event",
+   "holder": "owner",
+   "text": "主人上周在公司年会上被抽中了一个空气炸锅。",
+   "entities": [
+    "空气炸锅"
+   ],
+   "validFrom": 1793073600000,
+   "validUntil": 0,
+   "occurredAt": 1793073600000,
+   "createdAt": 1793073600000,
+   "updatedAt": 1793073600000,
+   "superseded": false
+  },
+  {
+   "id": "m39",
+   "scope": "owner:local",
+   "kind": "opinion",
+   "holder": "owner",
+   "text": "主人以前觉得空气炸锅是智商税。",
+   "entities": [
+    "空气炸锅"
+   ],
+   "validFrom": 1790395200000,
+   "validUntil": 1793073600000,
+   "occurredAt": 1790395200000,
+   "createdAt": 1790395200000,
+   "updatedAt": 1790395200000,
+   "superseded": true,
+   "currentFactId": "m40",
+   "endedBy": "m40"
+  },
+  {
+   "id": "m40",
+   "scope": "owner:local",
+   "kind": "opinion",
+   "holder": "owner",
+   "text": "主人用了空气炸锅之后改口说烤鸡翅真方便，不是智商税。",
+   "entities": [
+    "空气炸锅"
+   ],
+   "validFrom": 1793073600000,
+   "validUntil": 0,
+   "occurredAt": 1793073600000,
+   "createdAt": 1793073600000,
+   "updatedAt": 1793073600000,
+   "superseded": false
+  },
+  {
+   "id": "m41",
+   "scope": "owner:local",
+   "kind": "fact",
+   "holder": "owner",
+   "text": "主人在学日语，目标是明年考N2。",
+   "entities": [
+    "日语"
+   ],
+   "validFrom": 1791259200000,
+   "validUntil": 0,
+   "occurredAt": 1791259200000,
+   "createdAt": 1791259200000,
+   "updatedAt": 1791259200000,
+   "superseded": false
+  },
+  {
+   "id": "m42",
+   "scope": "owner:local",
+   "kind": "event",
+   "holder": "owner",
+   "text": "主人这周日语单词背到了第十二课，觉得动词变形最难。",
+   "entities": [
+    "日语"
+   ],
+   "validFrom": 1793160000000,
+   "validUntil": 0,
+   "occurredAt": 1793160000000,
+   "createdAt": 1793160000000,
+   "updatedAt": 1793160000000,
+   "superseded": false
+  },
+  {
+   "id": "m43",
+   "scope": "owner:local",
+   "kind": "opinion",
+   "holder": "her",
+   "text": "我一开始觉得主人学日语只是三分钟热度。",
+   "entities": [
+    "日语"
+   ],
+   "validFrom": 1791259200000,
+   "validUntil": 1792555200000,
+   "occurredAt": 1791259200000,
+   "createdAt": 1791259200000,
+   "updatedAt": 1791259200000,
+   "superseded": true,
+   "currentFactId": "m44",
+   "endedBy": "m44"
+  },
+  {
+   "id": "m44",
+   "scope": "owner:local",
+   "kind": "opinion",
+   "holder": "her",
+   "text": "现在看主人每天都在背单词，我觉得主人学日语是认真的。",
+   "entities": [
+    "日语"
+   ],
+   "validFrom": 1792555200000,
+   "validUntil": 0,
+   "occurredAt": 1792555200000,
+   "createdAt": 1792555200000,
+   "updatedAt": 1792555200000,
+   "superseded": false
+  },
+  {
+   "id": "m45",
+   "scope": "owner:local",
+   "kind": "preference",
+   "holder": "owner",
+   "text": "主人喜欢下雨天在家听黑胶唱片。",
+   "entities": [
+    "黑胶"
+   ],
+   "validFrom": 1792036800000,
+   "validUntil": 0,
+   "occurredAt": 1792036800000,
+   "createdAt": 1792036800000,
+   "updatedAt": 1792036800000,
+   "superseded": false
+  },
+  {
+   "id": "m46",
+   "scope": "owner:local",
+   "kind": "fact",
+   "holder": "owner",
+   "text": "主人有一台黑胶唱机，是外公留下来的。",
+   "entities": [
+    "黑胶"
+   ],
+   "validFrom": 1792036800000,
+   "validUntil": 0,
+   "occurredAt": 1792036800000,
+   "createdAt": 1792036800000,
+   "updatedAt": 1792036800000,
+   "superseded": false
+  },
+  {
+   "id": "m47",
+   "scope": "owner:local",
+   "kind": "relationship",
+   "holder": "owner",
+   "text": "主人的外公是个木匠，主人小时候常在外公的工坊里玩。",
+   "entities": [
+    "外公"
+   ],
+   "validFrom": 1792036800000,
+   "validUntil": 0,
+   "occurredAt": 1792036800000,
+   "createdAt": 1792036800000,
+   "updatedAt": 1792036800000,
+   "superseded": false
+  },
+  {
+   "id": "m48",
+   "scope": "owner:local",
+   "kind": "event",
+   "holder": "owner",
+   "text": "主人周三晚上做了个噩梦，梦见新公寓的电梯卡在半空。",
+   "entities": [],
+   "validFrom": 1793246400000,
+   "validUntil": 0,
+   "occurredAt": 1793246400000,
+   "createdAt": 1793246400000,
+   "updatedAt": 1793246400000,
+   "superseded": false
+  },
+  {
+   "id": "m49",
+   "scope": "owner:local",
+   "kind": "opinion",
+   "holder": "owner",
+   "text": "主人觉得新公司的氛围比之前的工作室轻松很多。",
+   "entities": [],
+   "validFrom": 1792641600000,
+   "validUntil": 0,
+   "occurredAt": 1792641600000,
+   "createdAt": 1792641600000,
+   "updatedAt": 1792641600000,
+   "superseded": false
+  },
+  {
+   "id": "m50",
+   "scope": "owner:local",
+   "kind": "opinion",
+   "holder": "her",
+   "text": "我觉得主人换工作之后笑得多了。",
+   "entities": [],
+   "validFrom": 1792641600000,
+   "validUntil": 0,
+   "occurredAt": 1792641600000,
+   "createdAt": 1792641600000,
+   "updatedAt": 1792641600000,
+   "superseded": false
+  },
+  {
+   "id": "m51",
+   "scope": "owner:local",
+   "kind": "fact",
+   "holder": "owner",
+   "text": "主人的工位旁边有一盆快死掉的绿萝，主人在想办法救活它。",
+   "entities": [
+    "绿萝"
+   ],
+   "validFrom": 1792814400000,
+   "validUntil": 0,
+   "occurredAt": 1792814400000,
+   "createdAt": 1792814400000,
+   "updatedAt": 1792814400000,
+   "superseded": false
+  },
+  {
+   "id": "m52",
+   "scope": "owner:local",
+   "kind": "task",
+   "holder": "owner",
+   "text": "主人打算给豆腐买一个能自动出粮的喂食器，预算三百以内。",
+   "entities": [
+    "豆腐"
+   ],
+   "validFrom": 1792900800000,
+   "validUntil": 0,
+   "occurredAt": 1792900800000,
+   "createdAt": 1792900800000,
+   "updatedAt": 1792900800000,
+   "superseded": false
+  },
+  {
+   "id": "m53",
+   "scope": "owner:local",
+   "kind": "preference",
+   "holder": "owner",
+   "text": "主人看电影喜欢坐最后一排中间。",
+   "entities": [],
+   "validFrom": 1791864000000,
+   "validUntil": 0,
+   "occurredAt": 1791864000000,
+   "createdAt": 1791864000000,
+   "updatedAt": 1791864000000,
+   "superseded": false
+  },
+  {
+   "id": "m54",
+   "scope": "owner:local",
+   "kind": "event",
+   "holder": "owner",
+   "text": "主人和小满视频时，小满说想转专业去学动画。",
+   "entities": [
+    "小满"
+   ],
+   "validFrom": 1793332800000,
+   "validUntil": 0,
+   "occurredAt": 1793332800000,
+   "createdAt": 1793332800000,
+   "updatedAt": 1793332800000,
+   "superseded": false
+  },
+  {
+   "id": "m55",
+   "scope": "owner:local",
+   "kind": "opinion",
+   "holder": "her",
+   "text": "我觉得小满学动画挺合适，她画的豆腐就很有动感。",
+   "entities": [
+    "小满"
+   ],
+   "validFrom": 1793332800000,
+   "validUntil": 0,
+   "occurredAt": 1793332800000,
+   "createdAt": 1793332800000,
+   "updatedAt": 1793332800000,
+   "superseded": false
+  },
+  {
+   "id": "m56",
+   "scope": "owner:local",
+   "kind": "fact",
+   "holder": "owner",
+   "text": "主人以前的手机是一台用了五年的旧安卓，电池一天要充三次。",
+   "entities": [],
+   "validFrom": 1785643200000,
+   "validUntil": 1792814400000,
+   "occurredAt": 1785643200000,
+   "createdAt": 1785643200000,
+   "updatedAt": 1785643200000,
+   "superseded": true,
+   "currentFactId": "m57",
+   "endedBy": "m57"
+  },
+  {
+   "id": "m57",
+   "scope": "owner:local",
+   "kind": "fact",
+   "holder": "owner",
+   "text": "主人上周换了新手机，拍照好了很多。",
+   "entities": [],
+   "validFrom": 1792814400000,
+   "validUntil": 0,
+   "occurredAt": 1792814400000,
+   "createdAt": 1792814400000,
+   "updatedAt": 1792814400000,
+   "superseded": false
+  },
+  {
+   "id": "m58",
+   "scope": "owner:local",
+   "kind": "preference",
+   "holder": "owner",
+   "text": "主人讨厌在地铁上打电话，觉得很吵。",
+   "entities": [],
+   "validFrom": 1791691200000,
+   "validUntil": 0,
+   "occurredAt": 1791691200000,
+   "createdAt": 1791691200000,
+   "updatedAt": 1791691200000,
+   "superseded": false
+  },
+  {
+   "id": "m59",
+   "scope": "owner:local",
+   "kind": "event",
+   "holder": "owner",
+   "text": "主人10月30日加班到十一点，回家路上买了关东煮。",
+   "entities": [],
+   "validFrom": 1793332800000,
+   "validUntil": 0,
+   "occurredAt": 1793332800000,
+   "createdAt": 1793332800000,
+   "updatedAt": 1793332800000,
+   "superseded": false
+  },
+  {
+   "id": "m60",
+   "scope": "owner:local",
+   "kind": "fact",
+   "holder": "owner",
+   "text": "主人每个月第一个周六会去福利院做志愿者，教小朋友画画。",
+   "entities": [],
+   "validFrom": 1791518400000,
+   "validUntil": 0,
+   "occurredAt": 1791518400000,
+   "createdAt": 1791518400000,
+   "updatedAt": 1791518400000,
+   "superseded": false
+  }
+ ],
+ "queries": [
+  {
+   "id": "q001",
+   "category": "paraphrase",
+   "query": "我家那只小橘子平时吃什么",
+   "expect": [
+    "m02"
+   ],
+   "accept": [
+    "m01",
+    "m52"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q002",
+   "category": "paraphrase",
+   "query": "猫主子打针那天状态怎么样",
+   "expect": [
+    "m03"
+   ],
+   "accept": [
+    "m01"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q003",
+   "category": "paraphrase",
+   "query": "我现在靠什么吃饭",
+   "expect": [
+    "m05"
+   ],
+   "accept": [
+    "m49"
+   ],
+   "stale": [
+    "m04"
+   ],
+   "intent": "current"
+  },
+  {
+   "id": "q004",
+   "category": "paraphrase",
+   "query": "哪种香料我碰都不碰",
+   "expect": [
+    "m08"
+   ],
+   "accept": [],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q005",
+   "category": "paraphrase",
+   "query": "我厨房里最近在折腾什么菜",
+   "expect": [
+    "m09"
+   ],
+   "accept": [],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q006",
+   "category": "paraphrase",
+   "query": "我一周运动几回",
+   "expect": [
+    "m13"
+   ],
+   "accept": [
+    "m23"
+   ],
+   "stale": [
+    "m12"
+   ],
+   "intent": "current"
+  },
+  {
+   "id": "q007",
+   "category": "paraphrase",
+   "query": "冬天我想去哪儿旅行",
+   "expect": [
+    "m21"
+   ],
+   "accept": [],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q008",
+   "category": "paraphrase",
+   "query": "我早上现在一般喝什么",
+   "expect": [
+    "m26"
+   ],
+   "accept": [
+    "m24"
+   ],
+   "stale": [
+    "m25"
+   ],
+   "intent": "current"
+  },
+  {
+   "id": "q009",
+   "category": "paraphrase",
+   "query": "前阵子我去听的那场演出怎么样",
+   "expect": [
+    "m28"
+   ],
+   "accept": [],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q010",
+   "category": "paraphrase",
+   "query": "我平常听谁的歌比较多",
+   "expect": [
+    "m29"
+   ],
+   "accept": [
+    "m45"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q011",
+   "category": "paraphrase",
+   "query": "我拿什么设备拍照",
+   "expect": [
+    "m30"
+   ],
+   "accept": [
+    "m57",
+    "m31"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q012",
+   "category": "paraphrase",
+   "query": "什么水果我吃了会出问题",
+   "expect": [
+    "m37"
+   ],
+   "accept": [],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q013",
+   "category": "paraphrase",
+   "query": "我抽奖中了什么",
+   "expect": [
+    "m38"
+   ],
+   "accept": [
+    "m40"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q014",
+   "category": "paraphrase",
+   "query": "我在备考什么语言",
+   "expect": [
+    "m41"
+   ],
+   "accept": [
+    "m42",
+    "m44"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q015",
+   "category": "paraphrase",
+   "query": "下雨天我喜欢干嘛",
+   "expect": [
+    "m45"
+   ],
+   "accept": [
+    "m46"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q016",
+   "category": "paraphrase",
+   "query": "我家那台唱片机是怎么来的",
+   "expect": [
+    "m46"
+   ],
+   "accept": [
+    "m45",
+    "m47"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q017",
+   "category": "paraphrase",
+   "query": "新工作的环境我觉得怎么样",
+   "expect": [
+    "m49"
+   ],
+   "accept": [
+    "m05",
+    "m50"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q018",
+   "category": "paraphrase",
+   "query": "办公桌边上那盆植物还好吗",
+   "expect": [
+    "m51"
+   ],
+   "accept": [],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q019",
+   "category": "paraphrase",
+   "query": "我想给猫添置个什么东西",
+   "expect": [
+    "m52"
+   ],
+   "accept": [
+    "m01"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q020",
+   "category": "paraphrase",
+   "query": "去电影院我习惯坐哪",
+   "expect": [
+    "m53"
+   ],
+   "accept": [],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q021",
+   "category": "paraphrase",
+   "query": "坐地铁的时候我最烦什么",
+   "expect": [
+    "m58"
+   ],
+   "accept": [],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q022",
+   "category": "paraphrase",
+   "query": "我上次加班到几点",
+   "expect": [
+    "m59"
+   ],
+   "accept": [
+    "m20"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q023",
+   "category": "paraphrase",
+   "query": "我每个月固定会去做什么公益",
+   "expect": [
+    "m60"
+   ],
+   "accept": [],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q024",
+   "category": "paraphrase",
+   "query": "周末早上可以给我发消息吗",
+   "expect": [
+    "m36"
+   ],
+   "accept": [],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q025",
+   "category": "paraphrase",
+   "query": "我最近睡眠怎么样",
+   "expect": [
+    "m26"
+   ],
+   "accept": [
+    "m48"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q026",
+   "category": "paraphrase",
+   "query": "我手机拍照现在怎么样",
+   "expect": [
+    "m57"
+   ],
+   "accept": [],
+   "stale": [
+    "m56"
+   ],
+   "intent": "current"
+  },
+  {
+   "id": "q027",
+   "category": "paraphrase",
+   "query": "海边那次拍的照片洗出来效果如何",
+   "expect": [
+    "m31"
+   ],
+   "accept": [
+    "m30"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q028",
+   "category": "paraphrase",
+   "query": "我哪天过生日",
+   "expect": [
+    "m34"
+   ],
+   "accept": [],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q029",
+   "category": "paraphrase",
+   "query": "我这周日语学到哪了",
+   "expect": [
+    "m42"
+   ],
+   "accept": [
+    "m41"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q030",
+   "category": "paraphrase",
+   "query": "我最近做了什么奇怪的梦",
+   "expect": [
+    "m48"
+   ],
+   "accept": [],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q031",
+   "category": "paraphrase",
+   "query": "我搬家之后住几楼",
+   "expect": [
+    "m07"
+   ],
+   "accept": [],
+   "stale": [
+    "m06"
+   ],
+   "intent": "current"
+  },
+  {
+   "id": "q032",
+   "category": "paraphrase",
+   "query": "我外公是干什么的",
+   "expect": [
+    "m47"
+   ],
+   "accept": [
+    "m46"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q033",
+   "category": "opinion_change",
+   "query": "你现在怎么评价雾港的结局",
+   "expect": [
+    "m11"
+   ],
+   "accept": [],
+   "stale": [
+    "m10"
+   ],
+   "intent": "current"
+  },
+  {
+   "id": "q034",
+   "category": "opinion_change",
+   "query": "你一开始对雾港结局是什么看法",
+   "expect": [
+    "m10"
+   ],
+   "accept": [
+    "m11"
+   ],
+   "stale": [],
+   "intent": "history"
+  },
+  {
+   "id": "q035",
+   "category": "opinion_change",
+   "query": "你对雾港结局的看法是怎么变的",
+   "expect": [
+    "m10",
+    "m11"
+   ],
+   "accept": [],
+   "stale": [],
+   "intent": "history"
+  },
+  {
+   "id": "q036",
+   "category": "opinion_change",
+   "query": "我对跑步的态度前后有什么变化",
+   "expect": [
+    "m12",
+    "m13"
+   ],
+   "accept": [
+    "m22",
+    "m23"
+   ],
+   "stale": [],
+   "intent": "history"
+  },
+  {
+   "id": "q037",
+   "category": "opinion_change",
+   "query": "我以前喜欢跑步吗",
+   "expect": [
+    "m12"
+   ],
+   "accept": [
+    "m13"
+   ],
+   "stale": [],
+   "intent": "history"
+  },
+  {
+   "id": "q038",
+   "category": "opinion_change",
+   "query": "我现在觉得空气炸锅怎么样",
+   "expect": [
+    "m40"
+   ],
+   "accept": [
+    "m38"
+   ],
+   "stale": [
+    "m39"
+   ],
+   "intent": "current"
+  },
+  {
+   "id": "q039",
+   "category": "opinion_change",
+   "query": "我当初怎么评价空气炸锅的",
+   "expect": [
+    "m39"
+   ],
+   "accept": [
+    "m38",
+    "m40"
+   ],
+   "stale": [],
+   "intent": "history"
+  },
+  {
+   "id": "q040",
+   "category": "opinion_change",
+   "query": "你一开始觉得我学日语能坚持吗",
+   "expect": [
+    "m43"
+   ],
+   "accept": [
+    "m44",
+    "m41"
+   ],
+   "stale": [],
+   "intent": "history"
+  },
+  {
+   "id": "q041",
+   "category": "opinion_change",
+   "query": "你现在觉得我学日语认真吗",
+   "expect": [
+    "m44"
+   ],
+   "accept": [
+    "m41",
+    "m42"
+   ],
+   "stale": [
+    "m43"
+   ],
+   "intent": "current"
+  },
+  {
+   "id": "q042",
+   "category": "opinion_change",
+   "query": "你对我学日语的看法有变化吗",
+   "expect": [
+    "m43",
+    "m44"
+   ],
+   "accept": [
+    "m41"
+   ],
+   "stale": [],
+   "intent": "history"
+  },
+  {
+   "id": "q043",
+   "category": "opinion_change",
+   "query": "我喝咖啡的习惯后来有什么变化",
+   "expect": [
+    "m25",
+    "m26"
+   ],
+   "accept": [
+    "m24"
+   ],
+   "stale": [],
+   "intent": "history"
+  },
+  {
+   "id": "q044",
+   "category": "opinion_change",
+   "query": "你怎么看我戒咖啡因这件事",
+   "expect": [
+    "m27"
+   ],
+   "accept": [
+    "m26"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q045",
+   "category": "opinion_change",
+   "query": "你觉得我换工作之后状态怎样",
+   "expect": [
+    "m50"
+   ],
+   "accept": [
+    "m49",
+    "m05"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q046",
+   "category": "opinion_change",
+   "query": "你后来为什么改变了对雾港的看法",
+   "expect": [
+    "m11"
+   ],
+   "accept": [
+    "m10"
+   ],
+   "stale": [],
+   "intent": "history"
+  },
+  {
+   "id": "q047",
+   "category": "opinion_change",
+   "query": "我是从什么时候开始改喝大麦茶的",
+   "expect": [
+    "m26"
+   ],
+   "accept": [
+    "m25"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q048",
+   "category": "expired",
+   "query": "我现在住的地方有电梯吗",
+   "expect": [
+    "m07"
+   ],
+   "accept": [
+    "m48"
+   ],
+   "stale": [
+    "m06"
+   ],
+   "intent": "current"
+  },
+  {
+   "id": "q049",
+   "category": "expired",
+   "query": "我以前住的地方是什么样的",
+   "expect": [
+    "m06"
+   ],
+   "accept": [
+    "m07"
+   ],
+   "stale": [],
+   "intent": "history"
+  },
+  {
+   "id": "q050",
+   "category": "expired",
+   "query": "我现在在哪家公司",
+   "expect": [
+    "m05"
+   ],
+   "accept": [
+    "m49"
+   ],
+   "stale": [
+    "m04"
+   ],
+   "intent": "current"
+  },
+  {
+   "id": "q051",
+   "category": "expired",
+   "query": "我之前的工作是做什么的",
+   "expect": [
+    "m04"
+   ],
+   "accept": [
+    "m05"
+   ],
+   "stale": [],
+   "intent": "history"
+  },
+  {
+   "id": "q052",
+   "category": "expired",
+   "query": "我的膝盖现在怎么样了",
+   "expect": [
+    "m23"
+   ],
+   "accept": [],
+   "stale": [
+    "m22"
+   ],
+   "intent": "current"
+  },
+  {
+   "id": "q053",
+   "category": "expired",
+   "query": "我膝盖之前是怎么受伤的",
+   "expect": [
+    "m22"
+   ],
+   "accept": [
+    "m23"
+   ],
+   "stale": [],
+   "intent": "history"
+  },
+  {
+   "id": "q054",
+   "category": "expired",
+   "query": "我现在每天还喝两杯咖啡吗",
+   "expect": [
+    "m26"
+   ],
+   "accept": [
+    "m25",
+    "m24"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q055",
+   "category": "expired",
+   "query": "我现在用的手机电池耐用吗",
+   "expect": [
+    "m57"
+   ],
+   "accept": [],
+   "stale": [
+    "m56"
+   ],
+   "intent": "current"
+  },
+  {
+   "id": "q056",
+   "category": "expired",
+   "query": "我以前那台手机有什么毛病",
+   "expect": [
+    "m56"
+   ],
+   "accept": [
+    "m57"
+   ],
+   "stale": [],
+   "intent": "history"
+  },
+  {
+   "id": "q057",
+   "category": "expired",
+   "query": "我现在上班还经常改需求到深夜吗",
+   "expect": [
+    "m05"
+   ],
+   "accept": [
+    "m04",
+    "m49",
+    "m59"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q058",
+   "category": "expired",
+   "query": "我搬家前住在城市哪边",
+   "expect": [
+    "m06"
+   ],
+   "accept": [
+    "m07"
+   ],
+   "stale": [],
+   "intent": "history"
+  },
+  {
+   "id": "q059",
+   "category": "expired",
+   "query": "我现在住得离地铁近吗",
+   "expect": [
+    "m07"
+   ],
+   "accept": [],
+   "stale": [
+    "m06"
+   ],
+   "intent": "current"
+  },
+  {
+   "id": "q060",
+   "category": "expired",
+   "query": "我目前的工作具体负责什么",
+   "expect": [
+    "m05"
+   ],
+   "accept": [
+    "m49"
+   ],
+   "stale": [
+    "m04"
+   ],
+   "intent": "current"
+  },
+  {
+   "id": "q061",
+   "category": "expired",
+   "query": "我现在还觉得跑步无聊吗",
+   "expect": [
+    "m13"
+   ],
+   "accept": [
+    "m12"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q062",
+   "category": "expired",
+   "query": "你现在还觉得雾港结局仓促吗",
+   "expect": [
+    "m11"
+   ],
+   "accept": [
+    "m10"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q063",
+   "category": "indirect",
+   "query": "我那个学设计的家人最近怎么样",
+   "expect": [
+    "m18"
+   ],
+   "accept": [
+    "m19",
+    "m54",
+    "m35"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q064",
+   "category": "indirect",
+   "query": "我妹妹想换什么专业",
+   "expect": [
+    "m54"
+   ],
+   "accept": [
+    "m18",
+    "m55"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q065",
+   "category": "indirect",
+   "query": "那个总是最后一个下班的人是谁",
+   "expect": [
+    "m20"
+   ],
+   "accept": [],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q066",
+   "category": "indirect",
+   "query": "我身边谁让我有点担心身体",
+   "expect": [
+    "m20"
+   ],
+   "accept": [],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q067",
+   "category": "indirect",
+   "query": "那张画着猫的卡片是谁寄的",
+   "expect": [
+    "m19"
+   ],
+   "accept": [
+    "m18"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q068",
+   "category": "indirect",
+   "query": "留给我唱片机的那位长辈是做什么的",
+   "expect": [
+    "m47"
+   ],
+   "accept": [
+    "m46"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q069",
+   "category": "indirect",
+   "query": "你对我妹妹想换专业怎么看",
+   "expect": [
+    "m55"
+   ],
+   "accept": [
+    "m54",
+    "m18"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q070",
+   "category": "indirect",
+   "query": "我答应帮家里人干什么活",
+   "expect": [
+    "m35"
+   ],
+   "accept": [
+    "m18"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q071",
+   "category": "indirect",
+   "query": "十一月我要帮谁搬东西",
+   "expect": [
+    "m35"
+   ],
+   "accept": [
+    "m18"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q072",
+   "category": "indirect",
+   "query": "我去看的那个乐队叫什么名字",
+   "expect": [
+    "m28"
+   ],
+   "accept": [],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q073",
+   "category": "indirect",
+   "query": "我在年会上得到的那个电器后来我怎么评价",
+   "expect": [
+    "m40"
+   ],
+   "accept": [
+    "m38",
+    "m39"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q074",
+   "category": "indirect",
+   "query": "我那只捡来的猫几岁了",
+   "expect": [
+    "m01"
+   ],
+   "accept": [],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q075",
+   "category": "indirect",
+   "query": "那个唱民谣的女歌手叫什么",
+   "expect": [
+    "m29"
+   ],
+   "accept": [],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q076",
+   "category": "indirect",
+   "query": "我用那台旧理光拍的海边照片怎么样",
+   "expect": [
+    "m31"
+   ],
+   "accept": [
+    "m30"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q077",
+   "category": "indirect",
+   "query": "工作室那份工作我为什么觉得累",
+   "expect": [
+    "m04"
+   ],
+   "accept": [
+    "m49"
+   ],
+   "stale": [],
+   "intent": "history"
+  },
+  {
+   "id": "q078",
+   "category": "indirect",
+   "query": "我小时候常去玩的地方",
+   "expect": [
+    "m47"
+   ],
+   "accept": [],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q079",
+   "category": "indirect",
+   "query": "说我学日语三分钟热度的是谁",
+   "expect": [
+    "m43"
+   ],
+   "accept": [
+    "m44"
+   ],
+   "stale": [],
+   "intent": "history"
+  },
+  {
+   "id": "q080",
+   "category": "dual_subject",
+   "query": "你喜欢猫还是狗",
+   "expect": [
+    "m17"
+   ],
+   "accept": [
+    "m16"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q081",
+   "category": "dual_subject",
+   "query": "我更喜欢猫还是狗",
+   "expect": [
+    "m16"
+   ],
+   "accept": [
+    "m17"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q082",
+   "category": "dual_subject",
+   "query": "我们俩对猫狗的看法一样吗",
+   "expect": [
+    "m16",
+    "m17"
+   ],
+   "accept": [],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q083",
+   "category": "dual_subject",
+   "query": "你喜欢玩恐怖游戏吗",
+   "expect": [
+    "m15"
+   ],
+   "accept": [
+    "m14"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q084",
+   "category": "dual_subject",
+   "query": "我喜欢什么类型的游戏",
+   "expect": [
+    "m14"
+   ],
+   "accept": [
+    "m15"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q085",
+   "category": "dual_subject",
+   "query": "我们对恐怖游戏的看法有什么不同",
+   "expect": [
+    "m14",
+    "m15"
+   ],
+   "accept": [],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q086",
+   "category": "dual_subject",
+   "query": "你怎么看胶片摄影",
+   "expect": [
+    "m33"
+   ],
+   "accept": [
+    "m32",
+    "m30"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q087",
+   "category": "dual_subject",
+   "query": "我觉得胶片和手机拍照哪个好",
+   "expect": [
+    "m32"
+   ],
+   "accept": [
+    "m33",
+    "m30"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q088",
+   "category": "dual_subject",
+   "query": "我们俩对胶片的看法分别是什么",
+   "expect": [
+    "m32",
+    "m33"
+   ],
+   "accept": [
+    "m30"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q089",
+   "category": "dual_subject",
+   "query": "你觉得小满适合学动画吗",
+   "expect": [
+    "m55"
+   ],
+   "accept": [
+    "m54"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q090",
+   "category": "dual_subject",
+   "query": "是谁觉得雾港结局仓促",
+   "expect": [
+    "m10"
+   ],
+   "accept": [
+    "m11"
+   ],
+   "stale": [],
+   "intent": "history"
+  },
+  {
+   "id": "q091",
+   "category": "dual_subject",
+   "query": "是谁说空气炸锅是智商税",
+   "expect": [
+    "m39"
+   ],
+   "accept": [
+    "m40",
+    "m38"
+   ],
+   "stale": [],
+   "intent": "history"
+  },
+  {
+   "id": "q092",
+   "category": "dual_subject",
+   "query": "我和你谁更怕吓人的东西",
+   "expect": [
+    "m15"
+   ],
+   "accept": [
+    "m14"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q093",
+   "category": "dual_subject",
+   "query": "你怎么看我的新工作",
+   "expect": [
+    "m50"
+   ],
+   "accept": [
+    "m49",
+    "m05"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q094",
+   "category": "dual_subject",
+   "query": "我自己怎么评价新公司",
+   "expect": [
+    "m49"
+   ],
+   "accept": [
+    "m50",
+    "m05"
+   ],
+   "stale": [],
+   "intent": "current"
+  },
+  {
+   "id": "q095",
+   "category": "never_discussed",
+   "query": "我喜欢什么颜色的车",
+   "expect": [],
+   "accept": [],
+   "stale": [],
+   "intent": "none"
+  },
+  {
+   "id": "q096",
+   "category": "never_discussed",
+   "query": "我养过仓鼠吗",
+   "expect": [],
+   "accept": [],
+   "stale": [],
+   "intent": "none"
+  },
+  {
+   "id": "q097",
+   "category": "never_discussed",
+   "query": "我上次体检结果怎么样",
+   "expect": [],
+   "accept": [],
+   "stale": [],
+   "intent": "none"
+  },
+  {
+   "id": "q098",
+   "category": "never_discussed",
+   "query": "我会弹钢琴吗",
+   "expect": [],
+   "accept": [],
+   "stale": [],
+   "intent": "none"
+  },
+  {
+   "id": "q099",
+   "category": "never_discussed",
+   "query": "我老家是哪个省的",
+   "expect": [],
+   "accept": [],
+   "stale": [],
+   "intent": "none"
+  },
+  {
+   "id": "q100",
+   "category": "never_discussed",
+   "query": "我爸妈做什么工作",
+   "expect": [],
+   "accept": [],
+   "stale": [],
+   "intent": "none"
+  },
+  {
+   "id": "q101",
+   "category": "never_discussed",
+   "query": "我有没有说过想学潜水",
+   "expect": [],
+   "accept": [],
+   "stale": [],
+   "intent": "none"
+  },
+  {
+   "id": "q102",
+   "category": "never_discussed",
+   "query": "我最喜欢的足球队是哪支",
+   "expect": [],
+   "accept": [],
+   "stale": [],
+   "intent": "none"
+  },
+  {
+   "id": "q103",
+   "category": "never_discussed",
+   "query": "我住的公寓月租多少",
+   "expect": [],
+   "accept": [],
+   "stale": [],
+   "intent": "none"
+  },
+  {
+   "id": "q104",
+   "category": "never_discussed",
+   "query": "我妹妹的男朋友叫什么",
+   "expect": [],
+   "accept": [],
+   "stale": [],
+   "intent": "none"
+  },
+  {
+   "id": "q105",
+   "category": "never_discussed",
+   "query": "豆腐做过绝育吗",
+   "expect": [],
+   "accept": [],
+   "stale": [],
+   "intent": "none"
+  },
+  {
+   "id": "q106",
+   "category": "never_discussed",
+   "query": "我新公司在哪个区",
+   "expect": [],
+   "accept": [],
+   "stale": [],
+   "intent": "none"
+  },
+  {
+   "id": "q107",
+   "category": "never_discussed",
+   "query": "我的日语老师是谁",
+   "expect": [],
+   "accept": [],
+   "stale": [],
+   "intent": "none"
+  },
+  {
+   "id": "q108",
+   "category": "never_discussed",
+   "query": "我喜欢吃辣吗",
+   "expect": [],
+   "accept": [],
+   "stale": [],
+   "intent": "none"
+  },
+  {
+   "id": "q109",
+   "category": "never_discussed",
+   "query": "我考过驾照吗",
+   "expect": [],
+   "accept": [],
+   "stale": [],
+   "intent": "none"
+  },
+  {
+   "id": "q110",
+   "category": "never_discussed",
+   "query": "我去过日本吗",
+   "expect": [],
+   "accept": [],
+   "stale": [],
+   "intent": "none"
+  },
+  {
+   "id": "q111",
+   "category": "never_discussed",
+   "query": "我咖啡喜欢哪个牌子的豆子",
+   "expect": [],
+   "accept": [],
+   "stale": [],
+   "intent": "none"
+  },
+  {
+   "id": "q112",
+   "category": "never_discussed",
+   "query": "你记得我喜欢的那家火锅店吗",
+   "expect": [],
+   "accept": [],
+   "stale": [],
+   "intent": "none"
+  }
+ ]
+}
