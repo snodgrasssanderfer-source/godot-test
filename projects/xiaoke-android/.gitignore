@@ -15,3 +15,7 @@ local.properties
 
 # 主人的私人人设：只在构建时打包进 APK，绝不提交
 private/
+
+# 人设评测请求、回复、评分、章节和缓存均可能含私有人设
+persona-eval-output/
+source/android/app/src/test/persona-eval/__pycache__/
