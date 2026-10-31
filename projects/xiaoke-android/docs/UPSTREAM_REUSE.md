@@ -181,3 +181,17 @@ Mobilerun 仅作为原有设备控制对照，不替换已运行的 DSH 权限�
 | 戳一戳通知字段（notice_type=notify、sub_type=poke、user_id、target_id、group_id、raw_info） | NapNeko/NapCatQQ 49ecfe0f56c1e0649db6988444950216fd5fe792 | 只读事件格式 | OneBotProtocol.kt |
 
 只取数据，没有引入依赖。
+
+## 2026-10-31 Claude Code
+
+| Use | Source (pinned version) | License | Files in this project |
+|---|---|---|---|
+| Verifying, installing and running the official Claude Code on Android | [greyoak111/cccodroid](https://github.com/greyoak111/cccodroid) `8fe6dced650d51d28b4f465ccbcda3c1ccc502c0` (2026-10-31) | Apache-2.0 | companion/claude/ |
+| Claude Code itself | Anthropic official release, downloads.claude.ai/claude-code-releases, linux-arm64, signed manifest + sha256 | Anthropic's terms | Downloaded on first use; not bundled in the APK or the repo |
+
+What we took from cccodroid is how it works, not its code:
+- the manifest → PGP → sha256 order from `install-claude.mjs` and the signing-key fingerprint pin;
+- the argv and `rate_limit_event` fields that `gateway/src/run.mjs` and `stream.mjs` use with `-p --input-format stream-json`;
+- `login.mjs`'s approach of forwarding only the terminal bytes of `claude auth login`.
+
+We don't use its Termux bootstrap, package-name rewrite, devkit or the enosys-run supervisor. Why is in [CLAUDE_CODE.md](CLAUDE_CODE.md).
