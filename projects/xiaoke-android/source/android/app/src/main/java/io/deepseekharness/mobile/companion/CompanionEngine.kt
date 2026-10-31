@@ -335,7 +335,9 @@ class CompanionEngine private constructor(private val context: Context) {
             var boundId = task.getString("messageId")
             var observationId = task.optString("observationId")
             takeFollowUps(scope).forEach { (message, observation) -> boundId = message; if (observation.isNotBlank()) observationId = observation }
-            if (observationId != task.optString("observationId")) store.put("task", task.put("observationId", observationId))
+            // Kept on the task: a replay or a hand-over to Gemini starts from the newest message, not the first one.
+            if (observationId != task.optString("observationId") || boundId != task.optString("messageId"))
+                store.put("task", task.put("observationId", observationId).put("messageId", boundId))
             val origin = store.get("message", boundId) ?: error("原消息已删除")
             val ticket = store.contextSnapshot(scope, origin.optString("text"), 256)
             val epoch = ticket.getLong("epoch")

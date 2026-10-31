@@ -175,8 +175,8 @@ android {
         minSdk 26
         targetSdk 35
         // 每次给主人安装的新版都把 versionCode 加一；Android 不允许降级覆盖。
-        versionCode 19
-        versionName '0.14.0-companion-private'
+        versionCode 20
+        versionName '0.15.0-companion-private'
 
         buildConfigField 'String', 'DEFAULT_MANIFEST_URL', envBuildValue('DSH_RUNTIME_MANIFEST_URL')
         buildConfigField 'String', 'DEFAULT_MANIFEST_SHA256', envBuildValue('DSH_RUNTIME_MANIFEST_SHA256')
