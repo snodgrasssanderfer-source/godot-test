@@ -38,7 +38,7 @@ class BilibiliReader(private val cookie: () -> String? = { null }) {
         cookieHeader(uri.host)?.let { request.header("Cookie", it) }
         client.newCall(request.build()).execute().use { response ->
             check(response.code != 412) { RISK_CONTROL }
-            check(response.isSuccessful) { "B站内容接口暂不可用（HTTP ${response.code}），没有进行绕过或重复发布" }
+            check(response.isSuccessful) { "B站接口返回 HTTP ${response.code}，稍后再试" }
             val source = response.body?.source() ?: error("内容响应为空")
             require(!source.request(limit + 1)) { "内容响应过大" }
             return source.readByteArray()
@@ -94,7 +94,7 @@ class BilibiliReader(private val cookie: () -> String? = { null }) {
         val data = result.getJSONObject("data")
         check(!data.optBoolean("is_drm") && data.optInt("drm_tech_type", 0) == 0) { "受保护视频不支持下载" }
         val parts = data.optJSONArray("durl")
-        check(parts != null && parts.length() == 1) { "平台未提供单文件 MP4；本版本不拼接 DASH 或分段视频" }
+        check(parts != null && parts.length() == 1) { "这个视频只有 DASH 分轨流，现在还取不了画面（字幕和弹幕照常读）" }
         val part = parts.getJSONObject(0)
         val url = VideoEvidence.publicVideoUrl(part.optString("url")) ?: error("下载地址不在公开视频域名范围")
         return JSONObject().put("url", url).put("size", part.optLong("size", -1)).put("quality", data.optInt("quality", 16))

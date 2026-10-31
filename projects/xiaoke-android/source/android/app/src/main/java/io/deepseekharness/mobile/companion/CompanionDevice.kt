@@ -182,7 +182,7 @@ class CompanionDevice(private val context: Context) {
                 .put("createdAt", System.currentTimeMillis()).put("analyzed", false).put("parts", parts).put("frames", sampled.getJSONArray("frames"))
                 .put("source", "B站公开视频分段读取 + ${if (subtitle != null) "公开字幕" else "未取得字幕"}").put("bytesRead", sampled.getLong("bytesRead"))
                 .put("coverage", "${VideoEvidence.time(info.getDouble("rangeStart"))}–${VideoEvidence.time(info.getDouble("rangeEnd"))}：${count} 张邻近关键帧，${if (subtitle != null) "附此时段字幕" else "没有字幕"}；无音轨，不能补全采样间的动作"))
-        } catch (_: Exception) { error("公开视频分段读取或系统解码失败，未保存不完整资料；可改用本地视频取帧，没有绕过登录或访问限制") }
+        } catch (_: Exception) { error("视频流读取或解码失败；可以把视频文件发给她，从本地取画面") }
     }
 
     /** Keyframes nearest the requested times in [rangeStart, rangeEnd]; returns model parts and per-frame evidence, persists nothing. */

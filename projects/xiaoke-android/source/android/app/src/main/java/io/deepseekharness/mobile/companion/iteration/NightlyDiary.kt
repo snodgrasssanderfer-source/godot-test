@@ -24,7 +24,8 @@ class NightlyDiary(private val store: CompanionStore, private val host: Companio
     private fun write(night: String, now: LocalDateTime): Boolean {
         val zone = ZoneId.systemDefault()
         val from = LocalDate.parse(night).atTime(MORNING_HOUR, 0).atZone(zone).toInstant().toEpochMilli()
-        val to = now.atZone(zone).toInstant().toEpochMilli()
+        // A night caught up on the next day still covers only that day (until 05:00 the morning after).
+        val to = minOf(now, LocalDate.parse(night).plusDays(1).atTime(MORNING_HOUR, 0)).atZone(zone).toInstant().toEpochMilli()
         fun today(kind: String, scope: String? = null) = store.list(kind, scope, 1000).let { rows -> (0 until rows.length()).map(rows::getJSONObject) }
             .filter { it.optLong("createdAt", it.optLong("updatedAt")) in from..to && LifePolicy.visible(it) && !it.optBoolean("temporary") }
         val ownerScopes = CompanionPolicy.ownerScopes(store.settings())
@@ -73,9 +74,15 @@ class NightlyDiary(private val store: CompanionStore, private val host: Companio
         const val MORNING_HOUR = 5
         const val EVENING_HOUR = 22
 
-        /** From 22:00 until 05:00 the evening's date is due unless already written; null in the daytime. */
+        /**
+         * From 22:00 until 05:00 the evening's date is due unless already written. In the daytime, last night is
+         * caught up if the phone slept through it (the process was not running then).
+         */
         fun due(now: LocalDateTime, lastWritten: String): String? {
-            if (now.hour in MORNING_HOUR until EVENING_HOUR) return null
+            if (now.hour in MORNING_HOUR until EVENING_HOUR) {
+                val lastNight = now.toLocalDate().minusDays(1).toString()
+                return lastNight.takeIf { lastWritten.isNotBlank() && it > lastWritten }
+            }
             val night = (if (now.hour < MORNING_HOUR) now.toLocalDate().minusDays(1) else now.toLocalDate()).toString()
             return night.takeIf { it != lastWritten }
         }
