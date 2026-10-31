@@ -25,8 +25,10 @@ object BackgroundJobs {
         return id
     }
 
-    fun finish(store: CompanionStore, id: String, ok: Boolean, outcome: String, now: Long = System.currentTimeMillis()) = change(store, now) { list ->
+    /** [observationId]: what she saw, so a comment draft or a follow-up can point at it. */
+    fun finish(store: CompanionStore, id: String, ok: Boolean, outcome: String, now: Long = System.currentTimeMillis(), observationId: String = "") = change(store, now) { list ->
         list.firstOrNull { it.optString("id") == id }?.put("state", if (ok) "done" else "failed")?.put("outcome", outcome.take(300))?.put("endedAt", now)
+            ?.also { if (observationId.isNotBlank()) it.put("observationId", observationId) }
     }
 
     /** A job tracked elsewhere (social summaries and reminders), recorded here when it ends. */
@@ -51,7 +53,8 @@ object BackgroundJobs {
             "done" -> "完成：" + item.optString("outcome")
             else -> "没成：" + item.optString("outcome")
         }
-        return "- $at ${item.optString("title")}$who：$state"
+        val refs = listOfNotNull("id ${item.optString("id")}", item.optString("observationId").takeIf { it.isNotBlank() }?.let { "资料 observationId=$it" }).joinToString("，")
+        return "- $at ${item.optString("title")}$who：$state（$refs）"
     }
 
     /** Millisecond timestamps, or local "2026-11-04 09:00" / "2026-11-04T09:00" / "2026-11-04" (9:00) / "11-04 09:00" (this or next year). */

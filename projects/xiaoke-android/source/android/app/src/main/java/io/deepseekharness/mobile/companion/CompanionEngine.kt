@@ -1000,12 +1000,34 @@ class CompanionEngine private constructor(private val context: Context) {
             val (settings, profile, bill) = activeWeb ?: error("现在不能联网查")
             web.research(settings, profile, args.optString("query"), args.optString("urls").split(Regex("[\\s,，]+")).filter { it.isNotBlank() }, bill)
         }
-        "recall" -> JSONObject().put("memories", recallMemories(scope, args.optString("query"))).put("messages", searchMessages(scope, args.optString("query")))
+        "recall" -> JSONObject().put("memories", recallMemories(scope, args.optString("query"), forTool = true)).put("messages", searchMessages(scope, args.optString("query")))
+            .put("note", "只列出和问题相关的；没列出的就是没找到，可以换个说法再查。fromGroup 是在那个群里知道的，只读")
         "job_status" -> {
-            val ownerView = scope == CompanionPolicy.OWNER || modules.principal(scope).owner
+            val ownerView = speaker.ownersOwnChat
             val items = io.deepseekharness.mobile.companion.chat.BackgroundJobs.items(store, scope, ownerView).takeLast(10)
-            JSONObject().put("jobs", JSONArray(items.map { JSONObject().put("line", io.deepseekharness.mobile.companion.chat.BackgroundJobs.line(it)).put("state", it.optString("state")) }))
-                .put("note", if (items.isEmpty()) "最近没有后台任务" else "没写结果的就是还不知道结果")
+            // Reminders and summaries waiting for their time live in the social ledger; they are jobs too.
+            val clock = java.time.format.DateTimeFormatter.ofPattern("M/d HH:mm")
+            val scheduled = runCatching { modules.router.execute("social", "jobs.list", JSONObject(), if (ownerView) modules.localOwner else modules.principal(scope)).optJSONArray("items") }.getOrNull()
+                ?.let { a -> (0 until a.length()).map(a::getJSONObject) }.orEmpty().filter { it.optString("state") in setOf("queued", "running", "waiting") }.takeLast(10)
+            JSONObject().put("jobs", JSONArray(items.map { JSONObject().put("line", io.deepseekharness.mobile.companion.chat.BackgroundJobs.line(it)).put("state", it.optString("state")).put("id", it.optString("id")).put("observationId", it.optString("observationId")) }))
+                .put("scheduled", JSONArray(scheduled.map { j -> JSONObject().put("id", j.optString("id")).put("state", j.optString("state"))
+                    .put("line", "${if (j.optString("kind") == "reminder") "提醒" else "摘要"} ${clock.format(java.time.Instant.ofEpochMilli(j.optLong("dueAt")).atZone(java.time.ZoneId.systemDefault()))}：${j.optString("text").take(80)}") }))
+                .put("note", if (items.isEmpty() && scheduled.isEmpty()) "最近没有后台任务" else "没写结果的就是还不知道结果；job_cancel 可以取消排着或在跑的")
+        }
+        "job_cancel" -> {
+            val jobId = args.getString("id").trim()
+            when {
+                jobId.startsWith("job-") -> modules.router.execute("social", "jobs.cancel", JSONObject().put("id", jobId), if (speaker.owner) modules.localOwner else modules.principal(scope))
+                    .let { JSONObject().put("cancelled", it.optString("state") == "cancelled").put("state", it.optString("state")) }
+                jobId.startsWith("bg-") -> { check(speaker.owner || scope.startsWith("qq:group:")) { "不能取消这个" }
+                    JSONObject().put("cancelled", modules.biliWatcher.cancel(jobId)).put("note", "正在下载的那一步做完就停") }
+                else -> throw IllegalArgumentException("id 用 job_status 里列出的（job-… 或 bg-…）")
+            }
+        }
+        "bili_search" -> {
+            val kind = if (args.optString("kind") == "article") "article" else "video"
+            JSONObject().put("results", JSONArray(modules.social.biliReader().search(args.getString("query").take(100), kind, 8)))
+                .put("note", "挑一个再用 watch_bilibili 看（videoId 填 BV 号，专栏填 articleId）")
         }
         "life_action" -> {
             val action = args.getString("action")
@@ -1130,31 +1152,46 @@ class CompanionEngine private constructor(private val context: Context) {
     }
 
     /** Hybrid recall: meaning (vectors), words and named things together, so today's words can bring back last week's talk. */
-    private fun recallMemories(scope: String, query: String): JSONArray {
+    /**
+     * Memories for this conversation. The owner's private domain is one (app chat and their own QQ chat read each
+     * other's), and the owner's side also reads, without writing, what she learned in the groups she is in, labelled
+     * with the group. Never the other way: a group does not see the owner's memories. [forTool]: an explicit recall,
+     * cut to the few that actually match.
+     */
+    private fun recallMemories(scope: String, query: String, forTool: Boolean = false): JSONArray {
         val records = store.memoriesFor(scope, query, 2000)
-        // The owner's private domain is one: the app chat and the owner's own QQ chat read each other's memories.
         val settings = store.settings()
+        val ownerSide = scope == CompanionPolicy.OWNER || CompanionPolicy.sharesOwnerMemory(store.get("conversation", scope), settings)
         val other = when {
             scope == CompanionPolicy.OWNER -> CompanionPolicy.ownerQqScope(settings)?.takeIf { store.get("conversation", it)?.let { c -> CompanionPolicy.sharesOwnerMemory(c, settings) } == true }
-            CompanionPolicy.sharesOwnerMemory(store.get("conversation", scope), settings) -> CompanionPolicy.OWNER
+            ownerSide -> CompanionPolicy.OWNER
             else -> null
         }
         if (other != null) {
             val owner = store.memoriesFor(other, query, 2000)
             for (i in 0 until owner.length()) records.put(owner.getJSONObject(i))
         }
+        if (ownerSide) for ((_, groupScope, title) in allowedGroups()) {
+            val learned = store.memoriesFor(groupScope, query, 300)
+            for (i in 0 until learned.length()) records.put(JSONObject(learned.getJSONObject(i).toString()).put("fromGroup", title))
+        }
         val list = (0 until records.length()).map(records::getJSONObject)
         val semantic = runCatching { modules.memoryIndex.semantic(query, list) }.getOrNull()
-        val ranked = MemoryRanking.rank(records, query, 40, semantic)
-        return JSONArray().also { out -> for (i in 0 until ranked.length()) out.put(io.deepseekharness.mobile.companion.memory.MemoryView.project(ranked.getJSONObject(i))) }
+        val ranked = if (forTool) MemoryRanking.relevant(list, query, 8, semantic)
+            else MemoryRanking.rank(records, query, 40, semantic).let { a -> (0 until a.length()).map(a::getJSONObject) }
+        return JSONArray().also { out -> ranked.forEach { m ->
+            out.put(io.deepseekharness.mobile.companion.memory.MemoryView.project(m).also { v -> m.optString("fromGroup").takeIf { it.isNotBlank() }?.let { v.put("fromGroup", it) } })
+        } }
     }
 
+    /** Earlier messages in this conversation by meaning-ish match (the same bigram scoring as memories), newest first on ties. */
     private fun searchMessages(scope: String, query: String): JSONArray {
-        val all = store.contextMessages(scope, 10000)
-        return JSONArray().also { result -> (0 until all.length()).map(all::getJSONObject)
-            .filter { it.optString("text").contains(query, ignoreCase = true) }.takeLast(12).forEach {
-                result.put(JSONObject().put("id", it.getString("id")).put("scope", it.getString("scope")).put("text", it.optString("text").take(2000)).put("source", it.optString("source")))
-            } }
+        val all = store.contextMessages(scope, 3000).let { a -> (0 until a.length()).map(a::getJSONObject) }
+        val hits = MemoryRanking.relevant(all, query, 10, null, 0.4)
+        return JSONArray().also { result -> hits.forEach {
+            result.put(JSONObject().put("id", it.getString("id")).put("scope", it.getString("scope")).put("text", it.optString("text").take(2000))
+                .put("source", it.optString("source")).put("at", it.optLong("createdAt")))
+        } }
     }
 
     /** The everyday flash profile: the active model when it is a flash one, otherwise the first flash in the list. */
@@ -1209,6 +1246,9 @@ class CompanionEngine private constructor(private val context: Context) {
                     a.put(decl("say_in_group", "主人让你去某个 QQ 群里说话时用：text 是你要在群里说的话（用你自己的口吻），group 填群号或群名。主人的要求就是授权，会直接发出。" +
                         "不确定是哪个群就别填 group，会返回能去的群让主人挑", listOf("group", "text"), listOf("text")))
                 }
+                a.put(decl("job_cancel", "取消一件排着或正在做的后台事：id 用 job_status 里的（job-… 是提醒和摘要，bg-… 是看B站、上网查）", listOf("id")))
+                if (speaker.owner || scope.startsWith("qq:group:"))
+                    a.put(decl("bili_search", "在 B站搜视频或专栏（kind=article），返回前几条的标题、UP、时长和 BV 号，挑一个再看", listOf("query", "kind"), listOf("query")))
                 if (speaker.owner || scope.startsWith("qq:group:"))
                     a.put(decl("watch_bilibili", "对聊到的话题感兴趣时，自己去 B站看一部视频或读一篇专栏（videoId=BV 号，articleId=cv 号，或 query 关键词；读专栏时 kind=article）。后台进行、用活动额度；视频读字幕、关键帧、弹幕和热门评论，看完记成你自己的观察并写明实际看了哪部分", listOf("videoId", "articleId", "query", "kind", "reason"), listOf("reason")))
                 if (modules.router.available("social")) {

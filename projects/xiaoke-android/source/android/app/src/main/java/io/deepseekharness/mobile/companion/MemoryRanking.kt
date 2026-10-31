@@ -81,6 +81,19 @@ object MemoryRanking {
         }
     }
 
+    /**
+     * What she asked for, not everything: at most [limit], and only what scores at least [minScore] (pinned ones
+     * always). An empty query has nothing to judge by and falls back to the newest few.
+     */
+    fun relevant(records: List<JSONObject>, query: String, limit: Int = 8, semantic: Map<String, Double>? = null, minScore: Double = 0.35,
+                 now: Long = System.currentTimeMillis()): List<JSONObject> {
+        val values = records.filter(::recallable)
+        if (query.isBlank()) return values.sortedByDescending { it.optLong("updatedAt", it.optLong("createdAt")) }.take(limit)
+        val scores = score(values, query, semantic, now)
+        return values.filter { it.optBoolean("pinned") || (scores[it.optString("id")] ?: 0.0) >= minScore }
+            .sortedByDescending { scores[it.optString("id")] ?: 0.0 }.take(limit)
+    }
+
     fun rank(records: JSONArray, query: String, limit: Int = 80, semantic: Map<String, Double>? = null, now: Long = System.currentTimeMillis()): JSONArray {
         val values = (0 until records.length()).map(records::getJSONObject).filter(::recallable)
         val scores = score(values, query, semantic, now)
