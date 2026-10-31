@@ -143,12 +143,13 @@ fun main(args: Array<String>) {
     val recordsById = records.associateBy { it.getString("id") }
     val selection = args[7]
     val limit = args[8].toInt()
+    val relative = args.getOrNull(10)?.toDouble() ?: 0.75
     val queries = corpus.getJSONArray("queries").objects()
     val evaluatedQueries = queries.filter { split == "all" || it.getString("split") == split }
     val ownerScopes = corpus.strings("ownerPrivateScopes").ifEmpty { listOf(CompanionPolicy.OWNER) }.toSet()
     val groups = corpus.strings("allowedGroupScopes").toSet()
     val modes = if (mode == "both") listOf("lexical", "semantic") else listOf(mode)
-    val result = JSONObject().put("revision", args[6]).put("limit", limit).put("minScore", if (selection == "relevant") 0.35 else JSONObject.NULL).put("retrieval", args[9]).put("selection", selection)
+    val result = JSONObject().put("revision", args[6]).put("limit", limit).put("minScore", if (selection != "rank") 0.35 else JSONObject.NULL).put("relative", relative).put("retrieval", args[9]).put("selection", selection)
         .put("messages", corpus.getJSONArray("messages").length()).put("memories", records.size).put("queries", queries.size)
         .put("opinionAttribution", attribution(records, corpus.getJSONObject("memoryGold"), queries.maxOf { it.getLong("asOf") }))
     for (currentMode in modes) {
@@ -166,6 +167,10 @@ fun main(args: Array<String>) {
             val started = System.nanoTime()
             val hits = when (selection) {
                 "relevant" -> MemoryRanking.relevant(candidates, query.getString("text"), limit, similarities, now = now)
+                // By reflection: older revisions have no scored(), and this file is compiled against each of them.
+                "scored" -> (MemoryRanking::class.java.methods.first { it.name == "scored" && it.parameterCount == 7 }
+                    .invoke(MemoryRanking, candidates, query.getString("text"), limit, similarities, 0.35, now, relative) as List<*>)
+                    .map { (it as Pair<*, *>).first as JSONObject }
                 "rank" -> MemoryRanking.rank(JSONArray(candidates), query.getString("text"), limit, similarities, now).objects()
                 else -> error("Unknown selection: $selection")
             }

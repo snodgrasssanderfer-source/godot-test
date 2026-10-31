@@ -95,22 +95,21 @@ def main():
         executable = shutil.which("gradle")
         if executable:
             gradle = Path(executable).resolve().parents[1]
-    if not gradle or not (gradle / "lib/kotlin-compiler-embeddable-2.0.20.jar").exists():
-        parser.error("Pass --gradle-home /path/to/gradle-8.11.1 (the project's pinned Gradle distribution)")
+    compilers = sorted((gradle / "lib").glob("kotlin-compiler-embeddable-2.*.jar")) if gradle else []
+    if not compilers:
+        parser.error("Pass --gradle-home /path/to/a Gradle 8.x distribution (it bundles the Kotlin compiler)")
     args.cache.mkdir(parents=True, exist_ok=True)
     json_jar = download_json(args.cache)
-    stdlib = gradle / "lib/kotlin-stdlib-2.0.20.jar"
+    stdlib = sorted((gradle / "lib").glob("kotlin-stdlib-2.*.jar"))[-1]
     java = str(Path(os.environ["JAVA_HOME"]) / "bin/java") if os.environ.get("JAVA_HOME") else "java"
     engine_path = SOURCE / "CompanionEngine.kt"
     engine = subprocess.check_output(["git", "-C", str(REPO), "show", f"{args.ref}:{engine_path.relative_to(REPO)}"], text=True) if args.ref else engine_path.read_text()
     recall = engine[engine.index("private fun recallMemories("):engine.index("private fun searchMessages(")]
-    if args.retrieval == "automatic":
-        match = re.search(r"else MemoryRanking\.(rank|relevant)\((?:records|list), query, (\d+), semantic\)", recall)
-    else:
-        match = re.search(r"if \(forTool\) MemoryRanking\.(rank|relevant)\((?:records|list), query, (\d+), semantic\)", recall)
+    call = r"MemoryRanking\.(rank|relevant|scored)\((?:records|list), query, (\d+), semantic(?:, relative = ([0-9.]+))?\)"
+    match = re.search((r"else\s+" if args.retrieval == "automatic" else r"if \(forTool\) ") + call, recall)
     if not match:
         raise ValueError("Unrecognized Engine recall selection; update runner to call the new production entry point")
-    selection, limit = match.groups()
+    selection, limit, cut = match.groups()
     with tempfile.TemporaryDirectory(prefix="memory-eval-") as temporary:
         temporary = Path(temporary)
         sources = []
@@ -129,7 +128,7 @@ def main():
         subprocess.run(compile_command, check=True)
         command = [java, "-Xms128m", "-Xmx1g", "-Duser.timezone=" + data.get("timezone", "Asia/Shanghai"), "-cp", str(jar) + os.pathsep + classpath,
                    "io.deepseekharness.mobile.companion.eval.MemoryEvaluationKt", str(args.data), str(args.scores),
-                   args.mode, args.split, str(args.details).lower(), str(args.benchmark).lower(), args.ref or "worktree", selection, limit, args.retrieval]
+                   args.mode, args.split, str(args.details).lower(), str(args.benchmark).lower(), args.ref or "worktree", selection, limit, args.retrieval, cut or "0.75"]
         subprocess.run(command, check=True)
 
 
