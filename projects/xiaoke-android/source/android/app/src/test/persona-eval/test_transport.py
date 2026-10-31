@@ -159,6 +159,77 @@ class TransportTest(unittest.TestCase):
         self.assertEqual(requests[0].full_url, requests[1].full_url)
         self.assertEqual(requests[0].data, requests[1].data)
 
+    def test_http_200_transient_errors_retry_same_request_and_preserve_attempts(self):
+        cases = [({"error": {"message": "fiction-private-relay-error"}}, "provider_error_in_http_200"),
+                 ({"candidates": [{"content": {"parts": [{"text": "fiction-private-partial"}]}}]}, "incomplete_stream")]
+        for index, (failure, code) in enumerate(cases):
+            with self.subTest(code=code):
+                cache = self.cache / str(index)
+                client = Client("https://relay.invalid", "fiction-secret", "gemini", cache)
+                client.opener = Mock()
+                success = generated("虚构重试成功")
+                client.opener.open.side_effect = [Response(json.dumps(failure)), Response(json.dumps(success))]
+                body = {"contents": [{"role": "user", "parts": [{"text": "虚构问题"}]}]}
+                with patch("transport.time.sleep") as sleep:
+                    response, key = client.post("gemini-3.8-flash", body)
+                self.assertEqual(response, [success])
+                self.assertEqual(client.opener.open.call_count, 2)
+                sleep.assert_called_once_with(1)
+                requests = [call.args[0] for call in client.opener.open.call_args_list]
+                self.assertEqual(requests[0].full_url, requests[1].full_url)
+                self.assertEqual(requests[0].data, requests[1].data)
+                saved = json.loads((cache / (key + ".json")).read_text())
+                self.assertEqual(saved["response"], [success])
+                self.assertEqual(len(saved["attempts"]), 2)
+                self.assertEqual(saved["attempts"][0]["error"], code)
+                self.assertEqual(saved["attempts"][1]["status"], 200)
+                failure_audit = json.loads((cache / (key + ".failure.json")).read_text())
+                self.assertEqual(failure_audit["attempts"][0]["error"], code)
+                self.assertFalse(any("fiction-private-" in p.read_text() for p in cache.glob("*.json")))
+                self.assertFalse(any("fiction-secret" in p.read_text() for p in cache.glob("*.json")))
+                self.assertEqual(client.post("gemini-3.8-flash", body), (response, key))
+                self.assertEqual(client.opener.open.call_count, 2)
+
+    def test_http_200_transient_retries_are_bounded_without_success_cache(self):
+        client = Client("https://relay.invalid", "fiction-secret", "gemini", self.cache)
+        client.opener = Mock()
+        client.opener.open.return_value = Response(json.dumps({"error": {"message": "fiction-private-error"}}))
+        with patch("transport.time.sleep") as sleep, self.assertRaisesRegex(ModelError, "^provider_error_in_http_200$"):
+            client.post("gemini-3.8-flash", {})
+        self.assertEqual(client.opener.open.call_count, 3)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [1, 2])
+        files = list(self.cache.glob("*.json"))
+        self.assertEqual(len(files), 1)
+        self.assertTrue(files[0].name.endswith(".failure.json"))
+        failure = json.loads(files[0].read_text())
+        self.assertEqual(len(failure["attempts"]), 3)
+        self.assertEqual({attempt["error"] for attempt in failure["attempts"]}, {"provider_error_in_http_200"})
+        self.assertNotIn("fiction-private-error", files[0].read_text())
+
+    def test_schema_and_safety_failures_do_not_retry(self):
+        for index, (body, code) in enumerate([
+            ("not valid JSON", "empty_event_stream"),
+            ('{"invalid":', "invalid_response"),
+            (json.dumps({"promptFeedback": {"blockReason": "SAFETY"}}), "prompt_blocked"),
+        ]):
+            with self.subTest(code=code):
+                client = Client("https://relay.invalid", "fiction-secret", "gemini", self.cache / str(index))
+                client.opener = Mock()
+                client.opener.open.return_value = Response(body)
+                with patch("transport.time.sleep") as sleep, self.assertRaisesRegex(ModelError, "^" + code + "$"):
+                    client.post("gemini-3.8-flash", {})
+                self.assertEqual(client.opener.open.call_count, 1)
+                sleep.assert_not_called()
+        client = Client("https://relay.invalid", "fiction-secret", "gemini", self.cache / "safety-finish")
+        client.opener = Mock()
+        client.opener.open.return_value = Response(json.dumps(generated("", "SAFETY")))
+        bridge = Mock()
+        bridge.call.return_value = bridge_result("", "SAFETY")
+        with patch("transport.time.sleep") as sleep, self.assertRaisesRegex(ModelError, "^incomplete_generation_SAFETY$"):
+            gemini_reply(client, bridge, "gemini-3.8-flash", {})
+        self.assertEqual(client.opener.open.call_count, 1)
+        sleep.assert_not_called()
+
     def test_continuation_preserves_original_prompt_and_merges_native_events(self):
         first, second = generated("前半", "CONTINUATION", "fixture-token"), generated("后半")
         client, bridge = Mock(), Mock()

@@ -93,6 +93,8 @@ class Client:
                     has_error = any("error" in event for event in result) if isinstance(result, list) else "error" in result
                     if has_error:
                         raise ModelError("provider_error_in_http_200")
+                    if self.protocol == "gemini" and any(event.get("promptFeedback", {}).get("blockReason") for event in result):
+                        raise ModelError("prompt_blocked")
                     if self.protocol == "gemini" and not any(
                         event.get("candidates", [{}])[0].get("finishReason")
                         for event in result if event.get("candidates")
@@ -113,7 +115,9 @@ class Client:
             except (ValueError, UnicodeError):
                 code, retry = "invalid_response", False
             except ModelError as error:
-                code, retry = str(error), False
+                code = str(error)
+                # Relays can fail or cut an otherwise valid SSE stream while still returning HTTP 200.
+                retry = code in {"provider_error_in_http_200", "incomplete_stream"}
             attempts.append({"error": code, "seconds": round(time.monotonic() - started, 3)})
             save(self.cache / (request_key + ".failure.json"), {"request_hash": request_key, "attempts": attempts})
             if not retry or attempt == self.retries:
