@@ -39,7 +39,7 @@ export interface ClaudeStatus extends ClaudeSnapshot {
   install: {phase: 'idle' | 'checking' | 'downloading' | 'verifying' | 'done' | 'failed'; done?: number; total?: number; error?: string; version?: string}
   login: {running: boolean; exit?: number | null; output?: string; url?: string | null}
   usage: {status?: string; type?: string; updatedAt?: number; fiveHour?: ClaudeWindow; sevenDay?: ClaudeWindow; sevenDayOpus?: ClaudeWindow}
-  workspace: {path: string; exists: boolean; repo?: string; branch?: string; dirty?: boolean}
+  workspace: {path: string; exists: boolean; repo?: string; branch?: string; job?: {phase: 'idle' | 'running' | 'done' | 'failed'; error?: string; detail?: string}}
 }
 interface Bridge {
   addListener(eventName: 'presenceState', listener: (state: PresenceState) => void): Promise<{remove(): Promise<void>}>

@@ -20,7 +20,7 @@ object ClaudeChat {
     val EFFORTS = setOf("low", "medium", "high", "xhigh", "max")
 
     fun settings(store: CompanionStore): JSONObject = store.lifeState("claude").let { s ->
-        JSONObject().put("enabled", s.optBoolean("enabled")).put("model", s.optString("model", "default").ifBlank { "default" })
+        JSONObject().put("enabled", s.optBoolean("enabled", true)).put("model", s.optString("model", "default").ifBlank { "default" })
             .put("effort", s.optString("effort", "medium").takeIf { it in EFFORTS } ?: "medium")
     }
 
@@ -130,6 +130,13 @@ object ClaudeChat {
         return kept.joinToString("\n")
     }
 
-    /** Where Claude works: the owner's chats in the code workspace, every other conversation in an empty directory of its own. */
-    fun cwd(scope: String, ownerChat: Boolean) = if (ownerChat) ClaudeRuntime.WORKSPACE_DIR else "/root/.xiaoke/chats/" + CompanionPolicy.digest(scope).take(24)
+    /**
+     * Where Claude works: the owner's chats in the project (so its CLAUDE.md applies), or the workspace before it is
+     * cloned; every other conversation in an empty directory of its own.
+     */
+    fun cwd(scope: String, ownerChat: Boolean, projectReady: Boolean) = when {
+        ownerChat && projectReady -> ClaudeWorkspace.PROJECT
+        ownerChat -> ClaudeRuntime.WORKSPACE_DIR
+        else -> "/root/.xiaoke/chats/" + CompanionPolicy.digest(scope).take(24)
+    }
 }

@@ -22,3 +22,8 @@ The DSH runtime doesn't conflict with this, so it stays.
 
 - Binary: `/root/.xiaoke/claude/<version>/claude` (about 290 MB, downloaded on first use)
 - Workspace: `/root/workspace`
+- Code workspace: `/root/workspace/godot-test`, a clone of this repo (public). In the owner's private chat, Claude works in `projects/xiaoke-android`, so this project's CLAUDE.md applies. Code changes always go on a new branch with a commit, and Claude tells the owner what changed. Pushing needs git credentials the owner sets up in the DSH terminal; the app stores none. Signing and releases stay in the cloud, and the private key never reaches the phone.
+
+## First run
+
+Onboarding goes in this order: runtime (expanded from the APK's own copy) and Claude Code, then Claude login, then Shizuku, then Gemini, budget, keep-alive and QQ.

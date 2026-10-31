@@ -25,7 +25,9 @@ function Usage({label, window}: {label: string; window?: {utilization: number; r
   return <div className="xk-usage"><span>{label}<b>{pct}%</b></span><span className="xk-meter"><span style={{width: `${pct}%`}}/></span>{reset && <small>{reset} 重置</small>}</div>
 }
 
-export function ClaudePanel({run, compact = false}: {run: Run; compact?: boolean}) {
+/** [only] narrows it to one onboarding step: downloading Claude Code, or logging in. */
+export function ClaudePanel({run, only}: {run: Run; only?: 'install' | 'login'}) {
+  const compact = only !== undefined
   const [status, setStatus] = useState<ClaudeStatus | null>(null), [code, setCode] = useState(''), [saved, setSaved] = useState(false)
   const [form, setForm] = useState<ClaudeSettings | null>(null)
   const timer = useRef<number>()
@@ -37,7 +39,7 @@ export function ClaudePanel({run, compact = false}: {run: Run; compact?: boolean
   }, [])
   useEffect(() => { void refresh(true); return () => window.clearTimeout(timer.current) }, [refresh])
   // Poll only while something is moving: a download, a login, or questions waiting.
-  const busy = Boolean(status && (['checking', 'downloading', 'verifying'].includes(status.install.phase) || status.login.running || status.permissions.length > 0))
+  const busy = Boolean(status && (['checking', 'downloading', 'verifying'].includes(status.install.phase) || status.login.running || status.permissions.length > 0 || status.workspace.job?.phase === 'running'))
   useEffect(() => { if (busy) { timer.current = window.setTimeout(() => void refresh(), 1500); return () => window.clearTimeout(timer.current) } }, [status, busy, refresh])
   if (!status) return <div className="xk-card"><p className="xk-hint">正在查看 Claude Code…</p></div>
   const i = status.install
@@ -48,7 +50,8 @@ export function ClaudePanel({run, compact = false}: {run: Run; compact?: boolean
     <div className="xk-card">
       <div className="xk-card-head"><h2>Claude Code</h2><span className="xk-pill">{status.version ? `v${status.version}` : '未安装'}</span></div>
       {!status.runtimeReady && <p className="xk-hint">先装好 Ubuntu 运行环境（DSH 工作台第一次打开时会装），Claude Code 跑在里面。</p>}
-      {!status.version && status.runtimeReady && <>
+      {!status.version && only === 'login' && <p className="xk-hint">先在上一步装好 Claude Code。</p>}
+      {!status.version && status.runtimeReady && only !== 'login' && <>
         <p className="xk-hint">从 Anthropic 官方地址下载原版（约 280 MB），按官方签名清单核对 sha256，对不上就删掉不用。</p>
         {progress !== null && <div className="xk-usage"><span>下载中<b>{progress}%</b></span><span className="xk-meter"><span style={{width: `${progress}%`}}/></span></div>}
         {i.phase === 'verifying' && <p className="xk-hint">校验通过，正在试运行…</p>}
@@ -59,7 +62,8 @@ export function ClaudePanel({run, compact = false}: {run: Run; compact?: boolean
             : <button className="xk-btn primary" onClick={() => void run('claudeInstall').then(() => refresh()).catch(() => undefined)}><DownloadSimple size={18} weight="duotone"/> {i.phase === 'failed' ? '重试（会接着下）' : '下载并校验'}</button>}
         </div>
       </>}
-      {status.version && <>
+      {status.version && only === 'install' && <p className="xk-hint">已装好并校验过，能运行。</p>}
+      {status.version && only !== 'install' && <>
         <p className="xk-hint">{status.loggedIn ? `已登录${status.authMethod ? ` · ${status.authMethod}` : ''}${status.authNote ? ` · ${status.authNote}` : ''}` : '还没登录。用你自己的 Claude 订阅登录；登录由 Claude Code 自己完成，App 不碰账号和令牌。'}</p>
         {!status.loggedIn && !status.login.running && <div className="xk-actions">
           <button className="xk-btn primary" onClick={() => void run('claudeLogin', {method: 'claudeai'}).then(() => refresh()).catch(() => undefined)}><SignIn size={18} weight="duotone"/> 用订阅登录</button>
@@ -90,6 +94,15 @@ export function ClaudePanel({run, compact = false}: {run: Run; compact?: boolean
     </div>}
 
     {!compact && status.version && <div className="xk-card">
+      <h2>代码工作区</h2>
+      <p className="xk-hint">{status.workspace.exists ? `${status.workspace.path}${status.workspace.branch ? ` · 当前分支 ${status.workspace.branch}` : ''}` : '把这个项目的公开仓库克隆到手机里。你在私聊里让她查 bug、改代码时，她在这里读、改，提交到新分支再告诉你改了什么。'}</p>
+      <p className="xk-hint">签名和发版只在云端做，私钥不会到手机上。推送需要你自己在 DSH 终端里配好 git 凭据；没配时她只提交在本地。</p>
+      {status.workspace.job?.phase === 'running' && <p className="xk-hint">正在准备…</p>}
+      {status.workspace.job?.phase === 'failed' && <p className="xk-hint xk-warn">{status.workspace.job.error}</p>}
+      <div className="xk-actions"><button className="xk-btn" disabled={status.workspace.job?.phase === 'running'} onClick={() => void run('claudeWorkspace').then(() => refresh()).catch(() => undefined)}>{status.workspace.exists ? '拉取最新' : '准备工作区'}</button></div>
+    </div>}
+
+    {!compact && status.version && <div className="xk-card">
       <h2>订阅用量</h2>
       {status.usage.fiveHour || status.usage.sevenDay ? <>
         <Usage label="5 小时" window={status.usage.fiveHour}/>
@@ -99,7 +112,7 @@ export function ClaudePanel({run, compact = false}: {run: Run; compact?: boolean
       </> : <p className="xk-hint">Claude 回复过之后，这里显示 Claude Code 报告的用量。</p>}
     </div>}
 
-    <ClaudePermissions items={status.permissions} run={async (a, d) => { const r = await run(a, d); void refresh(); return r }}/>
+    {!compact && <ClaudePermissions items={status.permissions} run={async (a, d) => { const r = await run(a, d); void refresh(); return r }}/>}
 
     {!compact && status.loggedIn && <div className="xk-actions"><button className="xk-btn ghost danger" onClick={() => { if (confirm('退出 Claude 登录？之后都会用 Gemini。')) void run('claudeLogout').then(() => refresh(true)).catch(() => undefined) }}><SignOut size={18} weight="duotone"/> 退出登录</button></div>}
   </div>

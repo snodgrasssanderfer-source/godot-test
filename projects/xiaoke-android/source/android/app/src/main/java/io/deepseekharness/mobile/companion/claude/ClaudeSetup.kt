@@ -121,10 +121,55 @@ object ClaudeLogin {
     }
 }
 
-/** The code workspace inside the rootfs. Implemented in step 3; here only its state. */
+/**
+ * The code workspace: this project's public repo cloned inside the rootfs, where Claude reads, fixes and commits on a
+ * branch of its own. Pushing needs the owner's own git credentials (set up in the DSH terminal); the app stores none.
+ * Signing and releases stay in the cloud: no keystore ever comes to the phone.
+ */
 object ClaudeWorkspace {
+    const val REPO = "https://github.com/snodgrasssanderfer-source/godot-test.git"
+    const val CLONE = "${ClaudeRuntime.WORKSPACE_DIR}/godot-test"
+    const val PROJECT = "$CLONE/projects/xiaoke-android"
+    private val running = AtomicBoolean(false)
+    @Volatile private var job = JSONObject().put("phase", "idle")
+
+    fun projectReady(runtime: ClaudeRuntime) = File(runtime.hostDirectory(), PROJECT.removePrefix("/")).isDirectory
+
     fun state(runtime: ClaudeRuntime): JSONObject {
-        val dir = File(runtime.hostDirectory(), ClaudeRuntime.WORKSPACE_DIR.removePrefix("/"))
-        return JSONObject().put("path", ClaudeRuntime.WORKSPACE_DIR).put("exists", dir.isDirectory)
+        val cloned = File(runtime.hostDirectory(), "${CLONE.removePrefix("/")}/.git").isDirectory
+        val out = JSONObject().put("path", PROJECT).put("exists", cloned).put("repo", REPO).put("job", job)
+        if (cloned) runCatching {
+            // Reads the branch straight from .git: no process start just to show a status line.
+            val head = File(runtime.hostDirectory(), "${CLONE.removePrefix("/")}/.git/HEAD").readText().trim()
+            out.put("branch", head.removePrefix("ref: refs/heads/"))
+        }
+        return out
+    }
+
+    /** Clone on first use, fetch afterwards. Commits she makes stay on her branches; nothing here touches them. */
+    fun prepare(context: Context): JSONObject {
+        check(running.compareAndSet(false, true)) { "工作区正在准备" }
+        job = JSONObject().put("phase", "running")
+        Thread({
+            runCatching { io.deepseekharness.mobile.companion.CompanionService.beginOperation(context) }
+            try {
+                val runtime = ClaudeRuntime(context)
+                check(runtime.runtimeReady()) { "先装好 Ubuntu 运行环境" }
+                val script = listOf(
+                    "set -e", "mkdir -p ${ClaudeRuntime.WORKSPACE_DIR}",
+                    "git config --global user.name >/dev/null || git config --global user.name 'Xiaoke'",
+                    "git config --global user.email >/dev/null || git config --global user.email 'xiaoke@localhost'",
+                    "if [ -d $CLONE/.git ]; then git -C $CLONE fetch --depth 50 origin main && echo fetched",
+                    "else git clone --depth 50 $REPO $CLONE && echo cloned; fi",
+                ).joinToString("\n")
+                val r = runtime.runShell(script, 900)
+                check(r.code == 0 && !r.timedOut) { "没准备好：${r.output.trim().takeLast(300).ifBlank { "退出码 ${r.code}" }}" }
+                job = JSONObject().put("phase", "done").put("detail", r.output.trim().lines().lastOrNull().orEmpty())
+            } catch (e: Exception) {
+                job = JSONObject().put("phase", "failed").put("error", (e.message ?: "失败").take(300))
+                XLog.w("workspace prepare failed", e)
+            } finally { running.set(false); io.deepseekharness.mobile.companion.CompanionService.endOperation() }
+        }, "claude-workspace").apply { isDaemon = true }.start()
+        return job
     }
 }

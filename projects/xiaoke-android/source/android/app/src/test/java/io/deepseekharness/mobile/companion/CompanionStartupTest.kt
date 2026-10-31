@@ -43,7 +43,6 @@ class CompanionStartupTest {
     private fun claudeOnlyWhereTurnedOn(store: CompanionStore) {
         val chat = io.deepseekharness.mobile.companion.claude.ClaudeChat
         val group = org.json.JSONObject().put("id", "qq:group:a")
-        assertEquals("gemini", chat.engineFor(store, CompanionPolicy.OWNER, true, null, installed = true)) // not enabled yet
         chat.saveSettings(store, org.json.JSONObject().put("enabled", true).put("model", "default").put("effort", "high"))
         assertEquals("claude", chat.engineFor(store, CompanionPolicy.OWNER, true, null, installed = true))
         assertEquals("gemini", chat.engineFor(store, CompanionPolicy.OWNER, true, null, installed = false))
