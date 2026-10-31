@@ -20,16 +20,21 @@ object ClaudeSetup {
         val runtime = ClaudeRuntime(context)
         val engine = CompanionEngine.get(context)
         val version = runCatching { runtime.version() }.getOrNull()
-        if (version != null && (refreshAuth || System.currentTimeMillis() - authCheckedAt > 10 * 60_000L) && !installing.get()) {
-            auth = runtime.authStatus(); authCheckedAt = System.currentTimeMillis()
-            if (auth?.loggedIn == true && ClaudeChat.outage(engine.store)?.optString("reason") == ClaudeStream.Failure.LOGIN.name) ClaudeChat.clearOutage(engine.store)
-        }
+        if (version != null && (refreshAuth || System.currentTimeMillis() - authCheckedAt > 10 * 60_000L) && !installing.get())
+            recordAuth(context, runtime.authStatus())
         return JSONObject().put("runtimeReady", runtime.runtimeReady()).put("version", version ?: JSONObject.NULL)
             .put("install", install).put("login", ClaudeLogin.state())
             .put("loggedIn", auth?.loggedIn == true).put("authMethod", auth?.method.orEmpty()).put("authNote", auth?.note.orEmpty())
             .put("settings", ClaudeChat.settings(engine.store)).put("usage", engine.store.lifeState("claudeUsage").apply { remove("id"); remove("scope") })
             .put("outage", ClaudeChat.outage(engine.store) ?: JSONObject.NULL)
             .put("permissions", ClaudePermissions.list()).put("workspace", ClaudeWorkspace.state(runtime))
+    }
+
+    /** A fresh `claude auth status`; logging in again ends a login outage at once. */
+    fun recordAuth(context: Context, status: ClaudeRuntime.AuthStatus) {
+        auth = status; authCheckedAt = System.currentTimeMillis()
+        val store = CompanionEngine.get(context).store
+        if (status.loggedIn && ClaudeChat.outage(store)?.optString("reason") == ClaudeStream.Failure.LOGIN.name) ClaudeChat.clearOutage(store)
     }
 
     fun install(context: Context, channel: String = "stable"): JSONObject {
@@ -67,7 +72,12 @@ object ClaudeSetup {
  * here parses, keeps or forwards credentials; Claude Code stores them itself inside the rootfs.
  */
 object ClaudeLogin {
-    private class Session(val pid: Int, val fd: Int) { val output = StringBuilder(); @Volatile var exit: Int? = null }
+    private class Session(val pid: Int, val fd: Int) {
+        val output = StringBuilder()
+        /** Set only after the login result has been checked, so the page never shows a stale "not logged in". */
+        @Volatile var exit: Int? = null
+        @Volatile var checking = false
+    }
     @Volatile private var session: Session? = null
     private val ansi = Regex("\u001B\\[[0-?]*[ -/]*[@-~]|\u001B\\][^\u0007\u001B]*(\u0007|\u001B\\\\)|\u001B[()][0-9A-Za-z]|\u001B[=>]|\r")
 
@@ -75,7 +85,7 @@ object ClaudeLogin {
         val s = session ?: return JSONObject().put("running", false)
         val text = synchronized(s.output) { s.output.toString() }
         val url = signInUrl(text)
-        return JSONObject().put("running", s.exit == null).put("exit", s.exit ?: JSONObject.NULL).put("output", text.takeLast(4000)).put("url", url ?: JSONObject.NULL)
+        return JSONObject().put("running", s.exit == null).put("checking", s.checking).put("exit", s.exit ?: JSONObject.NULL).put("output", text.takeLast(4000)).put("url", url ?: JSONObject.NULL)
     }
 
     @Synchronized fun start(context: Context, method: String = "claudeai"): JSONObject {
@@ -88,17 +98,23 @@ object ClaudeLogin {
         session = s
         Thread({
             val buffer = ByteArray(8192)
+            var code = 255
             try {
                 while (true) {
                     val n = NativePty.read(s.fd, buffer); if (n <= 0) break
                     val chunk = ansi.replace(String(buffer, 0, n, Charsets.UTF_8), "")
                     synchronized(s.output) { s.output.append(chunk); if (s.output.length > 16000) s.output.delete(0, s.output.length - 16000) }
                 }
-                s.exit = NativePty.waitFor(s.pid)
-            } catch (_: Throwable) { s.exit = s.exit ?: 255 }
+                code = NativePty.waitFor(s.pid)
+            } catch (_: Throwable) {}
             finally {
                 runCatching { NativePty.close(s.fd) }
-                if (s.exit == 0) runCatching { ClaudeSetup.status(context, refreshAuth = true) }
+                s.checking = true
+                val result = runCatching { ClaudeRuntime(context).authStatus() }.getOrNull()
+                if (result != null) ClaudeSetup.recordAuth(context, result)
+                XLog.i("claude auth login exited $code, logged in: ${result?.loggedIn}")
+                s.checking = false
+                s.exit = code
             }
         }, "claude-login").apply { isDaemon = true }.start()
         return state()
@@ -128,7 +144,13 @@ object ClaudeLogin {
     fun input(text: String) {
         val s = session?.takeIf { it.exit == null } ?: error("登录没有在进行")
         require(text.length <= 4000)
-        val bytes = (text + "\r").toByteArray(Charsets.UTF_8)
+        // The code and Enter go separately: arriving in one chunk, the terminal UI takes it all as a paste and never submits.
+        write(s, text.toByteArray(Charsets.UTF_8))
+        Thread.sleep(300)
+        write(s, byteArrayOf('\r'.code.toByte()))
+    }
+
+    private fun write(s: Session, bytes: ByteArray) {
         var at = 0
         while (at < bytes.size) { val n = NativePty.write(s.fd, bytes.copyOfRange(at, bytes.size)); if (n <= 0) break; at += n }
     }

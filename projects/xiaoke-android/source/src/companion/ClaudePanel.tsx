@@ -68,7 +68,8 @@ export function ClaudePanel({run, only}: {run: Run; only?: 'install' | 'login'})
         {!status.loggedIn && !status.login.running && <div className="xk-actions">
           <button className="xk-btn primary" onClick={() => void run('claudeLogin', {method: 'claudeai'}).then(() => refresh()).catch(() => undefined)}><SignIn size={18} weight="duotone"/> 用订阅登录</button>
         </div>}
-        {status.login.running && <>
+        {status.login.running && status.login.checking && <p className="xk-hint">登录结束了，正在确认…</p>}
+        {status.login.running && !status.login.checking && <>
           {status.login.url && <a className="xk-btn primary" href={status.login.url} target="_blank" rel="noopener noreferrer"><ArrowSquareOut size={18} weight="duotone"/> 打开登录页</a>}
           <p className="xk-hint">在浏览器里授权后，把页面给出的代码贴到这里。</p>
           <form className="xk-composer-row" onSubmit={e => { e.preventDefault(); if (code.trim()) void run('claudeLoginInput', {text: code.trim()}).then(() => { setCode(''); void refresh() }).catch(() => undefined) }}>
@@ -81,7 +82,11 @@ export function ClaudePanel({run, only}: {run: Run; only?: 'install' | 'login'})
             : <pre className="xk-log">{status.login.output}</pre>)}
           <button className="xk-btn ghost small" onClick={() => void run('claudeLoginStop').then(() => refresh()).catch(() => undefined)}>取消登录</button>
         </>}
-        {!status.login.running && status.login.exit != null && status.login.exit !== 0 && !status.loggedIn && <p className="xk-hint xk-warn">登录没完成（退出码 {status.login.exit}），可以再试一次。</p>}
+        {!status.login.running && status.login.exit != null && !status.loggedIn && <>
+          <p className="xk-hint xk-warn">登录没成功（退出码 {status.login.exit}）。下面是 Claude Code 最后说的话，可以再试一次；还不行就截图给我。</p>
+          {status.login.output && <pre className="xk-log">{status.login.output.slice(-1500)}</pre>}
+          {status.authNote && <pre className="xk-log">{status.authNote}</pre>}
+        </>}
       </>}
     </div>
 

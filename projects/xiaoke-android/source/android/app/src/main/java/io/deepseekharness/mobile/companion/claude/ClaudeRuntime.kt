@@ -80,9 +80,11 @@ class ClaudeRuntime(context: Context) {
             "NO_COLOR=1",
         )
 
+        /** `claude auth status` prints its JSON over several lines, sometimes after warning lines: parse from the first "{". */
         fun parseAuthStatus(output: String): AuthStatus? {
-            val line = output.lineSequence().map(String::trim).lastOrNull { it.startsWith("{") && it.endsWith("}") } ?: return null
-            val json = runCatching { JSONObject(line) }.getOrNull() ?: return null
+            val start = output.indexOf('{').takeIf { it >= 0 } ?: return null
+            val end = output.lastIndexOf('}').takeIf { it > start } ?: return null
+            val json = runCatching { JSONObject(output.substring(start, end + 1)) }.getOrNull() ?: return null
             return AuthStatus(json.optBoolean("loggedIn"), json.optString("authMethod"), json.optString("subscriptionType"))
         }
     }

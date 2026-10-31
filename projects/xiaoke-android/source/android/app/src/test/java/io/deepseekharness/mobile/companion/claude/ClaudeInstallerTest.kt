@@ -83,5 +83,7 @@ class ClaudeInstallerTest {
         val s = ClaudeRuntime.parseAuthStatus("warn: x\n{\"loggedIn\":true,\"authMethod\":\"claude.ai\",\"apiProvider\":\"firstParty\"}\n")!!
         assertTrue(s.loggedIn); assertEquals("claude.ai", s.method)
         assertNull(ClaudeRuntime.parseAuthStatus("not logged in"))
+        val pretty = ClaudeRuntime.parseAuthStatus("{\n  \"loggedIn\": true,\n  \"authMethod\": \"claude.ai\",\n  \"subscriptionType\": \"max\"\n}\n")!!
+        assertTrue(pretty.loggedIn); assertEquals("max", pretty.note)
     }
 }
