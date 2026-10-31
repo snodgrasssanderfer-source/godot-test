@@ -43,6 +43,17 @@ describe('SocialPanel', () => {
     resolve({status:'done'})
     await waitFor(()=>expect(button).not.toBeDisabled())
   })
+  it('imports several stickers in one pick and names the ones that failed', async () => {
+    const run=vi.fn().mockImplementation((_:string,data:{name:string})=>data.name==='坏.png'?Promise.reject(new Error('格式不对')):Promise.resolve({}))
+    render(<SocialPanel available run={run} state={{}}/> )
+    fireEvent.change(screen.getByLabelText('怎么存'),{target:{value:'curated'}})
+    const files=['捂脸.png','坏.png','无语.gif'].map(name=>new File(['x'],name,{type:name.endsWith('gif')?'image/gif':'image/png'}))
+    fireEvent.change(screen.getByLabelText('导入表达素材'),{target:{files}})
+    await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('没导入：坏.png（格式不对）'))
+    expect(run).toHaveBeenCalledTimes(3)
+    expect(run).toHaveBeenCalledWith('media.import',expect.objectContaining({name:'无语.gif',retention:'curated'}))
+    expect(screen.getByText('导入了 2 个')).toBeInTheDocument()
+  })
   it('does not expose usable operations when the native module is unavailable', () => {
     render(<SocialPanel available={false} run={vi.fn()} state={{}}/> )
     expect(screen.getByRole('button',{name:'保存并启用加密同步'})).toBeDisabled()
