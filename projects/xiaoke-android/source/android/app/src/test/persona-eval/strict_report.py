@@ -150,7 +150,8 @@ def classify_cases(directory, audit):
 
 def complete_dimensions(summary, dimensions, labels, categories):
     """Add explicit unobserved rows; excluded cases are never fabricated as failures."""
-    summary["dimensions"] = sorted(dimensions)
+    dimensions = sorted(dimensions)
+    summary["dimensions"] = dimensions
     summary["dimension_labels"].update(labels)
     existing = {(r["model"], r["category"], r["dimension"]) for r in summary["by_category"]}
     overall = {(r["model"], r["dimension"]) for r in summary["overall"]}

@@ -2,6 +2,8 @@ import copy
 import json
 import os
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -174,6 +176,32 @@ class StrictReportTests(unittest.TestCase):
         self.assertIn('scored-records.json', lineage['input_files_sha256'])
         self.assertTrue(lineage['record_sources_sha256'])
         self.assertEqual(first['clean']['overall'], second['clean']['overall'])
+
+    def test_report_bytes_are_stable_across_python_hash_seeds(self):
+        self.add_case('clean')
+        self.add_case('excluded-long', 'long_dialogue', target_reported='other')
+        script = '''
+import hashlib
+import json
+import sys
+from strict_report import build_reports
+from reporting import render_csv, render_markdown
+result = build_reports(sys.argv[1], sys.argv[2], write=False)
+hashes = {}
+for group in ('clean', 'unknown'):
+    summary = result[group]
+    formats = {'json': json.dumps(summary, ensure_ascii=False, indent=2),
+               'csv': render_csv(summary), 'markdown': render_markdown(summary)}
+    hashes[group] = {name: hashlib.sha256(text.encode()).hexdigest()
+                     for name, text in formats.items()}
+print(json.dumps(hashes, sort_keys=True))
+'''
+        outputs = [subprocess.check_output(
+            [sys.executable, '-c', script, str(self.root), str(SOURCE)], cwd=SOURCE,
+            env={**os.environ, 'PYTHONHASHSEED': seed},
+        ) for seed in ('1', '17', '20261031')]
+        self.assertEqual(outputs[0], outputs[1])
+        self.assertEqual(outputs[0], outputs[2])
 
     def test_incomplete_score_and_cache_are_exclusions_not_scored_failures(self):
         self.add_case('missing-score')
