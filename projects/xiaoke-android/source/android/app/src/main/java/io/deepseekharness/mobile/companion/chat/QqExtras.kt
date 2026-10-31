@@ -104,7 +104,7 @@ object QqExtras {
         val day = java.time.LocalDate.now().toString()
         val key = "poked-" + CompanionPolicy.digest(conversation.getString("scope")).take(24)
         val state = store.lifeState(key).let { if (it.optString("day") == day) it else JSONObject().put("day", day).put("count", 0) }
-        val cap = if (owner) 3 else 1
+        val cap = if (owner) 10 else 1
         check(state.optInt("count") < cap) { "今天在这里已经戳过了" }
         val params = JSONObject().put("user_id", targetQq)
         if (conversation.optString("targetType") == "group") params.put("group_id", conversation.getString("targetId"))

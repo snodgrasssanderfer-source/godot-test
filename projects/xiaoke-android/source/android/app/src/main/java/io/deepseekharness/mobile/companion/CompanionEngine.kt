@@ -76,7 +76,8 @@ class CompanionEngine private constructor(private val context: Context) {
                 return busy
             }
             // The engine is fixed here, for this whole reply; a changed setting applies from the next message.
-            val engine = io.deepseekharness.mobile.companion.claude.ClaudeChat.engineFor(store, scope, modules.principal(scope).owner,
+            // The owner speaking to her in a group is answered like the owner's own chat (Claude when it is on).
+            val engine = io.deepseekharness.mobile.companion.claude.ClaudeChat.engineFor(store, scope, modules.principal(scope).owner || ownerAsked,
                 store.get("conversation", scope), runCatching { claude.version() != null }.getOrDefault(false))
             store.put("task", JSONObject().put("scope", scope).put("type", "chat").put("state", "queued").put("engine", engine)
                 .put("messageId", messageId).put("observationId", observationId).put("ownerAsked", ownerAsked).put("progress", "等待处理")).also { busyScopes[scope] = it.getString("id") }
@@ -326,6 +327,10 @@ class CompanionEngine private constructor(private val context: Context) {
             val chosen = CompanionPolicy.chooseModel(settings, originText)
             val profile = (0 until profiles.length()).map(profiles::getJSONObject).first { it.getString("model") == chosen }
             val scope = task.getString("scope")
+            // Tools follow who is speaking, not where: the owner gets the owner's tools in the app, their QQ private chat
+            // and (when the account says it is them) in a group; the phone itself is only reachable from their own chats.
+            val ownersOwnChat = scope == CompanionPolicy.OWNER || modules.principal(scope).owner
+            val speaker = Speaker(ownersOwnChat || task.optBoolean("ownerAsked"), ownersOwnChat)
             // Messages that arrived while this turn was still queued simply extend it.
             var boundId = task.getString("messageId")
             var observationId = task.optString("observationId")
@@ -374,11 +379,12 @@ class CompanionEngine private constructor(private val context: Context) {
                 append("有人问你为什么没回、消息为什么没发出去时，按“当下背景”里“没发出去的回复”如实说；那里没写的就说不知道原因，别猜风控、丢包、网络之类。")
                 append("看视频、读专栏、提醒这类后台的事，结果写在“你在后台做的事”里，也能用 job_status 查；没有结果之前不能说看过、做完了。\n")
                 if (owner) append("现在是在主人手机上和主人私聊。\n")
-                else if (modules.principal(scope).owner) append("现在是主人本人的 QQ 私聊（系统按账号认证），可以用主人的记忆，但不能操作手机。\n")
+                else if (modules.principal(scope).owner) append("现在是主人本人的 QQ 私聊（系统按账号认证），可以用主人的记忆，主人让你看屏幕、代操作手机也可以。\n")
                 else if (scope.startsWith("qq:group:") && settings.optString("ownerQqId").isNotBlank())
-                    append("现在在 QQ 群里。主人的 QQ 号是 ${settings.optString("ownerQqId")}，这个号说的话就是主人在群里跟大家（常常是跟你）说话；其他人不是主人。群里不能用主人的私人记忆，也不能操作手机。\n")
+                    append("现在在 QQ 群里。主人的 QQ 号是 ${settings.optString("ownerQqId")}，这个号说的话就是主人在群里跟大家（常常是跟你）说话；其他人不是主人。群里不能用主人的私人记忆，也不能操作手机。\n" +
+                        if (task.optBoolean("ownerAsked")) "这一条是主人在群里跟你说的：主人让你发 QQ、戳人、设提醒都可以照做，但回复会发在群里，别带出主人的私事。\n" else "")
                 else append("现在在 ${if (scope.startsWith("qq:group:")) "QQ 群" else "别人的 QQ 私聊"}里，对方不是主人。\n")
-                if (owner) {
+                if (ownersOwnChat) {
                     append("主人请你代操作游戏时，用 device_action 的 control.start 接手，再用 capture.refresh 看画面后操作；主人一碰屏幕你就自动让出。点击成功不等于游戏里达成了目标，要看画面确认。")
                     append("主人让你自己在后台玩时，control.start 加 background=true，游戏开在副屏里，主人照常用手机。")
                     append("重复的界面可以用 landmark.save 标记按钮，之后 landmark.tap / control.waitFor 不用每步都看图；一段操作走通了用 route.save 存成路线，下次 route.replay 会逐步核对画面，对不上就停下交还给你。")
@@ -414,7 +420,7 @@ class CompanionEngine private constructor(private val context: Context) {
                     append(if (lastModel != null) "，你上一条回复实际用的是 $lastModel。\n" else "。\n")
                     task.optString("fallbackReason").takeIf { it.isNotBlank() }?.let { append("这一轮本该由 Claude 回答，但$it，所以换成了 Gemini。主人问起再说。\n") }
                 }
-                if (owner) {
+                if (ownersOwnChat) {
                     val device = modules.device.snapshot(modules.localOwner)
                     append("手机控制状态：${device.optJSONObject("control")}；正在看的应用：${device.optJSONObject("capture")?.optString("packageName")}。\n")
                     val playing = device.optJSONObject("control")?.optString("packageName").orEmpty().ifBlank { device.optJSONObject("capture")?.optString("packageName").orEmpty() }
@@ -461,7 +467,7 @@ class CompanionEngine private constructor(private val context: Context) {
                 val images = (0 until media.length()).mapNotNull { media.getJSONObject(it).optJSONObject("inlineData") }
                 // Claude reads pictures but not video or audio: such a turn goes to Gemini without counting as an outage.
                 val reason = if (images.any { !it.optString("mimeType").startsWith("image/") }) "这条带了 Claude 读不了的视频或音频"
-                    else claudeReply(id, scope, epoch, sources, system, situation, all.take(end + 1), boundId, observationId,
+                    else claudeReply(id, scope, speaker, epoch, sources, system, situation, all.take(end + 1), boundId, observationId,
                         images.map { it.optString("mimeType") to it.optString("data") }, unmentioned, pendingReview)
                 if (reason == null) return
                 if (store.transitionTask(id, setOf("queued", "running"), "queued", "Claude 不可用（$reason），换成 Gemini") != null) {
@@ -497,7 +503,7 @@ class CompanionEngine private constructor(private val context: Context) {
             while (round < 6) {
                 checkCurrent()
                 used = if (level >= 2) flash else profile
-                val declared = if (level >= 3) JSONArray() else declarations(scope, webMode == "split" && level <= 1)
+                val declared = if (level >= 3) JSONArray() else declarations(scope, speaker, webMode == "split" && level <= 1)
                 check(ProviderHistoryPrivacy.estimatedInput(contents) + CompanionContext.cost(system) + used.getInt("maxOutputTokens") + 1024 <= used.optInt("contextBudget", 65536)) { "新增资料超过当前模型上下文预算，请减少材料" }
                 val billing = accounting(scope, lane, "chat", ::checkCurrent)
                 // Another model cannot verify this one's thought signatures; Gemini's documented placeholder skips the check.
@@ -570,7 +576,7 @@ class CompanionEngine private constructor(private val context: Context) {
                 val responses = JSONArray()
                 for (call in calls) {
                     checkCurrent()
-                    val result = executeTool(scope, boundId, epoch, sources, call.getString("name"), call.optJSONObject("args") ?: JSONObject())
+                    val result = executeTool(scope, boundId, epoch, sources, call.getString("name"), call.optJSONObject("args") ?: JSONObject(), speaker)
                     responses.put(GeminiWire.toolResponse(call, result))
                     if (call.optString("name") == "device_action") {
                         val frame = if (result.has("preview")) result else result.optJSONObject("after")
@@ -615,11 +621,14 @@ class CompanionEngine private constructor(private val context: Context) {
     }
 
     /** One tool call, the same for Gemini and Claude (over MCP): scope rules live in [tool]; what it read is recorded as a source. */
-    private fun executeTool(scope: String, boundId: String, epoch: Long, sources: JSONArray, name: String, args: JSONObject): JSONObject {
+    private fun executeTool(scope: String, boundId: String, epoch: Long, sources: JSONArray, name: String, args: JSONObject, speaker: Speaker): JSONObject {
         val result = try {
             // Sending waits on QQ for seconds; it must not hold the store while it does.
-            if (name == "say_in_group") sayInGroup(scope, args) { block -> store.commitContext(epoch, sources, block) }
-            else store.commitContext(epoch, sources) { tool(scope, boundId, name, args) }
+            when (name) {
+                "say_in_group" -> sayInGroup(scope, args, speaker) { block -> store.commitContext(epoch, sources, block) }
+                "send_qq" -> sendQq(scope, args, speaker) { block -> store.commitContext(epoch, sources, block) }
+                else -> store.commitContext(epoch, sources) { tool(scope, boundId, name, args, speaker) }
+            }
         }
         catch (e: IllegalArgumentException) { JSONObject().put("error", e.message?.take(180) ?: "参数不正确") }
         catch (e: IllegalStateException) { JSONObject().put("error", e.message?.take(180) ?: "操作不可用") }
@@ -648,7 +657,7 @@ class CompanionEngine private constructor(private val context: Context) {
      * learned group style and the situation block are the same ones Gemini gets; Claude keeps its own session per
      * conversation and is sent whatever it has not seen since its last turn, including replies Gemini wrote meanwhile.
      */
-    private fun claudeReply(id: String, scope: String, epoch: Long, sources: JSONArray, system: String, situation: String, history: List<JSONObject>,
+    private fun claudeReply(id: String, scope: String, speaker: Speaker, epoch: Long, sources: JSONArray, system: String, situation: String, history: List<JSONObject>,
                             boundId: String, observationId: String, images: List<Pair<String, String>>, unmentioned: List<String>, pendingReview: List<String>): String? {
         val chat = io.deepseekharness.mobile.companion.claude.ClaudeChat
         val ownerChat = scope == CompanionPolicy.OWNER || modules.principal(scope).owner
@@ -683,9 +692,9 @@ class CompanionEngine private constructor(private val context: Context) {
         // Only the owner's own turns get the GitHub token; a group turn never has it in its environment.
         val github = if (ownerChat) io.deepseekharness.mobile.companion.claude.ClaudeGithub.token(context) else null
         fun redact(text: String) = io.deepseekharness.mobile.companion.claude.ClaudeGithub.redact(text, github)
-        val grant = io.deepseekharness.mobile.companion.claude.XiaokeMcp.Grant(scope, declarations(scope, webTool = false)) { tool, args ->
+        val grant = io.deepseekharness.mobile.companion.claude.XiaokeMcp.Grant(scope, declarations(scope, speaker, webTool = false)) { tool, args ->
             // Nothing she saves or sends through her own abilities (memory, QQ…) may carry the token.
-            checkClaudeCurrent(id, epoch, sources); executeTool(scope, boundId, epoch, sources, tool, JSONObject(redact(args.toString())))
+            checkClaudeCurrent(id, epoch, sources); executeTool(scope, boundId, epoch, sources, tool, JSONObject(redact(args.toString())), speaker)
         }
         val token = io.deepseekharness.mobile.companion.claude.XiaokeMcpServer.register(grant)
         var lastPartialAt = 0L
@@ -761,9 +770,73 @@ class CompanionEngine private constructor(private val context: Context) {
         checkSources(epoch, sources)
     }
 
+    /** Tool names and life actions a speaker would get here; for tests. */
+    internal fun toolsFor(scope: String, owner: Boolean, ownersOwnChat: Boolean): List<String> = declarations(scope, Speaker(owner, ownersOwnChat)).let { a ->
+        (0 until a.length()).flatMap { i -> a.getJSONObject(i).let { d ->
+            listOf(d.getString("name")) + (d.optJSONObject("parameters")?.optJSONObject("properties")?.optJSONObject("action")?.optJSONArray("enum")
+                ?.let { e -> (0 until e.length()).map { "life:" + e.getString(it) } }.orEmpty())
+        } }
+    }
+
+    /** Who is talking this turn. [owner]: the authenticated owner (app, their QQ private chat, or their QQ id in a group). */
+    private data class Speaker(val owner: Boolean, val ownersOwnChat: Boolean)
+
+    /** Groups she may speak in: (group id, scope, name). */
+    private fun allowedGroups(): List<Triple<String, String, String>> {
+        val account = store.settings().optString("oneBotAccount")
+        val ids = store.settings().optJSONArray("qqGroups")?.let { a -> (0 until a.length()).map { a.getString(it) } }.orEmpty()
+        return ids.map { gid ->
+            val groupScope = "qq:group:${CompanionPolicy.digest("onebot\u0000$account\u0000$gid").take(40)}"
+            Triple(gid, groupScope, store.get("conversation", groupScope)?.optString("title").orEmpty().ifBlank { "QQ群 $gid" })
+        }
+    }
+
+    /** The QQ conversation with [targetId]; the owner's own private chat is set up on first use (it is their account). */
+    private fun qqConversation(type: String, targetId: String, create: Boolean): JSONObject? {
+        val account = store.settings().optString("oneBotAccount").takeIf { it.isNotBlank() } ?: return null
+        val qqScope = "qq:$type:${CompanionPolicy.digest("onebot\u0000$account\u0000$targetId").take(40)}"
+        store.get("conversation", qqScope)?.let { return it }
+        if (!create) return null
+        return store.put("conversation", JSONObject().put("id", qqScope).put("scope", qqScope).put("mode", "quiet").put("autoReply", false)
+            .put("captureEnabled", false).put("cooldownSeconds", 60).put("hourlyLimit", 6).put("title", "QQ $type $targetId")
+            .put("account", account).put("targetId", targetId).put("targetType", type).put("route", "onebot").put("reliable", true))
+    }
+
+    /**
+     * The owner tells her to send a QQ message. To the owner's own QQ or a group she may speak in, their asking is the
+     * approval; to anyone else's private chat it goes to the pending list for the owner to confirm.
+     */
+    private fun sendQq(scope: String, args: JSONObject, speaker: Speaker, inStore: (() -> JSONObject) -> JSONObject): JSONObject {
+        check(speaker.owner) { "只有主人能让你发 QQ" }
+        val settings = store.settings()
+        check(settings.optBoolean("oneBotEnabled") && settings.optString("oneBotAccount").isNotBlank()) { "QQ 消息桥还没连上" }
+        val text = (args.optString("text").trim() + args.optString("face").split(Regex("[,，、\\s]+")).filter { it.isNotBlank() }.joinToString("") { "[表情:$it]" } +
+            args.optString("sticker").trim().takeIf { it.isNotBlank() }?.let { "[表情包:$it]" }.orEmpty()).trim()
+        require(text.isNotBlank()) { "要发什么？" }
+        if (args.optString("group").isNotBlank()) return sayInGroup(scope, JSONObject().put("group", args.optString("group")).put("text", text), speaker, inStore)
+        val ownerQq = settings.optString("ownerQqId")
+        val wanted = args.optString("target").trim().ifBlank { "主人" }
+        val qq = if (wanted in setOf("主人", "owner")) ownerQq else wanted
+        require(qq.isNotBlank()) { "主人的 QQ 号还没设置" }
+        val toOwner = qq == ownerQq
+        val conversation = qqConversation("private", io.deepseekharness.mobile.companion.OneBotProtocol.numeric(qq), create = toOwner)
+            ?: error("还没和这个 QQ 号私聊过，发不了")
+        val target = conversation.getString("id")
+        val task = inStore {
+            val draft = createReplyDraft(target, CompanionPolicy.text(text, 4000), "qq", "").put("ownerRequested", toOwner)
+            store.put("task", draft)
+            if (toOwner) store.approveDraft(draft.getString("id"), CompanionPolicy.draftDigest(draft), automatic = true) else draft
+        }
+        if (!toOwner) return JSONObject().put("sent", false).put("pending", true).put("note", "发给别人的私聊放进待审清单了，主人确认才发")
+        val after = CompanionRouting.deliver(context, task)
+        val done = after?.optString("state") == "done"
+        if (done) store.message(target, "assistant", text, "主人让我发的")
+        return JSONObject().put("sent", done).put("state", after?.optString("state").orEmpty()).put("detail", after?.optString("progress").orEmpty())
+    }
+
     /** The owner asked her to say something in one of the groups she is allowed in. Their asking is the approval. */
-    private fun sayInGroup(scope: String, args: JSONObject, inStore: (() -> JSONObject) -> JSONObject): JSONObject {
-        check(scope == CompanionPolicy.OWNER || modules.principal(scope).owner) { "只有主人能让你去群里说话" }
+    private fun sayInGroup(scope: String, args: JSONObject, speaker: Speaker, inStore: (() -> JSONObject) -> JSONObject): JSONObject {
+        check(speaker.owner) { "只有主人能让你去群里说话" }
         val settings = store.settings()
         val account = settings.optString("oneBotAccount")
         check(settings.optBoolean("oneBotEnabled") && account.isNotBlank()) { "QQ 消息桥还没连上" }
@@ -873,7 +946,7 @@ class CompanionEngine private constructor(private val context: Context) {
             .put("observationId", observationId).put("ownerRequested", modules.principal(scope).owner))
     }
 
-    private fun tool(scope: String, sourceId: String, name: String, args: JSONObject): JSONObject = when (name) {
+    private fun tool(scope: String, sourceId: String, name: String, args: JSONObject, speaker: Speaker): JSONObject = when (name) {
         "remember" -> {
             val actualSource = args.optString("sourceId").ifBlank { sourceId }
             val message = store.get("message", actualSource) ?: error("记忆来源消息不存在")
@@ -895,11 +968,24 @@ class CompanionEngine private constructor(private val context: Context) {
             saved
         }
         "poke" -> {
-            val conversation = store.get("conversation", scope) ?: error("会话不存在")
-            check(conversation.optString("route") == "onebot") { "这里不能戳" }
-            val target = if (conversation.optString("targetType") == "private") conversation.getString("targetId")
-                else store.get("message", sourceId)?.optString("actorId")?.removePrefix("qq:")?.takeIf { it.isNotBlank() } ?: error("不知道该戳谁")
-            io.deepseekharness.mobile.companion.chat.QqExtras.poke(context, conversation, target, modules.principal(scope).owner)
+            val wanted = args.optString("target").trim(); val group = args.optString("group").trim()
+            if (speaker.owner && (wanted.isNotEmpty() || group.isNotEmpty() || store.get("conversation", scope)?.optString("route") != "onebot")) {
+                // The owner names who to poke, from anywhere (the app included): their QQ, a QQ number, optionally in a group.
+                val settings = store.settings()
+                val qq = if (wanted.isEmpty() || wanted in setOf("主人", "owner")) settings.optString("ownerQqId") else wanted
+                require(qq.isNotBlank()) { "主人的 QQ 号还没设置" }
+                val conversation = if (group.isNotEmpty()) allowedGroups().singleOrNull { it.first == group || group in it.third }?.second?.let { store.get("conversation", it) }
+                        ?: error("找不到能去的这个群")
+                    else qqConversation("private", io.deepseekharness.mobile.companion.OneBotProtocol.numeric(qq), create = qq == settings.optString("ownerQqId"))
+                        ?: error("还没和这个 QQ 号聊过，戳不了")
+                io.deepseekharness.mobile.companion.chat.QqExtras.poke(context, conversation, io.deepseekharness.mobile.companion.OneBotProtocol.numeric(qq), true)
+            } else {
+                val conversation = store.get("conversation", scope) ?: error("会话不存在")
+                check(conversation.optString("route") == "onebot") { "这里不能戳" }
+                val target = if (conversation.optString("targetType") == "private") conversation.getString("targetId")
+                    else store.get("message", sourceId)?.optString("actorId")?.removePrefix("qq:")?.takeIf { it.isNotBlank() } ?: error("不知道该戳谁")
+                io.deepseekharness.mobile.companion.chat.QqExtras.poke(context, conversation, target, speaker.owner)
+            }
         }
         "web_research" -> {
             val (settings, profile, bill) = activeWeb ?: error("现在不能联网查")
@@ -914,14 +1000,29 @@ class CompanionEngine private constructor(private val context: Context) {
         }
         "life_action" -> {
             val action = args.getString("action")
-            val principal = modules.principal(scope)
-            val allowed = setOf("memory.search", "diary.list", "interest.list", "interest.upsert", "attention.status") + if (principal.owner) setOf("attention.set") else emptySet()
-            require(action in allowed) { "此生活操作需在本机管理页处理" }
-            require(principal.owner || action in setOf("memory.search", "interest.list")) { "此会话不能改主人生活状态" }
-            val data = JSONObject((args.optJSONObject("data") ?: JSONObject()).toString()).put("scope", scope)
+            require(action in LIFE_ACTIONS) { "没有这个生活操作" }
+            require(speaker.owner || action in setOf("memory.search", "interest.list", "diary.list")) { "只有主人能改这些" }
+            // Forgetting and deleting reach the owner's own memory, so only from the owner's own chats, never a group.
+            require(speaker.ownersOwnChat || action !in setOf("memory.forget", "memory.delete", "diary.correct", "budget.status", "pending.list")) { "这个要在主人的私聊里说" }
+            val data = JSONObject((args.optJSONObject("data") ?: JSONObject()).toString())
             data.remove("includeForgotten"); data.remove("includeHistory")
+            // The record's own scope when it is one of the owner's chats (app and QQ private share memory); otherwise this one.
+            val recordScope = data.optString("id").takeIf { it.isNotBlank() && speaker.ownersOwnChat }?.let { id ->
+                (store.get("memory", id) ?: store.get("diary", id))?.optString("scope")?.takeIf { it == CompanionPolicy.OWNER || modules.principal(it).owner }
+            }
+            data.put("scope", recordScope ?: scope)
             if (action == "interest.upsert") { data.remove("id"); data.put("sourceRefs", JSONArray().put(JSONObject().put("kind", "message").put("id", sourceId).put("scope", scope))) }
-            modules.router.execute("life", action, data, principal)
+            val principal = if (speaker.owner) modules.localOwner else modules.principal(scope)
+            when (action) {
+                "pending.list" -> JSONObject().put("items", JSONArray(modules.pendingApprovals().mapNotNull { id ->
+                    store.get("task", id)?.let { t -> JSONObject().put("id", id).put("what", "发给 ${t.optString("target")}：${t.optString("body").take(120)}") }
+                        ?: JSONObject().put("id", id).put("what", "外发或入库审批（在动态页的待审清单里看）")
+                }))
+                "budget.status" -> modules.router.execute("life", "budget.status", data, principal)
+                "attention.status" -> modules.router.execute("life", "attention.status", data, principal).put("budget",
+                    runCatching { modules.router.execute("life", "budget.status", JSONObject(), principal) }.getOrNull())
+                else -> modules.router.execute("life", action, data, principal)
+            }
         }
         "social_plan" -> {
             val data = JSONObject((args.optJSONObject("data") ?: JSONObject()).toString())
@@ -947,7 +1048,7 @@ class CompanionEngine private constructor(private val context: Context) {
             modules.router.execute("social", "jobs.create", data, modules.principal(scope))
         }
         "device_action" -> {
-            check(scope == CompanionPolicy.OWNER) { "设备控制必须在本机主人会话内" }
+            check(speaker.ownersOwnChat) { "代操作手机要在主人的私聊里说（App 或 QQ 私聊）" }
             val action = args.getString("action")
             require(action in DEVICE_ACTIONS) { "不支持的设备动作" }
             val data = JSONObject((args.optJSONObject("data") ?: JSONObject()).toString())
@@ -963,7 +1064,7 @@ class CompanionEngine private constructor(private val context: Context) {
             } else modules.router.execute("device", action, data, modules.localOwner)
         }
         "propose_save" -> {
-            check(!modules.principal(scope).owner) { "主人的东西直接存就好" }
+            check(!speaker.ownersOwnChat) { "主人的东西直接存就好" }
             val observationId = activeTask?.let { store.get("task", it) }?.optString("observationId").orEmpty()
             val observation = store.get("observation", observationId) ?: error("这条消息里没有你看到的图片")
             check(observation.optString("scope") == scope) { "图片不属于这个会话" }
@@ -976,22 +1077,22 @@ class CompanionEngine private constructor(private val context: Context) {
             JSONObject().put("state", "pending").put("note", "已放进待审清单，主人确认后才进资料库")
         }
         "watch_bilibili" -> {
-            check(scope == CompanionPolicy.OWNER || scope.startsWith("qq:group:")) { "这里不能引出看视频" }
+            check(speaker.owner || scope.startsWith("qq:group:")) { "这里不能引出看视频" }
             modules.biliWatcher.start(args.optString("videoId").trim(), args.optString("query").trim(), args.optString("reason"), sourceId,
                 args.optString("articleId").removePrefix("cv").trim().toLongOrNull() ?: 0, if (args.optString("kind") == "article") "article" else "video")
         }
         "observe_screen" -> {
-            check(scope == CompanionPolicy.OWNER) { "当前聊天没有设备观察权限" }
+            check(speaker.ownersOwnChat) { "看屏幕要在主人的私聊里说" }
             CompanionDevice(context).observe()
         }
         "open_app" -> {
-            check(scope == CompanionPolicy.OWNER) { "群聊和远程消息不能执行设备操作" }
+            check(speaker.ownersOwnChat) { "打开应用要在主人的私聊里说" }
             CompanionDevice(context).open(args.getString("package"), args.optString("videoId"))
         }
         "draft_comment" -> {
-            check(scope == CompanionPolicy.OWNER)
-            val observation = store.get("observation", args.getString("observationId")) ?: error("请先观察视频")
-            check(observation.optString("scope") == CompanionPolicy.OWNER && observation.optString("videoId").isNotBlank()) { "没有属于本机主人的视频资料" }
+            check(speaker.ownersOwnChat) { "评论草稿要在主人的私聊里说" }
+            val observation = store.get("observation", args.getString("observationId")) ?: error("没有这份视频资料")
+            check(observation.optString("scope").let { it == CompanionPolicy.OWNER || it == scope } && observation.optString("videoId").isNotBlank()) { "这份资料不是主人这边的视频" }
             val inCurrentRequest = activeTask?.let { store.get("task", it)?.optString("observationId") } == observation.getString("id")
             check(observation.optBoolean("analyzed") || inCurrentRequest) { "请先将这份资料附加给模型分析" }
             val analysis = CompanionPolicy.text(args.getString("analysis"), 8000)
@@ -1009,11 +1110,12 @@ class CompanionEngine private constructor(private val context: Context) {
         val pkg = modules.device.execute("control.status", JSONObject(), modules.localOwner).optString("packageName")
             .ifBlank { modules.device.execute("capture.status", JSONObject(), modules.localOwner).optString("packageName") }
         check(pkg.isNotBlank()) { "现在没有在玩的游戏" }
-        check(store.get("message", sourceId)?.optString("scope") == CompanionPolicy.OWNER) { "游戏经验要来自主人这边的对话" }
+        val sourceScope = store.get("message", sourceId)?.optString("scope").orEmpty()
+        check(sourceScope == CompanionPolicy.OWNER || modules.principal(sourceScope).owner) { "游戏经验要来自主人这边的对话" }
         val label = runCatching { context.packageManager.let { pm -> pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString() } }.getOrDefault(pkg)
         val memory = LifeMemoryRepository(store).upsertMemory(CompanionPolicy.OWNER, JSONObject().put("text", "玩《$label》的经验：${text.take(300)}").put("kind", "fact")
             .put("sourceId", sourceId).put("source", "代玩游戏时自己总结")
-            .put("sourceRefs", JSONArray().put(JSONObject().put("kind", "message").put("id", sourceId).put("scope", CompanionPolicy.OWNER))), fromModel = true)
+            .put("sourceRefs", JSONArray().put(JSONObject().put("kind", "message").put("id", sourceId).put("scope", sourceScope))), fromModel = true, sourceScope = sourceScope)
         modules.device.notes.addNote(pkg, text, memory.optString("id"))
         return JSONObject().put("state", "saved").put("game", label)
     }
@@ -1053,7 +1155,12 @@ class CompanionEngine private constructor(private val context: Context) {
             ?: all.firstOrNull { "flash" in it.getString("model") } ?: fallback
     }
 
-    private fun declarations(scope: String, webTool: Boolean = false): JSONArray {
+    /**
+     * The tools for this turn. What she can do follows [speaker]; what it acts on is this conversation. The owner gets
+     * the same set in the app, their QQ private chat and (by QQ id) in a group, except the phone itself, which is only
+     * reachable from their own chats: a screen read in a group would land in the group.
+     */
+    private fun declarations(scope: String, speaker: Speaker, webTool: Boolean = false): JSONArray {
         fun decl(name: String, description: String, fields: List<String>, required: List<String> = fields) = JSONObject().put("name", name).put("description", description)
             .put("parameters", JSONObject().put("type", "OBJECT").put("properties", JSONObject().also { p -> fields.forEach { p.put(it, JSONObject().put("type", "STRING")) } }).put("required", JSONArray(required)))
         fun fields(vararg items: Pair<String, String>) = JSONObject().also { json -> items.forEach { (name, type) -> json.put(name, JSONObject().put("type", type)) } }
@@ -1062,24 +1169,38 @@ class CompanionEngine private constructor(private val context: Context) {
                 .put("data", JSONObject().put("type", "OBJECT").put("properties", properties))
                 .also { if (actions != null) it.put("action", JSONObject().put("type", "STRING").put("enum", JSONArray(actions))) })
                 .put("required", JSONArray(if (actions == null) listOf("data") else listOf("action", "data"))))
+        val settings = store.settings()
+        val qqReady = settings.optBoolean("oneBotEnabled") && settings.optString("oneBotAccount").isNotBlank()
+        val onQq = store.get("conversation", scope)?.optString("route") == "onebot"
         return JSONArray().put(decl("remember", "当场觉得重要、马上要记的事（聊完后系统还会自动整理一遍）。kind 为 fact/inference/preference/relationship/event/task/opinion，opinion 是你自己的看法（写成“我觉得……”）。" +
                 "“昨天”“下周”这类说法换成具体日期。validFrom/validUntil 为 YYYY-MM-DD，表示从何时起、到何时为止成立；新内容让某条旧记忆不再成立时，把旧记忆的 id 填进 ends（旧的会保留为过去）。" +
-                "entities 用逗号分隔人名地名游戏名。sourceId 必须是本会话真实消息 ID。factKey 为同一事实槽的稳定标识。不能保存密钥、授权或思考过程",
-                listOf("text", "kind", "sourceId", "factKey", "validFrom", "validUntil", "ends", "entities"), listOf("text", "kind", "sourceId")))
+                "entities 用逗号分隔人名地名游戏名。sourceId 留空就记在当前这条消息上。factKey 为同一事实槽的稳定标识。不能保存密钥、授权或思考过程",
+                listOf("text", "kind", "sourceId", "factKey", "validFrom", "validUntil", "ends", "entities"), listOf("text", "kind")))
             .put(decl("recall", "搜索当前会话的长期记忆及历史消息", listOf("query")))
             .put(decl("job_status", "查你在后台做的事（看B站、读专栏、上网查、提醒、整理）现在怎样了：进行中、完成（含结果）、没成（含原因）", emptyList())).also { a ->
                 if (webTool) a.put(decl("web_research", "上网查资料或读网页：query 写要查的事，urls 写要读的网址（多个用逗号隔开）。返回要点、来源和实际读到的网页。查到什么说什么，没查到就说没查到", listOf("query", "urls"), emptyList()))
-                if (modules.router.available("life")) a.put(structured("life_action", "查看记忆、日记、兴趣、注意力；新增兴趣 data.text，attention.set data.mode=available/busy/quiet、until 为毫秒时间戳。只在主人明确当时意愿下调整注意力，不把口头短语当固定命令。不能修改人格、权限或预算。",
-                    fields("query" to "STRING", "text" to "STRING", "mode" to "STRING", "until" to "INTEGER", "maxBackgroundTasks" to "INTEGER"),
-                    listOf("memory.search", "diary.list", "interest.list", "interest.upsert", "attention.status", "attention.set")))
-                if (scope != CompanionPolicy.OWNER && !modules.principal(scope).owner)
+                if (modules.router.available("life")) a.put(structured("life_action",
+                    "查看记忆、日记、兴趣、注意力。" + (if (speaker.owner) "主人可以让你：interest.upsert 记兴趣（data.text）；attention.set 设注意力（data.mode=available/busy/quiet，until 为毫秒时间戳），只在主人明确当时意愿下调整；" else "") +
+                        (if (speaker.ownersOwnChat) "memory.forget / memory.delete 忘掉或删掉一条记忆（data.id，先用 memory.search 找到）；diary.correct 改日记（data.id、data.text）；budget.status 看额度；pending.list 看待审清单。" else "") +
+                        "不能修改人格或权限。",
+                    fields("id" to "STRING", "query" to "STRING", "text" to "STRING", "mode" to "STRING", "until" to "INTEGER", "maxBackgroundTasks" to "INTEGER"),
+                    LIFE_ACTIONS.filter { speaker.ownersOwnChat || (speaker.owner && it !in OWN_CHAT_LIFE_ACTIONS) || it in setOf("memory.search", "diary.list", "interest.list") }))
+                if (!speaker.ownersOwnChat)
                     a.put(decl("propose_save", "聊天里有人发的图片值得留作参考时，提议存进主人的资料库（进待审清单，主人确认才存）。title 简短说明是什么图，reason 为什么值得留", listOf("title", "reason")))
-                if (store.get("conversation", scope)?.optString("route") == "onebot")
-                    a.put(decl("poke", "QQ 戳一戳正在和你说话的人。朋友间偶尔的小动作：主人私聊里偶尔用（每天最多 3 次），群里很少用（每个群每天最多 1 次），别和文字说同一个意思", emptyList()))
-                if ((scope == CompanionPolicy.OWNER || modules.principal(scope).owner) && store.settings().optBoolean("oneBotEnabled"))
+                if (onQq || (speaker.owner && qqReady))
+                    a.put(decl("poke", "QQ 戳一戳，朋友间偶尔的小动作，别和文字说同一个意思。" +
+                        if (speaker.owner) "不填 target 就戳正在和你说话的人；主人让你戳谁就把 target 填成 QQ 号或“主人”，在群里戳再填 group（群号或群名）。每个会话每天最多 10 次" else "戳正在和你说话的人，这个群每天最多 1 次",
+                        if (speaker.owner) listOf("target", "group") else emptyList(), emptyList()))
+                if (speaker.owner && qqReady) {
+                    val faces = io.deepseekharness.mobile.companion.chat.QqFaces.COMMON.joinToString("、")
+                    val shelf = store.lifeState("stickerShelf").optJSONArray("items")?.let { s -> (0 until s.length()).map { s.getJSONObject(it).optString("name") } }.orEmpty().filter { it.isNotBlank() }.take(40)
+                    a.put(decl("send_qq", "主人让你在 QQ 上发消息时用：target 填“主人”或 QQ 号，发到群就填 group（群号或群名，不填 target）。text 是要说的话（你自己的口吻）。" +
+                        "face 填 QQ 自带表情名（多个用顿号隔开，比如 $faces），sticker 填你收藏的表情包名" + (if (shelf.isNotEmpty()) "（有：${shelf.joinToString("、")}）" else "") + "。" +
+                        "发给主人和你能去的群会直接发出；发给别人的私聊先进待审清单，主人确认才发。", listOf("target", "group", "text", "face", "sticker"), listOf("text")))
                     a.put(decl("say_in_group", "主人让你去某个 QQ 群里说话时用：text 是你要在群里说的话（用你自己的口吻），group 填群号或群名。主人的要求就是授权，会直接发出。" +
-                        "不确定是哪个群就别填 group，会返回能去的群让主人挑。只在主人明确要你去群里说时用，不要自己找理由去群里发", listOf("group", "text"), listOf("text")))
-                if (scope == CompanionPolicy.OWNER || scope.startsWith("qq:group:"))
+                        "不确定是哪个群就别填 group，会返回能去的群让主人挑", listOf("group", "text"), listOf("text")))
+                }
+                if (speaker.owner || scope.startsWith("qq:group:"))
                     a.put(decl("watch_bilibili", "对聊到的话题感兴趣时，自己去 B站看一部视频或读一篇专栏（videoId=BV 号，articleId=cv 号，或 query 关键词；读专栏时 kind=article）。后台进行、用活动额度；视频读字幕、关键帧、弹幕和热门评论，看完记成你自己的观察并写明实际看了哪部分", listOf("videoId", "articleId", "query", "kind", "reason"), listOf("reason")))
                 if (modules.router.available("social")) {
                     a.put(structured("social_plan", "规划社交动作，data={kind:reply/post/comment/add_friend/join_group/leave_group,account,target,content}。账号与目标必须来自已核对绑定；评论、加好友和加群进入精确审批队列，结果不得说成已经发布。",
@@ -1088,7 +1209,7 @@ class CompanionEngine private constructor(private val context: Context) {
                         "到时间才提醒；只说了日子没说几点就问一句，或按上午 9 点。不授予外发权限；查看返回的真实状态。",
                         fields("kind" to "STRING", "text" to "STRING", "dueAt" to "STRING", "condition" to "STRING")))
                 }
-                if (scope == CompanionPolicy.OWNER) {
+                if (speaker.ownersOwnChat) {
                     if (modules.router.available("device")) a.put(structured("device_action", "操作主人的单机游戏。control.start 接手（packageName 可写包名或应用名；durationSeconds 默认 600；background=true 在副屏后台玩，需要 Shizuku）；" +
                         "capture.refresh 取画面，用返回的 sessionId,inputEpoch,frameId 和像素坐标 x,y 操作：tap；swipe 加 toX,toY；longPress/hold 给 durationMs（hold 可加 toX,toY,moveMs 当摇杆按住拖动）；" +
                         "multi 给 pointers=[{x,y,toX,toY,startMs,durationMs}] 多指同时操作。有 Shizuku 时按住最长 10 秒（后台 30 秒），没有时 1.5 秒。" +
@@ -1108,6 +1229,10 @@ class CompanionEngine private constructor(private val context: Context) {
     }
 
     companion object {
+        private val LIFE_ACTIONS = listOf("memory.search", "diary.list", "interest.list", "interest.upsert", "attention.status", "attention.set",
+            "memory.forget", "memory.delete", "diary.correct", "budget.status", "pending.list")
+        /** These reach the owner's own memory and state: from their own chats only, never a group. */
+        private val OWN_CHAT_LIFE_ACTIONS = setOf("memory.forget", "memory.delete", "diary.correct", "budget.status", "pending.list")
         private val DEVICE_ACTIONS = linkedSetOf("control.start", "control.status", "capture.status", "capture.refresh", "control.tap", "control.swipe", "control.longPress",
             "control.hold", "control.multi", "control.waitFor", "landmark.save", "landmark.find", "landmark.tap", "landmark.forget", "route.save", "route.replay", "route.forget", "notes.add")
         @Volatile private var instance: CompanionEngine? = null

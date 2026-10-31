@@ -34,10 +34,23 @@ class CompanionStartupTest {
             personaVersionsCountUpOnceAndAliasesCount(engine.store)
             claudeOnlyWhereTurnedOn(engine.store)
             onlyRemovingWhatATurnReadStopsIt(engine.store)
+            toolsFollowWhoIsSpeaking(engine)
         } catch (e: Throwable) {
             // Stack traces cannot be formatted inside the sandbox on this JDK; carry the cause chain as text.
             throw AssertionError(generateSequence(e) { it.cause }.joinToString(" <- ") { "${it.javaClass.name}: ${it.message}" })
         } finally { java.security.Security.removeProvider("AndroidKeyStore") }
+    }
+
+    /** The owner gets the owner's tools wherever they talk to her; the phone stays reachable only from their own chats. */
+    private fun toolsFollowWhoIsSpeaking(engine: CompanionEngine) {
+        val own = engine.toolsFor(CompanionPolicy.OWNER, owner = true, ownersOwnChat = true)
+        assertTrue(own.containsAll(listOf("observe_screen", "draft_comment", "open_app", "life:memory.forget", "life:pending.list")))
+        val ownerInGroup = engine.toolsFor("qq:group:tooltest", owner = true, ownersOwnChat = false)
+        assertTrue("observe_screen" !in ownerInGroup && "device_action" !in ownerInGroup && "life:memory.forget" !in ownerInGroup)
+        assertTrue("life:attention.set" in ownerInGroup)
+        val member = engine.toolsFor("qq:group:tooltest", owner = false, ownersOwnChat = false)
+        assertTrue(member.none { it in setOf("observe_screen", "send_qq", "say_in_group", "life:attention.set", "life:memory.forget") })
+        assertTrue("propose_save" in member)
     }
 
     /**
