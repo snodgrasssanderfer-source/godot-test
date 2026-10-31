@@ -24,7 +24,9 @@ object OneBotSegments {
                     }
                     "reply" -> { if (depth == 0) replyTo = data.optString("id").take(80); text.append(" [引用消息]") }
                     "face" -> {
+                        // Newer "super" faces are missing from the qface table; NapCat carries their name in raw.faceText.
                         val name = io.deepseekharness.mobile.companion.chat.QqFaces.name(data.optString("id"))
+                            ?: data.optJSONObject("raw")?.optString("faceText")?.trim()?.removePrefix("/")?.takeIf { it.isNotBlank() && it.length <= 12 }
                         text.append(if (name != null) " [表情:$name]" else " [QQ表情]")
                         attachments.put(JSONObject().put("kind", "face").put("platformId", data.optString("id").take(80)).put("source", ref).put("status", "typed"))
                     }
