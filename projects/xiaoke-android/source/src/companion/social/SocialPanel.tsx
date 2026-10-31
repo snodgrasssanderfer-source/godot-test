@@ -48,12 +48,26 @@ export function SocialPanel({ state, run, available }: ModulePanelProps) {
     catch (e) { setError(e instanceof Error ? e.message : String(e)); return undefined }
     finally { pending.current = false; setBusy(false) }
   }
-  async function importFile(file: File) {
-    if (file.size > 6 * 1024 * 1024) { setError('素材请小于 6 MB；较大视频请先剪成片段。'); return }
-    const encoded = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader(); reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result.split(',')[1]) : reject(new Error('文件读取失败')); reader.onerror = reject; reader.readAsDataURL(file)
-    })
-    await act('media.import', { name: file.name, mime: file.type, base64: encoded, retention })
+  // One file at a time so a phone never holds dozens of base64 copies at once; one bad file doesn't stop the rest.
+  async function importFiles(files: File[]) {
+    if (pending.current || !available || !files.length) return
+    pending.current = true; setBusy(true); setError(''); setNotice('')
+    const failed: string[] = []
+    try {
+      for (const [i, file] of files.entries()) {
+        if (files.length > 1) setNotice(`导入中 ${i + 1}/${files.length}`)
+        try {
+          if (file.size > 6 * 1024 * 1024) throw new Error('超过 6 MB')
+          const encoded = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader(); reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result.split(',')[1]) : reject(new Error('读取失败')); reader.onerror = () => reject(new Error('读取失败')); reader.readAsDataURL(file)
+          })
+          await run('media.import', { name: file.name, mime: file.type, base64: encoded, retention })
+        } catch (e) { failed.push(`${file.name}（${e instanceof Error ? e.message : String(e)}）`) }
+      }
+    } finally { pending.current = false; setBusy(false) }
+    const done = files.length - failed.length
+    setNotice(done ? (files.length > 1 ? `导入了 ${done} 个` : '好了') : '')
+    if (failed.length) setError(`没导入：${failed.join('、')}`)
   }
   const account = text(accounts[0] ?? {}, 'account')
   const disabled = busy || !available
@@ -117,7 +131,7 @@ export function SocialPanel({ state, run, available }: ModulePanelProps) {
     </Section>
     <Section icon={<Images size={20} weight="duotone"/>} title="表情和素材" summary={media.length ? `${media.length} 个` : '给她用的表情包、图片'}>
       <label>怎么存<select value={retention} onChange={e => setRetention(e.target.value)}><option value="transient">临时用，24 小时后清掉</option><option value="curated">给她当表情包用（图片）</option><option value="explicit">一直留着原文件</option></select></label>
-      <input ref={importing} aria-label="导入表达素材" type="file" accept="image/jpeg,image/png,image/webp,image/gif,audio/mpeg,audio/wav,video/mp4,application/pdf" disabled={disabled} onChange={e => { const file = e.target.files?.[0]; if (file) void importFile(file).catch(() => setError('文件读取失败')); e.target.value = '' }}/>
+      <input ref={importing} aria-label="导入表达素材" type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,audio/mpeg,audio/wav,video/mp4,application/pdf" disabled={disabled} onChange={e => { const files = Array.from(e.target.files ?? []); e.target.value = ''; void importFiles(files) }}/>
       {media.map(item => <div className="social-row" key={text(item, 'id')}><strong>{text(item, 'name') || text(item, 'kind')}</strong>
         <small>{text(item, 'retention') === 'curated' && text(item, 'kind') === 'image' ? (text(item, 'description') ? `她的表情包：${text(item, 'description')}` : '她的表情包 · 还没看过，联网时会看一眼') : `${text(item, 'status')} · ${text(item, 'retention')}`}</small>
         <div className="xk-actions">{text(item, 'status') === 'cached' && text(item, 'retention') === 'transient' && <button className="xk-btn small" disabled={disabled} onClick={() => void act('media.retain', { id: item.id, retention: 'explicit' })}>一直留着</button>}
