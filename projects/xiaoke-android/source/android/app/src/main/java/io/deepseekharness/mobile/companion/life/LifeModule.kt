@@ -138,10 +138,12 @@ class LifeModule(@Suppress("UNUSED_PARAMETER") context: Context, private val sto
         val scope = LifePolicy.scope(data, principal)
         val hidden = data.optBoolean("includeForgotten")
         if (hidden) LifePolicy.requireOwner(principal)
+        val privateReader = LifePolicy.owner(principal)
         val all = store.list("memory", scope, 10000)
         val values = (0 until all.length()).map(all::getJSONObject).filter {
             !it.optBoolean("deleted") && (hidden || (!it.optBoolean("forgotten") && !it.optBoolean("suppressed"))) &&
-                (data.optBoolean("includeHistory") || !it.optBoolean("superseded"))
+                (data.optBoolean("includeHistory") || !it.optBoolean("superseded")) &&
+                (privateReader || !LifePolicy.touchesPrivate(it, store::ownerPrivate))
         }
         val query = data.optString("query")
         // Explicit review keeps forgotten/history entries; automatic MemoryRanking always filters them.
@@ -153,7 +155,8 @@ class LifeModule(@Suppress("UNUSED_PARAMETER") context: Context, private val sto
     private fun entries(kind: String, scope: String, query: String, includeHidden: Boolean): JSONArray {
         val all = store.list(kind, scope, 10000)
         return store.withEvidenceStatus(JSONArray().also { out -> for (i in all.length() - 1 downTo 0) all.getJSONObject(i).let {
-            if ((includeHidden || LifePolicy.visible(it)) && it.optString("text").contains(query, true)) out.put(it)
+            if ((includeHidden || (LifePolicy.visible(it) && !LifePolicy.touchesPrivate(it, store::ownerPrivate))) &&
+                it.optString("text").contains(query, true)) out.put(it)
         } })
     }
 

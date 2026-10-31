@@ -1180,7 +1180,7 @@ class CompanionEngine private constructor(private val context: Context) {
         val list = (0 until records.length()).map(records::getJSONObject)
         val semantic = runCatching { modules.memoryIndex.semantic(query, list) }.getOrNull()
         val ranked = if (forTool) MemoryRanking.relevant(list, query, 8, semantic)
-            else MemoryRanking.rank(records, query, 40, semantic).let { a -> (0 until a.length()).map(a::getJSONObject) }
+            else MemoryRanking.relevant(list, query, 40, semantic)
         return JSONArray().also { out -> ranked.forEach { m ->
             out.put(io.deepseekharness.mobile.companion.memory.MemoryView.project(m).also { v -> m.optString("fromGroup").takeIf { it.isNotBlank() }?.let { v.put("fromGroup", it) } })
         } }

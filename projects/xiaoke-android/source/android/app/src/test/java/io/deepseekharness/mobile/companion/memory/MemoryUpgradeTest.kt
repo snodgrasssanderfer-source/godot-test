@@ -62,13 +62,13 @@ class MemoryUpgradeTest {
         val at = TimeAnchor.startMs(said, zone) + 20 * 3_600_000L
         val ids = MemoryConsolidator.Ids(
             listOf(message("a", "user", at, "qq:111"), message("b", "assistant", at + 60_000), message("c", "user", at + 120_000, "qq:222")),
-            listOf(JSONObject().put("id", "old-1").put("text", "阿明在杭州上班"), JSONObject().put("id", "old-2").put("text", "小克觉得新版本不好玩")),
+            listOf(JSONObject().put("id", "old-1").put("holder", "member").put("actorId", "qq:111").put("text", "阿明在杭州上班"), JSONObject().put("id", "old-2").put("holder", "her").put("text", "小克觉得新版本不好玩")),
         )
         val answer = JSONObject("""{"memories":[
             {"text":"阿明搬到成都工作","kind":"fact","holder":"member","entities":["阿明","成都"],"validFrom":"2026-10-28","sources":["m1","m9"],"links":["e1","e7"],"ends":["e1"]},
             {"text":"我觉得新版本其实挺好玩","kind":"opinion","sources":["m2"],"ends":["e2"]},
             {"text":"主人明天要考试","kind":"plan","holder":"owner","sources":["m3"]},
-            {"text":"群里在聊十一月的活动","kind":"weird","validUntil":"2026-11-30","sources":[]}
+            {"text":"群里在聊十一月的活动","kind":"weird","validUntil":"2026-11-30","sources":["m3"]}
           ],"profiles":[
             {"type":"owner","name":"主人","member":"m3","summary":"在群里很活跃","sources":["m3"]},
             {"type":"member","name":"阿明","member":"m2","summary":"刚搬去成都"},
@@ -84,7 +84,7 @@ class MemoryUpgradeTest {
         val opinion = plan.memories[1]
         assertEquals("opinion", opinion.getString("kind")); assertEquals("her", opinion.getString("holder"))
         assertEquals("fact", plan.memories[2].getString("kind"))
-        assertEquals("c", plan.memories[2].getString("sourceId")) // no sources given: the last line from a person
+        assertEquals("c", plan.memories[2].getString("sourceId")) // the actual message cited by this memory
         assertTrue(plan.memories[2].getLong("validUntil") > plan.memories[2].getLong("validFrom"))
         assertEquals(listOf("old-1" to 0, "old-2" to 1), plan.ends.map { it.memoryId to it.byIndex })
         // Owner profile in a group becomes that speaker's member profile; a "member" pointing at her own line is dropped.
