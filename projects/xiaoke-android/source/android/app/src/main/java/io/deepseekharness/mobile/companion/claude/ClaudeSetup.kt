@@ -28,6 +28,7 @@ object ClaudeSetup {
             .put("settings", ClaudeChat.settings(engine.store)).put("usage", engine.store.lifeState("claudeUsage").apply { remove("id"); remove("scope") })
             .put("outage", ClaudeChat.outage(engine.store) ?: JSONObject.NULL)
             .put("permissions", ClaudePermissions.list()).put("workspace", ClaudeWorkspace.state(runtime))
+            .put("githubConfigured", ClaudeGithub.configured(context))
     }
 
     /** A fresh `claude auth status`; logging in again ends a login outage at once. */
@@ -205,7 +206,8 @@ object ClaudeWorkspace {
                     "if [ -d $CLONE/.git ]; then git -C $CLONE fetch --depth 50 origin main && echo fetched",
                     "else git clone --depth 50 $REPO $CLONE && echo cloned; fi",
                 ).joinToString("\n")
-                val r = runtime.runShell(script, 900)
+                // With the owner's token the fetch also works if the repo turns private (token on stdin only).
+                val r = runtime.runShell(script, 900, githubToken = ClaudeGithub.token(context))
                 check(r.code == 0 && !r.timedOut) { "没准备好：${r.output.trim().takeLast(300).ifBlank { "退出码 ${r.code}" }}" }
                 job = JSONObject().put("phase", "done").put("detail", r.output.trim().lines().lastOrNull().orEmpty())
             } catch (e: Exception) {

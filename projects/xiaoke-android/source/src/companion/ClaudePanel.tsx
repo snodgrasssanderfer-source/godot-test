@@ -29,7 +29,7 @@ function Usage({label, window}: {label: string; window?: {utilization: number; r
 export function ClaudePanel({run, only}: {run: Run; only?: 'install' | 'login'}) {
   const compact = only !== undefined
   const [status, setStatus] = useState<ClaudeStatus | null>(null), [code, setCode] = useState(''), [saved, setSaved] = useState(false)
-  const [form, setForm] = useState<ClaudeSettings | null>(null)
+  const [form, setForm] = useState<ClaudeSettings | null>(null), [gh, setGh] = useState('')
   const timer = useRef<number>()
   // The latest run in a ref: refresh stays stable, so the first effect asks for login status (a PRoot start) only once.
   const runRef = useRef(run)
@@ -106,7 +106,15 @@ export function ClaudePanel({run, only}: {run: Run; only?: 'install' | 'login'})
     {!compact && status.version && <div className="xk-card">
       <h2>代码工作区</h2>
       <p className="xk-hint">{status.workspace.exists ? `${status.workspace.path}${status.workspace.branch ? ` · 当前分支 ${status.workspace.branch}` : ''}` : '把这个项目的公开仓库克隆到手机里。你在私聊里让她查 bug、改代码时，她在这里读、改，提交到新分支再告诉你改了什么。'}</p>
-      <p className="xk-hint">签名和发版只在云端做，私钥不会到手机上。推送需要你自己在 DSH 终端里配好 git 凭据；没配时她只提交在本地。</p>
+      <p className="xk-hint">签名和发版只在云端做，私钥不会到手机上。</p>
+      <h3>GitHub 推送</h3>
+      <p className="xk-hint">{status.githubConfigured ? '已配置：她在你的私聊里改完代码会推到 claude/ 开头的新分支，并开 PR 把链接给你。' : '未配置：她改完只提交在本地。'}
+        建议用 Fine-grained token，只授权 godot-test，权限给 Contents 和 Pull requests 读写；再给 main 打开分支保护（必须走 PR）。token 只在你私聊的那一轮里给 Claude Code，不写进运行环境的文件、日志和回复。</p>
+      <form className="xk-composer-row" onSubmit={e => { e.preventDefault(); if (gh.trim()) void run('claudeGithubToken', {token: gh.trim()}).then(() => { setGh(''); void refresh() }).catch(() => undefined) }}>
+        <input type="password" autoComplete="new-password" value={gh} onChange={e => setGh(e.target.value)} placeholder={status.githubConfigured ? '已保存，填新的会替换' : 'github_pat_…'} autoCapitalize="none" spellCheck={false}/>
+        <button className="xk-btn primary small" type="submit">保存</button>
+      </form>
+      {status.githubConfigured && <button className="xk-btn ghost danger small" onClick={() => { if (confirm('清除 GitHub token？之后她只能提交在本地。')) void run('claudeGithubTokenClear').then(() => refresh()).catch(() => undefined) }}>清除</button>}
       {status.workspace.job?.phase === 'running' && <p className="xk-hint">正在准备…</p>}
       {status.workspace.job?.phase === 'failed' && <p className="xk-hint xk-warn">{status.workspace.job.error}</p>}
       <div className="xk-actions"><button className="xk-btn" disabled={status.workspace.job?.phase === 'running'} onClick={() => void run('claudeWorkspace').then(() => refresh()).catch(() => undefined)}>{status.workspace.exists ? '拉取最新' : '准备工作区'}</button></div>

@@ -43,6 +43,7 @@ object XLog {
         Regex("sk-[A-Za-z0-9_-]{12,}"), Regex("(?i)(bearer\\s+)[A-Za-z0-9._~+/=-]{8,}"),
         Regex("(?i)(\"?(?:token|key|password|secret|cookie|sessdata|access_token|refresh_token)\"?\\s*[:=]\\s*\"?)[^\"\\s,;}]{4,}"),
         Regex("(?i)(x-goog-api-key[:=]\\s*)\\S+"), Regex("\\b[A-Fa-f0-9]{40,}\\b"),
+        Regex("github_pat_[A-Za-z0-9_]{20,}"), Regex("\\bgh[pousr]_[A-Za-z0-9]{20,}"),
     )
 
     /** Keys, tokens, cookies and long hex secrets become "***"; the label before them stays so the line still reads. */

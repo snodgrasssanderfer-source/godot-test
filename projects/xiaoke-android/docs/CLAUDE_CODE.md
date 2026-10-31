@@ -22,7 +22,7 @@ The DSH runtime doesn't conflict with this, so it stays.
 
 - Binary: `/root/.xiaoke/claude/<version>/claude` (about 290 MB, downloaded on first use)
 - Workspace: `/root/workspace`
-- Code workspace: `/root/workspace/godot-test`, a clone of this repo (public). In the owner's private chat, Claude works in `projects/xiaoke-android`, so this project's CLAUDE.md applies. Code changes always go on a new branch with a commit, and Claude tells the owner what changed. Pushing needs git credentials the owner sets up in the DSH terminal; the app stores none. Signing and releases stay in the cloud, and the private key never reaches the phone.
+- Code workspace: `/root/workspace/godot-test`, a clone of this repo (public). In the owner's private chat, Claude works in `projects/xiaoke-android`, so this project's CLAUDE.md applies. Code changes always go on a new branch with a commit, and Claude tells the owner what changed. Pushing uses a GitHub token the owner enters under 我的 → Claude → 代码工作区. It's stored with Keystore encryption, like the Gemini key, and only the owner's own turns and workspace fetches get it. Launches start from `env -i`, so the token can't be passed as a host environment variable. Instead it goes in as the first line of the process's stdin: a guest bash wrapper reads it into `GH_TOKEN` and sets git's credential helper with `GIT_CONFIG_*`, so nothing is written to a file in the rootfs or into argv. The token is redacted from what Claude outputs, MCP arguments, and the logs. Without a token, she only commits locally. Signing and releases stay in the cloud, and the private key never reaches the phone.
 
 ## First run
 

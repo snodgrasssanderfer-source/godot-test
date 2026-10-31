@@ -1,5 +1,13 @@
 # 更新说明
 
+## 0.14.0（versionCode 19）
+小克能自己推分支、开 PR 了。
+- 在 我的 → Claude → 代码工作区 里填一次 GitHub token。页面只显示“已配置 / 未配置”，可以清除。它和 Gemini key 用同一套加密方式存在手机上。
+- 填好后，在你的私聊里，她改完代码会推到 claude/ 开头的新分支并开 PR，回复里给你 PR 链接。开 PR 用 gh，没装的话她可以自己用 apt 装上；装不上就直接调 GitHub 接口。没填 token 时，还是只提交在本地。
+- token 只在你私聊的那一轮交给 Claude Code。它不写进运行环境的文件，不出现在命令行里，群聊的回复也拿不到它。她的回复、保存的记忆、发出的 QQ 消息和诊断日志里，只要出现 token，都会换成 ***。
+- 拉取工作区时也会带上 token，以后仓库改成私有也能拉。
+- 你在 GitHub 上要做一次：用 Fine-grained token，只授权 godot-test，给 Contents 和 Pull requests 读写权限；再给 main 打开分支保护（必须走 PR）。
+
 ## 0.13.3（versionCode 18）
 - 修好了 QQ 里 Claude 没反应的问题。Claude Code 写完回复后，如果在运行环境里留下了后台进程，之前会一直等它结束（最长 45 分钟），回复就发不出去。Claude 的回复是一条接一条排队处理的，所以后面的消息也都被堵住了。现在拿到回复就立刻保存、发出，并把进程关掉。
 - Claude Code 两分钟内没启动起来，就当作出错，这一条交给 Gemini 回复。

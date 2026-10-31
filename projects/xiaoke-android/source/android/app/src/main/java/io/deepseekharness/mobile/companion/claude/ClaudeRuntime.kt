@@ -23,15 +23,16 @@ class ClaudeRuntime(context: Context) {
     fun runtimeReady() = store.currentRoot.isDirectory && File(store.currentRoot, "bin/bash").exists()
     fun version(): String? = if (runtimeReady()) installer.current() else null
 
-    /** A PRoot launch of `claude <args>` in [cwd] (guest path). */
-    fun launch(args: List<String>, cwd: String = HOME_DIR, cancelled: () -> Boolean = { false }): RuntimeLaunchSpec {
+    /** A PRoot launch of `claude <args>` in [cwd] (guest path). [github]: the first stdin line is the GitHub token. */
+    fun launch(args: List<String>, cwd: String = HOME_DIR, github: Boolean = false, cancelled: () -> Boolean = { false }): RuntimeLaunchSpec {
         val version = version() ?: error("Claude Code 还没装好")
-        return resolver.launch(command(installer.guestBinary(version), args, cwd), externalCancellation = cancelled)
+        return resolver.launch(command(installer.guestBinary(version), args, cwd, github), externalCancellation = cancelled)
     }
 
     /** A PRoot launch of a plain shell command (git clone and the like) in [cwd]. */
-    fun shell(script: String, cwd: String = HOME_DIR): RuntimeLaunchSpec =
-        resolver.launch(listOf("/bin/bash", "--noprofile", "--norc", "-c", "cd \"\$1\" || exit 3; shift; $script", "xiaoke", cwd))
+    fun shell(script: String, cwd: String = HOME_DIR, github: Boolean = false): RuntimeLaunchSpec =
+        resolver.launch(listOf("/bin/bash", "--noprofile", "--norc", "-c",
+            "cd \"\$1\" || exit 3; shift; " + (if (github) ClaudeGithub.STDIN_EXPORT else "") + script, "xiaoke", cwd))
 
     fun hostDirectory() = store.currentRoot
 
@@ -43,10 +44,16 @@ class ClaudeRuntime(context: Context) {
         return Result(r.exitCode, r.output, r.timedOut)
     }
 
-    fun runShell(script: String, timeoutSeconds: Long, cwd: String = HOME_DIR): Result {
-        val r = ProcessProbe.run(shell(script, cwd), store.currentRoot, timeoutSeconds, outputLimit = 64 * 1024)
+    /** [githubToken]: handed over on stdin (see [ClaudeGithub]), never in argv, a file or the log. */
+    fun runShell(script: String, timeoutSeconds: Long, cwd: String = HOME_DIR, githubToken: String? = null): Result {
+        val r = ProcessProbe.run(shell(script, cwd, githubToken != null), store.currentRoot, timeoutSeconds, outputLimit = 64 * 1024,
+            processStarter = { spec, dir ->
+                ProcessBuilder(spec.argv).directory(dir).redirectErrorStream(true)
+                    .also { it.environment().clear(); it.environment().putAll(spec.environment) }.start()
+                    .also { p -> p.outputStream.use { out -> if (githubToken != null) out.write((githubToken + "\n").toByteArray()) } }
+            })
         r.startError?.let { throw IllegalStateException("启动不了：${it.message}", it) }
-        return Result(r.exitCode, r.output, r.timedOut)
+        return Result(r.exitCode, ClaudeGithub.redact(r.output, githubToken), r.timedOut)
     }
 
     /** `claude auth status --json`: whether she is logged in and with what. Never touches the credential files. */
@@ -67,9 +74,9 @@ class ClaudeRuntime(context: Context) {
          * The guest command. Auto-update is off because updates must come through [ClaudeInstaller]'s signature and
          * checksum checks; the binary itself is run as published.
          */
-        fun command(binary: String, args: List<String>, cwd: String): List<String> = buildList {
+        fun command(binary: String, args: List<String>, cwd: String, github: Boolean = false): List<String> = buildList {
             add("/bin/bash"); add("--noprofile"); add("--norc"); add("-c")
-            add("cd \"\$1\" 2>/dev/null || cd /root; shift; exec \"\$@\"")
+            add("cd \"\$1\" 2>/dev/null || cd /root; shift; " + (if (github) ClaudeGithub.STDIN_EXPORT else "") + "exec \"\$@\"")
             add("xiaoke"); add(cwd)
             add("/usr/bin/env"); addAll(ENVIRONMENT); add(binary); addAll(args)
         }

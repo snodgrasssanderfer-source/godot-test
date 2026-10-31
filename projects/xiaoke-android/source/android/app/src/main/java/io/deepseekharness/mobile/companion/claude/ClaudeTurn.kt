@@ -26,11 +26,18 @@ class ClaudeTurn(private val runtime: ClaudeRuntime, val id: String) {
         val mcpPort: Int,
         val mcpToken: String,
         val timeoutMs: Long,
-    )
+        /** The owner's GitHub token for push and PRs; only ever used when [ownerTools] is on. */
+        val githubToken: String? = null,
+    ) {
+        val github get() = ownerTools && !githubToken.isNullOrBlank()
+    }
 
     data class Outcome(val sessionId: String, val text: String, val failure: ClaudeStream.Failure?, val detail: String, val usage: JSONObject?)
 
     private val cancelled = AtomicBoolean(false)
+    @Volatile private var secret: String? = null
+    /** Whatever leaves this class (partial text, the reply, error details) has the GitHub token taken out. */
+    private fun redact(text: String) = ClaudeGithub.redact(text, secret)
     @Volatile private var process: Process? = null
     fun cancel() { cancelled.set(true); process?.destroy() }
     val isCancelled get() = cancelled.get()
@@ -39,6 +46,7 @@ class ClaudeTurn(private val runtime: ClaudeRuntime, val id: String) {
             onPermission: (String, JSONObject) -> Boolean): Outcome {
         // Prompt and MCP config are files: the persona alone can exceed one argv string's 128 KiB limit, and the token
         // must not show up in the process list. Both are 0600 under the turn's own directory and deleted afterwards.
+        secret = options.githubToken
         val guestDir = "/root/.xiaoke/turns/$id"
         val hostDir = File(runtime.hostDirectory(), guestDir.removePrefix("/")).apply { mkdirs() }
         hostDir.setReadable(false, false); hostDir.setReadable(true, true); hostDir.setExecutable(false, false); hostDir.setExecutable(true, true)
@@ -53,7 +61,7 @@ class ClaudeTurn(private val runtime: ClaudeRuntime, val id: String) {
         var result: ClaudeStream.Result? = null
         val stderr = StringBuilder()
         try {
-            val spec = runtime.launch(args(options, "$guestDir/system.md", "$guestDir/mcp.json"), options.cwd) { cancelled.get() }
+            val spec = runtime.launch(args(options, "$guestDir/system.md", "$guestDir/mcp.json"), options.cwd, options.github) { cancelled.get() }
             val started = ProcessBuilder(spec.argv).directory(runtime.hostDirectory()).redirectErrorStream(false)
                 .also { it.environment().clear(); it.environment().putAll(spec.environment) }.start()
             process = started
@@ -61,6 +69,8 @@ class ClaudeTurn(private val runtime: ClaudeRuntime, val id: String) {
             val errThread = Thread({ runCatching { started.errorStream.bufferedReader().forEachLine { synchronized(stderr) { if (stderr.length < 8000) stderr.appendLine(it) } } } }, "claude-stderr").apply { isDaemon = true; start() }
             val stdin = started.outputStream.bufferedWriter(Charsets.UTF_8)
             fun send(line: String) = synchronized(stdin) { stdin.write(line); stdin.write("\n"); stdin.flush() }
+            // The wrapper takes the first line as GH_TOKEN before Claude Code starts reading (see ClaudeGithub).
+            if (options.github) send(options.githubToken!!)
             send(ClaudeStream.userMessage(options.content))
             val begun = System.currentTimeMillis()
             val initAt = java.util.concurrent.atomic.AtomicLong(0L)
@@ -82,7 +92,7 @@ class ClaudeTurn(private val runtime: ClaudeRuntime, val id: String) {
                     if (cancelled.get()) break
                     when (val event = ClaudeStream.parse(line)) {
                         is ClaudeStream.Init -> { initAt.set(System.currentTimeMillis()); if (event.sessionId.isNotBlank()) sessionId = event.sessionId; XLog.i("claude turn $id: started in ${initAt.get() - begun} ms, model ${event.model}") }
-                        is ClaudeStream.TextDelta -> { text.append(event.text); onText(text.toString()) }
+                        is ClaudeStream.TextDelta -> { text.append(event.text); onText(redact(text.toString())) }
                         is ClaudeStream.ToolUse -> { text.setLength(0); onTool(event.name) }
                         is ClaudeStream.RateLimit -> { usage = event.usage; onUsage(event.usage) }
                         is ClaudeStream.Permission -> {
@@ -105,13 +115,13 @@ class ClaudeTurn(private val runtime: ClaudeRuntime, val id: String) {
             watchdog.interrupt(); errThread.join(1_000)
             XLog.i("claude turn $id ended in ${System.currentTimeMillis() - begun} ms: ${result?.let { if (it.isError) "error ${it.subtype}" else "ok" } ?: "no result"}")
             val exit = runCatching { started.exitValue() }.getOrNull()
-            val err = synchronized(stderr) { stderr.toString() }
+            val err = redact(synchronized(stderr) { stderr.toString() })
             val r = result
             return when {
                 cancelled.get() -> Outcome(sessionId, "", ClaudeStream.Failure.ERROR, "已取消", usage)
                 stuck.get().isNotEmpty() && result == null -> Outcome(sessionId, "", ClaudeStream.Failure.ERROR, stuck.get() + "：" + err.trim().takeLast(200), usage)
-                r != null && !r.isError -> Outcome(sessionId, r.text.ifBlank { text.toString() }, null, "", usage)
-                r != null -> Outcome(sessionId, "", ClaudeStream.classify(r.text + "\n" + r.subtype, usage), r.text.ifBlank { r.subtype }.take(300), usage)
+                r != null && !r.isError -> Outcome(sessionId, redact(r.text.ifBlank { text.toString() }), null, "", usage)
+                r != null -> Outcome(sessionId, "", ClaudeStream.classify(r.text + "\n" + r.subtype, usage), redact(r.text.ifBlank { r.subtype }).take(300), usage)
                 exit == ClaudeRuntime.SIGSYS_EXIT -> Outcome(sessionId, "", ClaudeStream.Failure.ERROR, "被系统拦截了一个调用（SIGSYS），PRoot 没接住", usage)
                 else -> Outcome(sessionId, "", ClaudeStream.classify(err, usage), "Claude Code 退出了（$exit）：${err.trim().takeLast(300)}", usage)
             }

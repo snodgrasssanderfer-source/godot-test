@@ -631,7 +631,10 @@ class CompanionEngine private constructor(private val context: Context) {
             "你的记忆、日记、QQ、手机、B站、待审清单这些能力在 xiaoke 这组工具里（remember、recall、job_status、say_in_group 等），用法和平时一样；remember 的 sourceId 留空，记在当前这条消息上。" +
             (if (ownerChat && settings.optBoolean("fullAccess")) "主人给了你完全访问权限：改文件、跑命令不用再问；动手前想清楚，删东西、推送、改系统设置这类收不回的事先跟主人说一声。" else "") +
             (if (ownerChat) "主人交代代码的事时：这个项目（你自己的 App）在 ${io.deepseekharness.mobile.companion.claude.ClaudeWorkspace.PROJECT}，先读那里的 CLAUDE.md；读代码随意；" + (if (settings.optBoolean("fullAccess")) "" else "改文件、跑命令会弹到主人手机上等主人点允许。") +
-                "改代码一律在新分支上做（git switch -c 起个说明用途的名字），改完提交，用几句话告诉主人改了什么、在哪个分支、怎么验证的；不碰 main，不碰签名和密钥（签名和发版只在云端做）。手机上没法跑完整的 Gradle 构建就说没验证。没有推送凭据就说已提交在本地，请主人推送。\n"
+                "改代码一律在新分支上做（git switch -c 起个说明用途的名字），改完提交，用几句话告诉主人改了什么、在哪个分支、怎么验证的；不碰 main，不碰签名和密钥（签名和发版只在云端做）。手机上没法跑完整的 Gradle 构建就说没验证。" +
+                (if (io.deepseekharness.mobile.companion.claude.ClaudeGithub.token(context) != null)
+                    "主人配了 GitHub token（在环境变量 GH_TOKEN 里，git 推送已经能用）：改完推到 claude/ 开头的新分支，再开一个 PR，回复里给出 PR 链接。开 PR 用 gh（没装可以 apt-get install -y gh，它直接认 GH_TOKEN），装不上就用 curl 调 POST https://api.github.com/repos/snodgrasssanderfer-source/godot-test/pulls。token 本身绝不写进文件、提交、日志或回复。\n"
+                else "没有推送凭据，提交在本地，请主人推送。\n")
             else "这里不是主人的私聊：只回这个对话里该说的话，不写代码、不读写文件、不提主人的私事。\n")
         val lastSeen = saved?.optString("lastMessageId")
         val transcript = chat.transcript(history, lastSeen, 24_000) { m ->
@@ -640,8 +643,12 @@ class CompanionEngine private constructor(private val context: Context) {
         val content = io.deepseekharness.mobile.companion.claude.ClaudeStream.content(
             situation + "\n" + (if (lastSeen == null) "【最近的对话】\n" else "【你上次回复之后的新消息】\n") + transcript +
                 (if (observationId.isNotBlank()) "\n（附了画面截图，只据这些图判断，不可假称看过完整视频。）" else "") + "\n\n请回复最后一条消息。", images)
+        // Only the owner's own turns get the GitHub token; a group turn never has it in its environment.
+        val github = if (ownerChat) io.deepseekharness.mobile.companion.claude.ClaudeGithub.token(context) else null
+        fun redact(text: String) = io.deepseekharness.mobile.companion.claude.ClaudeGithub.redact(text, github)
         val grant = io.deepseekharness.mobile.companion.claude.XiaokeMcp.Grant(scope, declarations(scope, webTool = false)) { tool, args ->
-            checkClaudeCurrent(id, epoch); executeTool(scope, boundId, epoch, sources, tool, args)
+            // Nothing she saves or sends through her own abilities (memory, QQ…) may carry the token.
+            checkClaudeCurrent(id, epoch); executeTool(scope, boundId, epoch, sources, tool, JSONObject(redact(args.toString())))
         }
         val token = io.deepseekharness.mobile.companion.claude.XiaokeMcpServer.register(grant)
         var lastPartialAt = 0L
@@ -653,7 +660,7 @@ class CompanionEngine private constructor(private val context: Context) {
                 claudeTurns[id] = turn
                 try {
                     return turn.run(io.deepseekharness.mobile.companion.claude.ClaudeTurn.Options(claudeSystem, content, resume, settings.optString("model"), settings.optString("effort"),
-                        ownerTools = ownerChat, fullAccess = ownerChat && settings.optBoolean("fullAccess"), cwd = cwd, mcpPort = io.deepseekharness.mobile.companion.claude.XiaokeMcpServer.port(), mcpToken = token,
+                        ownerTools = ownerChat, fullAccess = ownerChat && settings.optBoolean("fullAccess"), githubToken = github, cwd = cwd, mcpPort = io.deepseekharness.mobile.companion.claude.XiaokeMcpServer.port(), mcpToken = token,
                         timeoutMs = if (ownerChat) 45 * 60_000L else 4 * 60_000L),
                         onText = { text ->
                             if (runCatching { checkClaudeCurrent(id, epoch) }.isFailure) turn.cancel()
@@ -666,7 +673,7 @@ class CompanionEngine private constructor(private val context: Context) {
                             // Only the owner's own chats get Claude Code's tools at all; a group never reaches this.
                             // With full access on, whatever is still asked (paths outside the project and the like) is a yes.
                             ownerChat && (settings.optBoolean("fullAccess") || io.deepseekharness.mobile.companion.claude.ClaudePermissions.ask(context, id, scope, tool,
-                                io.deepseekharness.mobile.companion.claude.ClaudeStream.describe(tool, input)) { turn.isCancelled || runCatching { checkClaudeCurrent(id, epoch) }.isFailure })
+                                redact(io.deepseekharness.mobile.companion.claude.ClaudeStream.describe(tool, input))) { turn.isCancelled || runCatching { checkClaudeCurrent(id, epoch) }.isFailure })
                         })
                 } finally { claudeTurns.remove(id, turn) }
             }

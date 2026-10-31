@@ -265,6 +265,8 @@ class CompanionPlugin : Plugin() {
                     "claudeLoginInput" -> { ClaudeLogin.input(data.getString("text")); ClaudeLogin.state() }
                     "claudeLoginStop" -> { ClaudeLogin.stop(); ClaudeLogin.state() }
                     "claudeLogout" -> ClaudeLogin.logout(context)
+                    "claudeGithubToken" -> { io.deepseekharness.mobile.companion.claude.ClaudeGithub.save(context, data.getString("token")); JSONObject().put("githubConfigured", true) }
+                    "claudeGithubTokenClear" -> { io.deepseekharness.mobile.companion.claude.ClaudeGithub.clear(context); JSONObject().put("githubConfigured", false) }
                     "claudeWorkspace" -> io.deepseekharness.mobile.companion.claude.ClaudeWorkspace.prepare(context)
                     "claudePermission" -> JSONObject().put("ok", ClaudePermissions.answer(data.getString("id"), data.getBoolean("allow")))
                     "editDraft" -> {
