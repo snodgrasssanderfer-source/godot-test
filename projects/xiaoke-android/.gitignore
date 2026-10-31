@@ -19,3 +19,7 @@ private/
 # 人设评测请求、回复、评分、章节和缓存均可能含私有人设
 persona-eval-output/
 source/android/app/src/test/persona-eval/__pycache__/
+
+# 延迟实测包含私有人设、模型回复及请求元数据
+latency-output/
+source/android/app/src/test/latency-bench/__pycache__/
