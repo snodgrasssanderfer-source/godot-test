@@ -40,9 +40,12 @@ python3 run.py all --run full-20261031 --workers 2
 python3 run.py generate --run full-20261031 --workers 2
 python3 run.py judge --run full-20261031 --workers 2
 python3 run.py report --run full-20261031
+python3 audit_metadata.py ../../../../../../persona-eval-output/full-20261031
 ```
 
 同名运行使用已有请求缓存和完成记录；失败任务可重跑。`report` 完全离线，不需要人设源文件、API 配置、Node 或 Gradle。`generate`、`judge` 仍检查本地配置，缓存命中时不请求模型。修改人设、语料、评分表、模型参数或代码后使用新的 `--run`，避免混合结果。
+
+流式接口的临时错误最多重试两次；仍失败时改用同模型、同参数的原生 `generateContent` 接口，最多再重试两次。不会自动换被测模型，安全拒绝和无效请求不会触发这条备用路径。每次尝试及实际接口方式保存在私有缓存中。
 
 `--categories praise,correction` 或 `--limit-cases 2` 可选择子集；报告会标明子集。首次 `prepare` 和后续 `generate/all` 必须使用相同筛选和参数。默认 seed 为 `20261031`、温度 `0`、top-p `1`、思考等级 `low`、上下文预算 `65536`、输出预算 `32768`。使用 `--thinking`、`--context-budget`、`--max-output-tokens`、`--timeout` 可调整；`--workers` 范围为 1–8。
 
@@ -79,6 +82,7 @@ python3 run.py report --run full-20261031
 - `summary.json`、`summary.csv`：统计和覆盖率；`scored-records.json`：实际评分记录。
 - `manifest.json`、`inputs.json`、`sections.json`：冻结代码/语料/人设哈希、参数和私有输入。
 - `requests/`、`judge-requests/`：请求、响应、校验哈希、重试及请求元数据；`blind-pairs/` 保存 A/B 来源映射。
+- `audit.json`、`audit.md`：运行结束后离线核对请求名与返回版本、版本缺失、缓存校验及长聊的真实 50 轮。返回版本字段是中转元数据，不能证明上游身份。主表按请求的中转入口名分组；审计单列不一致，不自动删掉这些样本。
 
 相同冻结结果可离线重算得到相同统计。温度 0、固定 seed 和盲评顺序用于减少波动，不能保证远端模型再次生成逐字相同的内容；模型别名或服务端实现变化时应单独运行比较。
 

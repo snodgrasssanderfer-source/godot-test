@@ -69,7 +69,6 @@ class Client:
     def _post(self, model, body):
         if not model or any(c not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-/" for c in model):
             raise ValueError("模型名称格式无效")
-        suffix = "/models/" + urllib.parse.quote(model, safe="") + ":streamGenerateContent?alt=sse" if self.protocol == "gemini" else "/chat/completions"
         request_key = digest({"endpoint": self.base, "protocol": self.protocol, "model": model, "body": body})
         path = self.cache / (request_key + ".json")
         if path.exists():
@@ -77,52 +76,65 @@ class Client:
             if saved.get("request_hash") != request_key or digest(saved["response"]) != saved.get("response_hash"):
                 raise ModelError("cache_integrity_error")
             return saved["response"], request_key
-        headers = {"Content-Type": "application/json", "Accept": "text/event-stream" if self.protocol == "gemini" else "application/json"}
-        headers["x-goog-api-key" if self.protocol == "gemini" else "Authorization"] = self.key if self.protocol == "gemini" else "Bearer " + self.key
+        # Both native routes use the same model, prompt and logical cache identity.
+        operations = ("streamGenerateContent", "generateContent") if self.protocol == "gemini" else (None,)
         attempts = []
-        for attempt in range(self.retries + 1):
-            started = time.monotonic()
-            try:
-                req = urllib.request.Request(self.base + suffix, data=canonical(body).encode(), headers=headers, method="POST")
-                with self.opener.open(req, timeout=self.timeout) as response:
-                    raw = response.read(24 * 1024 * 1024 + 1)
-                    if len(raw) > 24 * 1024 * 1024:
-                        raise ModelError("response_too_large")
-                    decoded = raw.decode("utf-8")
-                    result = parse_sse(decoded) if self.protocol == "gemini" else json.loads(decoded)
-                    has_error = any("error" in event for event in result) if isinstance(result, list) else "error" in result
-                    if has_error:
-                        raise ModelError("provider_error_in_http_200")
-                    if self.protocol == "gemini" and any(event.get("promptFeedback", {}).get("blockReason") for event in result):
-                        raise ModelError("prompt_blocked")
-                    if self.protocol == "gemini" and not any(
-                        event.get("candidates", [{}])[0].get("finishReason")
-                        for event in result if event.get("candidates")
-                    ):
-                        raise ModelError("incomplete_stream")
-                    attempts.append({"status": response.status, "seconds": round(time.monotonic() - started, 3)})
-                    metadata = {k: response.headers[k] for k in ("x-request-id", "request-id", "date") if response.headers.get(k)}
-                    save(path, {"request_hash": request_key, "request": body, "protocol": self.protocol,
-                                "model": model, "response": result, "response_hash": digest(result),
-                                "metadata": metadata, "attempts": attempts})
-                    return result, request_key
-            except urllib.error.HTTPError as error:
-                code = "http_" + str(error.code)
-                retry = error.code == 429 or 500 <= error.code < 600
-                error.close()
-            except (urllib.error.URLError, TimeoutError, socket.timeout, ConnectionError, http.client.HTTPException):
-                code, retry = "network_or_timeout", True
-            except (ValueError, UnicodeError):
-                code, retry = "invalid_response", False
-            except ModelError as error:
-                code = str(error)
-                # Relays can fail or cut an otherwise valid SSE stream while still returning HTTP 200.
-                retry = code in {"provider_error_in_http_200", "incomplete_stream"}
-            attempts.append({"error": code, "seconds": round(time.monotonic() - started, 3)})
-            save(self.cache / (request_key + ".failure.json"), {"request_hash": request_key, "attempts": attempts})
-            if not retry or attempt == self.retries:
-                raise ModelError(code)
-            time.sleep(min(2 ** attempt, 8))
+        for operation in operations:
+            suffix = ("/models/" + urllib.parse.quote(model, safe="") + ":" + operation +
+                      ("?alt=sse" if operation == "streamGenerateContent" else "")) if operation else "/chat/completions"
+            headers = {"Content-Type": "application/json", "Accept": "text/event-stream" if operation == "streamGenerateContent" else "application/json"}
+            headers["x-goog-api-key" if operation else "Authorization"] = self.key if operation else "Bearer " + self.key
+            for attempt in range(self.retries + 1):
+                started = time.monotonic()
+                try:
+                    req = urllib.request.Request(self.base + suffix, data=canonical(body).encode(), headers=headers, method="POST")
+                    with self.opener.open(req, timeout=self.timeout) as response:
+                        raw = response.read(24 * 1024 * 1024 + 1)
+                        if len(raw) > 24 * 1024 * 1024:
+                            raise ModelError("response_too_large")
+                        decoded = raw.decode("utf-8")
+                        result = parse_sse(decoded) if self.protocol == "gemini" else json.loads(decoded)
+                        has_error = any("error" in event for event in result) if isinstance(result, list) else "error" in result
+                        if has_error:
+                            raise ModelError("provider_error_in_http_200")
+                        if self.protocol == "gemini" and any(event.get("promptFeedback", {}).get("blockReason") for event in result):
+                            raise ModelError("prompt_blocked")
+                        if self.protocol == "gemini" and not any(
+                            event.get("candidates", [{}])[0].get("finishReason")
+                            for event in result if event.get("candidates")
+                        ):
+                            raise ModelError("incomplete_stream")
+                        attempts.append({"status": response.status, "native_operation": operation,
+                                         "seconds": round(time.monotonic() - started, 3)})
+                        metadata = {k: response.headers[k] for k in ("x-request-id", "request-id", "date") if response.headers.get(k)}
+                        save(path, {"request_hash": request_key, "request": body, "protocol": self.protocol,
+                                    "model": model, "response": result, "response_hash": digest(result),
+                                    "native_operation": operation, "metadata": metadata, "attempts": attempts})
+                        return result, request_key
+                except urllib.error.HTTPError as error:
+                    code = "http_" + str(error.code)
+                    retry = error.code == 429 or 500 <= error.code < 600
+                    error.close()
+                except (urllib.error.URLError, TimeoutError, socket.timeout, ConnectionError, http.client.HTTPException):
+                    code, retry = "network_or_timeout", True
+                except (ValueError, UnicodeError):
+                    code, retry = "invalid_response", False
+                except ModelError as error:
+                    code = str(error)
+                    retry = code in {"provider_error_in_http_200", "incomplete_stream"}
+                attempts.append({"error": code, "native_operation": operation,
+                                 "seconds": round(time.monotonic() - started, 3)})
+                save(self.cache / (request_key + ".failure.json"), {"request_hash": request_key, "attempts": attempts})
+                if not retry:
+                    raise ModelError(code)
+                if attempt == self.retries:
+                    alternate_route = operation == "streamGenerateContent" and (
+                        code in {"provider_error_in_http_200", "incomplete_stream", "network_or_timeout"} or code.startswith("http_5")
+                    )
+                    if alternate_route:
+                        break
+                    raise ModelError(code)
+                time.sleep(min(2 ** attempt, 8))
         raise ModelError("retry_exhausted")
 
 

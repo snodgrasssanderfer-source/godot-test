@@ -196,15 +196,92 @@ class TransportTest(unittest.TestCase):
         client.opener.open.return_value = Response(json.dumps({"error": {"message": "fiction-private-error"}}))
         with patch("transport.time.sleep") as sleep, self.assertRaisesRegex(ModelError, "^provider_error_in_http_200$"):
             client.post("gemini-3.8-flash", {})
-        self.assertEqual(client.opener.open.call_count, 3)
-        self.assertEqual([call.args[0] for call in sleep.call_args_list], [1, 2])
+        self.assertEqual(client.opener.open.call_count, 6)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [1, 2, 1, 2])
         files = list(self.cache.glob("*.json"))
         self.assertEqual(len(files), 1)
         self.assertTrue(files[0].name.endswith(".failure.json"))
         failure = json.loads(files[0].read_text())
-        self.assertEqual(len(failure["attempts"]), 3)
+        self.assertEqual(len(failure["attempts"]), 6)
+        self.assertEqual([a["native_operation"] for a in failure["attempts"]],
+                         ["streamGenerateContent"] * 3 + ["generateContent"] * 3)
         self.assertEqual({attempt["error"] for attempt in failure["attempts"]}, {"provider_error_in_http_200"})
         self.assertNotIn("fiction-private-error", files[0].read_text())
+
+    def test_native_nonstream_fallback_keeps_model_body_cache_key_and_audit(self):
+        client = Client("https://relay.invalid", "fiction-secret", "gemini", self.cache)
+        client.opener = Mock()
+        failed = Response(json.dumps({"error": {"message": "fiction-private-upstream-error"}}))
+        success = generated("同模型非流式完成")
+        client.opener.open.side_effect = [failed, failed, failed, Response(json.dumps(success))]
+        body = {"systemInstruction": {"parts": [{"text": "虚构提示"}]}, "contents": [], "generationConfig": {"seed": 7}}
+        with patch("transport.time.sleep"):
+            response, key = client.post("gemini-3.8-flash", body)
+        self.assertEqual(response, [success])
+        self.assertEqual(key, digest({"endpoint": client.base, "protocol": "gemini", "model": "gemini-3.8-flash", "body": body}))
+        requests = [call.args[0] for call in client.opener.open.call_args_list]
+        self.assertEqual(len(requests), 4)
+        for request in requests[:3]:
+            self.assertTrue(request.full_url.endswith("/models/gemini-3.8-flash:streamGenerateContent?alt=sse"))
+            self.assertEqual(request.get_header("Accept"), "text/event-stream")
+        self.assertTrue(requests[3].full_url.endswith("/models/gemini-3.8-flash:generateContent"))
+        self.assertEqual(requests[3].get_header("Accept"), "application/json")
+        self.assertEqual({request.data for request in requests}, {requests[0].data})
+        self.assertEqual({request.get_header("X-goog-api-key") for request in requests}, {"fiction-secret"})
+        saved = json.loads((self.cache / (key + ".json")).read_text())
+        self.assertEqual(saved["native_operation"], "generateContent")
+        self.assertEqual([a["native_operation"] for a in saved["attempts"]],
+                         ["streamGenerateContent"] * 3 + ["generateContent"])
+        self.assertEqual(saved["response"], [success])
+        self.assertNotIn("fiction-private-upstream-error", json.dumps(saved))
+        self.assertEqual(client.post("gemini-3.8-flash", body), (response, key))
+        self.assertEqual(client.opener.open.call_count, 4)
+        # Old successful stream caches have no native_operation and remain reusable.
+        saved.pop("native_operation")
+        for attempt in saved["attempts"]:
+            attempt.pop("native_operation")
+        (self.cache / (key + ".json")).write_text(json.dumps(saved))
+        self.assertEqual(client.post("gemini-3.8-flash", body), (response, key))
+        self.assertEqual(client.opener.open.call_count, 4)
+
+    def test_openai_has_only_three_attempts_and_no_native_route_fallback(self):
+        client = Client("https://relay.invalid", "fiction-secret", "openai", self.cache)
+        client.opener = Mock()
+        client.opener.open.return_value = Response(json.dumps({"error": {"message": "fiction-error"}}))
+        with patch("transport.time.sleep"), self.assertRaisesRegex(ModelError, "provider_error_in_http_200"):
+            client.post("fiction-judge", {"model": "fiction-judge"})
+        requests = [call.args[0] for call in client.opener.open.call_args_list]
+        self.assertEqual(len(requests), 3)
+        self.assertTrue(all(request.full_url.endswith("/v1/chat/completions") for request in requests))
+        self.assertTrue(all(request.get_header("Accept") == "application/json" for request in requests))
+
+    def test_deterministic_http_errors_and_exhausted_rate_limit_do_not_switch_routes(self):
+        for status, count in [(400, 1), (401, 1), (403, 1), (404, 1), (422, 1), (429, 3)]:
+            with self.subTest(status=status):
+                client = Client("https://relay.invalid", "fiction-secret", "gemini", self.cache / str(status))
+                client.opener = Mock()
+                def reject(*_args, code=status, **_kwargs):
+                    raise urllib.error.HTTPError("https://relay.invalid", code, "fiction-private-error", {}, io.BytesIO())
+                client.opener.open.side_effect = reject
+                with patch("transport.time.sleep"), self.assertRaisesRegex(ModelError, "^http_" + str(status) + "$"):
+                    client.post("gemini-3.8-flash", {})
+                self.assertEqual(client.opener.open.call_count, count)
+                self.assertTrue(all(call.args[0].full_url.endswith(":streamGenerateContent?alt=sse")
+                                    for call in client.opener.open.call_args_list))
+
+    def test_native_network_and_5xx_exhaustion_can_switch_route(self):
+        for name in ("network", "http503"):
+            with self.subTest(name=name):
+                client = Client("https://relay.invalid", "fiction-secret", "gemini", self.cache / name)
+                client.opener = Mock()
+                errors = [urllib.error.URLError("fiction-private-network") if name == "network" else
+                          urllib.error.HTTPError("https://relay.invalid", 503, "unavailable", {}, io.BytesIO()) for _ in range(3)]
+                client.opener.open.side_effect = errors + [Response(json.dumps(generated("原模型完成")))]
+                with patch("transport.time.sleep"):
+                    response, _ = client.post("gemini-4-argon", {})
+                self.assertEqual(response, [generated("原模型完成")])
+                self.assertEqual(client.opener.open.call_count, 4)
+                self.assertTrue(client.opener.open.call_args.args[0].full_url.endswith("/models/gemini-4-argon:generateContent"))
 
     def test_schema_and_safety_failures_do_not_retry(self):
         for index, (body, code) in enumerate([
@@ -268,7 +345,8 @@ class TransportTest(unittest.TestCase):
         client = self.client()
         client.opener = Mock()
         incomplete = {"candidates": [{"content": {"parts": [{"text": "只到半句"}]}}]}
-        client.opener.open.side_effect = [Response(json.dumps(incomplete)), Response(json.dumps(generated("重试完成")))]
+        client.opener.open.side_effect = [Response(json.dumps(incomplete)), Response(json.dumps(incomplete)),
+                                          Response(json.dumps(generated("重试完成")))]
         bridge = Mock()
 
         def parse(events):
@@ -279,7 +357,7 @@ class TransportTest(unittest.TestCase):
         with self.assertRaisesRegex(ModelError, "incomplete_stream"):
             gemini_reply(client, bridge, "gemini-4-argon", {"contents": []})
         self.assertEqual(gemini_reply(client, bridge, "gemini-4-argon", {"contents": []})["text"], "重试完成")
-        self.assertEqual(client.opener.open.call_count, 2)
+        self.assertEqual(client.opener.open.call_count, 3)
 
     def test_untrusted_finish_reason_cannot_escape_safe_error_code(self):
         client, bridge = Mock(), Mock()
