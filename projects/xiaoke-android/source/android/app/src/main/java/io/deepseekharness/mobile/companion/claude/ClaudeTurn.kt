@@ -32,7 +32,10 @@ class ClaudeTurn(private val runtime: ClaudeRuntime, val id: String) {
         val github get() = ownerTools && !githubToken.isNullOrBlank()
     }
 
-    data class Outcome(val sessionId: String, val text: String, val failure: ClaudeStream.Failure?, val detail: String, val usage: JSONObject?)
+    data class Outcome(val sessionId: String, val text: String, val failure: ClaudeStream.Failure?, val detail: String, val usage: JSONObject?) {
+        /** The model Claude Code actually ran, from its init event. */
+        var model: String = ""
+    }
 
     private val cancelled = AtomicBoolean(false)
     @Volatile private var secret: String? = null
@@ -45,7 +48,7 @@ class ClaudeTurn(private val runtime: ClaudeRuntime, val id: String) {
     fun cancel(reason: String = "已取消") { if (stopReason.isEmpty()) stopReason = reason; cancelled.set(true); process?.destroy() }
     val isCancelled get() = cancelled.get()
 
-    fun run(options: Options, onText: (String) -> Unit, onTool: (String) -> Unit, onUsage: (JSONObject) -> Unit,
+    fun run(options: Options, onText: (String) -> Unit, onTool: (String, JSONObject) -> Unit, onUsage: (JSONObject) -> Unit,
             onPermission: (String, JSONObject) -> Boolean): Outcome {
         // Prompt and MCP config are files: the persona alone can exceed one argv string's 128 KiB limit, and the token
         // must not show up in the process list. Both are 0600 under the turn's own directory and deleted afterwards.
@@ -77,6 +80,7 @@ class ClaudeTurn(private val runtime: ClaudeRuntime, val id: String) {
             send(ClaudeStream.userMessage(options.content))
             val begun = System.currentTimeMillis()
             var readError = ""
+            var model = ""
             val initAt = java.util.concurrent.atomic.AtomicLong(0L)
             val stuck = java.util.concurrent.atomic.AtomicReference("")
             XLog.i("claude turn $id started")
@@ -97,9 +101,9 @@ class ClaudeTurn(private val runtime: ClaudeRuntime, val id: String) {
                 for (line in lines) {
                     if (cancelled.get()) break
                     when (val event = ClaudeStream.parse(line)) {
-                        is ClaudeStream.Init -> { initAt.set(System.currentTimeMillis()); if (event.sessionId.isNotBlank()) sessionId = event.sessionId; XLog.i("claude turn $id: started in ${initAt.get() - begun} ms, model ${event.model}") }
+                        is ClaudeStream.Init -> { initAt.set(System.currentTimeMillis()); model = event.model; if (event.sessionId.isNotBlank()) sessionId = event.sessionId; XLog.i("claude turn $id: started in ${initAt.get() - begun} ms, model ${event.model}") }
                         is ClaudeStream.TextDelta -> { text.append(event.text); onText(redact(text.toString())) }
-                        is ClaudeStream.ToolUse -> { text.setLength(0); onTool(event.name) }
+                        is ClaudeStream.ToolUse -> { text.setLength(0); onTool(event.name, JSONObject(redact(event.input.toString()))) }
                         is ClaudeStream.RateLimit -> { usage = event.usage; onUsage(event.usage) }
                         is ClaudeStream.Permission -> {
                             // Answered on its own thread: a question waiting for the owner must not stop the stream being read.
@@ -140,7 +144,7 @@ class ClaudeTurn(private val runtime: ClaudeRuntime, val id: String) {
                 r != null -> Outcome(sessionId, "", ClaudeStream.classify(r.text + "\n" + r.subtype, usage), redact(r.text.ifBlank { r.subtype }).take(300), usage)
                 exit == ClaudeRuntime.SIGSYS_EXIT -> Outcome(sessionId, "", ClaudeStream.Failure.ERROR, "被系统拦截了一个调用（SIGSYS），PRoot 没接住", usage)
                 else -> Outcome(sessionId, "", ClaudeStream.classify(err, usage), "Claude Code 退出了（$exit${if (readError.isNotEmpty()) "，$readError" else ""}）：${err.trim().takeLast(300)}", usage)
-            }
+            }.also { it.model = model }
         } finally {
             process = null
             hostDir.deleteRecursively()

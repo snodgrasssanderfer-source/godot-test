@@ -349,3 +349,15 @@
 .xk-permission { border: 1.5px solid var(--accent); animation: xk-rise .35s var(--ease); }
 .xk-permission h3 { display: flex; align-items: center; gap: 6px; }
 .xk-permission pre { white-space: pre-wrap; word-break: break-all; font-size: 13px; background: var(--surface-3); border-radius: 10px; padding: 8px 10px; margin: 6px 0 10px; max-height: 160px; overflow: auto; }
+
+/* Chat: copy, code, live steps */
+.xk-copy { display: inline-flex; align-items: center; gap: 3px; margin-left: 8px; padding: 0 4px; border: 0; background: none; color: var(--ink-3, var(--ink-2)); font: inherit; font-size: 11px; cursor: pointer; opacity: .75; }
+.xk-copy:active { opacity: 1; }
+.xk-code { margin: 6px 0; border-radius: 10px; background: var(--surface-3); overflow: hidden; }
+.xk-code-head { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; font-size: 11px; color: var(--ink-2); border-bottom: 1px solid color-mix(in srgb, var(--ink-2) 15%, transparent); }
+.xk-code pre { margin: 0; padding: 8px 10px; overflow-x: auto; font-size: 12px; line-height: 1.5; white-space: pre; }
+.xk-steps-live { max-width: 86%; margin: 0 0 4px; font-size: 12px; color: var(--ink-2); }
+.xk-steps-live summary { cursor: pointer; list-style: none; }
+.xk-steps-live summary::before { content: '› '; }
+.xk-steps-live ol { margin: 4px 0 0; padding-left: 18px; }
+.xk-steps-live li { margin: 2px 0; }

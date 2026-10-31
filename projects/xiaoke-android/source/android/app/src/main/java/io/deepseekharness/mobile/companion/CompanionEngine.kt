@@ -552,6 +552,7 @@ class CompanionEngine private constructor(private val context: Context) {
                     val message = store.commitContext(epoch, sources) {
                         val storedFingerprint = if (used === profile) fingerprint else CompanionPolicy.sessionFingerprint(settings, used)
                         val saved = store.message(scope, "assistant", text, "模型 ${used.getString("model")}", ProviderHistoryPrivacy.forStorage(storedFingerprint, turnHistory), boundId)
+                            .let { m -> task.optString("fallbackReason").takeIf { it.isNotBlank() }?.let { store.put("message", m.put("fallback", it)) } ?: m }
                         store.pruneProviderHistory(scope)
                         // Her reply to the owner's own QQ chat is approved as it is written: it never sits as a draft.
                         if (scope.startsWith("qq:")) draft = createReplyDraft(scope, text, "qq", "").let { d ->
@@ -576,6 +577,7 @@ class CompanionEngine private constructor(private val context: Context) {
                 val responses = JSONArray()
                 for (call in calls) {
                     checkCurrent()
+                    recordStep(id, io.deepseekharness.mobile.companion.claude.ClaudeStream.step(call.optString("name"), call.optJSONObject("args") ?: JSONObject()))
                     val result = executeTool(scope, boundId, epoch, sources, call.getString("name"), call.optJSONObject("args") ?: JSONObject(), speaker)
                     responses.put(GeminiWire.toolResponse(call, result))
                     if (call.optString("name") == "device_action") {
@@ -716,7 +718,7 @@ class CompanionEngine private constructor(private val context: Context) {
                             val now = android.os.SystemClock.elapsedRealtime()
                             if (now - lastPartialAt >= 350) { lastPartialAt = now; runCatching { store.commitContext(epoch, sources) { store.transitionTask(id, setOf("running"), "running", "正在生成", JSONObject().put("partialText", text)) } } }
                         },
-                        onTool = { tool -> runCatching { store.transitionTask(id, setOf("running"), "running", if (tool.startsWith("mcp__")) "正在用自己的能力（${tool.substringAfterLast("__")}）" else "正在用 $tool") } },
+                        onTool = { tool, input -> recordStep(id, io.deepseekharness.mobile.companion.claude.ClaudeStream.step(tool, input)) },
                         onUsage = { usage -> store.saveLifeState("claudeUsage", io.deepseekharness.mobile.companion.claude.ClaudeStream.mergeUsage(store.lifeState("claudeUsage"), usage)) },
                         onPermission = { tool, input ->
                             // Only the owner's own chats get Claude Code's tools at all; a group never reaches this.
@@ -744,7 +746,7 @@ class CompanionEngine private constructor(private val context: Context) {
             }
             chat.clearOutage(store)
             val text = io.deepseekharness.mobile.companion.chat.OutgoingSegments.stripInternal(outcome.text.trim()).ifBlank { "（Claude 这轮没有写出回复）" }
-            model = model.takeIf { it != "default" } ?: "默认模型"
+            model = outcome.model.ifBlank { model.takeIf { it != "default" } ?: "默认模型" }
             var draft: JSONObject? = null
             val message = store.commitContext(epoch, sources) {
                 val savedMessage = store.message(scope, "assistant", text, "Claude $model", null, boundId)
@@ -768,6 +770,13 @@ class CompanionEngine private constructor(private val context: Context) {
         check(!store.settings().optBoolean("paused")) { "助手已暂停" }
         removedContext[id]?.let { throw ContextRemoved(it) }
         checkSources(epoch, sources)
+    }
+
+    /** One line per tool call on the running task, so the chat can show what she is doing right now. */
+    private fun recordStep(id: String, text: String) = runCatching {
+        val steps = store.get("task", id)?.optJSONArray("steps") ?: JSONArray()
+        val kept = JSONArray((maxOf(0, steps.length() - 19) until steps.length()).map { steps.get(it) }).put(JSONObject().put("text", text).put("at", System.currentTimeMillis()))
+        store.transitionTask(id, setOf("running"), "running", text, JSONObject().put("steps", kept))
     }
 
     /** Tool names and life actions a speaker would get here; for tests. */

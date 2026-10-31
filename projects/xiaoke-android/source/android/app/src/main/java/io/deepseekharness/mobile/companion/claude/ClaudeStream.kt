@@ -103,6 +103,37 @@ object ClaudeStream {
         return "$verb：${detail.replace(Regex("\\s+"), " ").take(300)}"
     }
 
+    /** What she is doing right now, in a few words, for the step list under her reply. */
+    fun step(tool: String, input: JSONObject): String {
+        val name = tool.substringAfterLast("__")
+        fun short(v: String, n: Int = 60) = v.replace(Regex("\\s+"), " ").let { if (it.length > n) it.take(n) + "…" else it }
+        return when (name) {
+            "Bash" -> "在跑 " + short(input.optString("command"))
+            "Read" -> "在看 " + input.optString("file_path").substringAfterLast('/')
+            "Edit", "MultiEdit", "Write", "NotebookEdit" -> "在改 " + input.optString("file_path").ifBlank { input.optString("notebook_path") }.substringAfterLast('/')
+            "Grep", "Glob" -> "在搜 " + short(input.optString("pattern"), 40)
+            "WebSearch", "web_research" -> "在网上搜 " + short(input.optString("query"), 40)
+            "WebFetch" -> "在读网页 " + short(input.optString("url"), 50)
+            "TodoWrite" -> "在列步骤"
+            "Task" -> "在分头查"
+            "remember" -> "在记下来"
+            "recall" -> "在翻记忆" + input.optString("query").takeIf { it.isNotBlank() }?.let { "：" + short(it, 30) }.orEmpty()
+            "job_status" -> "在看后台的事"
+            "life_action" -> "在看生活记录（${input.optString("action")}）"
+            "send_qq" -> "在发 QQ"
+            "say_in_group" -> "在去群里说"
+            "poke" -> "在戳人"
+            "watch_bilibili", "bili_search" -> "在看 B站"
+            "device_action" -> "在操作手机（${input.optString("action")}）"
+            "observe_screen" -> "在看屏幕"
+            "open_app" -> "在打开应用"
+            "draft_comment" -> "在写评论草稿"
+            "background_task" -> "在安排提醒"
+            "social_plan" -> "在安排外发"
+            else -> "在用 $name"
+        }
+    }
+
     /** Text content for a stream-json user turn, with images as base64 blocks (Claude reads JPEG/PNG/GIF/WebP). */
     fun content(text: String, images: List<Pair<String, String>>): Any {
         if (images.isEmpty()) return text
