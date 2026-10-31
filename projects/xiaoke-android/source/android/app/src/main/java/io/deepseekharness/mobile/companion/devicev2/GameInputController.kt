@@ -41,7 +41,17 @@ class GameInputController(private val context: Context, private val changed: () 
         fence.start(packageName, seconds, expectedEpoch); this.background = background; changed(); return state()
     }
 
+    private val inFlight = java.util.concurrent.atomic.AtomicInteger(0)
+    /** One of her own gestures is on screen right now: touches seen meanwhile are its echo, not the owner. */
+    val gestureInFlight get() = inFlight.get() > 0
+
     fun perform(kind: String, data: JSONObject, frame: ControlFrame): JSONObject {
+        inFlight.incrementAndGet()
+        try { return performNow(kind, data, frame) }
+        finally { lastGestureEndedAt = SystemClock.elapsedRealtime(); inFlight.decrementAndGet() }
+    }
+
+    private fun performNow(kind: String, data: JSONObject, frame: ControlFrame): JSONObject {
         check(Looper.myLooper() != Looper.getMainLooper()) { "动作不能阻塞界面线程" }
         require(kind in KINDS) { "不支持的动作：$kind" }
         val shizuku = ShizukuInput.ready()

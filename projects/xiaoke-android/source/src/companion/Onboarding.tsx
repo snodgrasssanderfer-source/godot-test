@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ArrowLeft, ArrowRight, Check } from '@phosphor-icons/react'
 import { nativeCompanion, profile, type Run, type Snapshot } from './bridge'
-import { KeepAlive } from './KeepAlive'
+import { KeepAlive, PhoneAccess } from './KeepAlive'
 import { DailyBudget } from './DailyBudget'
 import { QqConnection } from './Connections'
 
@@ -11,15 +11,19 @@ export function Onboarding({snapshot, run, onClose}: {snapshot: Snapshot; run: R
   const [model, setModel] = useState(snapshot.settings.activeModel), [key, setKey] = useState('')
   const [saving, setSaving] = useState(false), [note, setNote] = useState('')
   const name = snapshot.persona.name || '小克'
-  const titles = ['先连上模型', '每天能用多少', '让她一直在', '连上 QQ']
-  const lines = [`${name}已经在了，连上模型她就能说话。`, '她自己逛和陪你聊天分开算，互不挤占。', '国产系统会清后台，这几步能让她留下来。', '不用 QQ 可以直接跳过。']
+  const titles = ['先连上模型', '每天能用多少', '手机权限', '让她一直在', '连上 QQ']
+  const lines = [`${name}已经在了，连上模型她就能说话。`, '她自己逛和陪你聊天分开算，互不挤占。', '悬浮窗、无障碍、Shizuku、麦克风，用到哪个开哪个。', '国产系统会清后台，这几步能让她留下来。', '不用 QQ 可以直接跳过。']
   async function saveModel() {
     setSaving(true); setNote('')
     try {
       const profiles = snapshot.settings.profiles.some(p => p.model === model) ? snapshot.settings.profiles : [...snapshot.settings.profiles, profile(model)]
       await run('settings', {...snapshot.settings, endpoint, activeModel: model, profiles, networkEnabled: true})
       if (key.trim()) { await run('saveKey', {key: key.trim()}); setKey('') }
-      setStep(1)
+      // A real request, so a wrong address or key shows up here and not as her silence later.
+      setNote('正在试着连一下…')
+      const test = await run('testModel') as {ok?: boolean; seconds?: number; error?: string; detail?: string} | undefined
+      if (test?.ok) { setNote(`连上了（${model}，${Math.round(test.seconds ?? 0)} 秒）`); setStep(1) }
+      else setNote(`没连上：${test?.error ?? '未知原因'}${test?.detail ? '\n' + test.detail : ''}`)
     } catch (e) { setNote(e instanceof Error ? e.message : String(e)) }
     finally { setSaving(false) }
   }
@@ -44,9 +48,10 @@ export function Onboarding({snapshot, run, onClose}: {snapshot: Snapshot; run: R
           <button className="xk-btn primary" disabled={saving || !nativeCompanion} onClick={() => void saveModel()}>保存并联网</button>
         </div>}
         {step === 1 && <DailyBudget snapshot={snapshot} run={run}/>}
-        {step === 2 && <KeepAlive snapshot={snapshot} run={run}/>}
-        {step === 3 && <QqConnection snapshot={snapshot} run={run}/>}
-        {note && <p role="status" className="xk-error-text">{note}</p>}
+        {step === 2 && <PhoneAccess snapshot={snapshot} run={run}/>}
+        {step === 3 && <KeepAlive snapshot={snapshot} run={run}/>}
+        {step === 4 && <QqConnection snapshot={snapshot} run={run}/>}
+        {note && <p role="status" className={note.startsWith('没连上') ? 'xk-error-text' : 'xk-hint'} style={{whiteSpace: 'pre-wrap'}}>{note}</p>}
       </div>
     </div></div>
     <div className="xk-onboarding-foot">

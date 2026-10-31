@@ -556,7 +556,9 @@ class DeviceModule(context: Context, private val ports: HostPorts, store: io.dee
             val owner = active ?: return
             val control = owner.input.state()
             if (control.optString("state") != "authorized" || control.optBoolean("releasePending") || owner.input.background) return
-            if (SystemClock.elapsedRealtime() - owner.input.lastGestureEndedAt < 500) return
+            // Her own gesture (in flight, or just ended) shows up as an outside touch too; that is not the owner.
+            if (owner.input.gestureInFlight || SystemClock.elapsedRealtime() - owner.input.lastGestureEndedAt < 500) return
+            android.util.Log.i("Xiaoke", "owner touch outside the ball: yielding game control")
             owner.stopInput("owner_touch") // The owner took the game back; nothing to resume.
         }
         /** Owner said "继续" (own chat or voice) or pressed resume: everything the hold stopped comes back. */

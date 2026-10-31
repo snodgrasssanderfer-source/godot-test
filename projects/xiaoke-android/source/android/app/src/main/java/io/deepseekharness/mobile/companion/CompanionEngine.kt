@@ -478,7 +478,10 @@ class CompanionEngine private constructor(private val context: Context) {
                         val storedFingerprint = if (used === profile) fingerprint else CompanionPolicy.sessionFingerprint(settings, used)
                         val saved = store.message(scope, "assistant", text, "模型 ${used.getString("model")}", ProviderHistoryPrivacy.forStorage(storedFingerprint, turnHistory), boundId)
                         store.pruneProviderHistory(scope)
-                        if (scope.startsWith("qq:")) draft = createReplyDraft(scope, text, "qq", "")
+                        // Her reply to the owner's own QQ chat is approved as it is written: it never sits as a draft.
+                        if (scope.startsWith("qq:")) draft = createReplyDraft(scope, text, "qq", "").let { d ->
+                            if (d.optBoolean("ownerRequested")) store.approveDraft(d.getString("id"), CompanionPolicy.draftDigest(d), automatic = true) else d
+                        }
                         if (observationId.isNotBlank()) store.get("observation", observationId)?.let {
                             store.put("observation", it.put("analysis", text).put("analyzed", true))
                         }
@@ -585,6 +588,25 @@ class CompanionEngine private constructor(private val context: Context) {
         if (state == "done") store.message(groupScope, "assistant", text, "主人让我说的")
         return JSONObject().put("sent", state == "done").put("group", title).put("state", state)
             .put("detail", after?.optString("progress").orEmpty())
+    }
+
+    /** One tiny real request with the saved settings, so setup can say "connected" or show the relay's answer. */
+    fun testModel(): JSONObject {
+        val settings = store.settings()
+        val profiles = settings.getJSONArray("profiles")
+        val profile = (0 until profiles.length()).map(profiles::getJSONObject).firstOrNull { it.getString("model") == settings.getString("activeModel") }
+            ?: return JSONObject().put("ok", false).put("error", "模型 ${settings.optString("activeModel")} 不在配置列表里")
+        val probe = JSONObject(profile.toString()).put("maxOutputTokens", 256).put("maxHops", 1).put("tools", false)
+        val started = System.currentTimeMillis()
+        val contents = JSONArray().put(JSONObject().put("role", "user").put("parts", JSONArray().put(JSONObject().put("text", "只回复 OK"))))
+        return try {
+            GeminiClient(secrets).generate(settings, probe, contents, "连通测试", JSONArray(), progress = {})
+            JSONObject().put("ok", true).put("model", profile.getString("model")).put("seconds", (System.currentTimeMillis() - started) / 1000.0)
+        } catch (e: ModelFailure) {
+            JSONObject().put("ok", false).put("model", profile.getString("model")).put("error", e.message).put("detail", e.detail.take(300))
+        } catch (e: Exception) {
+            JSONObject().put("ok", false).put("model", profile.getString("model")).put("error", e.message ?: e.javaClass.simpleName)
+        }
     }
 
     /** A reminder the owner set in their QQ chat arrives there too, as her message. */
@@ -754,8 +776,15 @@ class CompanionEngine private constructor(private val context: Context) {
     /** Hybrid recall: meaning (vectors), words and named things together, so today's words can bring back last week's talk. */
     private fun recallMemories(scope: String, query: String): JSONArray {
         val records = store.memoriesFor(scope, query, 2000)
-        if (CompanionPolicy.sharesOwnerMemory(store.get("conversation", scope), store.settings())) {
-            val owner = store.memoriesFor(CompanionPolicy.OWNER, query, 2000)
+        // The owner's private domain is one: the app chat and the owner's own QQ chat read each other's memories.
+        val settings = store.settings()
+        val other = when {
+            scope == CompanionPolicy.OWNER -> CompanionPolicy.ownerQqScope(settings)?.takeIf { store.get("conversation", it)?.let { c -> CompanionPolicy.sharesOwnerMemory(c, settings) } == true }
+            CompanionPolicy.sharesOwnerMemory(store.get("conversation", scope), settings) -> CompanionPolicy.OWNER
+            else -> null
+        }
+        if (other != null) {
+            val owner = store.memoriesFor(other, query, 2000)
             for (i in 0 until owner.length()) records.put(owner.getJSONObject(i))
         }
         val list = (0 until records.length()).map(records::getJSONObject)

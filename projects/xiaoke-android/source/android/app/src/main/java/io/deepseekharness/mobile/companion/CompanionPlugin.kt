@@ -36,6 +36,7 @@ class CompanionPlugin : Plugin() {
         try { CompanionPresenceHost.subscribe(presenceListener); engine.modules.router.subscribe(moduleListener) }
         catch (e: Throwable) { startupError = "${e.javaClass.simpleName}: ${e.message}".take(300) }
         startResident()
+        executor.execute { runCatching { engine.store.dedupePersonaVersions() }.onSuccess { if (it > 0) android.util.Log.i("Xiaoke", "removed $it duplicate persona versions") } }
     }
     override fun handleOnResume() { super.handleOnResume(); startResident() }
 
@@ -193,7 +194,7 @@ class CompanionPlugin : Plugin() {
                         CompanionService.start(context)
                         engine.submit(scope, "请先用 recall 查找原消息和消息 ID，再检查当前会话与已有记忆，把尚未记下、且有本会话证据的稳定偏好、关系或重要事件用 remember 自主保存有来源的条目并提供原消息 sourceId。避免重复，不把推测、思考过程、密钥或授权当事实。不要替其他会话整理。最后简要说明新增项目与尚待澄清的矛盾。", "主人在本机要求整理本会话记忆")
                     }
-                    "persona" -> store.savePersona(data.getString("name"), data.getString("text"), data.optString("source", "主人编辑"), data.optJSONObject("extras"))
+                    "persona" -> store.savePersona(data.getString("name"), data.getString("text"), data.optString("source", "主人编辑"), data.optJSONObject("extras"), data.optJSONArray("aliases"))
                     "saveCharacter" -> CompanionCharacterStore.save(context, data.getString("base64"), data.getString("layout"))
                     "clearCharacter" -> CompanionCharacterStore.clear(context)
                     "restorePersona" -> {
@@ -375,12 +376,22 @@ class CompanionPlugin : Plugin() {
                     }
                     "openAutostart" -> JSONObject().put("opened", openVendorPage(AUTOSTART_PAGES))
                     "openBackgroundPower" -> JSONObject().put("opened", openVendorPage(BACKGROUND_POWER_PAGES))
+                    "testModel" -> engine.testModel()
                     "openPermission" -> {
                         val intent = when (data.getString("kind")) {
                             "accessibility" -> Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
                             "notifications" -> Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
                             "overlay" -> Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
                             "battery" -> Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                            "shizuku" -> {
+                                // Running but not yet granted: ask in place. Not running: open the Shizuku app (or its page) to start it.
+                                if (runCatching { rikka.shizuku.Shizuku.pingBinder() }.getOrDefault(false)) {
+                                    if (rikka.shizuku.Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) rikka.shizuku.Shizuku.requestPermission(7301)
+                                    return@execute call.resolve(JSObject().put("result", JSObject().put("ok", true)))
+                                }
+                                context.packageManager.getLaunchIntentForPackage("moe.shizuku.privileged.api")
+                                    ?: Intent(Intent.ACTION_VIEW, Uri.parse("https://shizuku.rikka.app/download/"))
+                            }
                             else -> error("权限入口不存在")
                         }
                         context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); JSONObject().put("ok", true)
@@ -481,7 +492,7 @@ class CompanionPlugin : Plugin() {
         store.pruneSocialHistory()
         return JSONObject().put("settings", store.settings()).put("keyConfigured", engine.secrets.configured())
             .put("modules", engine.modules.router.snapshot(engine.modules.localOwner))
-            .put("persona", store.persona()).put("personaVersions", store.list("personaVersion"))
+            .put("persona", store.persona()).put("personaVersions", store.list("personaVersion", limit = 20))
             .put("character", CompanionCharacterStore.metadata(context))
             .put("memories", store.list("memory")).put("conversations", store.list("conversation"))
             .put("tasks", store.list("task")).put("messages", JSONArray().also { out ->
@@ -497,6 +508,7 @@ class CompanionPlugin : Plugin() {
                 .put("onDeviceSpeech", Build.VERSION.SDK_INT >= 31 && android.speech.SpeechRecognizer.isOnDeviceRecognitionAvailable(context))
                 .put("batteryExempt", context.getSystemService(android.os.PowerManager::class.java).isIgnoringBatteryOptimizations(context.packageName))
                 .put("overlay", Settings.canDrawOverlays(context)).put("androidVersion", Build.VERSION.RELEASE)
+                .put("shizuku", runCatching { if (!rikka.shizuku.Shizuku.pingBinder()) "not_running" else if (rikka.shizuku.Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) "ready" else "no_permission" }.getOrDefault("not_running"))
                 .put("abis", JSONArray(Build.SUPPORTED_ABIS.toList())))
             .put("presence", CompanionPresenceHost.state())
             .put("overlaySession", CompanionOverlayService.state()).put("messageBridge", OneBotBridge.get(context).state())

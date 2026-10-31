@@ -294,22 +294,54 @@ class CompanionStore(private val context: Context, databaseName: String = "compa
         check(usage.optInt("count") < settings.optInt("dailyCalls", 100)) { "已到每日请求上限（包含重试与续写）" }
         put("usage", usage.put("count", usage.optInt("count") + 1))
     }
-    fun persona(): JSONObject {
+    @Synchronized fun persona(): JSONObject {
         val saved = get("persona", "active")
-        if (saved != null && saved.optString("text").isNotBlank()) return saved
+        val bundled by lazy { runCatching { JSONObject(context.assets.open("persona/default.json").bufferedReader(Charsets.UTF_8).use { it.readText() }) }.getOrNull() }
+        if (saved != null && saved.optString("text").isNotBlank()) {
+            // Aliases arrived after the persona was first saved: take them from the bundled persona without a new version.
+            if (!saved.has("aliases")) bundled?.optJSONArray("aliases")?.let { return put("persona", saved.put("aliases", aliases(it))) }
+            return saved
+        }
         // Fresh install (or never given a persona): she starts as the persona bundled at build time.
-        val bundled = runCatching { JSONObject(context.assets.open("persona/default.json").bufferedReader(Charsets.UTF_8).use { it.readText() }) }.getOrNull()
-        if (bundled != null && bundled.optString("text").isNotBlank())
-            return savePersona(bundled.optString("name", "小克").take(40), bundled.getString("text").take(64000), "安装时自带的人设", bundled.optJSONObject("extras"))
+        val fresh = bundled
+        if (fresh != null && fresh.optString("text").isNotBlank())
+            return savePersona(fresh.optString("name", "小克").take(40), fresh.getString("text").take(64000), "安装时自带的人设", fresh.optJSONObject("extras"), fresh.optJSONArray("aliases"))
         return saved ?: JSONObject().put("name", "小克").put("text", "").put("version", 0)
     }
 
-    @Synchronized fun savePersona(name: String, text: String, source: String, extras: JSONObject? = null): JSONObject {
+    /** Other names she answers to in groups (her own name always counts). */
+    fun personaNames(): List<String> = persona().let { p -> (listOf(p.optString("name")) + p.optJSONArray("aliases").let { a -> if (a == null) emptyList() else (0 until a.length()).map { a.optString(it) } }) }
+        .map { it.trim() }.filter { it.length >= 2 }.distinct()
+
+    private fun aliases(input: JSONArray?) = JSONArray((0 until (input?.length() ?: 0)).map { input!!.optString(it).trim().take(20) }.filter { it.isNotBlank() }.distinct().take(12))
+
+    @Synchronized fun savePersona(name: String, text: String, source: String, extras: JSONObject? = null, aliases: JSONArray? = null): JSONObject {
         require(name.length in 1..40 && text.length <= 64000 && source.length <= 1000)
+        // Reads the stored version directly: going through persona() here recursed (persona() → savePersona() → persona() …)
+        // and wrote one version per level before the stack gave out.
+        val current = get("persona", "active")
         val next = JSONObject().put("name", name).put("text", text).put("source", source)
-            .put("version", persona().optInt("version") + 1).put("extras", PersonaVoice.sanitize(extras))
+            .put("version", (current?.optInt("version") ?: 0) + 1).put("extras", PersonaVoice.sanitize(extras))
+            .put("aliases", aliases(aliases ?: current?.optJSONArray("aliases")))
         put("personaVersion", next)
         return put("persona", next.put("id", "active"))
+    }
+
+    /** Collapses identical stored versions (the recursion above left hundreds) to the first of each. */
+    @Synchronized fun dedupePersonaVersions(): Int {
+        val seen = mutableSetOf<String>(); val drop = mutableListOf<String>()
+        readableDatabase.rawQuery("SELECT id,json FROM records WHERE kind='personaVersion' AND deleted=0 ORDER BY updated ASC", null).use { c ->
+            while (c.moveToNext()) {
+                val v = JSONObject(c.getString(1))
+                if (!seen.add(CompanionPolicy.digest(v.optString("name") + "\u0000" + v.optString("text") + "\u0000" + v.optString("source")))) drop.add(c.getString(0))
+            }
+        }
+        if (drop.isNotEmpty()) writableDatabase.let { db ->
+            db.beginTransaction()
+            try { drop.chunked(200).forEach { ids -> db.execSQL("DELETE FROM records WHERE kind='personaVersion' AND id IN (${ids.joinToString(",") { "?" }})", ids.toTypedArray()) }; db.setTransactionSuccessful() }
+            finally { db.endTransaction() }
+        }
+        return drop.size
     }
 
     @Synchronized fun message(scope: String, role: String, text: String, source: String, wire: JSONObject? = null, replyTo: String = ""): JSONObject {

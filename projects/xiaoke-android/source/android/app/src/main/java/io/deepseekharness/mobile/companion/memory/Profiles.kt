@@ -29,8 +29,11 @@ class Profiles(private val store: CompanionStore) {
         val refs = sourceIds.mapNotNull { id -> store.get("message", id)?.takeIf { it.optString("scope") == scope }?.let { JSONObject().put("kind", "message").put("id", id).put("scope", scope) } }
         if (refs.isEmpty()) return null
         val key = key(type, name, actorId)
-        return store.put("profile", JSONObject().put("id", id(scope, key)).put("scope", scope).put("key", key).put("type", type)
-            .put("name", name.trim().take(40)).put("summary", summary.trim().take(400)).put("sourceRefs", JSONArray(refs.takeLast(5))))
+        // One owner profile, whichever private chat (app or the owner's QQ) it was learned in.
+        val home = if (type == "owner") CompanionPolicy.OWNER else scope
+        val old = store.get("profile", id(home, key))?.optJSONArray("sourceRefs")?.let { a -> (0 until a.length()).map(a::getJSONObject) }.orEmpty()
+        return store.put("profile", JSONObject().put("id", id(home, key)).put("scope", home).put("key", key).put("type", type)
+            .put("name", name.trim().take(40)).put("summary", summary.trim().take(400)).put("sourceRefs", JSONArray((old + refs).distinctBy { it.optString("id") }.takeLast(5))))
     }
 
     fun inScope(scope: String): List<JSONObject> = store.list("profile", scope, 500).let { a -> (0 until a.length()).map(a::getJSONObject) }

@@ -64,15 +64,17 @@ function Models({snapshot, run}: {snapshot: Snapshot; run: Run}) {
 function PersonaEditor({value, versions, run}: {value: Persona; versions: Entry[]; run: Run}) {
   const [name, setName] = useState(value.name), [text, setText] = useState(value.text), [source, setSource] = useState(value.source ?? '主人编辑'), [note, setNote] = useState('')
   const [extras, setExtras] = useState<Record<string, unknown>>(value.extras ?? {})
+  const [aliases, setAliases] = useState((value.aliases ?? []).join('、'))
   const book = extras.characterBook as {entries?: unknown[]} | undefined
   const extraSummary = [extras.postHistory ? '历史后指令' : '', extras.depthPrompt ? '深度提示' : '', book?.entries?.length ? `世界书 ${book.entries.length} 条` : ''].filter(Boolean).join('、')
   const file = useRef<HTMLInputElement>(null)
   async function importCard(input: File) { try { const card = await readCharacterCard(input); setName(card.name); setText(card.text); setSource(card.source ?? '导入'); setExtras(card.extras ?? {}); setNote('已载入，确认后保存。') } catch (e) { setNote(String(e)) } }
   async function exportCard() { const content = JSON.stringify({name, text, source, extras, format: 'dsh-companion-persona', version: 1}, null, 2); try { if (nativeCompanion) await run('saveDocument', {name: '小克角色.json', text: content}); else downloadText('小克角色.json', content) } catch { /* toast */ } }
-  return <form className="xk-stack" onSubmit={e => { e.preventDefault(); void run('persona', {name, text, source, extras}).then(() => setNote('已保存为新版本')).catch(() => undefined) }}>
+  return <form className="xk-stack" onSubmit={e => { e.preventDefault(); void run('persona', {name, text, source, extras, aliases: aliases.split(/[\s,，、]+/).filter(Boolean)}).then(() => setNote('已保存为新版本')).catch(() => undefined) }}>
     <div className="xk-card">
       <div className="xk-card-head"><h2>人设</h2><span className="xk-pill">v{value.version}</span></div>
       <label>称呼<input value={name} maxLength={40} required onChange={e => setName(e.target.value)}/></label>
+      <label>别名<input value={aliases} maxLength={200} placeholder="群里叫这些也算叫她，用顿号隔开" onChange={e => setAliases(e.target.value)}/></label>
       <label>正文<textarea className="xk-persona-input" rows={12} value={text} maxLength={64000} placeholder="她是谁、怎么说话、和你是什么关系…" onChange={e => setText(e.target.value)}/></label>
       <label>备注<input value={source} maxLength={1000} onChange={e => setSource(e.target.value)}/></label>
       {extraSummary && <p className="xk-hint">角色卡附带：{extraSummary} <button type="button" className="xk-link" onClick={() => setExtras({})}>不用这些</button></p>}
@@ -82,7 +84,7 @@ function PersonaEditor({value, versions, run}: {value: Persona; versions: Entry[
         <button type="button" className="xk-btn" onClick={() => file.current?.click()}><UploadSimple size={18} weight="duotone"/> 导入角色卡</button>
         <button type="button" className="xk-btn" onClick={() => void exportCard()}><DownloadSimple size={18} weight="duotone"/> 导出</button>
       </div>
-      <input ref={file} hidden type="file" accept=".json,.png,application/json,image/png" onChange={e => { const f = e.target.files?.[0]; if (f) void importCard(f); e.target.value = '' }}/>
+      <input ref={file} hidden type="file" accept=".json,.png,application/json,image/png,*/*" onChange={e => { const f = e.target.files?.[0]; if (f) void importCard(f); e.target.value = '' }}/>
     </div>
     <Section icon={<ArrowCounterClockwise size={20} weight="duotone"/>} title="历史版本" summary={versions.length ? `${versions.length} 个版本` : '还没有'}>
       {versions.length === 0 ? <p className="xk-hint">保存后会留在这里，随时能恢复。</p> : versions.slice().reverse().slice(0, 20).map(v => <div className="xk-row" key={v.id}>

@@ -74,9 +74,15 @@ class BilibiliWatcher(context: Context, private val store: CompanionStore, priva
         if (hour !in 10..22) return
         val interests = store.list("interest", null, 200).let { a -> (0 until a.length()).map(a::getJSONObject) }
             .filter { io.deepseekharness.mobile.companion.life.LifePolicy.visible(it) && it.optString("text").isNotBlank() }
-        val pick = interests.shuffled().firstOrNull() ?: return
+        // A topic from a recent group chat (what the comment always promised): someone's longer line from the last six hours.
+        val groupLine = if (interests.isEmpty() || Math.random() < 0.3) store.list("message", null, 400).let { a -> (0 until a.length()).map(a::getJSONObject) }
+            .filter { it.optString("scope").startsWith("qq:group:") && it.optString("role") == "user" && now - it.optLong("createdAt") < 6 * 3_600_000L }
+            .map { it to it.optString("text").substringAfter('：').substringBefore(" [").trim() }
+            .filter { (_, words) -> words.length in 6..60 && !words.startsWith("[") }.shuffled().firstOrNull() else null
+        val (pickId, topic) = groupLine?.let { (m, words) -> m.getString("id") to words.take(30) }
+            ?: interests.shuffled().firstOrNull()?.let { it.getString("id") to it.getString("text").take(40) } ?: return
         store.saveLifeState("biliBrowse", JSONObject().put("day", today).put("count", count + 1).put("at", now))
-        val topic = pick.getString("text").take(40)
+        val pick = JSONObject().put("id", pickId)
         val roll = Math.random()
         if (roll < 0.3) {
             if (busy.compareAndSet(false, true)) {

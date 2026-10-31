@@ -36,9 +36,9 @@ object ReplyScheduler {
         val scope = conversation.getString("scope")
         val message = store.message(scope, "user", text, source).let { store.put("message", it.put("actorId", senderId).put("observationId", observationId).put("platformMessageId", platformId)) }
         runCatching { engine.modules.learner.observe(scope) }
-        val name = store.persona().optString("name", "小克")
-        // Quoting one of her messages is talking to her, like an @.
-        val called = mentioned || replyToHer || (name.isNotBlank() && text.contains(name))
+        // Quoting one of her messages is talking to her, like an @; so is any of her names (persona aliases included).
+        val said = text.substringAfter('：')
+        val called = mentioned || replyToHer || store.personaNames().any { said.contains(it) }
         val words = text.substringAfter('：').substringBefore(" [已读取").trim()
         val state = states.getOrPut(scope) { State() }
         synchronized(state) {

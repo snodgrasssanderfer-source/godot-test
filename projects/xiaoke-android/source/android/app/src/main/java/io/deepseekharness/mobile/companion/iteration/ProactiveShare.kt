@@ -35,8 +35,11 @@ class ProactiveShareRunner(private val store: CompanionStore, private val host: 
         val now = System.currentTimeMillis()
         val today = LocalDate.now().toString()
         val state = store.lifeState("proactiveShare")
-        val messages = store.list("message", CompanionPolicy.OWNER, 200)
-        val lastOwner = (0 until messages.length()).map(messages::getJSONObject).lastOrNull { it.optString("role") == "user" }?.optLong("createdAt") ?: 0L
+        // The owner talking on QQ counts as talking: two quiet hours means quiet in the app and in the owner's QQ chat.
+        val lastOwner = CompanionPolicy.ownerScopes(store.settings()).maxOfOrNull { scope ->
+            val messages = store.list("message", scope, 200)
+            (0 until messages.length()).map(messages::getJSONObject).lastOrNull { it.optString("role") == "user" }?.optLong("createdAt") ?: 0L
+        } ?: 0L
         if (!ProactiveShare.allowed(state, today, now, lastOwner, NightQuiet.active(store))) return false
         val since = maxOf(state.optLong("lastShareAt"), lastOwner)
         val pending = host.pendingApprovals()

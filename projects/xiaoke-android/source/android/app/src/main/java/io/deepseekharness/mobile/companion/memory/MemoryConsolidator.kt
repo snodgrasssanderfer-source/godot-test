@@ -87,6 +87,10 @@ class MemoryConsolidator(private val store: CompanionStore, private val host: Co
             runCatching { repo.end(scope, end.memoryId, end.until, by) }
         }
         for (p in plan.profiles) runCatching { profiles.upsert(scope, p.type, p.name, p.summary, p.actorId, p.sourceIds) }
+        // Interests feed her own browsing; without any she never browses on her own. Same topic twice is kept once.
+        val known = store.list("interest", scope, 200).let { a -> (0 until a.length()).map { a.getJSONObject(it).optString("text") } }
+        for (i in plan.interests) if (known.none { it.contains(i.getString("text")) || i.getString("text").contains(it) })
+            runCatching { repo.correct("interest", scope, i) }
     }
 
     /** Short handles in the prompt ("m3", "e2") so the model never has to copy long ids. */
@@ -97,7 +101,7 @@ class MemoryConsolidator(private val store: CompanionStore, private val host: Co
 
     data class End(val memoryId: String, val until: Long, val byIndex: Int?)
     data class ProfileWrite(val type: String, val name: String, val summary: String, val actorId: String, val sourceIds: List<String>)
-    data class Plan(val memories: List<JSONObject>, val ends: List<End>, val profiles: List<ProfileWrite>)
+    data class Plan(val memories: List<JSONObject>, val ends: List<End>, val profiles: List<ProfileWrite>, val interests: List<JSONObject> = emptyList())
 
     companion object {
         const val IDLE_MS = 10 * 60_000L
@@ -139,11 +143,13 @@ class MemoryConsolidator(private val store: CompanionStore, private val host: Co
 - validFrom 是这件事开始成立的日期（不知道就用说出它的那天），validUntil 只在说明了会在哪天结束时才写。
 """)
                 if (group) append("- 只记群友自己说出的事，不推测别人的隐私。\n")
+                append("- 兴趣：她（你）或主人明显感兴趣、想多了解的话题，写成几个字的话题（比如“莫比乌斯环叙事”“独立游戏配乐”），holder 写 her 或 owner。随口一提的不算。\n")
                 append("""- 档案：对这次有新信息的人或物（主人、群友、游戏、作品），把旧档案和新信息合成一份不超过 150 字的简短档案。群友用 member 填他说过话的消息编号。
 只输出 JSON：
 {"memories":[{"text":"…","kind":"fact|preference|event|plan|relationship|opinion","holder":"owner|her|member|other","entities":["人名、地名、游戏名等，最多 5 个"],"validFrom":"YYYY-MM-DD","validUntil":"YYYY-MM-DD 或空","sources":["m1"],"links":["e1"],"ends":["e2"]}],
- "profiles":[{"type":"owner|member|game|work|other","name":"…","member":"m3","summary":"…","sources":["m1"]}]}
-没有值得记的就输出 {"memories":[],"profiles":[]}。""")
+ "profiles":[{"type":"owner|member|game|work|other","name":"…","member":"m3","summary":"…","sources":["m1"]}],
+ "interests":[{"text":"话题","holder":"her|owner","sources":["m1"]}]}
+没有值得记的就输出 {"memories":[],"profiles":[],"interests":[]}。""")
             }
         }
 
@@ -198,7 +204,17 @@ class MemoryConsolidator(private val store: CompanionStore, private val host: Co
                 val sources = (handles(p.optJSONArray("sources")).mapNotNull(ids::message) + listOfNotNull(speaker)).ifEmpty { listOf(fallback) }
                 profiles.add(ProfileWrite(type, name, summary, actor, sources.map { it.getString("id") }.distinct()))
             }
-            return Plan(memories, ends, profiles)
+            val interests = mutableListOf<JSONObject>()
+            val ilist = answer.optJSONArray("interests") ?: JSONArray()
+            for (i in 0 until minOf(ilist.length(), 5)) {
+                val item = ilist.optJSONObject(i) ?: continue
+                val topic = item.optString("text").trim().take(40)
+                if (topic.length < 2 || (item.optString("holder") == "owner" && group)) continue
+                val sources = handles(item.optJSONArray("sources")).mapNotNull(ids::message).ifEmpty { listOf(fallback) }
+                interests.add(JSONObject().put("text", topic).put("holder", item.optString("holder").takeIf { it in setOf("her", "owner") } ?: "her")
+                    .put("source", "聊完后整理").put("sourceRefs", JSONArray(sources.distinctBy { it.getString("id") }.map { JSONObject().put("kind", "message").put("id", it.getString("id")).put("scope", it.getString("scope")) })))
+            }
+            return Plan(memories, ends, profiles, interests)
         }
     }
 }

@@ -30,6 +30,7 @@ class CompanionStartupTest {
             assertNotNull(engine.modules.router)
             failuresAreTold(engine.store)
             ownerRequestedSendIgnoresGroupReplySettings(engine.store)
+            personaVersionsCountUpOnceAndAliasesCount(engine.store)
         } catch (e: Throwable) {
             // Stack traces cannot be formatted inside the sandbox on this JDK; carry the cause chain as text.
             throw AssertionError(generateSequence(e) { it.cause }.joinToString(" <- ") { "${it.javaClass.name}: ${it.message}" })
@@ -45,6 +46,16 @@ class CompanionStartupTest {
         assertTrue(owner.contains("测试群") && owner.contains("中转在返回流里报错") && owner.contains("晚安"))
         val group = io.deepseekharness.mobile.companion.chat.DeliveryLog.describe(store, "qq:group:a", ownerView = false)
         assertTrue(group.contains("测试群") && !group.contains("晚安"))
+    }
+
+    /** savePersona reads the stored version (it used to recurse through persona()); identical versions collapse; aliases are names. */
+    private fun personaVersionsCountUpOnceAndAliasesCount(store: CompanionStore) {
+        val first = store.savePersona("小克", "测试人设", "测试", aliases = org.json.JSONArray().put("测试别名"))
+        val second = store.savePersona("小克", "测试人设", "测试")
+        assertEquals(first.getInt("version") + 1, second.getInt("version"))
+        assertTrue(store.personaNames().containsAll(listOf("小克", "测试别名"))) // aliases carry over when not given
+        assertTrue(store.dedupePersonaVersions() >= 1)
+        assertEquals(0, store.dedupePersonaVersions())
     }
 
     /** The owner's own chat (or "say this in that group") must go out even when the chat was first seen as a quiet one. */

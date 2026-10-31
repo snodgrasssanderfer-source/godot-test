@@ -111,6 +111,14 @@ object CompanionPolicy {
             settings.optString("ownerQqId").isNotBlank() && conversation.optString("targetId") == settings.optString("ownerQqId"))
 
     /** Host opt-in applies only to an account-verified OneBot private chat with the owner ID. */
+    /** The owner's own QQ private chat, when QQ is set up: one private domain with [OWNER] for memory, profiles, diary and idle checks. */
+    fun ownerQqScope(settings: JSONObject): String? {
+        val account = settings.optString("oneBotAccount"); val owner = settings.optString("ownerQqId")
+        if (account.isBlank() || owner.isBlank() || !settings.optBoolean("shareOwnerMemoryWithQq", true)) return null
+        return "qq:private:" + digest("onebot\u0000$account\u0000$owner").take(40)
+    }
+    fun ownerScopes(settings: JSONObject): List<String> = listOfNotNull(OWNER, ownerQqScope(settings))
+
     fun sharesOwnerMemory(conversation: JSONObject?, settings: JSONObject): Boolean = conversation != null &&
         settings.optBoolean("shareOwnerMemoryWithQq") && conversation.optString("route") == "onebot" &&
         conversation.optString("targetType") == "private" && conversation.optBoolean("reliable") &&

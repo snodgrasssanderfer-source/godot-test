@@ -209,9 +209,16 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
     /** Owner review list: social actions awaiting approval plus legacy send drafts. Used for the ball badge and one mention. */
     fun pendingApprovals(): List<String> {
         val drafts = store.list("task")
+        val now = System.currentTimeMillis()
         return social.pendingApprovalIds() + (0 until drafts.length()).map(drafts::getJSONObject)
-            .filter { it.optString("type") == "send" && it.optString("state") == "draft" }.map { it.getString("id") }
+            .filter { it.optString("type") == "send" && it.optString("state") == "draft" }
+            .filter { draft ->
+                // QQ reply drafts expire like the social review items (3 days) instead of counting on the badge forever.
+                if (now - draft.optLong("updatedAt") <= DRAFT_TTL_MS) true
+                else { store.transitionTask(draft.getString("id"), setOf("draft"), "cancelled", "草稿放了 3 天没处理，已过期"); false }
+            }.map { it.getString("id") }
     }
+    private val DRAFT_TTL_MS = 3 * 86_400_000L
     fun activityStopped(): Boolean = io.deepseekharness.mobile.companion.life.BudgetLedger(store.lifeState("budget")).status().optBoolean("stopActivity")
 
     override fun requestModel(request: JSONObject, onEvent: (JSONObject) -> Unit): String = engine.enqueueModuleRequest(request, onEvent)

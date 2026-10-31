@@ -187,6 +187,13 @@ class CompanionOverlayService : Service() {
             main.postDelayed(this, 1000)
         }
     }
+    /** A real buzz: performHapticFeedback is silent when the phone (vivo, for one) has touch feedback turned off. */
+    private fun buzz() = runCatching {
+        val vibrator = if (android.os.Build.VERSION.SDK_INT >= 31) getSystemService(android.os.VibratorManager::class.java).defaultVibrator
+            else @Suppress("DEPRECATION") getSystemService(android.os.Vibrator::class.java)
+        vibrator.vibrate(android.os.VibrationEffect.createOneShot(220, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+    }.onFailure { android.util.Log.w("Xiaoke", "vibration failed: ${it.message}") }
+
     private fun background(fill: Int = Color.rgb(255, 250, 245)) = GradientDrawable().apply { setColor(fill); cornerRadius = dp(18).toFloat(); setStroke(dp(1), Color.rgb(226, 196, 176)) }
     /** Hold colour (red while input is held, amber while only sensitive effects are) and the pending-approval badge. */
     private fun refreshBubble() {
@@ -213,8 +220,15 @@ class CompanionOverlayService : Service() {
         if (bubble?.isAttachedToWindow == true) return
         val size = dp(52)
         // WATCH_OUTSIDE_TOUCH lets an owner touch on the game hand control back during delegated input.
+        val metrics = resources.displayMetrics
+        val prefs = getSharedPreferences("companion-overlay", Context.MODE_PRIVATE)
+        // Where the owner left it last time; first time, tucked into the top-right corner as the persona describes.
+        val remembered = OverlayBallPolicy.clampPosition(prefs.getInt("ballX", Int.MAX_VALUE / 2), prefs.getInt("ballY", dp(96)), metrics.widthPixels, metrics.heightPixels, size)
         val params = WindowManager.LayoutParams(size, size, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH, PixelFormat.TRANSLUCENT).apply { gravity = Gravity.TOP or Gravity.START; x = 0; y = dp(180) }
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH, PixelFormat.TRANSLUCENT).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = OverlayBallPolicy.snapToEdge(remembered.first, metrics.widthPixels, size); y = remembered.second
+        }
         val view = FrameLayout(theme)
         val label = TextView(theme).apply { text = "小克"; gravity = Gravity.CENTER; textSize = 15f; setTextColor(Color.rgb(191, 90, 53)); typeface = android.graphics.Typeface.DEFAULT_BOLD; background = background() }
         val badge = TextView(theme).apply {
@@ -226,29 +240,46 @@ class CompanionOverlayService : Service() {
         bubbleLabel = label; bubbleBadge = badge
         view.contentDescription = "打开小克悬浮对话，可拖动；在球上按住五秒仅停止输入"
         view.setOnClickListener { if (panel == null) showPanel() else closePanel() }
-        var downX = 0f; var downY = 0f; var startX = 0; var startY = 0
-        var fired = false; var cancelled = false
-        val hold = FiveSecondHold(SystemClock::elapsedRealtime, ViewConfiguration.get(this).scaledTouchSlop.toFloat())
+        var downX = 0f; var downY = 0f; var startX = 0; var startY = 0; var downAt = 0L
+        var fired = false; var cancelled = false; var dragging = false
+        val slop = ViewConfiguration.get(this).scaledTouchSlop
+        // A finger held still has to tremble a little: the hold tolerates three slops; a drag is only a drag if it starts early.
+        val hold = FiveSecondHold(SystemClock::elapsedRealtime, slop * 3f)
         val timer = Runnable { if (hold.fire()) {
             fired = true; DeviceModule.emergencyHoldFromSurface(); refreshBubble()
             localStatus = "已急停点击、输入和外发；对话照常。说「继续」或点恢复就接着来"
-            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            buzz(); android.util.Log.i("Xiaoke", "five-second hold fired: input held")
         } }
         cancelHold = { hold.cancel(); main.removeCallbacks(timer) }
+        fun stopHold(why: String) { if (!fired) android.util.Log.i("Xiaoke", "five-second hold cancelled: $why"); cancelHold?.invoke() }
         view.setOnTouchListener { _, e -> when (e.actionMasked) {
             // Our own panel taps are not a takeover; the controller ignores the echo of its own gestures.
             MotionEvent.ACTION_OUTSIDE -> { if (panel == null) DeviceModule.yieldToOwnerTouch(); false }
-            MotionEvent.ACTION_DOWN -> { fired = false; cancelled = false; downX = e.rawX; downY = e.rawY; startX = params.x; startY = params.y; hold.down(e.rawX, e.rawY); main.postDelayed(timer, 5000); true }
-            MotionEvent.ACTION_POINTER_DOWN, MotionEvent.ACTION_CANCEL -> { cancelled = true; cancelHold?.invoke(); true }
+            MotionEvent.ACTION_DOWN -> {
+                fired = false; cancelled = false; dragging = false; downX = e.rawX; downY = e.rawY; startX = params.x; startY = params.y; downAt = SystemClock.elapsedRealtime()
+                hold.down(e.rawX, e.rawY); main.postDelayed(timer, 5000); android.util.Log.i("Xiaoke", "ball down: five-second hold armed"); true
+            }
+            MotionEvent.ACTION_POINTER_DOWN, MotionEvent.ACTION_CANCEL -> { cancelled = true; stopHold(if (e.actionMasked == MotionEvent.ACTION_CANCEL) "system cancel" else "second finger"); true }
             MotionEvent.ACTION_MOVE -> {
-                hold.move(e.rawX, e.rawY, e.pointerCount)
-                if (!fired && !cancelled && e.pointerCount == 1) {
-                    val metrics = resources.displayMetrics
+                val moved = kotlin.math.max(kotlin.math.abs(e.rawX - downX), kotlin.math.abs(e.rawY - downY))
+                if (!dragging && !fired && moved > slop && SystemClock.elapsedRealtime() - downAt < 600) { dragging = true; stopHold("dragged") }
+                if (dragging && !cancelled && e.pointerCount == 1) {
                     val position = OverlayBallPolicy.clampPosition(startX + (e.rawX - downX).toInt(), startY + (e.rawY - downY).toInt(), metrics.widthPixels, metrics.heightPixels, size)
                     params.x = position.first; params.y = position.second; runCatching { windows.updateViewLayout(view, params) }
-                }; true
+                } else if (!dragging) {
+                    hold.move(e.rawX, e.rawY, e.pointerCount)
+                    if (moved > slop * 3) stopHold("moved ${moved.toInt()}px while holding")
+                }
+                true
             }
-            MotionEvent.ACTION_UP -> { cancelHold?.invoke(); if (!fired && !cancelled && OverlayBallPolicy.isClick(e.rawX - downX, e.rawY - downY, ViewConfiguration.get(this).scaledTouchSlop)) view.performClick(); true }
+            MotionEvent.ACTION_UP -> {
+                if (!fired) stopHold("released after ${SystemClock.elapsedRealtime() - downAt} ms") else cancelHold?.invoke()
+                if (dragging) {
+                    params.x = OverlayBallPolicy.snapToEdge(params.x, metrics.widthPixels, size); runCatching { windows.updateViewLayout(view, params) }
+                    prefs.edit().putInt("ballX", params.x).putInt("ballY", params.y).apply()
+                } else if (!fired && !cancelled && OverlayBallPolicy.isClick(e.rawX - downX, e.rawY - downY, slop)) view.performClick()
+                true
+            }
             else -> true
         } }
         windows.addView(view, params); bubble = view

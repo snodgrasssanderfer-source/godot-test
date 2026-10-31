@@ -18,7 +18,7 @@ export interface Settings {
   activityEnabled?: boolean
 }
 export interface Entry { id: string; scope: string; [field: string]: unknown }
-export interface Persona { name: string; text: string; version: number; source?: string; extras?: Record<string, unknown> }
+export interface Persona { name: string; text: string; version: number; source?: string; extras?: Record<string, unknown>; aliases?: string[] }
 export interface Snapshot {
   settings: Settings; keyConfigured: boolean; persona: Persona; personaVersions: Entry[]
   memories: Entry[]; conversations: Entry[]; tasks: Entry[]; messages: Entry[]; observations: Entry[]
@@ -27,7 +27,7 @@ export interface Snapshot {
   character?: {path?: string; version?: number; layout?: 'portrait'|'sprite-4x6'}
   overlaySession?: {running: boolean; package: string; remainingSeconds: number}
   messageBridge?: {connected: boolean; status: string; tokenConfigured: boolean; account?: string; untrustedCertificate?: string}
-  permissions: { accessibility: { serviceStatus: string; allowedPackages: string[] }; notificationAccess: boolean; overlay: boolean; microphone?: boolean; postNotifications?: boolean; onDeviceSpeech?: boolean; batteryExempt?: boolean; androidVersion: string; abis: string[] }
+  permissions: { accessibility: { serviceStatus: string; allowedPackages: string[] }; notificationAccess: boolean; overlay: boolean; microphone?: boolean; postNotifications?: boolean; onDeviceSpeech?: boolean; batteryExempt?: boolean; shizuku?: 'ready' | 'no_permission' | 'not_running'; androidVersion: string; abis: string[] }
 }
 interface Bridge {
   addListener(eventName: 'presenceState', listener: (state: PresenceState) => void): Promise<{remove(): Promise<void>}>
