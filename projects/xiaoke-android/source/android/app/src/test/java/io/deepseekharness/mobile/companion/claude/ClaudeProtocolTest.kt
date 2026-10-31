@@ -33,7 +33,7 @@ class ClaudeProtocolTest {
     }
 
     @Test fun `群里只有网页搜索和小克的能力，主人私聊才有改文件和命令（仍要主人点允许）`() {
-        fun opts(owner: Boolean) = ClaudeTurn.Options("s", "hi", "sess", "default", "high", owner, "/root/workspace", 1234, "t", 1000)
+        fun opts(owner: Boolean) = ClaudeTurn.Options("s", "hi", "sess", "default", "high", owner, cwd = "/root/workspace", mcpPort = 1234, mcpToken = "t", timeoutMs = 1000)
         val group = ClaudeTurn.args(opts(false), "/x/system.md", "/x/mcp.json")
         assertEquals("WebSearch", group[group.indexOf("--tools") + 1])
         assertTrue("--permission-prompt-tool" in group && "--strict-mcp-config" in group)
@@ -46,6 +46,13 @@ class ClaudeProtocolTest {
         // The token goes in the 0600 config file, never on the command line.
         assertFalse(owner.any { "Bearer" in it } || group.any { "Bearer" in it })
         assertTrue(ClaudeTurn.mcpConfig(1234, "tok").contains("Bearer tok"))
+        // Full access lets the owner's chats edit and run commands without asking; a group gets nothing more.
+        fun full(owner: Boolean) = ClaudeTurn.Options("s", "hi", null, "default", "high", owner, true, "/root/workspace", 1234, "t", 1000)
+        val ownerFull = ClaudeTurn.args(full(true), "/x/system.md", "/x/mcp.json")
+        assertTrue(ownerFull[ownerFull.indexOf("--allowedTools") + 1].split(",").containsAll(listOf("Bash", "Edit", "Write")))
+        val groupFull = ClaudeTurn.args(full(false), "/x/system.md", "/x/mcp.json")
+        assertEquals("WebSearch", groupFull[groupFull.indexOf("--tools") + 1])
+        assertFalse(groupFull.any { "Bash" in it })
     }
 
     private val declarations = JSONArray().put(JSONObject().put("name", "recall").put("description", "搜记忆")

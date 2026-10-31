@@ -96,6 +96,8 @@ export function ClaudePanel({run, only}: {run: Run; only?: 'install' | 'login'})
       <label>模型<select value={MODELS.some(m => m[0] === form.model) ? form.model : 'custom'} onChange={e => save({...form, model: e.target.value === 'custom' ? form.model : e.target.value})}>
         {MODELS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}<option value="custom">其他（填写）</option></select></label>
       {!MODELS.some(m => m[0] === form.model) && <label>模型名<input value={form.model} onChange={e => setForm({...form, model: e.target.value})} onBlur={() => save(form)} autoCapitalize="none" spellCheck={false}/></label>}
+      <label className="xk-switch-row"><span>完全访问<small>{form.fullAccess ? '你的私聊里改文件、跑命令不再逐条问你；群里始终没有这些能力' : '关着时，她改文件、跑命令前都会先问你'}</small></span>
+        <input type="checkbox" checked={Boolean(form.fullAccess)} onChange={e => { if (!e.target.checked || confirm('打开后，她在你的私聊里改文件、跑命令都不再问你（群里不受影响）。确定？')) save({...form, fullAccess: e.target.checked}) }}/></label>
       <label>思考强度<select value={form.effort} onChange={e => save({...form, effort: e.target.value as ClaudeSettings['effort']})}>{EFFORTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
       {saved && <p className="xk-hint">已保存，从下一条消息起生效。</p>}
       {status.outage && <p className="xk-hint xk-warn">现在先用着 Gemini：{status.outage.detail || status.outage.reason}{status.outage.until < 8e15 ? `，${new Date(status.outage.until).toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'})} 后再试 Claude` : ''}。</p>}

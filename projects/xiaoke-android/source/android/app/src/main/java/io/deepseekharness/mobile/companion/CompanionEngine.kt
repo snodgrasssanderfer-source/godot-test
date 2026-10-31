@@ -629,7 +629,8 @@ class CompanionEngine private constructor(private val context: Context) {
         val name = store.persona().optString("name", "小克")
         val claudeSystem = system + "\n【在 Claude Code 里怎么做】你是$name，现在通过 Claude Code 运行。你最后写出的正文就是发给对方的消息，不要写成报告，也不要提“工具”“MCP”。" +
             "你的记忆、日记、QQ、手机、B站、待审清单这些能力在 xiaoke 这组工具里（remember、recall、job_status、say_in_group 等），用法和平时一样；remember 的 sourceId 留空，记在当前这条消息上。" +
-            (if (ownerChat) "主人交代代码的事时：这个项目（你自己的 App）在 ${io.deepseekharness.mobile.companion.claude.ClaudeWorkspace.PROJECT}，先读那里的 CLAUDE.md；读代码随意；改文件、跑命令会弹到主人手机上等主人点允许。" +
+            (if (ownerChat && settings.optBoolean("fullAccess")) "主人给了你完全访问权限：改文件、跑命令不用再问；动手前想清楚，删东西、推送、改系统设置这类收不回的事先跟主人说一声。" else "") +
+            (if (ownerChat) "主人交代代码的事时：这个项目（你自己的 App）在 ${io.deepseekharness.mobile.companion.claude.ClaudeWorkspace.PROJECT}，先读那里的 CLAUDE.md；读代码随意；" + (if (settings.optBoolean("fullAccess")) "" else "改文件、跑命令会弹到主人手机上等主人点允许。") +
                 "改代码一律在新分支上做（git switch -c 起个说明用途的名字），改完提交，用几句话告诉主人改了什么、在哪个分支、怎么验证的；不碰 main，不碰签名和密钥（签名和发版只在云端做）。手机上没法跑完整的 Gradle 构建就说没验证。没有推送凭据就说已提交在本地，请主人推送。\n"
             else "这里不是主人的私聊：只回这个对话里该说的话，不写代码、不读写文件、不提主人的私事。\n")
         val lastSeen = saved?.optString("lastMessageId")
@@ -652,7 +653,7 @@ class CompanionEngine private constructor(private val context: Context) {
                 claudeTurns[id] = turn
                 try {
                     return turn.run(io.deepseekharness.mobile.companion.claude.ClaudeTurn.Options(claudeSystem, content, resume, settings.optString("model"), settings.optString("effort"),
-                        ownerTools = ownerChat, cwd = cwd, mcpPort = io.deepseekharness.mobile.companion.claude.XiaokeMcpServer.port(), mcpToken = token,
+                        ownerTools = ownerChat, fullAccess = ownerChat && settings.optBoolean("fullAccess"), cwd = cwd, mcpPort = io.deepseekharness.mobile.companion.claude.XiaokeMcpServer.port(), mcpToken = token,
                         timeoutMs = if (ownerChat) 45 * 60_000L else 4 * 60_000L),
                         onText = { text ->
                             if (runCatching { checkClaudeCurrent(id, epoch) }.isFailure) turn.cancel()
@@ -663,8 +664,9 @@ class CompanionEngine private constructor(private val context: Context) {
                         onUsage = { usage -> store.saveLifeState("claudeUsage", io.deepseekharness.mobile.companion.claude.ClaudeStream.mergeUsage(store.lifeState("claudeUsage"), usage)) },
                         onPermission = { tool, input ->
                             // Only the owner's own chats get Claude Code's tools at all; a group never reaches this.
-                            ownerChat && io.deepseekharness.mobile.companion.claude.ClaudePermissions.ask(context, id, scope, tool,
-                                io.deepseekharness.mobile.companion.claude.ClaudeStream.describe(tool, input)) { turn.isCancelled || runCatching { checkClaudeCurrent(id, epoch) }.isFailure }
+                            // With full access on, whatever is still asked (paths outside the project and the like) is a yes.
+                            ownerChat && (settings.optBoolean("fullAccess") || io.deepseekharness.mobile.companion.claude.ClaudePermissions.ask(context, id, scope, tool,
+                                io.deepseekharness.mobile.companion.claude.ClaudeStream.describe(tool, input)) { turn.isCancelled || runCatching { checkClaudeCurrent(id, epoch) }.isFailure })
                         })
                 } finally { claudeTurns.remove(id, turn) }
             }
@@ -758,6 +760,17 @@ class CompanionEngine private constructor(private val context: Context) {
                 .append("，联网 ").append(settings.optBoolean("networkEnabled")).append("，暂停 ").append(settings.optBoolean("paused"))
                 .append("，后台常驻 ").append(settings.optBoolean("backgroundEnabled")).append("，QQ ").append(settings.optBoolean("oneBotEnabled")).append('\n')
             append("QQ 桥：").append(runCatching { OneBotBridge.get(context).state().apply { remove("untrustedCertificate") } }.getOrNull()).append('\n')
+            val chat = io.deepseekharness.mobile.companion.claude.ClaudeChat
+            append("Claude：Claude Code ").append(runCatching { claude.version() }.getOrNull() ?: "未安装").append("，设置 ").append(chat.settings(store))
+                .append("，暂停中 ").append(chat.outage(store)?.let { "${it.optString("reason")} ${it.optString("detail").take(160)}" } ?: "无")
+                .append("，进行中 ").append(claudeTurns.size).append("，排队 ").append(claudeWorker.pending()).append("；Gemini 排队 ").append(worker.pending()).append('\n')
+            append("\n== 正在进行或排队的聊天 ==\n")
+            store.list("task", null, 300).let { a -> (0 until a.length()).map(a::getJSONObject) }
+                .filter { it.optString("type") == "chat" && it.optString("state") in setOf("queued", "running") }.forEach { t ->
+                    append("- ").append(t.optString("engine", "gemini")).append(' ').append(t.optString("state")).append(' ')
+                        .append((System.currentTimeMillis() - t.optLong("updatedAt", t.optLong("createdAt"))) / 1000).append(" 秒前更新：")
+                        .append(t.optString("progress").take(160)).append('\n')
+                }
             append("\n== 最近失败或待核对的任务 ==\n")
             tasks.forEach { t ->
                 append("- ").append(t.optString("type")).append(' ').append(t.optString("state")).append("：").append(t.optString("progress").take(200)).append('\n')

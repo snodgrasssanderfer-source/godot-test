@@ -31,7 +31,7 @@ export interface Snapshot {
   permissions: { accessibility: { serviceStatus: string; allowedPackages: string[] }; notificationAccess: boolean; overlay: boolean; microphone?: boolean; postNotifications?: boolean; onDeviceSpeech?: boolean; batteryExempt?: boolean; shizuku?: 'ready' | 'no_permission' | 'not_running'; androidVersion: string; abis: string[] }
 }
 export interface ClaudePermission { id: string; taskId: string; scope: string; tool: string; summary: string; at: number }
-export interface ClaudeSettings { enabled: boolean; model: string; effort: 'low' | 'medium' | 'high' | 'xhigh' | 'max' }
+export interface ClaudeSettings { enabled: boolean; model: string; effort: 'low' | 'medium' | 'high' | 'xhigh' | 'max'; fullAccess?: boolean }
 export interface ClaudeSnapshot { installed: string | null; settings: ClaudeSettings; permissions: ClaudePermission[]; outage: {reason: string; detail: string; until: number} | null }
 interface ClaudeWindow { utilization: number; resetsAt: number }
 export interface ClaudeStatus extends ClaudeSnapshot {

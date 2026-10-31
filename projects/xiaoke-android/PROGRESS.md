@@ -1,6 +1,6 @@
 # 现状
 
-版本 0.13.2（versionCode 17），用固定签名，带完整 PRoot/Ubuntu 运行环境的 debug 包约 421 MiB（Claude Code 首次使用时下载，不在包里）。**还没装到真机上跑过**，下面写的都是代码层面的状态。
+版本 0.13.3（versionCode 18），用固定签名，带完整 PRoot/Ubuntu 运行环境的 debug 包约 421 MiB（Claude Code 首次使用时下载，不在包里）。**还没装到真机上跑过**，下面写的都是代码层面的状态。
 
 ## 已经有的
 - Claude：官方 linux-arm64 Claude Code 跑在 DSH 的 Ubuntu（PRoot）里，签名和 sha256 都校验过；主人的私聊和交代的事、主人打开的群由它回复，其余用 Gemini，Claude 不可用时也换 Gemini。小克的能力通过只在本机的 MCP 交给它；改文件和跑命令要主人允许。详见 docs/CLAUDE_CODE.md。
