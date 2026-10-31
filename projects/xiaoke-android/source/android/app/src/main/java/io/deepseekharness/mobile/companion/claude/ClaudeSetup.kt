@@ -74,7 +74,7 @@ object ClaudeLogin {
     fun state(): JSONObject {
         val s = session ?: return JSONObject().put("running", false)
         val text = synchronized(s.output) { s.output.toString() }
-        val url = Regex("https://[^\\s\"'<>]+").findAll(text).map { it.value }.lastOrNull { "oauth" in it || "claude.ai" in it || "anthropic.com" in it }
+        val url = signInUrl(text)
         return JSONObject().put("running", s.exit == null).put("exit", s.exit ?: JSONObject.NULL).put("output", text.takeLast(4000)).put("url", url ?: JSONObject.NULL)
     }
 
@@ -82,8 +82,8 @@ object ClaudeLogin {
         session?.takeIf { it.exit == null }?.let { return state() }
         require(method in setOf("claudeai", "console")) { "登录方式无效" }
         val spec = ClaudeRuntime(context).launch(listOf("auth", "login", "--$method"))
-        // Wide enough that the sign-in link is never wrapped across lines.
-        val handles = NativePty.spawn(spec.argv.toTypedArray(), spec.environment.map { (k, v) -> "$k=$v" }.toTypedArray(), 400, 40)
+        // As wide as the native PTY allows; a longer link still wraps, and signInUrl joins it back.
+        val handles = NativePty.spawn(spec.argv.toTypedArray(), spec.environment.map { (k, v) -> "$k=$v" }.toTypedArray(), COLUMNS, 40)
         val s = Session(handles[0].toInt(), handles[1].toInt())
         session = s
         Thread({
@@ -102,6 +102,27 @@ object ClaudeLogin {
             }
         }, "claude-login").apply { isDaemon = true }.start()
         return state()
+    }
+
+    const val COLUMNS = 300
+
+    /**
+     * The sign-in link Claude Code printed. A link longer than the terminal is wrapped (by the terminal or by Claude
+     * Code's own layout), so lines right after it that are nothing but URL characters are joined back on.
+     */
+    fun signInUrl(text: String): String? {
+        val lines = text.split('\n')
+        val urlChars = Regex("[A-Za-z0-9%._~:/?#\\[\\]@!$&'()*+,;=-]+")
+        var found: String? = null
+        for ((i, line) in lines.withIndex()) {
+            val start = line.indexOf("https://").takeIf { it >= 0 } ?: continue
+            val piece = StringBuilder(line.substring(start).trim())
+            var next = i + 1
+            while (urlChars.matches(piece) && next < lines.size && urlChars.matches(lines[next].trim())) { piece.append(lines[next].trim()); next++ }
+            val url = Regex("https://[^\\s\"'<>]+").find(piece)?.value ?: continue
+            if ("oauth" in url || "claude.ai" in url || "anthropic.com" in url || "claude.com" in url) found = url
+        }
+        return found
     }
 
     fun input(text: String) {

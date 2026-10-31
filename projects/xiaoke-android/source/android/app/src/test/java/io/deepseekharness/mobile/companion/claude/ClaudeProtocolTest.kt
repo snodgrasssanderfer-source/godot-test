@@ -92,4 +92,13 @@ class ClaudeProtocolTest {
         assertEquals(3, ClaudeChat.transcript(messages, null, 10_000) { "X" }.lines().size)
         assertEquals(1, ClaudeChat.transcript(messages, null, 5) { "X" }.lines().size) // budget keeps the newest
     }
+
+    @Test fun `登录链接被终端折行时能拼回完整的一条`() {
+        val url = "https://claude.ai/oauth/authorize?code=true&client_id=abc&response_type=code&redirect_uri=https%3A%2F%2Fconsole.anthropic.com%2Foauth%2Fcode%2Fcallback&scope=user%3Ainference&code_challenge=" + "x".repeat(300) + "&state=yz"
+        val wrapped = url.chunked(ClaudeLogin.COLUMNS).joinToString("\n")
+        val printed = "Browser didn't open? Use the url below to sign in:\n\n$wrapped\n\nPaste code here if prompted >"
+        assertEquals(url, ClaudeLogin.signInUrl(printed))
+        assertEquals(url, ClaudeLogin.signInUrl("  $url  \n"))
+        assertNull(ClaudeLogin.signInUrl("Opening browser…"))
+    }
 }

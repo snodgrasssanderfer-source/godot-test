@@ -75,7 +75,10 @@ export function ClaudePanel({run, only}: {run: Run; only?: 'install' | 'login'})
             <input value={code} onChange={e => setCode(e.target.value)} placeholder="授权代码" autoCapitalize="none" spellCheck={false} autoComplete="off"/>
             <button className="xk-btn primary small" type="submit" aria-label="发送代码"><PaperPlaneRight size={18} weight="fill"/></button>
           </form>
-          {!compact && status.login.output && <details className="xk-more"><summary>Claude Code 的输出</summary><pre className="xk-log">{status.login.output}</pre></details>}
+          {!status.login.url && <p className="xk-hint">等 Claude Code 给出登录链接…</p>}
+          {status.login.output && (status.login.url
+            ? !compact && <details className="xk-more"><summary>Claude Code 的输出</summary><pre className="xk-log">{status.login.output}</pre></details>
+            : <pre className="xk-log">{status.login.output}</pre>)}
           <button className="xk-btn ghost small" onClick={() => void run('claudeLoginStop').then(() => refresh()).catch(() => undefined)}>取消登录</button>
         </>}
         {!status.login.running && status.login.exit != null && status.login.exit !== 0 && !status.loggedIn && <p className="xk-hint xk-warn">登录没完成（退出码 {status.login.exit}），可以再试一次。</p>}
