@@ -54,7 +54,7 @@ class BilibiliWatcher(context: Context, private val store: CompanionStore, priva
         try { BackgroundJobs.finish(store, job, true, work()) }
         catch (e: Exception) {
             val reason = e.message?.take(200) ?: e.javaClass.simpleName
-            android.util.Log.w("Xiaoke", "background job $job failed: ${e.javaClass.simpleName}: $reason")
+            io.deepseekharness.mobile.companion.XLog.w("background job $job failed: ${e.javaClass.simpleName}: $reason")
             BackgroundJobs.finish(store, job, false, reason)
         } finally { busy.set(false) }
     }

@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react'
-import { ArrowCounterClockwise, CaretRight, Check, CircleHalf, Compass, DownloadSimple, Moon, Plus, Sparkle, Sun, Terminal, Trash, UploadSimple } from '@phosphor-icons/react'
+import { ArrowCounterClockwise, CaretRight, Check, CircleHalf, Compass, DownloadSimple, FileText, Moon, Plus, Sparkle, Sun, Terminal, Trash, UploadSimple } from '@phosphor-icons/react'
 import { field, nativeCompanion, profile, type Entry, type Persona, type Run, type Settings, type Snapshot } from './bridge'
 import { downloadText, readCharacterCard } from './characterCard'
 import { DailyBudget } from './DailyBudget'
@@ -21,7 +21,7 @@ export function SettingsPage({snapshot, run, onSetup, onWorkbench}: {snapshot: S
     <div className="xk-pane" key={pane}>
       {pane === 'model' && <Models snapshot={snapshot} run={run}/>}
       {pane === 'persona' && <PersonaEditor value={snapshot.persona} versions={snapshot.personaVersions} run={run}/>}
-      {pane === 'more' && <More onSetup={onSetup} onWorkbench={onWorkbench}/>}
+      {pane === 'more' && <More run={run} onSetup={onSetup} onWorkbench={onWorkbench}/>}
     </div>
   </div></div>
 }
@@ -95,8 +95,17 @@ function PersonaEditor({value, versions, run}: {value: Persona; versions: Entry[
   </form>
 }
 
-function More({onSetup, onWorkbench}: {onSetup: () => void; onWorkbench: () => void}) {
+function More({run, onSetup, onWorkbench}: {run: Run; onSetup: () => void; onWorkbench: () => void}) {
   const [theme, setTheme] = useState<ThemeMode>(readThemeMode())
+  const [exported, setExported] = useState('')
+  async function exportDiagnostics() {
+    try {
+      const result = await run('diagnostics') as {text?: string}
+      const name = `小克诊断日志-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.txt`
+      if (nativeCompanion) await run('saveDocument', {name, text: result.text ?? ''}); else downloadText(name, result.text ?? '')
+      setExported('已导出')
+    } catch { /* toast shows it */ }
+  }
   return <div className="xk-stack">
     <div className="xk-card">
       <h2>外观</h2>
@@ -106,6 +115,7 @@ function More({onSetup, onWorkbench}: {onSetup: () => void; onWorkbench: () => v
     <div className="xk-card xk-list">
       <button type="button" className="xk-row-btn" onClick={onSetup}><Compass size={22} weight="duotone"/><span><strong>重新走一遍引导</strong><small>模型、额度、保活、QQ</small></span><CaretRight size={18} weight="bold"/></button>
       <button type="button" className="xk-row-btn" onClick={onWorkbench}><Terminal size={22} weight="duotone"/><span><strong>DSH 工作台</strong><small>文件、终端、插件</small></span><CaretRight size={18} weight="bold"/></button>
+      <button type="button" className="xk-row-btn" onClick={() => void exportDiagnostics()}><FileText size={22} weight="duotone"/><span><strong>导出诊断日志</strong><small>{exported || '出问题时发给开发看；key 和 token 已经去掉'}</small></span><CaretRight size={18} weight="bold"/></button>
     </div>
   </div>
 }

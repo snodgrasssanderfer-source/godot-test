@@ -61,4 +61,19 @@ class GroupAndEmojiTest {
         val atAll = OneBotSegments.parse(JSONArray().put(JSONObject().put("type", "at").put("data", JSONObject().put("qq", "all"))), "10001")
         assertFalse(atAll.getBoolean("mentionsOther"))
     }
+
+    @Test fun `内部占位符不会发出去，单字关键词不再误触表情回应`() {
+        assertEquals("你看这个", OutgoingSegments.stripInternal("你看这个 [图片附件] [已读取 0 个媒体片段；1 个没读到：HTTP 403]"))
+        assertTrue(OutgoingSegments.build("[图片附件]") { null }.isEmpty())
+        val laugh = io.deepseekharness.mobile.companion.chat.QqExtras.reaction("哈哈哈", false)
+        assertEquals(laugh, io.deepseekharness.mobile.companion.chat.QqExtras.reaction("乐", false))
+        assertFalse(io.deepseekharness.mobile.companion.chat.QqExtras.reaction("这首音乐好听", false) == laugh)
+        assertFalse(io.deepseekharness.mobile.companion.chat.QqExtras.reaction("今天好快乐", false) == laugh)
+    }
+
+    @Test fun `诊断日志里的 key 和 token 被去掉`() {
+        val line = XLog.scrub("x-goog-api-key: sk-0123456789abcdefABCDEF token=abcd1234efgh \"password\":\"hunter22\" Bearer abc.def.ghi1234")
+        assertFalse(line.contains("sk-0123") || line.contains("abcd1234efgh") || line.contains("hunter22") || line.contains("abc.def.ghi1234"))
+        assertTrue(line.contains("token=***"))
+    }
 }

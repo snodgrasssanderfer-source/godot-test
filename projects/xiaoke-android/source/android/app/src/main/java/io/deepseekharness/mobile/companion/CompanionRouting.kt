@@ -53,6 +53,7 @@ object CompanionRouting {
         if (after?.optString("state") in setOf("approved", "draft", "sending"))
             store.transitionTask(id, setOf("approved", "draft", "sending"), if (after?.optString("state") == "sending") "unknown" else "failed", reason.take(200))
         DeliveryLog.record(store, task.getString("scope"), "send", reason, task.optString("body"))
+        XLog.w("send failed in ${task.optString("scope").take(24)}: $reason", result.exceptionOrNull())
         return store.get("task", id)
     }
 

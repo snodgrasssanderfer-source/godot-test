@@ -91,8 +91,9 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
             if (networkPermitted()) { runCatching { renewBilibili() }; runCatching { checkBiliReplies() } }
             runCatching { runtime.tick(processEffects = false) }.onFailure { lastError = "后台处理暂未完成，请查看任务状态" }
             runCatching { tendStickerShelf() }
-        }, 1, 5, TimeUnit.SECONDS)
-        effectWorker.scheduleWithFixedDelay({ runCatching { runtime.tickEffects() }.onFailure { lastError = "社交动作暂未完成，请查看记录" } }, 1, 5, TimeUnit.SECONDS)
+        }, 1, 30, TimeUnit.SECONDS)
+        // 30 s when idle; an approval, a new job or a plan kicks both right away (see execute).
+        effectWorker.scheduleWithFixedDelay({ runCatching { runtime.tickEffects() }.onFailure { lastError = "社交动作暂未完成，请查看记录" } }, 1, 30, TimeUnit.SECONDS)
         syncWorker.scheduleWithFixedDelay({
             if (canSync()) runCatching { runSync() }
         }, 15, 60, TimeUnit.SECONDS)
@@ -111,7 +112,14 @@ class SocialModule(context: Context, private val store: CompanionStore, private 
             .filter { c -> c.optString("route") == "onebot" }.map { c -> JSONObject().put("id", c.getString("id")).put("title", c.optString("title"))
                 .put("images", c.optBoolean("allowImages")).put("audio", c.optBoolean("allowAudio")).put("video", c.optBoolean("allowVideo")) }))
     }
-    override fun execute(action: String, data: JSONObject, principal: CommandPrincipal): JSONObject = when (action) {
+    override fun execute(action: String, data: JSONObject, principal: CommandPrincipal): JSONObject = handle(action, data, principal).also {
+        if (action.startsWith("approvals.") || action.startsWith("jobs.") || action in setOf("social.plan", "bili.plan", "social.resolve")) {
+            runCatching { timer.execute { runCatching { runtime.tick(processEffects = false) } } }
+            runCatching { effectWorker.execute { runCatching { runtime.tickEffects() } } }
+        }
+    }
+
+    private fun handle(action: String, data: JSONObject, principal: CommandPrincipal): JSONObject = when (action) {
         "bili.configure" -> configureBilibili(data, principal)
         "bili.login.start" -> {
             SocialRules.owner(principal); require(principal.channel == "owner_ui") { "只能在本机扫码登录" }

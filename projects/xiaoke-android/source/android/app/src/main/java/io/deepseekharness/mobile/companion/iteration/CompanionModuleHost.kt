@@ -203,7 +203,7 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
         // A reminder is what the owner asked for at that time: it is delivered whatever the attention mode says.
         if (reminder && scope == CompanionPolicy.OWNER) store.message(scope, "notice", "提醒：$text", "已到期的本机提醒")
         else if (reminder && principal(scope).owner) runCatching { engine.remindOverQq(scope, "提醒：$text") }
-            .onFailure { android.util.Log.w("Xiaoke", "reminder over QQ failed: ${it.message}") }
+            .onFailure { io.deepseekharness.mobile.companion.XLog.w("reminder over QQ failed: ${it.message}") }
         router.signal("all", "job.outcome")
     }
     /** Owner review list: social actions awaiting approval plus legacy send drafts. Used for the ball badge and one mention. */

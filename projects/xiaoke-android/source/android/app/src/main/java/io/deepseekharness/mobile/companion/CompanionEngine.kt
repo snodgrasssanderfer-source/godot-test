@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 /** One serialized queue; external messages never execute the owner's Android tools. */
 class CompanionEngine private constructor(private val context: Context) {
     val store = CompanionStore(context)
-    val secrets = CompanionSecrets(context)
+    val secrets = CompanionSecrets(context).also { XLog.init(context) }
     private val web by lazy { WebResearch(store, model) }
     @Volatile private var activeWeb: Triple<JSONObject, JSONObject, WebResearch.Billing>? = null
     private val model = GeminiClient(secrets)
@@ -227,6 +227,7 @@ class CompanionEngine private constructor(private val context: Context) {
                 check(GeminiWire.calls(reply.getJSONArray("parts")).isEmpty()) { "模块请求不能直接执行模型工具" }
                 store.commitContext(epoch) { emit("completed", GeminiWire.visible(GeminiWire.text(reply.getJSONArray("parts"))).first, usage = reply.optJSONObject("usageMetadata")) }
             } catch (e: Exception) {
+                if (!cancelled.get() && id !in preempted) XLog.w("module request ${request.optString("purpose")} failed: ${e.message}" + ((e as? ModelFailure)?.detail?.takeIf { it.isNotBlank() }?.let { " | $it" } ?: ""))
                 emit(if (cancelled.get() || id in preempted) "cancelled" else "failed", error = when {
                     id in preempted -> "为主人交流暂停活动；费用待核对，不自动重放请求"
                     cancelled.get() -> null
@@ -471,8 +472,10 @@ class CompanionEngine private constructor(private val context: Context) {
                     }
                 }
                 if (calls.isEmpty()) {
-                    val (text, cut) = GeminiWire.visible(GeminiWire.text(parts).ifBlank { "模型本轮没有可见回答。" })
-                    if (cut) android.util.Log.w("Xiaoke", "reply carried unmarked reasoning; kept only the final part (${used.optString("model")})")
+                    val (seen, cut) = GeminiWire.visible(GeminiWire.text(parts).ifBlank { "模型本轮没有可见回答。" })
+                    // She sometimes echoes the host's own placeholders ("[图片附件]"); they are never part of a reply.
+                    val text = io.deepseekharness.mobile.companion.chat.OutgoingSegments.stripInternal(seen).ifBlank { seen }
+                    if (cut) io.deepseekharness.mobile.companion.XLog.w("reply carried unmarked reasoning; kept only the final part (${used.optString("model")})")
                     var draft: JSONObject? = null
                     val message = store.commitContext(epoch, sources) {
                         val storedFingerprint = if (used === profile) fingerprint else CompanionPolicy.sessionFingerprint(settings, used)
@@ -548,6 +551,7 @@ class CompanionEngine private constructor(private val context: Context) {
                 val reason = (failure?.cause?.message ?: e.message ?: "任务失败").take(200)
                 store.transitionTask(id, setOf("queued", "running"), "failed", (if (failure != null) "模型请求失败：$reason（已换方式重试 ${failure.attempts.length() - 1} 次）" else reason).take(240),
                     failure?.let { JSONObject().put("diagnostic", ChatDiagnostics.summary(it.attempts, scope)) })
+                XLog.w("chat failed in ${scope.take(24)}: $reason" + (failure?.attempts?.let { a -> " | " + (0 until a.length()).joinToString(" ; ") { i -> a.getJSONObject(i).let { "${it.optString("model")} ${it.opt("status")} ${it.optString("error")} ${it.optString("detail").take(160)}" } } } ?: ""))
                 // Cancelled by the owner or stopped by a pause is not a failure she needs to explain.
                 if (e.message?.let { "取消" in it || "暂停" in it || "任务已停止" in it } != true)
                     io.deepseekharness.mobile.companion.chat.DeliveryLog.record(store, scope, "model", if (failure != null) "模型请求失败（$reason）" else reason)
@@ -588,6 +592,34 @@ class CompanionEngine private constructor(private val context: Context) {
         if (state == "done") store.message(groupScope, "assistant", text, "主人让我说的")
         return JSONObject().put("sent", state == "done").put("group", title).put("state", state)
             .put("detail", after?.optString("progress").orEmpty())
+    }
+
+    /** What the owner exports from 我的 → 导出诊断日志: state summaries and the log, with keys and tokens scrubbed. */
+    fun diagnostics(): String {
+        val settings = store.settings()
+        val version = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).let { "${it.versionName} (${it.longVersionCode})" } }.getOrDefault("?")
+        val tasks = store.list("task", null, 300).let { a -> (0 until a.length()).map(a::getJSONObject) }
+            .filter { it.optString("state") in setOf("failed", "unknown", "waiting") }.takeLast(12)
+        val text = buildString {
+            append("小克诊断日志 ").append(version).append(" · ").append(java.time.LocalDateTime.now().withNano(0)).append('\n')
+            append("设备：Android ").append(android.os.Build.VERSION.RELEASE).append(" / ").append(android.os.Build.MODEL).append('\n')
+            append("设置：模型 ").append(settings.optString("activeModel")).append("，中转 ").append(runCatching { java.net.URI(settings.optString("endpoint")).host }.getOrNull() ?: "?")
+                .append("，联网 ").append(settings.optBoolean("networkEnabled")).append("，暂停 ").append(settings.optBoolean("paused"))
+                .append("，后台常驻 ").append(settings.optBoolean("backgroundEnabled")).append("，QQ ").append(settings.optBoolean("oneBotEnabled")).append('\n')
+            append("QQ 桥：").append(runCatching { OneBotBridge.get(context).state().apply { remove("untrustedCertificate") } }.getOrNull()).append('\n')
+            append("\n== 最近失败或待核对的任务 ==\n")
+            tasks.forEach { t ->
+                append("- ").append(t.optString("type")).append(' ').append(t.optString("state")).append("：").append(t.optString("progress").take(200)).append('\n')
+                t.optJSONObject("diagnostic")?.optJSONArray("attempts")?.let { a -> for (i in 0 until a.length()) a.getJSONObject(i).let { at ->
+                    append("    · ").append(at.optString("model")).append(' ').append(at.opt("status")).append(' ').append(at.optString("error")).append(" | ").append(at.optString("detail").take(300)).append('\n')
+                } }
+            }
+            append("\n== 没发出去的回复 ==\n").append(io.deepseekharness.mobile.companion.chat.DeliveryLog.describe(store, CompanionPolicy.OWNER, true)).append('\n')
+            append("\n== 后台任务 ==\n").append(io.deepseekharness.mobile.companion.chat.BackgroundJobs.items(store, CompanionPolicy.OWNER, true)
+                .joinToString("\n") { io.deepseekharness.mobile.companion.chat.BackgroundJobs.line(it) }).append('\n')
+            append("\n== 日志 ==\n").append(XLog.read())
+        }
+        return XLog.scrub(text)
     }
 
     /** One tiny real request with the saved settings, so setup can say "connected" or show the relay's answer. */

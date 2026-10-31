@@ -31,9 +31,10 @@ object QqExtras {
     fun reaction(text: String, image: Boolean): String {
         val t = text.lowercase()
         return when {
-            Regex("哈哈|hhh|笑死|xswl|绷不住|草|233|乐").containsMatchIn(t) -> LAUGH
-            Regex("恭喜|好耶|出了|出金|欧皇|过了|成功|上岸|中了|赢").containsMatchIn(t) -> PARTY
-            Regex("哭|难受|寄了|呜|唉|好累|裂开|emo").containsMatchIn(t) -> CRY
+            // Single characters only when they are the whole reaction: "音乐""快乐""草莓""哭笑不得" must not fire.
+            Regex("哈哈|hhh|笑死|xswl|绷不住|233|乐死|太乐了|典中典|^\\s*(草+|乐)[!！。~～]*\\s*$").containsMatchIn(t) -> LAUGH
+            Regex("恭喜|好耶|出了|出金|欧皇|过了|成功|上岸|中了|赢了|赢麻").containsMatchIn(t) -> PARTY
+            Regex("哭了|想哭|大哭|哭死|难受|寄了|呜呜|^\\s*唉|好累|裂开|emo").containsMatchIn(t) -> CRY
             Regex("[?？]$|为什么|怎么|咋").containsMatchIn(t) -> THINK
             Regex("可爱|喜欢|爱了|贴贴").containsMatchIn(t) -> HEART
             image && t.isBlank() -> EYES

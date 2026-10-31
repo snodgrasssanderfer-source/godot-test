@@ -21,23 +21,32 @@ internal fun canonical(value: Any?): String = when (value) {
     else -> value.toString()
 }
 
-/** One atomic durable snapshot; a failed write never commits the in-memory transaction. */
+/**
+ * One atomic durable snapshot; a failed write never commits the in-memory transaction.
+ * Reads see the live snapshot without copying it (readers must not change it; a stray change is dropped at the next
+ * write, which starts from the last committed text). Writes work on one parsed copy and are detected by comparing its
+ * serialized text with the committed one: idle ticks used to deep-copy a ~320 KB ledger several times every 5 seconds.
+ */
 class SocialLedger(initial: JSONObject = JSONObject(), private val persist: (JSONObject) -> Unit = {}) {
     private var data = copy(initial)
+    private var text: String
     init {
         require(data.optInt("version", 1) == 1) { "社交数据版本不受支持" }
         data.put("version", 1)
+        text = data.toString()
     }
-    @Synchronized internal fun <T> read(block: (JSONObject) -> T): T = block(copy(data))
+    @Synchronized internal fun <T> read(block: (JSONObject) -> T): T = block(data)
     @Synchronized internal fun <T> change(block: (JSONObject) -> T): T {
-        val next = copy(data)
+        val next = JSONObject(text)
         val result = block(next)
-        if (canonical(next) == canonical(data)) return result
-        persist(copy(next))
-        data = copy(next)
+        val after = next.toString()
+        if (after == text) return result
+        persist(next)
+        // Rebuilt from the text so objects the block returned stay detached from the committed state.
+        data = JSONObject(after); text = after
         return result
     }
-    fun exportEncryptedInput(): JSONObject = read { it }
+    @Synchronized fun exportEncryptedInput(): JSONObject = JSONObject(text)
 }
 
 internal object SocialRules {

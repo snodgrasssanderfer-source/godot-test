@@ -153,6 +153,7 @@ class OneBotBridge private constructor(private val context: Context) {
                 }
             }
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                if (gen == generation) XLog.w("QQ bridge socket failed (HTTP ${response?.code ?: "-"})", t)
                 if (gen == generation && t is javax.net.ssl.SSLException && trust.presented.isNotBlank() && !trust.pinned) {
                     // Self-signed server certificate: wait for the owner to confirm it instead of retrying.
                     untrustedCertificate = trust.presented; verified = false; status = "第一次连接：请核对服务器证书指纹后信任"; return
@@ -229,7 +230,7 @@ class OneBotBridge private constructor(private val context: Context) {
     private fun setQqOnline(value: Boolean, why: String) {
         qqOnline = value
         status = if (value) "已连接 · 小克的 QQ ${engine.store.settings().optString("oneBotAccount")}" else why
-        android.util.Log.w("Xiaoke", "QQ online=$value: $why")
+        io.deepseekharness.mobile.companion.XLog.w("QQ online=$value: $why")
         runCatching { engine.modules.router.signal("all", "bridge.state") }
         CompanionOverlayService.refreshBadge(context)
     }
@@ -325,6 +326,7 @@ class OneBotBridge private constructor(private val context: Context) {
     }
     private fun disconnected(gen: Int) {
         if (gen != generation) return
+        XLog.w("QQ bridge disconnected; retry in ${(5000L shl failures.coerceAtMost(4)) / 1000} s")
         verified = false; status = "连接中断；等待重连，未确认发送不会重发"
         pending.values.forEach { it.latch.countDown() }; pending.clear()
         val delay = (5000L shl failures.coerceAtMost(4)); failures++

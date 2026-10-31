@@ -242,7 +242,7 @@ class GeminiClient internal constructor(private val readKey: () -> String, priva
                     val waited = (System.currentTimeMillis() - startedAt) / 1000
                     val heard = if (firstData.get() == 0L) "一个字都没收到" else "第 ${(firstData.get() - startedAt) / 1000} 秒开始有数据"
                     val detail = "${e.javaClass.simpleName}: ${e.message.orEmpty().take(200)}；等了 $waited 秒，$heard"
-                    android.util.Log.w("Xiaoke", "model stream broke ($model): $detail")
+                    io.deepseekharness.mobile.companion.XLog.w("model stream broke ($model): $detail")
                     throw ModelFailure(null, "模型连接中断（${e.javaClass.simpleName}，$waited 秒）", detail)
                 } finally {
                     slow.cancel(false)

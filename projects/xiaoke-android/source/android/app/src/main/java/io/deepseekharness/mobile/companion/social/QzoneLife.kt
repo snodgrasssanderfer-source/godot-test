@@ -47,7 +47,7 @@ internal class QzoneLife(
         // Official NapCat (4.18.x) has no qzone read API and answers 1404 "不支持的API"; remember it instead of polling.
         if (answer.optInt("retcode", -1) == 1404) {
             save { it.put("unsupported", JSONArray((strings(it.optJSONArray("unsupported")) + action).distinct())).put("unsupportedAt", System.currentTimeMillis()) }
-            android.util.Log.i("Xiaoke", "NapCat lacks $action (1404); qzone reading paused")
+            io.deepseekharness.mobile.companion.XLog.i("NapCat lacks $action (1404); qzone reading paused")
         }
         answer.takeIf { it.optInt("retcode", -1) == 0 }?.optJSONObject("data")
     }.getOrNull()

@@ -15,7 +15,13 @@ object OutgoingSegments {
     /** Bare "[xxx]" counts as an emoji attempt only when it is short and wordy; "[1]" or "[2024-10-30]" stay text. */
     private val emojiLike = Regex("""[\p{IsHan}A-Za-z]{1,6}""")
 
-    fun build(text: String, sticker: (String) -> Sticker?): List<JSONArray> {
+    /** Markers the host itself writes into messages she reads ("[图片附件]", "[已读取 1 个媒体片段…]"); they must never go out. */
+    private val internal = Regex("\\s*\\[(?:图片附件|语音待理解|视频待理解|文件未下载|引用消息|不支持的附件|QQ表情|转发资料[^\\]]*|已读取[^\\]]*|语音转文字[^\\]]*|内容尚未读取)]")
+
+    fun stripInternal(text: String): String = internal.replace(text, "").replace(Regex("[ \\t]{2,}"), " ").trim()
+
+    fun build(raw: String, sticker: (String) -> Sticker?): List<JSONArray> {
+        val text = stripInternal(raw)
         val messages = mutableListOf<JSONArray>()
         var current = JSONArray()
         val pending = StringBuilder()

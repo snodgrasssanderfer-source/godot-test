@@ -36,7 +36,7 @@ class CompanionPlugin : Plugin() {
         try { CompanionPresenceHost.subscribe(presenceListener); engine.modules.router.subscribe(moduleListener) }
         catch (e: Throwable) { startupError = "${e.javaClass.simpleName}: ${e.message}".take(300) }
         startResident()
-        executor.execute { runCatching { engine.store.dedupePersonaVersions() }.onSuccess { if (it > 0) android.util.Log.i("Xiaoke", "removed $it duplicate persona versions") } }
+        executor.execute { runCatching { engine.store.dedupePersonaVersions() }.onSuccess { if (it > 0) io.deepseekharness.mobile.companion.XLog.i("removed $it duplicate persona versions") } }
     }
     override fun handleOnResume() { super.handleOnResume(); startResident() }
 
@@ -44,7 +44,7 @@ class CompanionPlugin : Plugin() {
     private fun startResident() = runCatching {
         val settings = engine.store.settings()
         if ((settings.optBoolean("backgroundEnabled") || settings.optBoolean("oneBotEnabled")) && !settings.optBoolean("paused")) CompanionService.start(context)
-    }.onFailure { android.util.Log.w("Xiaoke", "resident service not started: ${it.message}") }
+    }.onFailure { io.deepseekharness.mobile.companion.XLog.w("resident service not started: ${it.message}") }
     override fun handleOnDestroy() { CompanionPresenceHost.unsubscribe(presenceListener); engine.modules.router.unsubscribe(moduleListener); executor.shutdownNow(); super.handleOnDestroy() }
 
     @PluginMethod fun state(call: PluginCall) {
@@ -377,6 +377,7 @@ class CompanionPlugin : Plugin() {
                     "openAutostart" -> JSONObject().put("opened", openVendorPage(AUTOSTART_PAGES))
                     "openBackgroundPower" -> JSONObject().put("opened", openVendorPage(BACKGROUND_POWER_PAGES))
                     "testModel" -> engine.testModel()
+                    "diagnostics" -> JSONObject().put("text", engine.diagnostics())
                     "openPermission" -> {
                         val intent = when (data.getString("kind")) {
                             "accessibility" -> Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)

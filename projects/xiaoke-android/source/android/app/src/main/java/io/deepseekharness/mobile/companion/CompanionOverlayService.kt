@@ -192,7 +192,7 @@ class CompanionOverlayService : Service() {
         val vibrator = if (android.os.Build.VERSION.SDK_INT >= 31) getSystemService(android.os.VibratorManager::class.java).defaultVibrator
             else @Suppress("DEPRECATION") getSystemService(android.os.Vibrator::class.java)
         vibrator.vibrate(android.os.VibrationEffect.createOneShot(220, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
-    }.onFailure { android.util.Log.w("Xiaoke", "vibration failed: ${it.message}") }
+    }.onFailure { io.deepseekharness.mobile.companion.XLog.w("vibration failed: ${it.message}") }
 
     private fun background(fill: Int = Color.rgb(255, 250, 245)) = GradientDrawable().apply { setColor(fill); cornerRadius = dp(18).toFloat(); setStroke(dp(1), Color.rgb(226, 196, 176)) }
     /** Hold colour (red while input is held, amber while only sensitive effects are) and the pending-approval badge. */
@@ -248,16 +248,16 @@ class CompanionOverlayService : Service() {
         val timer = Runnable { if (hold.fire()) {
             fired = true; DeviceModule.emergencyHoldFromSurface(); refreshBubble()
             localStatus = "已急停点击、输入和外发；对话照常。说「继续」或点恢复就接着来"
-            buzz(); android.util.Log.i("Xiaoke", "five-second hold fired: input held")
+            buzz(); io.deepseekharness.mobile.companion.XLog.i("five-second hold fired: input held")
         } }
         cancelHold = { hold.cancel(); main.removeCallbacks(timer) }
-        fun stopHold(why: String) { if (!fired) android.util.Log.i("Xiaoke", "five-second hold cancelled: $why"); cancelHold?.invoke() }
+        fun stopHold(why: String) { if (!fired) io.deepseekharness.mobile.companion.XLog.i("five-second hold cancelled: $why"); cancelHold?.invoke() }
         view.setOnTouchListener { _, e -> when (e.actionMasked) {
             // Our own panel taps are not a takeover; the controller ignores the echo of its own gestures.
             MotionEvent.ACTION_OUTSIDE -> { if (panel == null) DeviceModule.yieldToOwnerTouch(); false }
             MotionEvent.ACTION_DOWN -> {
                 fired = false; cancelled = false; dragging = false; downX = e.rawX; downY = e.rawY; startX = params.x; startY = params.y; downAt = SystemClock.elapsedRealtime()
-                hold.down(e.rawX, e.rawY); main.postDelayed(timer, 5000); android.util.Log.i("Xiaoke", "ball down: five-second hold armed"); true
+                hold.down(e.rawX, e.rawY); main.postDelayed(timer, 5000); io.deepseekharness.mobile.companion.XLog.i("ball down: five-second hold armed"); true
             }
             MotionEvent.ACTION_POINTER_DOWN, MotionEvent.ACTION_CANCEL -> { cancelled = true; stopHold(if (e.actionMasked == MotionEvent.ACTION_CANCEL) "system cancel" else "second finger"); true }
             MotionEvent.ACTION_MOVE -> {
