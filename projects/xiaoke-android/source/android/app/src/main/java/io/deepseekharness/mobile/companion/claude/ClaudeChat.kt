@@ -23,7 +23,7 @@ object ClaudeChat {
         JSONObject().put("enabled", s.optBoolean("enabled", true)).put("model", s.optString("model", "default").ifBlank { "default" })
             .put("effort", s.optString("effort", "medium").takeIf { it in EFFORTS } ?: "medium")
             // Full access: in the owner's own chats every edit and command is allowed without asking. Never in groups.
-            .put("fullAccess", s.optBoolean("fullAccess"))
+            .put("fullAccess", s.optBoolean("fullAccess")).put("workspaceBranch", s.optString("workspaceBranch"))
     }
 
     fun saveSettings(store: CompanionStore, input: JSONObject): JSONObject {
@@ -32,7 +32,8 @@ object ClaudeChat {
         val effort = input.optString("effort", "medium")
         require(effort in EFFORTS) { "思考强度无效" }
         store.saveLifeState("claude", store.lifeState("claude").put("enabled", input.optBoolean("enabled")).put("model", model).put("effort", effort)
-            .put("fullAccess", input.optBoolean("fullAccess")))
+            .put("fullAccess", input.optBoolean("fullAccess"))
+            .put("workspaceBranch", input.optString("workspaceBranch").trim().also { require(it.isEmpty() || ClaudeWorkspace.BRANCH.matches(it)) { "分支名只能是字母、数字和 ._/-" } }))
         // Switching it back on is the owner saying "try again": a remembered outage should not keep it on Gemini.
         if (input.optBoolean("enabled")) clearOutage(store)
         return settings(store)

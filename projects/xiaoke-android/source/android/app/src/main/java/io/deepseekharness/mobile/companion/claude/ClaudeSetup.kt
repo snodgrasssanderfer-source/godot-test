@@ -27,7 +27,7 @@ object ClaudeSetup {
             .put("loggedIn", auth?.loggedIn == true).put("authMethod", auth?.method.orEmpty()).put("authNote", auth?.note.orEmpty())
             .put("settings", ClaudeChat.settings(engine.store)).put("usage", engine.store.lifeState("claudeUsage").apply { remove("id"); remove("scope") })
             .put("outage", ClaudeChat.outage(engine.store) ?: JSONObject.NULL)
-            .put("permissions", ClaudePermissions.list()).put("workspace", ClaudeWorkspace.state(runtime))
+            .put("permissions", ClaudePermissions.list()).put("workspace", ClaudeWorkspace.state(runtime, engine.store))
             .put("githubConfigured", ClaudeGithub.configured(context))
     }
 
@@ -176,12 +176,18 @@ object ClaudeWorkspace {
     const val PROJECT = "$CLONE/projects/xiaoke-android"
     private val running = AtomicBoolean(false)
     @Volatile private var job = JSONObject().put("phase", "idle")
+    val BRANCH = Regex("[A-Za-z0-9._/-]{1,100}")
 
     fun projectReady(runtime: ClaudeRuntime) = File(runtime.hostDirectory(), PROJECT.removePrefix("/")).isDirectory
 
-    fun state(runtime: ClaudeRuntime): JSONObject {
+    /** The branch the workspace follows: the owner's choice, else the branch this build came from (the app is not on main). */
+    fun branch(store: io.deepseekharness.mobile.companion.CompanionStore) =
+        ClaudeChat.settings(store).optString("workspaceBranch").ifBlank { io.deepseekharness.mobile.BuildConfig.WORKSPACE_BRANCH.ifBlank { "main" } }
+
+    fun state(runtime: ClaudeRuntime, store: io.deepseekharness.mobile.companion.CompanionStore? = null): JSONObject {
         val cloned = File(runtime.hostDirectory(), "${CLONE.removePrefix("/")}/.git").isDirectory
-        val out = JSONObject().put("path", PROJECT).put("exists", cloned).put("repo", REPO).put("job", job)
+        val out = JSONObject().put("path", PROJECT).put("exists", cloned).put("projectReady", projectReady(runtime)).put("repo", REPO).put("job", job)
+        store?.let { out.put("follows", branch(it)) }
         if (cloned) runCatching {
             // Reads the branch straight from .git: no process start just to show a status line.
             val head = File(runtime.hostDirectory(), "${CLONE.removePrefix("/")}/.git/HEAD").readText().trim()
@@ -199,12 +205,21 @@ object ClaudeWorkspace {
             try {
                 val runtime = ClaudeRuntime(context)
                 check(runtime.runtimeReady()) { "先装好 Ubuntu 运行环境" }
+                val b = branch(io.deepseekharness.mobile.companion.CompanionEngine.get(context).store)
+                require(BRANCH.matches(b)) { "分支名不对：$b" }
+                // Clean workspace: move to the followed branch and fast-forward. Local changes (hers) are never touched:
+                // then it only fetches and says so.
                 val script = listOf(
                     "set -e", "mkdir -p ${ClaudeRuntime.WORKSPACE_DIR}",
                     "git config --global user.name >/dev/null || git config --global user.name 'Xiaoke'",
                     "git config --global user.email >/dev/null || git config --global user.email 'xiaoke@localhost'",
-                    "if [ -d $CLONE/.git ]; then git -C $CLONE fetch --depth 50 origin main && echo fetched",
-                    "else git clone --depth 50 $REPO $CLONE && echo cloned; fi",
+                    "if [ -d $CLONE/.git ]; then cd $CLONE",
+                    "  git fetch --depth 50 origin '+refs/heads/$b:refs/remotes/origin/$b'",
+                    "  if [ -z \"$(git status --porcelain)\" ]; then",
+                    "    if git show-ref --verify --quiet 'refs/heads/$b'; then git checkout -q '$b' && git merge --ff-only -q 'origin/$b' && echo 'updated $b'",
+                    "    else git checkout -q -b '$b' 'origin/$b' && echo 'switched to $b'; fi",
+                    "  else echo 'has local changes; fetched origin/$b only'; fi",
+                    "else git clone --depth 50 --branch '$b' $REPO $CLONE && echo 'cloned $b'; fi",
                 ).joinToString("\n")
                 // With the owner's token the fetch also works if the repo turns private (token on stdin only).
                 val r = runtime.runShell(script, 900, githubToken = ClaudeGithub.token(context))

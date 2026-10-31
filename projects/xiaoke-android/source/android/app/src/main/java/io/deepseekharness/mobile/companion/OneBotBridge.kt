@@ -128,7 +128,12 @@ class OneBotBridge private constructor(private val context: Context) {
                         .put("account", account).put("targetId", address.getString("targetId")).put("targetType", address.getString("targetType"))
                         .put("route", "onebot").put("reliable", true)
                     if (value.optString("post_type") == "message_sent") {
-                        if (c.optBoolean("captureEnabled")) store.put("conversation", c.put("humanActivityAt", System.currentTimeMillis()))
+                        val messageId = value.opt("message_id")?.toString().orEmpty()
+                        recordSelf(scope, value.optString("raw_message"), messageId)
+                        // NapCat reports her own API sends too. Only a send that is not hers means the owner is typing on her account.
+                        val hers = System.currentTimeMillis() - (ownSendAt[scope] ?: 0L) < 10_000 ||
+                            c.optJSONArray("myMessageIds")?.let { a -> (0 until a.length()).any { a.optString(it) == messageId } } == true
+                        if (!hers && c.optBoolean("captureEnabled")) store.put("conversation", c.put("humanActivityAt", System.currentTimeMillis()))
                         return
                     }
                     if (value.optString("post_type") != "message") return
@@ -261,6 +266,23 @@ class OneBotBridge private constructor(private val context: Context) {
     private fun textOf(message: JSONArray) = (0 until message.length()).joinToString("") { message.getJSONObject(it).optJSONObject("data")?.optString("text").orEmpty() }
 
     /** Her own message ids per chat, so a quote of one of them counts as talking to her. */
+    /** Her own sends as QQ reports them back (message_sent): scope → (time, text, message id). */
+    private val selfEvents = java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.ConcurrentLinkedDeque<Triple<Long, String, String>>>()
+    /** When she last sent in a scope; message_sent events around then are hers, not the owner typing on her account. */
+    private val ownSendAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    private fun recordSelf(scope: String, text: String, messageId: String) {
+        val q = selfEvents.getOrPut(scope) { java.util.concurrent.ConcurrentLinkedDeque() }
+        q.addLast(Triple(System.currentTimeMillis(), text, messageId))
+        while (q.size > 30) q.pollFirst()
+    }
+    /** The message id of a message_sent since [since] whose text carries [text]'s opening, or null. */
+    private fun selfEchoSince(scope: String, since: Long, text: String): String? {
+        val probe = text.trim().take(20)
+        if (probe.isEmpty()) return null
+        return selfEvents[scope]?.lastOrNull { it.first >= since - 1000 && probe in it.second }?.third
+    }
+
     private fun rememberMine(scope: String, ids: List<String>) = runCatching {
         val store = engine.store
         synchronized(store) {
@@ -363,6 +385,7 @@ class OneBotBridge private constructor(private val context: Context) {
         val conversation = store.get("conversation", task.getString("scope")) ?: error("会话不存在")
         check(conversation.optString("route") == "onebot" && task.optString("account") == settings.optString("oneBotAccount") && conversation.optString("account") == task.optString("account")) { "账号或会话绑定已变化" }
         store.claimSend(task.getString("id"), CompanionPolicy.draftDigest(task))
+        ownSendAt[task.getString("scope")] = System.currentTimeMillis()
         val ids = mutableListOf<String>()
         var segments = listOf(JSONArray())
         try {
@@ -376,27 +399,39 @@ class OneBotBridge private constructor(private val context: Context) {
             for ((index, segment) in segments.withIndex()) {
                 if (index > 0) Thread.sleep(io.deepseekharness.mobile.companion.chat.ReplySegmenter.pauseMs(textOf(segment)))
                 check(verified && !store.settings().optBoolean("paused")) { "连接已断开或已暂停" }
-                val echo = CompanionPolicy.id()
-                val wait = Pending(); pending[echo] = wait
-                try {
-                    check(socket?.send(OneBotProtocol.send(conversation, segment, echo).toString()) == true) { "连接未接受提交" }
-                    wait.latch.await(15, TimeUnit.SECONDS)
-                } finally { pending.remove(echo) }
-                val ack = wait.response
-                val id = ack?.optJSONObject("data")?.optString("message_id").orEmpty()
+                fun submit(): JSONObject? {
+                    val echo = CompanionPolicy.id()
+                    ownSendAt[task.getString("scope")] = System.currentTimeMillis()
+                    val wait = Pending(); pending[echo] = wait
+                    try {
+                        check(socket?.send(OneBotProtocol.send(conversation, segment, echo).toString()) == true) { "连接未接受提交" }
+                        wait.latch.await(15, TimeUnit.SECONDS)
+                    } finally { pending.remove(echo) }
+                    return wait.response
+                }
+                val segmentStart = System.currentTimeMillis()
+                var ack = submit()
+                var id = ack?.optJSONObject("data")?.optString("message_id").orEmpty()
+                if (ack == null) {
+                    // No answer in 15 s. If QQ already reported this text as sent, it went out; otherwise try once more.
+                    val seen = selfEchoSince(task.getString("scope"), segmentStart, textOf(segment))
+                    if (seen != null) { ack = JSONObject().put("retcode", 0).put("status", "ok"); id = seen.ifBlank { "unconfirmed-" + CompanionPolicy.id() } }
+                    else { XLog.i("send: no ack in 15 s and not seen as sent; retrying once"); ack = submit(); id = ack?.optJSONObject("data")?.optString("message_id").orEmpty() }
+                }
                 if (ack == null || ack.optInt("retcode", -1) != 0 || ack.optString("status") != "ok" || id.isBlank()) {
                     val state = if (ack != null && ids.isEmpty() && (ack.optInt("retcode", -1) != 0 || ack.optString("status") != "ok")) "failed" else "unknown"
                     val said = ack?.let { (it.optString("wording").ifBlank { it.optString("message") }).take(80) }.orEmpty()
                     if (ids.isNotEmpty()) rememberMine(task.getString("scope"), ids)
                     return store.transitionTask(task.getString("id"), setOf("sending", "unknown"), state,
                         if (state == "failed") "QQ 拒绝了发送（retcode ${ack?.optInt("retcode")}${if (said.isNotBlank()) "：$said" else ""}）"
-                        else if (ack == null) "已发出 ${ids.size}/${segments.size} 段，后面 15 秒没等到 QQ 确认，未自动重发"
+                        else if (ack == null) "已发出 ${ids.size}/${segments.size} 段，后面一段等了两次都没收到 QQ 确认"
                         else "已发出 ${ids.size}/${segments.size} 段，后面的结果不确定，未自动重发",
                         JSONObject().put("platformMessageIds", org.json.JSONArray(ids))) ?: error("任务状态已变化")
                 }
                 ids.add(id)
             }
             rememberMine(task.getString("scope"), ids)
+            ownSendAt[task.getString("scope")] = System.currentTimeMillis()
             return store.transitionTask(task.getString("id"), setOf("sending", "unknown"), "done", "已发出 ${segments.size} 段（不等于对方已读）",
                 JSONObject().put("platformMessageId", ids.first()).put("platformMessageIds", org.json.JSONArray(ids))) ?: error("任务状态已变化")
         } catch (e: Exception) {

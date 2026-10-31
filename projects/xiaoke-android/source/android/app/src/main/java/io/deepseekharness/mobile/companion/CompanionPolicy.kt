@@ -51,6 +51,11 @@ object CompanionPolicy {
         .put("networkEnabled", false).put("backgroundEnabled", false).put("paused", false)
         .put("dailyCalls", 100).put("ownerQqId", "").put("displayName", "小克")
 
+    /** Screens she does not read even when asked: banking, payment, and the system's permission and install prompts. */
+    private val unreadablePackages = Regex("bank|alipay|unionpay|wallet|icbc|chinamworld|cmb\\.|\\.ccb|bankabc|bankcomm|spdb|cebbank|cmbc|webank|" +
+        "permissioncontroller|packageinstaller|com\\.android\\.settings\\.password", RegexOption.IGNORE_CASE)
+    fun unreadable(packageName: String) = packageName.isBlank() || unreadablePackages.containsMatchIn(packageName)
+
     fun validateSettings(input: JSONObject): JSONObject {
         val result = JSONObject(input.toString()).put("endpoint", endpoint(input.getString("endpoint")))
         val profiles = result.getJSONArray("profiles")

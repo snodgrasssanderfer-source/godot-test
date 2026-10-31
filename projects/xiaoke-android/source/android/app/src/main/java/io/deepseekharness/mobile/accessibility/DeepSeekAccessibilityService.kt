@@ -157,13 +157,25 @@ class DeepSeekAccessibilityService : AccessibilityService() {
         return root.packageName?.toString() == packageName && !containsSensitiveWindow(root)
     }
 
+    /**
+     * The owner asked her to look at the screen: whatever is in front, read only, sensitive spots masked. Banking,
+     * payment and permission screens are the only ones she does not look at ([io.deepseekharness.mobile.companion.CompanionPolicy.unreadable]).
+     */
+    @Synchronized fun companionScreen(): DeviceCommandResult {
+        if (isLockedOrScreenOff()) return failure("ACCESSIBILITY_DEVICE_LOCKED", "设备已锁定或屏幕未交互")
+        val root = rootInActiveWindow ?: return failure("ACCESSIBILITY_WINDOW_UNAVAILABLE", "当前没有可读取的应用窗口")
+        val packageName = root.packageName?.toString().orEmpty()
+        if (io.deepseekharness.mobile.companion.CompanionPolicy.unreadable(packageName)) return failure("ACCESSIBILITY_PACKAGE_DENIED", "银行、支付和系统权限类界面不看")
+        return tree(root, packageName)
+    }
+
     /** Session-authorized observation shares lock/sensitive-window gates, grants no actions. */
     @Synchronized fun companionObservation(packageName: String): DeviceCommandResult {
         if (isLockedOrScreenOff()) return failure("ACCESSIBILITY_DEVICE_LOCKED", "设备已锁定或屏幕未交互")
         if (!io.deepseekharness.mobile.companion.CompanionOverlayService.permits(packageName)) return failure("ACCESSIBILITY_PACKAGE_DENIED", "本次按需观察会话已结束")
         val root = rootInActiveWindow ?: return failure("ACCESSIBILITY_WINDOW_UNAVAILABLE", "当前没有可读取的应用窗口")
         if (root.packageName?.toString() != packageName) return failure("ACCESSIBILITY_PACKAGE_DENIED", "当前前台应用不在本次范围")
-        if (containsSensitiveWindow(root)) return failure("ACCESSIBILITY_SENSITIVE_WINDOW", "密码、验证码、支付或权限窗口不能观察")
+        // Reading only: what matches is masked in the tree, the rest is read as usual.
         return tree(root, packageName)
     }
 
@@ -182,7 +194,8 @@ class DeepSeekAccessibilityService : AccessibilityService() {
         if (!AccessibilityAutomationStore.packageAllowed(this, packageName)) {
             return failure("ACCESSIBILITY_PACKAGE_DENIED", "当前应用不在无障碍自动化白名单中")
         }
-        if (containsSensitiveWindow(root)) return failure("ACCESSIBILITY_SENSITIVE_WINDOW", "检测到密码、验证码、支付或权限窗口，已拒绝自动化")
+        // Reading never stops here: matching nodes are masked. Acting (tap, input, actions) stops, with the real reason.
+        if (command != "accessibilityTree") windowRisk(root)?.let { return failure("ACCESSIBILITY_SENSITIVE_WINDOW", it) }
         return when (command) {
             "accessibilityTree" -> if (param.isBlank()) tree(root, packageName)
             else failure("ACCESSIBILITY_ACTION_INVALID", "无障碍层级读取不接受参数")
@@ -247,9 +260,11 @@ class DeepSeekAccessibilityService : AccessibilityService() {
     private fun appendNodes(node: AccessibilityNodeInfo?, result: JSONArray, depth: Int) {
         if (node == null || depth > MAX_TREE_DEPTH || result.length() >= MAX_TREE_NODES) return
         val viewId = node.viewIdResourceName
-        val text = if (node.isEditable) "" else safeText(node.text)
-        val hint = if (node.isEditable) "" else safeText(node.hintText)
-        val description = if (node.isEditable) "" else safeText(node.contentDescription)
+        // Password boxes and sensitive wording are masked where they are; the rest of the screen reads normally.
+        val masked = node.isPassword || sensitive(node)
+        val text = if (node.isEditable) "" else if (masked) MASK else safeText(node.text)
+        val hint = if (node.isEditable) "" else if (masked) MASK else safeText(node.hintText)
+        val description = if (node.isEditable) "" else if (masked) MASK else safeText(node.contentDescription)
         val bounds = Rect().also(node::getBoundsInScreen)
         val entry = JSONObject()
             .put("className", node.className?.toString()?.take(120).orEmpty())
@@ -420,7 +435,7 @@ class DeepSeekAccessibilityService : AccessibilityService() {
         if (packageName != request.packageName || !AccessibilityAutomationStore.packageAllowed(this, packageName)) {
             return failure("ACCESSIBILITY_PACKAGE_DENIED", "确认后前台应用已变化")
         }
-        if (containsSensitiveWindow(root)) return failure("ACCESSIBILITY_SENSITIVE_WINDOW", "确认后检测到敏感窗口")
+        windowRisk(root)?.let { return failure("ACCESSIBILITY_SENSITIVE_WINDOW", "确认后：$it") }
         val node = findByViewId(root, request.viewId)
             ?: return failure("ACCESSIBILITY_NODE_NOT_FOUND", "确认后未找到唯一的目标节点")
         if (node.packageName?.toString() != packageName || node.isPassword ||
@@ -465,33 +480,34 @@ class DeepSeekAccessibilityService : AccessibilityService() {
         return text
     }
 
-    private fun containsSensitiveWindow(root: AccessibilityNodeInfo): Boolean {
-        var found = false
+    private fun containsSensitiveWindow(root: AccessibilityNodeInfo): Boolean = windowRisk(root) != null
+
+    /**
+     * Why acting on this window is not safe, or null. A password box or sensitive wording is one reason; a window too
+     * large to check in time is another, and is said as such, not passed off as a password prompt.
+     */
+    private fun windowRisk(root: AccessibilityNodeInfo): String? {
+        var reason: String? = null
         var scanned = 0
+        val deadline = SystemClock.elapsedRealtime() + SENSITIVE_SCAN_MS
         fun visit(node: AccessibilityNodeInfo?, depth: Int) {
-            if (node == null || found) return
-            if (depth > MAX_TREE_DEPTH) {
-                found = true
+            if (node == null || reason != null) return
+            if (depth > MAX_SCAN_DEPTH || ++scanned > MAX_SENSITIVE_SCAN_NODES || SystemClock.elapsedRealtime() > deadline) {
+                reason = "界面太大，没在时限内检查完，不替你操作（看还可以）"
                 return
             }
-            if (++scanned > MAX_SENSITIVE_SCAN_NODES) {
-                // 无法在有界时间内确认窗口安全时按敏感窗口拒绝。
-                found = true
-                return
-            }
-            if (node.isPassword || AccessibilityAutomationPolicy.containsSensitiveText(node.viewIdResourceName) ||
-                AccessibilityAutomationPolicy.containsSensitiveText(node.text) ||
-                AccessibilityAutomationPolicy.containsSensitiveText(node.hintText) ||
-                AccessibilityAutomationPolicy.containsSensitiveText(node.contentDescription)
-            ) {
-                found = true
-                return
-            }
+            if (node.isPassword) { reason = "界面上有密码框"; return }
+            if (sensitive(node)) { reason = "界面上有验证码、支付或权限相关的字样"; return }
             for (index in 0 until node.childCount) visit(node.getChild(index), depth + 1)
         }
         visit(root, 0)
-        return found
+        return reason
     }
+
+    private fun sensitive(node: AccessibilityNodeInfo) = AccessibilityAutomationPolicy.containsSensitiveText(node.viewIdResourceName) ||
+        AccessibilityAutomationPolicy.containsSensitiveText(node.text) ||
+        AccessibilityAutomationPolicy.containsSensitiveText(node.hintText) ||
+        AccessibilityAutomationPolicy.containsSensitiveText(node.contentDescription)
 
     private fun isLockedOrScreenOff(): Boolean {
         val keyguard = getSystemService(KeyguardManager::class.java)
@@ -1781,9 +1797,12 @@ class DeepSeekAccessibilityService : AccessibilityService() {
         private const val ACTION_INTERVAL_MS = 350L
         /** 动作触发的事件在此时间内视为目标应用的正常回执，不判作外部抢占。 */
         private const val TASK_ACTION_EVENT_GRACE_MS = 5_000L
-        private const val MAX_TREE_NODES = 120
+        private const val MAX_TREE_NODES = 300
         private const val MAX_TREE_DEPTH = 24
-        private const val MAX_SENSITIVE_SCAN_NODES = 320
+        private const val MAX_SCAN_DEPTH = 64
+        private const val MAX_SENSITIVE_SCAN_NODES = 4000
+        private const val SENSITIVE_SCAN_MS = 250L
+        private const val MASK = "[已遮挡]"
         private const val MAX_TEXT_CHARS = 80
         private const val CONFIRMATION_TIMEOUT_MS = 30L
         private val CONFIRMATION_CANCEL_CODES = setOf(

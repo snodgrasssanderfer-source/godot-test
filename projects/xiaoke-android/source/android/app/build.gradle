@@ -3,6 +3,16 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+// The branch this build came from: the phone workspace follows it by default (the app's code is not on main).
+def sourceBranch = { ->
+    def env = System.getenv('XIAOKE_WORKSPACE_BRANCH')
+    if (env) return env
+    try {
+        def name = providers.exec { commandLine 'git', 'rev-parse', '--abbrev-ref', 'HEAD'; ignoreExitValue = true }.standardOutput.asText.get().trim()
+        return (name && name != 'HEAD') ? name : 'main'
+    } catch (ignored) { return 'main' }
+}
+
 def envBuildValue = { String name ->
     def value = System.getenv(name) ?: ''
     return '"' + value.replace('\\', '\\\\').replace('"', '\\"') + '"'
@@ -170,6 +180,7 @@ android {
 
         buildConfigField 'String', 'DEFAULT_MANIFEST_URL', envBuildValue('DSH_RUNTIME_MANIFEST_URL')
         buildConfigField 'String', 'DEFAULT_MANIFEST_SHA256', envBuildValue('DSH_RUNTIME_MANIFEST_SHA256')
+        buildConfigField 'String', 'WORKSPACE_BRANCH', '"' + sourceBranch().replaceAll('[^A-Za-z0-9._/-]', '') + '"'
 
         ndk {
             abiFilters (companionUiAbi ?: 'arm64-v8a')

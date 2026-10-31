@@ -82,10 +82,11 @@ object ReplyScheduler {
             val used = if (conversation.optLong("hour") == hour) conversation.optInt("hourCount") else 0
             val mode = conversation.optString("mode", "quiet")
             when {
+                // The owner talking to her in a group is answered like in private: no frequency gate, no hourly cap, and not
+                // held back by "someone was typing on her account" (that someone is usually the owner).
                 mode == "quiet" -> false
-                now - conversation.optLong("humanActivityAt") <= 120_000 -> false
-                // The owner talking to her in a group is answered like in private: no frequency gate, no hourly cap.
                 ownerToHer -> { state.gate.recordForcedTurn(clock); true }
+                now - conversation.optLong("humanActivityAt") <= 120_000 -> false
                 group && (NightQuiet.active(store) || engine.modules.activityStopped()) -> false
                 !ParticipationPolicy.nightAllows(conversation, settings, called, last.sender, java.time.LocalTime.now().hour) -> false
                 now - conversation.optLong("humanActivityAt") <= 120_000 -> false

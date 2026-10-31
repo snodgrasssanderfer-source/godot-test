@@ -27,11 +27,12 @@ class CompanionDevice(private val context: Context) {
     private val store get() = CompanionEngine.get(context).store
     fun observe(expectedPackage: String = ""): JSONObject {
         val service = DeepSeekAccessibilityService.current() ?: error("请开启 DSH 无障碍服务")
-        val result = if (expectedPackage.isBlank()) service.execute("accessibilityTree", "") else service.companionObservation(expectedPackage)
+        // The owner asking is the authorization: no prior session or whitelist for a one-off look.
+        val result = if (expectedPackage.isBlank()) service.companionScreen() else service.companionObservation(expectedPackage)
         check(result.ok) { result.text }
         val tree = JSONObject(result.text)
         val pkg = tree.getString("packageName")
-        check(if (expectedPackage.isNotBlank()) pkg == expectedPackage && CompanionOverlayService.permits(pkg) else pkg in CompanionPolicy.packages) { "当前应用不在本次观察范围内" }
+        check(expectedPackage.isBlank() || (pkg == expectedPackage && CompanionOverlayService.permits(pkg))) { "当前应用不在本次观察范围内" }
         return tree.put("observedAt", System.currentTimeMillis()).put("meaning", "当前可读界面；不等于完整视频内容")
     }
 

@@ -500,7 +500,7 @@ class CompanionEngine private constructor(private val context: Context) {
             val attempts = JSONArray()
             var used = profile
             var round = 0
-            while (round < 6) {
+            while (round < 12) {
                 checkCurrent()
                 used = if (level >= 2) flash else profile
                 val declared = if (level >= 3) JSONArray() else declarations(scope, speaker, webMode == "split" && level <= 1)
@@ -572,7 +572,7 @@ class CompanionEngine private constructor(private val context: Context) {
                     draft?.let { checkSources(epoch, sources); CompanionRouting.maybeAutoSend(context, it) }
                     return
                 }
-                check(calls.size <= 8) { "单轮工具数量超过限制" }
+                check(calls.size <= 16) { "单轮工具数量超过限制" }
                 contents.put(modelTurn)
                 val responses = JSONArray()
                 for (call in calls) {
@@ -1270,7 +1270,7 @@ class CompanionEngine private constructor(private val context: Context) {
                             .put("pointers", JSONObject().put("type", "ARRAY").put("items", JSONObject().put("type", "OBJECT")
                                 .put("properties", fields("x" to "NUMBER", "y" to "NUMBER", "toX" to "NUMBER", "toY" to "NUMBER", "startMs" to "INTEGER", "durationMs" to "INTEGER", "moveMs" to "INTEGER")))),
                         DEVICE_ACTIONS.toList()))
-                    a.put(decl("observe_screen", "读取主人已授权的当前 QQ/B站界面；不代表看过完整视频", emptyList()))
+                    a.put(decl("observe_screen", "看一眼手机当前前台的界面（主人让你看就是授权；密码框和敏感字样会被遮住，银行、支付、权限界面看不了）。读到的是界面文字，不等于看过完整视频", emptyList()))
                     a.put(decl("open_app", "打开已授权的 QQ/B站；可提供 B站 BV 号。不会登录、发送或付款", listOf("package", "videoId"), listOf("package")))
                     a.put(decl("draft_comment", "依据本次已附加或先前已分析的视频资料形成评论草稿；analysis 必须说明实际读到的内容、时间覆盖与未读部分，供主人审阅。等待本机授权，不会发送", listOf("observationId", "analysis", "body")))
                 }

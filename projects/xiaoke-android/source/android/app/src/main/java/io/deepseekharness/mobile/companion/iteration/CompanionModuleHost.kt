@@ -11,7 +11,7 @@ import org.json.JSONObject
 import org.json.JSONArray
 
 /** Process-wide bridge; no Activity or WebView ownership of durable modules. */
-class CompanionModuleHost(context: Context, private val engine: CompanionEngine, private val store: CompanionStore) : HostPorts {
+class CompanionModuleHost(private val context: Context, private val engine: CompanionEngine, private val store: CompanionStore) : HostPorts {
     val router = ModuleRouter()
     private val eventWorker = java.util.concurrent.Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "companion-events").apply { isDaemon = true } }
     private val seenEvents = linkedSetOf<String>()
@@ -203,6 +203,16 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
         // A reminder is what the owner asked for at that time: it is delivered whatever the attention mode says.
         if (reminder && scope == CompanionPolicy.OWNER) store.message(scope, "notice", "提醒：$text", "已到期的本机提醒")
         else if (reminder && principal(scope).owner) runCatching { engine.remindOverQq(scope, "提醒：$text") }
+        // On the phone too: a notification that opens the chat, wherever the reminder was set.
+        if (reminder && (scope == CompanionPolicy.OWNER || principal(scope).owner)) runCatching {
+            val manager = context.getSystemService(android.app.NotificationManager::class.java)
+            manager.createNotificationChannel(android.app.NotificationChannel("reminders", "提醒", android.app.NotificationManager.IMPORTANCE_HIGH))
+            val open = android.app.PendingIntent.getActivity(context, 840, android.content.Intent(context, io.deepseekharness.mobile.MainActivity::class.java),
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
+            manager.notify(("reminder" + id).hashCode(), android.app.Notification.Builder(context, "reminders").setSmallIcon(android.R.drawable.ic_popup_reminder)
+                .setContentTitle("${store.persona().optString("name", "小克")}提醒你").setContentText(text.take(200))
+                .setStyle(android.app.Notification.BigTextStyle().bigText(text.take(1000))).setContentIntent(open).setAutoCancel(true).build())
+        }
             .onFailure { io.deepseekharness.mobile.companion.XLog.w("reminder over QQ failed: ${it.message}") }
         router.signal("all", "job.outcome")
     }

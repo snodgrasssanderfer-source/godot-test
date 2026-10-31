@@ -31,7 +31,7 @@ export interface Snapshot {
   permissions: { accessibility: { serviceStatus: string; allowedPackages: string[] }; notificationAccess: boolean; overlay: boolean; microphone?: boolean; postNotifications?: boolean; onDeviceSpeech?: boolean; batteryExempt?: boolean; shizuku?: 'ready' | 'no_permission' | 'not_running'; androidVersion: string; abis: string[] }
 }
 export interface ClaudePermission { id: string; taskId: string; scope: string; tool: string; summary: string; at: number }
-export interface ClaudeSettings { enabled: boolean; model: string; effort: 'low' | 'medium' | 'high' | 'xhigh' | 'max'; fullAccess?: boolean }
+export interface ClaudeSettings { enabled: boolean; model: string; effort: 'low' | 'medium' | 'high' | 'xhigh' | 'max'; fullAccess?: boolean; workspaceBranch?: string }
 export interface ClaudeSnapshot { installed: string | null; settings: ClaudeSettings; permissions: ClaudePermission[]; outage: {reason: string; detail: string; until: number} | null }
 interface ClaudeWindow { utilization: number; resetsAt: number }
 export interface ClaudeStatus extends ClaudeSnapshot {
@@ -40,7 +40,7 @@ export interface ClaudeStatus extends ClaudeSnapshot {
   login: {running: boolean; checking?: boolean; exit?: number | null; output?: string; url?: string | null}
   usage: {status?: string; type?: string; updatedAt?: number; fiveHour?: ClaudeWindow; sevenDay?: ClaudeWindow; sevenDayOpus?: ClaudeWindow}
   githubConfigured?: boolean
-  workspace: {path: string; exists: boolean; repo?: string; branch?: string; job?: {phase: 'idle' | 'running' | 'done' | 'failed'; error?: string; detail?: string}}
+  workspace: {path: string; exists: boolean; projectReady?: boolean; follows?: string; repo?: string; branch?: string; job?: {phase: 'idle' | 'running' | 'done' | 'failed'; error?: string; detail?: string}}
 }
 interface Bridge {
   addListener(eventName: 'presenceState', listener: (state: PresenceState) => void): Promise<{remove(): Promise<void>}>

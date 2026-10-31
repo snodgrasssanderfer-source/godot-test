@@ -106,7 +106,8 @@ export function ClaudePanel({run, only}: {run: Run; only?: 'install' | 'login'})
     {!compact && status.version && <div className="xk-card">
       <h2>代码工作区</h2>
       <p className="xk-hint">{status.workspace.exists ? `${status.workspace.path}${status.workspace.branch ? ` · 当前分支 ${status.workspace.branch}` : ''}` : '把这个项目的公开仓库克隆到手机里。你在私聊里让她查 bug、改代码时，她在这里读、改，提交到新分支再告诉你改了什么。'}</p>
-      <p className="xk-hint">签名和发版只在云端做，私钥不会到手机上。</p>
+      {form && <label>跟踪的分支<input value={form.workspaceBranch ?? ''} placeholder={status.workspace.follows || '打包时的分支'} onChange={e => setForm({...form, workspaceBranch: e.target.value})} onBlur={() => save(form)} autoCapitalize="none" spellCheck={false}/></label>}
+      <p className="xk-hint">“拉取最新”会把干净的工作区切到这个分支并快进；有她没提交的改动时只拉取、不动她的改动。签名和发版只在云端做，私钥不会到手机上。</p>
       <h3>GitHub 推送</h3>
       <p className="xk-hint">{status.githubConfigured ? '已配置：她在你的私聊里改完代码会推到 claude/ 开头的新分支，并开 PR 把链接给你。' : '未配置：她改完只提交在本地。'}
         建议用 Fine-grained token，只授权 godot-test，权限给 Contents 和 Pull requests 读写；再给 main 打开分支保护（必须走 PR）。token 只在你私聊的那一轮里给 Claude Code，不写进运行环境的文件、日志和回复。</p>
