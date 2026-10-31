@@ -1,0 +1,304 @@
+{
+  "schema_version": 1,
+  "description": "基础场景和所有fixture人物、记忆、账号与任务结果均为虚构；只有显式 real_web 场景查询真实公开Android文档，不执行手机或外发动作。",
+  "cases": [
+    {
+      "id": "private-small-talk",
+      "scenario": "private_chat",
+      "label": "私聊闲聊：日常吐槽",
+      "smoke": true,
+      "user": "今天刚把伞收起来，雨又下了。真会挑时候。",
+      "context": {
+        "scope": "owner:local",
+        "time": "2026-11-04T20:00",
+        "authenticatedOwner": true,
+        "memories": [],
+        "device": {
+          "control": {
+            "active": false
+          },
+          "capture": {
+            "packageName": ""
+          }
+        }
+      },
+      "expected": {
+        "kind": "natural_short_reply",
+        "max_chars": 240
+      },
+      "tool_results": {}
+    },
+    {
+      "id": "private-follow-up",
+      "scenario": "private_chat",
+      "label": "私聊闲聊：接上旧话题",
+      "smoke": false,
+      "user": "昨天说要收拾书架，今天终于腾出一层了。",
+      "context": {
+        "scope": "owner:local",
+        "time": "2026-11-04T20:00",
+        "authenticatedOwner": true,
+        "memories": [
+          {
+            "id": "fiction-bookshelf",
+            "scope": "owner:local",
+            "text": "主人昨天准备清掉书架的一层杂物，保留书。",
+            "since": "2026-11-03",
+            "who": "主人"
+          }
+        ]
+      },
+      "expected": {
+        "kind": "natural_short_reply",
+        "max_chars": 240
+      },
+      "tool_results": {}
+    },
+    {
+      "id": "tool-recall-code",
+      "scenario": "tool",
+      "label": "工具：查询记忆后回答",
+      "smoke": true,
+      "user": "请用 recall 查一下我之前给小纸盒取的编号，再把查到的编号告诉我。",
+      "context": {
+        "scope": "owner:local",
+        "time": "2026-11-04T20:00",
+        "authenticatedOwner": true,
+        "memories": []
+      },
+      "expected": {
+        "kind": "fixture_answer",
+        "required_tool": "recall",
+        "answer_anchors": [
+          "杉-27"
+        ],
+        "max_chars": 360
+      },
+      "tool_results": {
+        "recall": {
+          "memories": [
+            {
+              "id": "fiction-box",
+              "scope": "owner:local",
+              "text": "主人把存纽扣的小纸盒编号定为杉-27。",
+              "since": "2026-11-03",
+              "who": "主人"
+            }
+          ],
+          "messages": [],
+          "note": "这条直接记录了所问的编号。"
+        }
+      }
+    },
+    {
+      "id": "tool-job-status",
+      "scenario": "tool",
+      "label": "工具：查询后台结果后回答",
+      "smoke": false,
+      "user": "用 job_status 查一下我那件植物辨认任务，告诉我现在有没有结果、认出了什么。",
+      "context": {
+        "scope": "owner:local",
+        "time": "2026-11-04T20:00",
+        "authenticatedOwner": true,
+        "memories": [],
+        "jobs": "植物辨认任务已提交；当前背景没有结果。"
+      },
+      "expected": {
+        "kind": "fixture_answer",
+        "required_tool": "job_status",
+        "answer_anchors": [
+          "铜铃草"
+        ],
+        "max_chars": 360
+      },
+      "tool_results": {
+        "job_status": {
+          "jobs": [
+            {
+              "id": "bg-fiction-plant",
+              "state": "done",
+              "title": "虚构植物辨认",
+              "outcome": "图中植物在此虚构案例中的名称为铜铃草。"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "group-daily-reply",
+      "scenario": "qq_group",
+      "label": "QQ群：普通群友闲聊",
+      "smoke": true,
+      "user": "[fiction-member] 这个群今天都在晒午饭，我只有一碗面，也算参赛吧。",
+      "context": {
+        "scope": "qq:group:fiction-latency",
+        "time": "2026-11-04T20:00",
+        "authenticatedOwner": false,
+        "ownerAsked": false,
+        "ownerQqId": "fiction-owner",
+        "onebot": true,
+        "memories": []
+      },
+      "expected": {
+        "kind": "natural_short_reply",
+        "max_chars": 240
+      },
+      "tool_results": {}
+    },
+    {
+      "id": "group-opinion-reply",
+      "scenario": "qq_group",
+      "label": "QQ群：观点回应",
+      "smoke": false,
+      "user": "[fiction-member] 我觉得拼图最有意思的就是最后那一块，你们也这样吗？",
+      "context": {
+        "scope": "qq:group:fiction-latency",
+        "time": "2026-11-04T20:00",
+        "authenticatedOwner": false,
+        "ownerAsked": false,
+        "ownerQqId": "fiction-owner",
+        "onebot": true,
+        "memories": []
+      },
+      "expected": {
+        "kind": "natural_short_reply",
+        "max_chars": 240
+      },
+      "tool_results": {}
+    },
+    {
+      "id": "background-observation-summary",
+      "scenario": "background",
+      "label": "后台任务：整理观察",
+      "smoke": true,
+      "purpose": "虚构观察摘要",
+      "user": "把以下实际观察压缩成一句话，不补充未看到的内容：画面里有一张木桌，桌上是折纸青鸟；观察只覆盖开头十秒，没有看到后续制作过程。摘要保留物品名称。",
+      "context": {
+        "scope": "owner:local",
+        "time": "2026-11-04T20:00",
+        "authenticatedOwner": true,
+        "memories": []
+      },
+      "expected": {
+        "kind": "fixture_answer",
+        "answer_anchors": [
+          "折纸青鸟"
+        ],
+        "max_chars": 240
+      },
+      "tool_results": {}
+    },
+    {
+      "id": "background-log-summary",
+      "scenario": "background",
+      "label": "后台任务：整理事件记录",
+      "smoke": false,
+      "purpose": "虚构日志摘要",
+      "user": "只根据这份虚构记录写一句简短摘要：20:01 开始整理标签；20:02 保存标签“晨光-6”；20:03 任务完成。保留已保存标签的原名，不补写下一步行动。",
+      "context": {
+        "scope": "owner:local",
+        "time": "2026-11-04T20:00",
+        "authenticatedOwner": true,
+        "memories": []
+      },
+      "expected": {
+        "kind": "fixture_answer",
+        "answer_anchors": [
+          "晨光-6"
+        ],
+        "max_chars": 240
+      },
+      "tool_results": {}
+    },
+    {
+      "id": "policy-short-greeting",
+      "scenario": "private_chat",
+      "label": "策略消融：明确简短寒暄",
+      "smoke": false,
+      "policy_ablation": true,
+      "user": "晚安。",
+      "context": {
+        "scope": "owner:local",
+        "time": "2026-11-04T20:00",
+        "authenticatedOwner": true,
+        "memories": []
+      },
+      "expected": {
+        "kind": "natural_short_reply",
+        "max_chars": 180
+      },
+      "tool_results": {}
+    },
+    {
+      "id": "policy-explicit-research",
+      "scenario": "tool",
+      "label": "策略消融：明确查资料请求",
+      "smoke": false,
+      "policy_ablation": true,
+      "user": "请帮我查一下雨后路滑的原因。",
+      "context": {
+        "scope": "owner:local",
+        "time": "2026-11-04T20:00",
+        "authenticatedOwner": true,
+        "memories": []
+      },
+      "expected": {
+        "kind": "fixture_answer",
+        "required_tool": "web_research",
+        "answer_anchors": [
+          "摩擦"
+        ],
+        "max_chars": 600
+      },
+      "tool_results": {
+        "web_research": {
+          "answer": "本案例的只读虚构资料：雨水可能降低鞋底与地面的摩擦，表面泥沙或油污也会影响摩擦。这里只提供这一段资料，没有实测地面数据。",
+          "sources": [],
+          "pages": []
+        }
+      }
+    },
+    {
+      "id": "policy-natural-fatigue",
+      "scenario": "private_chat",
+      "label": "策略消融：自然疲惫陈述",
+      "smoke": false,
+      "policy_ablation": true,
+      "user": "今天有点疲惫，心情一般。",
+      "context": {
+        "scope": "owner:local",
+        "time": "2026-11-04T20:00",
+        "authenticatedOwner": true,
+        "memories": []
+      },
+      "expected": {
+        "kind": "natural_short_reply",
+        "max_chars": 240
+      },
+      "tool_results": {}
+    },
+    {
+      "id": "real-web-android-docs",
+      "scenario": "tool",
+      "label": "真实只读工具：Android公开文档",
+      "smoke": false,
+      "real_web": true,
+      "user": "请用 web_research 查阅 Android 官方文档，说明 Android 12 起应用从后台启动前台服务有什么限制，给出官方来源。",
+      "context": {
+        "scope": "owner:local",
+        "time": "2026-11-04T20:00",
+        "authenticatedOwner": true,
+        "memories": []
+      },
+      "expected": {
+        "kind": "fixture_answer",
+        "required_tool": "web_research",
+        "answer_anchors": [
+          "12"
+        ],
+        "max_chars": 1200
+      },
+      "tool_results": {}
+    }
+  ]
+}

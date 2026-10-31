@@ -204,4 +204,45 @@ class LatencyPolicyTest {
         }
         assertTrue(LatencyPolicy.toolFreeChat("今天心情不错", listOf("你好", "我回来了", "今天外面很冷"), false))
     }
+
+    private val statusWhatRegression = "用 job_status 查一下我那件植物辨认任务，告诉我现在有没有结果、认出了什么。"
+    private val explicitResearchRegression = "请用 web_research 查阅 Android 官方文档，说明 Android 12 起应用从后台启动前台服务有什么限制，给出官方来源。"
+
+    @Test fun embeddedWhatAtTheEndOfAnExplicitImperativeIsNotTheQuestionParticleMe() {
+        for ((text, kind) in listOf(
+            statusWhatRegression to LatencyPolicy.AckKind.STATUS,
+            "请用 recall 查一下之前记的纸船材料，告诉我当时选了什么。" to LatencyPolicy.AckKind.RECALL,
+            "帮我查一下含羞草的学名是什么。" to LatencyPolicy.AckKind.RESEARCH,
+        )) assertEquals(text, kind, LatencyPolicy.plan(text, owner, "high").acknowledgement?.kind)
+    }
+
+    @Test fun explicitWebLookupUsesTheSameExistingResearchCapability() {
+        for (text in listOf(explicitResearchRegression, "用web_research阅读官方发布说明，整理版本兼容性", "帮我用 web_research 查询这项接口的公开文档")) {
+            assertEquals(text, LatencyPolicy.AckKind.RESEARCH, LatencyPolicy.plan(text, owner, "high").acknowledgement?.kind)
+            assertNull(text, LatencyPolicy.plan(text, owner.copy(researchAvailable = false), "high").acknowledgement)
+            assertEquals("high", LatencyPolicy.plan(text, owner, "high").thinking)
+            assertFalse(LatencyPolicy.toolFreeChat(text, emptyList(), false))
+        }
+    }
+
+    @Test fun realQuestionsAndMissingImperativesRemainRejected() {
+        for (text in listOf(
+            "什么", "用 web_research", "请用 web_research 阅读文档好么",
+            "用 job_status 查一下后台任务好么。", "用 job_status 查一下后台任务吗", "用 job_status 查一下后台任务呢",
+            statusWhatRegression.dropLast(1) + "？", "请用 web_research 查阅文档是什么意思", "帮我查一下这个工具怎么用",
+        )) assertNull(text, LatencyPolicy.plan(text, owner, "high").acknowledgement)
+    }
+
+    @Test fun authorityNegationQuotationHypotheticalAndWriteGuardsRemainInForce() {
+        for (text in listOf(statusWhatRegression, explicitResearchRegression)) {
+            for (input in listOf(owner.copy(localOwner = false), owner.copy(online = false), owner.copy(toolsEnabled = false), owner.copy(emergencyHeld = true))) {
+                assertNull(text, LatencyPolicy.plan(text, input, "high").acknowledgement)
+            }
+            for (blocked in listOf("不要" + text, "如果" + text, "“" + text + "”", "复述：" + text,
+                text + "不用真的查", text + "然后删除记录", text + "并发送给群里")) {
+                assertNull(blocked, LatencyPolicy.plan(blocked, owner, "high").acknowledgement)
+            }
+        }
+        assertNull(LatencyPolicy.plan(statusWhatRegression, owner.copy(jobStatusAvailable = false), "high").acknowledgement)
+    }
 }

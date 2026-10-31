@@ -24,9 +24,10 @@ object LatencyPolicy {
     private val withheld = Regex("不要|别|不用|不必|无需|先不|暂不|不想|不需要|不准|禁止|没让|没叫|不是让|并非让|不是要|停止|暂停|取消")
     private val hypothetical = Regex("如果|假如|要是|假设|例如|比如|举例|原文|复述|解释这句")
     private val sideEffect = Regex("(?:并且|并|然后|顺便|再|之后|接着|且)(?:帮我|替我)?(?:删除|发送|发布|保存|购买|付款|转账|点击|登录|授权|修改|覆盖)")
-    private val questionEnding = Regex("[?？]|(?:吗|么|呢|嘛|什么意思|怎么用|如何使用|是否有用|有没有用)[。！!]*$")
+    private val questionEnding = Regex("[?？]|(?:吗|(?<!什)么|呢|嘛|什么意思|怎么用|如何使用|是否有用|有没有用)[。！!]*$")
     private val requestPrefix = "(?:请(?:帮我)?|麻烦(?:你)?|帮我|替我)"
     private val readVerb = "(?:查一下|查一查|查查|查找|查询|搜索|查看|看一下|看看)"
+    private val explicitResearch = Regex("^(?:$requestPrefix)?用\\s*web_research\\s*(?:$readVerb|查阅|阅读).{2,120}$")
     private val explicitRecall = Regex("^(?:$requestPrefix)?用\\s*recall\\s*$readVerb.{2,120}$")
     private val pastRecall = Regex("^$requestPrefix(?:翻一下|翻一翻|翻翻|查一下|查一查|查查|找一下|找找)(?:我(?:们)?(?:的)?)?(?:之前|上次|以前|先前|昨天|前天)(?:的)?(?:记录|聊天记录|聊天|对话|消息|记忆).{0,120}$")
     private val explicitStatus = Regex("^(?:$requestPrefix)?用\\s*job_status\\s*$readVerb.{0,120}$")
@@ -122,6 +123,8 @@ object LatencyPolicy {
                 if (input.recallAvailable) acknowledgement(AckKind.RECALL) else null
             explicitStatus.matches(command) || taskStatus.matches(command) ->
                 if (input.jobStatusAvailable) acknowledgement(AckKind.STATUS) else null
+            explicitResearch.matches(command) ->
+                if (input.researchAvailable) acknowledgement(AckKind.RESEARCH) else null
             input.researchAvailable && research.matches(command) ->
                 acknowledgement(AckKind.RESEARCH)
             input.screenObservationAuthorized && screen.matches(command) ->
