@@ -1,8 +1,9 @@
 # 现状
 
-版本 0.12.0（versionCode 14），用固定签名，带完整 PRoot/Ubuntu 运行环境的 debug 包约 421 MiB。**还没装到真机上跑过**，下面写的都是代码层面的状态。
+版本 0.13.0（versionCode 15），用固定签名，带完整 PRoot/Ubuntu 运行环境的 debug 包约 421 MiB（Claude Code 首次使用时下载，不在包里）。**还没装到真机上跑过**，下面写的都是代码层面的状态。
 
 ## 已经有的
+- Claude：官方 linux-arm64 Claude Code 跑在 DSH 的 Ubuntu（PRoot）里，签名和 sha256 都校验过；主人的私聊和交代的事、主人打开的群由它回复，其余用 Gemini，Claude 不可用时也换 Gemini。小克的能力通过只在本机的 MCP 交给它；改文件和跑命令要主人允许。详见 docs/CLAUDE_CODE.md。
 - 后台任务（看B站、读专栏、上网查、提醒、整理）有结果记录 BackgroundJobs，挂在发起的会话上，下一轮告诉她，job_status 可查；B站风控明确报出。
 - 模型：失败时同模型重试一次 → flash（不带联网工具）→ 不带工具；includeThoughts:true 加正文兜底过滤；换模型时历史保留工具摘要、旧签名换占位。
 - QQ 桥读心跳和 get_status，掉线在 App 和悬浮球提示；App 启动时拉起常驻服务。

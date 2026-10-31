@@ -110,6 +110,9 @@ class CompanionEngine private constructor(private val context: Context) {
         store.cancelTask(id)
     }
 
+    /** Pause, going offline and "cancel" also stop Claude turns, which run outside the Gemini lease. */
+    fun cancelClaudeTurns() = claudeTurns.keys.toList().forEach(::cancel)
+
     private fun beginModelTask(id: String, owner: Boolean = true) = synchronized(modelLease) {
         activeTask = id; activeOwner = owner; model.reset()
         if (!owner && worker.hasOwnerWaiting()) { preempted.add(id); model.cancel() }
