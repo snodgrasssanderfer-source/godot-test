@@ -87,7 +87,9 @@ class ClaudeTurn(private val runtime: ClaudeRuntime, val id: String) {
                     if (stuck.get().isNotEmpty()) { XLog.w("claude turn $id: ${stuck.get()}"); started.destroyForcibly() }
                 } catch (_: InterruptedException) {}
             }, "claude-watchdog").apply { isDaemon = true; start() }
-            started.inputStream.bufferedReader(Charsets.UTF_8).useLines { lines ->
+            // cancel() and the watchdog end the process from another thread, which closes stdout under this read and throws
+            // "read interrupted by close()". That is the stop we asked for, not a failure: fall through to the outcome below.
+            try { started.inputStream.bufferedReader(Charsets.UTF_8).useLines { lines ->
                 for (line in lines) {
                     if (cancelled.get()) break
                     when (val event = ClaudeStream.parse(line)) {
@@ -109,6 +111,8 @@ class ClaudeTurn(private val runtime: ClaudeRuntime, val id: String) {
                         ClaudeStream.Ignored -> Unit
                     }
                 }
+            } } catch (e: java.io.IOException) {
+                if (!cancelled.get() && stuck.get().isEmpty()) throw e
             }
             runCatching { stdin.close() }
             if (!started.waitFor(5, TimeUnit.SECONDS)) started.destroyForcibly()
