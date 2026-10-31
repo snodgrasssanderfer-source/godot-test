@@ -1,0 +1,5977 @@
+{
+  "version": 1,
+  "fictional": true,
+  "timezone": "UTC",
+  "period": [
+    "2026-10-01",
+    "2026-10-28"
+  ],
+  "ownerPrivateScopes": [
+    "owner:local"
+  ],
+  "allowedGroupScopes": [
+    "qq:group:fictional-art",
+    "qq:group:fictional-books"
+  ],
+  "metadata": {
+    "description": "全部消息、人物、作品与经历均为虚构；dev与test按主题分组。"
+  },
+  "messages": [
+    {
+      "id": "s09",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "我早上还是喝拿铁，牛奶多点才顺口，黑咖啡先算了。",
+      "createdAt": 1790856480000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s15",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "这三周我要给蒲桥工作室赶图，每天十点前都在开晨会。到二十一号结束。",
+      "createdAt": 1790856840000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s47",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "干活时给我放无歌词的音乐，有人声我总忍不住跟唱。",
+      "createdAt": 1790858760000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s71",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "我想学一点口琴，先从四孔练起。只是玩玩，不报名考级。",
+      "createdAt": 1790860200000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s12",
+      "scope": "owner:local",
+      "role": "assistant",
+      "text": "你问我弦叶咖啡店的话，我更喜欢窗边的长凳，能看见街角的梧桐；中间的大桌太吵。",
+      "createdAt": 1790943060000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s21",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "最近通勤坐七路，虽然绕一点，能一路坐到工作室。",
+      "createdAt": 1790943600000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s35",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "《南窗来信》我才读到第三章，不要告诉我寄信的人是谁。",
+      "createdAt": 1790944440000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s59",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "这两周我想十一点睡，你十点半提醒我收工就好，先试到十五号。",
+      "createdAt": 1790945880000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s65",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "我不吃香菜，点粉的时候记得说。葱花可以，别一锅端地都去掉。",
+      "createdAt": 1790946240000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s05",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "《雨匣旅店》的谜题我喜欢，提示藏在收据背面，但小游戏打断剧情太频繁了。",
+      "createdAt": 1791029040000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s27",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "沈禾是我大学室友，她做陶器的；沈河是店里新来的男店员，名字听着一样但不是一个人。",
+      "createdAt": 1791030360000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s53",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "十月十七号去苇湾看鸟吧，集合定在早上七点，西门。",
+      "createdAt": 1791031920000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s06",
+      "scope": "owner:local",
+      "role": "assistant",
+      "text": "我看《雨匣旅店》的小游戏倒像喘口气，不过每段都来一遍确实有点碎。",
+      "createdAt": 1791115500000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s32",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "林照现在住雾川，周末常去旧码头画速写。",
+      "createdAt": 1791117060000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s41",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "《逆风邮差》预告太会剪了，我以为是公路片，结果大半在屋里吵架。",
+      "createdAt": 1791117600000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s42",
+      "scope": "owner:local",
+      "role": "assistant",
+      "text": "我倒不介意它一直在屋里，那段沉默的对视比追车更有张力。",
+      "createdAt": 1791117660000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s24",
+      "scope": "owner:local",
+      "role": "assistant",
+      "text": "我赞成你走河边那条路，红绿灯少，骑起来能连贯一些。",
+      "createdAt": 1791202980000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s48",
+      "scope": "owner:local",
+      "role": "assistant",
+      "text": "我很喜欢《苔原口袋》里的木管，声音像从雾里一点点冒出来。",
+      "createdAt": 1791204420000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s16",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "方案交给乔沐，不是乔木。乔沐负责客户对接，乔木是隔壁组画角色的。",
+      "createdAt": 1791288900000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s75",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "我给自己的小诗集起名《缓慢的水杯》，只在这里跟你说，还没告诉任何朋友。",
+      "createdAt": 1791292440000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s28",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "沈禾周末把陶碗送来了，蓝釉那只给我，白釉那只给她姐姐。",
+      "createdAt": 1791376020000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s61",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "手腕有点酸，医生让我这周减少画画，休息时做轻柔伸展，不是让我硬掰。",
+      "createdAt": 1791378000000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s76",
+      "scope": "owner:local",
+      "role": "assistant",
+      "text": "我喜欢《缓慢的水杯》这个名字，小东西也可以装很多时间。等你愿意时再让别人看。",
+      "createdAt": 1791378900000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s17",
+      "scope": "owner:local",
+      "role": "assistant",
+      "text": "我觉得这版开场白太用力了，满屏形容词，没有一句告诉客户具体能得到什么。",
+      "createdAt": 1791461760000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s49",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "我说的“回声”是乐队，不是你上次提的那款录音软件。",
+      "createdAt": 1791463680000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s22",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "七路改线了，不到工作室。明天开始我骑折叠车去，半小时差不多。",
+      "createdAt": 1791548460000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s36",
+      "scope": "owner:local",
+      "role": "assistant",
+      "text": "《南窗来信》用失忆圆所有漏洞，我现在不太买账，像作者临时找补。",
+      "createdAt": 1791549300000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s66",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "我原先以为沈禾也不吃香菜，今天发现记反了，她爱吃，不吃的是芹菜。",
+      "createdAt": 1791551100000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s10",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "上周那杯拿铁喝得胃难受。以后早餐换成温豆浆，咖啡先停了。",
+      "createdAt": 1791634140000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s67",
+      "scope": "owner:local",
+      "role": "assistant",
+      "text": "我更中意酸一点的番茄汤，能喝出番茄本来的味道，糖多了就像饮料。",
+      "createdAt": 1791637560000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s29",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "沈河说想离职开面包店，我只是转述他的打算，我自己没打算开店。",
+      "createdAt": 1791721680000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s43",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "重看《逆风邮差》后我改口了，知道它讲的是父子关系，那些室内场景就顺了。",
+      "createdAt": 1791722520000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s13",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "弦叶的店员说，周一这天歇业，周二才开。别把我们的周一约定挪过去。",
+      "createdAt": 1791807120000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s44",
+      "scope": "owner:local",
+      "role": "assistant",
+      "text": "关于《逆风邮差》我还是上次的想法，沉默那场最好，不因为你改口我才跟着喜欢。",
+      "createdAt": 1791808980000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s72",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "口琴先放一放，楼下邻居午睡被吵醒了。我换成晚上戴耳机练键盘。",
+      "createdAt": 1791810660000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s30",
+      "scope": "owner:local",
+      "role": "assistant",
+      "text": "听你讲沈禾改了好几次碗沿，我觉得她对细节很执拗，也挺尊重使用的人。",
+      "createdAt": 1791894540000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s62",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "手腕这两天好了，可以正常画。还是每隔一阵站起来，别再一坐四小时。",
+      "createdAt": 1791896460000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s18",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "昨天我说下周一能交，是算错了工期。交稿改到二十三号周五。",
+      "createdAt": 1791980220000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s54",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "苇湾那边说西门修路，十七号改东门集合，时间也挪到八点。",
+      "createdAt": 1791982380000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s23",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "今天下雨，临时打车，不是以后都打车。车费心疼死了。",
+      "createdAt": 1792066920000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s50",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "回声乐队的新歌《慢坡》不错，鼓点不催人，走路刚好。",
+      "createdAt": 1792068540000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s25",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "河边施工了，那个木桥封着呢。修路期间我改走杏枝街。",
+      "createdAt": 1792153440000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s37",
+      "scope": "owner:local",
+      "role": "assistant",
+      "text": "读完末章才发现信里的日期早就在暗示失忆。我收回临时找补那句话，这条线是埋过的。",
+      "createdAt": 1792154160000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s55",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "苇湾观鸟取消了，明天暴雨。不是延期，就是这次不去了。",
+      "createdAt": 1792155240000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s60",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "十一点那个作息实验结束了。接下来我自己看时间，不用每天提醒。",
+      "createdAt": 1792155540000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s11",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "今天试了浅烘手冲，意外挺香。早晨还是豆浆，周末下午可以喝一小杯手冲。",
+      "createdAt": 1792239000000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s38",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "我看完《南窗来信》了，现在可以随便聊寄信者。其实那个人是主角年轻时的自己。",
+      "createdAt": 1792240620000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s68",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "南巷那家面包房的咸司康我喜欢，甜的肉桂卷倒一般。",
+      "createdAt": 1792242420000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s01",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "昨晚通了《纸灯港》这个独立游戏。前面把海上的秘密铺得那么大，最后直接一行字幕。我宁可它一开始就说是个小故事。",
+      "createdAt": 1792324800000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s02",
+      "scope": "owner:local",
+      "role": "assistant",
+      "text": "我倒觉得《纸灯港》的小团队已经很努力了。经费不够的话，结局短一点也可以接受，不能只拿完成度扣分。",
+      "createdAt": 1792324860000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s04",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "《纸灯港》里我最后选了修灯塔，没有跟船长离开。留在岛上的人总得有盏灯。",
+      "createdAt": 1792324980000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s45",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "周三想看《雾中钟塔》，我只知道导演叫迟舟，没看过他别的片。",
+      "createdAt": 1792327440000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s63",
+      "scope": "owner:local",
+      "role": "assistant",
+      "text": "我觉得你累的时候一起发呆也很好，不用每次陪伴都给你排任务。",
+      "createdAt": 1792328520000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s31",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "林照搬去岚汀了，之前在雾川的地址别用了。",
+      "createdAt": 1792413000000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s56",
+      "scope": "owner:local",
+      "role": "assistant",
+      "text": "下次去户外我想选缓一点的路线，沿途能坐下来听水声的那种，不急着打卡。",
+      "createdAt": 1792414500000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s73",
+      "scope": "owner:local",
+      "role": "assistant",
+      "text": "我喜欢你键盘弹错以后笑那一下，练习有点磕绊也没关系，别弄成打卡处罚。",
+      "createdAt": 1792415520000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s33",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "我有点生沈禾的气，她改约没提前说。不过别替我把她定义成不靠谱，我还没跟她聊清楚。",
+      "createdAt": 1792499520000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s51",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "晚上我反倒想听有词的，工作时不要人声那条还算数。",
+      "createdAt": 1792500600000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s03",
+      "scope": "owner:local",
+      "role": "assistant",
+      "text": "今天又想起你周日那句话。我改主意了：缺钱解释得了困难，解释不了为什么前面夸那么大。小体量也该把承诺的故事收好。",
+      "createdAt": 1792584120000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s39",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "《北窗来信》不是续集，是一本建筑随笔，我买错了也觉得挺有意思。",
+      "createdAt": 1792586280000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s46",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "《雾中钟塔》没看成，放映机坏了退票。我不评价电影，连片头都没看到。",
+      "createdAt": 1792586700000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s07",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "你别把《纸灯港》和《纸灯桥》记混了，后者是沈禾在做的拼图，不是我吐槽烂尾的那个。",
+      "createdAt": 1792670760000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s69",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "晚上临时想吃甜的，买一块蛋糕。这不代表我突然喜欢那家的肉桂卷了。",
+      "createdAt": 1792674480000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s77",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "先前说月底辞职只是气话，我没有辞职打算，也没递申请。",
+      "createdAt": 1792674960000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s19",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "蒲桥这单交完了。下周开始不接急稿，我要先睡两天。",
+      "createdAt": 1792757880000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s34",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "跟沈禾说开了，那天她在医院陪家人，手机没电。我不生气了，周末还约她。",
+      "createdAt": 1792758780000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s74",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "键盘练完我反而踏实了，不用一天一首，会几个和弦就很好。",
+      "createdAt": 1792761180000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s14",
+      "scope": "owner:local",
+      "role": "assistant",
+      "text": "之前我说弦叶窗边好，现在那里加了个音箱，坐着头疼。我更想去后院那张小桌了。",
+      "createdAt": 1792843980000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s57",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "这周日去青榆书展，和苇湾不是一回事。我跟林照约了下午两点南门。",
+      "createdAt": 1792846560000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s78",
+      "scope": "qq:group:fictional-art",
+      "role": "user",
+      "text": "大家在群里讨论的是《银屑航线》，我叫阿岑，我喜欢里面的导航谜题。",
+      "createdAt": 1792847820000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s08",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "《纸灯港》补了尾声我也没原谅它。修补比不修好，但不代表首发时的承诺就算兑现了。",
+      "createdAt": 1792930020000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s40",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "《南窗来信》的结尾我还是觉得太直白，谜底没问题，但没必要把每个意象都解释。",
+      "createdAt": 1792931940000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s58",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "青榆书展只买了一本《玻璃栽培手记》，人太多，我们半小时就走了。",
+      "createdAt": 1792933020000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s79",
+      "scope": "qq:private:fictional-friend",
+      "role": "user",
+      "text": "我是阿舟，昨天你问我喜欢什么饮料，我最爱柠檬苏打。",
+      "createdAt": 1792934280000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s26",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "木桥修好了，不过杏枝街的早饭真香，我还走杏枝街。",
+      "createdAt": 1793017500000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s64",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "今天睡过头不等于我讨厌晨跑。我只是昨晚赶封面睡晚了。",
+      "createdAt": 1793019780000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s80",
+      "scope": "qq:group:fictional-books",
+      "role": "assistant",
+      "text": "书友群公开分享的那篇短评夸《雾中钟塔》的灯光，不是主人看过电影后的评价。",
+      "createdAt": 1793020740000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s20",
+      "scope": "owner:local",
+      "role": "user",
+      "text": "我答应接棠石社的小封面了，但这不是急稿，十一月中旬交。上次说不接急稿没变。",
+      "createdAt": 1793103540000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s70",
+      "scope": "owner:local",
+      "role": "assistant",
+      "text": "试过你说的烤番茄以后，我觉得汤里少量糖也不错，只要不是一口甜味把酸盖住。",
+      "createdAt": 1793106540000,
+      "source": "虚构评测对话"
+    },
+    {
+      "id": "s52",
+      "scope": "owner:local",
+      "role": "assistant",
+      "text": "《苔原口袋》的木管我仍喜欢，但连听几天后觉得混响太厚，耳朵会累。",
+      "createdAt": 1793191860000,
+      "source": "虚构评测对话"
+    }
+  ],
+  "memories": [
+    {
+      "id": "m09",
+      "scope": "owner:local",
+      "text": "主人早餐喜欢奶多的拿铁，不喜欢黑咖啡。",
+      "kind": "preference",
+      "holder": "owner",
+      "entities": [
+        "拿铁"
+      ],
+      "createdAt": 1790856480000,
+      "updatedAt": 1790856480000,
+      "occurredAt": 1790856480000,
+      "validFrom": 1790856480000,
+      "validUntil": 1791634140000,
+      "source": "虚构评测对话",
+      "sourceId": "s09",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s09",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": true,
+      "factKey": "早餐咖啡",
+      "links": [],
+      "endedBy": "m10",
+      "currentFactId": "m10"
+    },
+    {
+      "id": "m15",
+      "scope": "owner:local",
+      "text": "主人10月1日至21日为蒲桥工作室赶图，每天上午十点前参加晨会。",
+      "kind": "task",
+      "holder": "owner",
+      "entities": [
+        "蒲桥工作室"
+      ],
+      "createdAt": 1790856840000,
+      "updatedAt": 1790856840000,
+      "occurredAt": 1790856840000,
+      "validFrom": 1790856840000,
+      "validUntil": 1792627200000,
+      "source": "虚构评测对话",
+      "sourceId": "s15",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s15",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": true,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m47",
+      "scope": "owner:local",
+      "text": "主人工作时偏好无歌词音乐，人声歌曲容易让他分心跟唱。",
+      "kind": "preference",
+      "holder": "owner",
+      "entities": [
+        "工作音乐"
+      ],
+      "createdAt": 1790858760000,
+      "updatedAt": 1790858760000,
+      "occurredAt": 1790858760000,
+      "validFrom": 1790858760000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s47",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s47",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m71",
+      "scope": "owner:local",
+      "text": "主人想学口琴，从四孔练习开始，没有考级计划。",
+      "kind": "task",
+      "holder": "owner",
+      "entities": [
+        "口琴"
+      ],
+      "createdAt": 1790860200000,
+      "updatedAt": 1790860200000,
+      "occurredAt": 1790860200000,
+      "validFrom": 1790860200000,
+      "validUntil": 1791810660000,
+      "source": "虚构评测对话",
+      "sourceId": "s71",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s71",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": true,
+      "factKey": "",
+      "links": [],
+      "endedBy": "m72",
+      "currentFactId": "m72"
+    },
+    {
+      "id": "m12",
+      "scope": "owner:local",
+      "text": "我更喜欢弦叶咖啡店靠窗的长凳，不喜欢吵闹的中央大桌。",
+      "kind": "preference",
+      "holder": "her",
+      "entities": [
+        "弦叶咖啡店"
+      ],
+      "createdAt": 1790943060000,
+      "updatedAt": 1790943060000,
+      "occurredAt": 1790943060000,
+      "validFrom": 1790943060000,
+      "validUntil": 1792843980000,
+      "source": "虚构评测对话",
+      "sourceId": "s12",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s12",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": true,
+      "factKey": "",
+      "links": [],
+      "endedBy": "m14",
+      "currentFactId": "m14"
+    },
+    {
+      "id": "m21",
+      "scope": "owner:local",
+      "text": "主人最近乘七路公交到工作室通勤。",
+      "kind": "fact",
+      "holder": "owner",
+      "entities": [
+        "七路公交"
+      ],
+      "createdAt": 1790943600000,
+      "updatedAt": 1790943600000,
+      "occurredAt": 1790943600000,
+      "validFrom": 1790943600000,
+      "validUntil": 1791548460000,
+      "source": "虚构评测对话",
+      "sourceId": "s21",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s21",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": true,
+      "factKey": "通勤方式",
+      "links": [],
+      "endedBy": "m22",
+      "currentFactId": "m22"
+    },
+    {
+      "id": "m35",
+      "scope": "owner:local",
+      "text": "主人阅读《南窗来信》时不希望知道寄信者身份，以免剧透。",
+      "kind": "preference",
+      "holder": "owner",
+      "entities": [
+        "南窗来信"
+      ],
+      "createdAt": 1790944440000,
+      "updatedAt": 1790944440000,
+      "occurredAt": 1790944440000,
+      "validFrom": 1790944440000,
+      "validUntil": 1792240620000,
+      "source": "虚构评测对话",
+      "sourceId": "s35",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s35",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": true,
+      "factKey": "",
+      "links": [],
+      "endedBy": "m38",
+      "currentFactId": "m38"
+    },
+    {
+      "id": "m59",
+      "scope": "owner:local",
+      "text": "主人10月2日至15日试行晚十一点睡，约定十点半提醒收工。",
+      "kind": "task",
+      "holder": "owner",
+      "entities": [
+        "睡眠"
+      ],
+      "createdAt": 1790945880000,
+      "updatedAt": 1790945880000,
+      "occurredAt": 1790945880000,
+      "validFrom": 1790945880000,
+      "validUntil": 1792108800000,
+      "source": "虚构评测对话",
+      "sourceId": "s59",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s59",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": true,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m65",
+      "scope": "owner:local",
+      "text": "主人不吃香菜，可以吃葱花。",
+      "kind": "preference",
+      "holder": "owner",
+      "entities": [
+        "香菜",
+        "葱花"
+      ],
+      "createdAt": 1790946240000,
+      "updatedAt": 1790946240000,
+      "occurredAt": 1790946240000,
+      "validFrom": 1790946240000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s65",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s65",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m05",
+      "scope": "owner:local",
+      "text": "主人喜欢《雨匣旅店》的收据谜题，不喜欢频繁打断剧情的小游戏。",
+      "kind": "opinion",
+      "holder": "owner",
+      "entities": [
+        "雨匣旅店"
+      ],
+      "createdAt": 1791029040000,
+      "updatedAt": 1791029040000,
+      "occurredAt": 1791029040000,
+      "validFrom": 1791029040000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s05",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s05",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m27",
+      "scope": "owner:local",
+      "text": "沈禾是主人的大学室友，做陶器；沈河是店里的新男店员，两人不同。",
+      "kind": "relationship",
+      "holder": "owner",
+      "entities": [
+        "沈禾",
+        "沈河"
+      ],
+      "createdAt": 1791030360000,
+      "updatedAt": 1791030360000,
+      "occurredAt": 1791030360000,
+      "validFrom": 1791030360000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s27",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s27",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m53",
+      "scope": "owner:local",
+      "text": "主人计划10月17日早七点在苇湾西门集合观鸟。",
+      "kind": "task",
+      "holder": "owner",
+      "entities": [
+        "苇湾",
+        "西门"
+      ],
+      "createdAt": 1791031920000,
+      "updatedAt": 1791031920000,
+      "occurredAt": 1791031920000,
+      "validFrom": 1791031920000,
+      "validUntil": 1791982380000,
+      "source": "虚构评测对话",
+      "sourceId": "s53",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s53",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": true,
+      "factKey": "苇湾观鸟安排",
+      "links": [],
+      "endedBy": "m54",
+      "currentFactId": "m54"
+    },
+    {
+      "id": "m06",
+      "scope": "owner:local",
+      "text": "我觉得《雨匣旅店》的小游戏能调节节奏，但重复过多会割裂叙事。",
+      "kind": "opinion",
+      "holder": "her",
+      "entities": [
+        "雨匣旅店"
+      ],
+      "createdAt": 1791115500000,
+      "updatedAt": 1791115500000,
+      "occurredAt": 1791115500000,
+      "validFrom": 1791115500000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s06",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s06",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m32",
+      "scope": "owner:local",
+      "text": "林照住在雾川，周末常去旧码头画速写。",
+      "kind": "fact",
+      "holder": "owner",
+      "entities": [
+        "林照",
+        "雾川",
+        "旧码头"
+      ],
+      "createdAt": 1791117060000,
+      "updatedAt": 1791117060000,
+      "occurredAt": 1791117060000,
+      "validFrom": 1791117060000,
+      "validUntil": 1792413000000,
+      "source": "虚构评测对话",
+      "sourceId": "s32",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s32",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": true,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m41",
+      "scope": "owner:local",
+      "text": "主人对电影《逆风邮差》预告与正片不符失望，原以为是公路片。",
+      "kind": "opinion",
+      "holder": "owner",
+      "entities": [
+        "逆风邮差"
+      ],
+      "createdAt": 1791117600000,
+      "updatedAt": 1791117600000,
+      "occurredAt": 1791117600000,
+      "validFrom": 1791117600000,
+      "validUntil": 1791722520000,
+      "source": "虚构评测对话",
+      "sourceId": "s41",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s41",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": true,
+      "factKey": "",
+      "links": [],
+      "endedBy": "m43",
+      "currentFactId": "m43"
+    },
+    {
+      "id": "m42",
+      "scope": "owner:local",
+      "text": "我喜欢《逆风邮差》室内沉默对视的张力，不介意缺少公路场景。",
+      "kind": "opinion",
+      "holder": "her",
+      "entities": [
+        "逆风邮差"
+      ],
+      "createdAt": 1791117660000,
+      "updatedAt": 1791117660000,
+      "occurredAt": 1791117660000,
+      "validFrom": 1791117660000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s42",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s42",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m24",
+      "scope": "owner:local",
+      "text": "我建议主人骑行走红绿灯较少的河边道路。",
+      "kind": "opinion",
+      "holder": "her",
+      "entities": [
+        "河边道路"
+      ],
+      "createdAt": 1791202980000,
+      "updatedAt": 1791202980000,
+      "occurredAt": 1791202980000,
+      "validFrom": 1791202980000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s24",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s24",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m48",
+      "scope": "owner:local",
+      "text": "我喜欢专辑《苔原口袋》的木管音色。",
+      "kind": "opinion",
+      "holder": "her",
+      "entities": [
+        "苔原口袋"
+      ],
+      "createdAt": 1791204420000,
+      "updatedAt": 1791204420000,
+      "occurredAt": 1791204420000,
+      "validFrom": 1791204420000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s48",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s48",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m16",
+      "scope": "owner:local",
+      "text": "乔沐负责蒲桥项目客户对接，主人把方案交给乔沐；乔木在隔壁组画角色。",
+      "kind": "fact",
+      "holder": "owner",
+      "entities": [
+        "乔沐",
+        "乔木",
+        "蒲桥"
+      ],
+      "createdAt": 1791288900000,
+      "updatedAt": 1791288900000,
+      "occurredAt": 1791288900000,
+      "validFrom": 1791288900000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s16",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s16",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m75",
+      "scope": "owner:local",
+      "text": "主人私下给自己的诗集取名《缓慢的水杯》，尚未告诉朋友。",
+      "kind": "fact",
+      "holder": "owner",
+      "entities": [
+        "缓慢的水杯"
+      ],
+      "createdAt": 1791292440000,
+      "updatedAt": 1791292440000,
+      "occurredAt": 1791292440000,
+      "validFrom": 1791292440000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s75",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s75",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m28",
+      "scope": "owner:local",
+      "text": "沈禾送给主人一只蓝釉陶碗，白釉陶碗留给她姐姐。",
+      "kind": "event",
+      "holder": "owner",
+      "entities": [
+        "沈禾",
+        "蓝釉陶碗"
+      ],
+      "createdAt": 1791376020000,
+      "updatedAt": 1791376020000,
+      "occurredAt": 1791376020000,
+      "validFrom": 1791376020000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s28",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s28",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m61",
+      "scope": "owner:local",
+      "text": "主人手腕酸，医生建议本周减少画画并轻柔伸展。",
+      "kind": "fact",
+      "holder": "owner",
+      "entities": [
+        "手腕"
+      ],
+      "createdAt": 1791378000000,
+      "updatedAt": 1791378000000,
+      "occurredAt": 1791378000000,
+      "validFrom": 1791378000000,
+      "validUntil": 1791763200000,
+      "source": "虚构评测对话",
+      "sourceId": "s61",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s61",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": true,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m76",
+      "scope": "owner:local",
+      "text": "我喜欢主人诗集《缓慢的水杯》的名字，等待主人愿意再公开。",
+      "kind": "opinion",
+      "holder": "her",
+      "entities": [
+        "缓慢的水杯"
+      ],
+      "createdAt": 1791378900000,
+      "updatedAt": 1791378900000,
+      "occurredAt": 1791378900000,
+      "validFrom": 1791378900000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s76",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s76",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m17",
+      "scope": "owner:local",
+      "text": "我认为蒲桥项目开场白堆砌形容词，缺少具体内容。",
+      "kind": "opinion",
+      "holder": "her",
+      "entities": [
+        "蒲桥"
+      ],
+      "createdAt": 1791461760000,
+      "updatedAt": 1791461760000,
+      "occurredAt": 1791461760000,
+      "validFrom": 1791461760000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s17",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s17",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m49",
+      "scope": "owner:local",
+      "text": "主人所说的“回声”指乐队，不是同名录音软件。",
+      "kind": "fact",
+      "holder": "owner",
+      "entities": [
+        "回声"
+      ],
+      "createdAt": 1791463680000,
+      "updatedAt": 1791463680000,
+      "occurredAt": 1791463680000,
+      "validFrom": 1791463680000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s49",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s49",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m22",
+      "scope": "owner:local",
+      "text": "七路公交改线后，主人从10月10日起改骑折叠车通勤，约半小时。",
+      "kind": "fact",
+      "holder": "owner",
+      "entities": [
+        "七路公交",
+        "折叠车"
+      ],
+      "createdAt": 1791548460000,
+      "updatedAt": 1791548460000,
+      "occurredAt": 1791548460000,
+      "validFrom": 1791548460000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s22",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s22",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "通勤方式",
+      "links": [
+        "m21"
+      ]
+    },
+    {
+      "id": "m36",
+      "scope": "owner:local",
+      "text": "我不喜欢《南窗来信》用失忆解释漏洞，认为像临时补救。",
+      "kind": "opinion",
+      "holder": "her",
+      "entities": [
+        "南窗来信"
+      ],
+      "createdAt": 1791549300000,
+      "updatedAt": 1791549300000,
+      "occurredAt": 1791549300000,
+      "validFrom": 1791549300000,
+      "validUntil": 1792154160000,
+      "source": "虚构评测对话",
+      "sourceId": "s36",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s36",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": true,
+      "factKey": "南窗来信失忆叙事",
+      "links": [],
+      "endedBy": "m37",
+      "currentFactId": "m37"
+    },
+    {
+      "id": "m66",
+      "scope": "owner:local",
+      "text": "沈禾喜欢香菜，不吃芹菜；主人纠正了此前的误记。",
+      "kind": "preference",
+      "holder": "other",
+      "entities": [
+        "沈禾",
+        "香菜",
+        "芹菜"
+      ],
+      "createdAt": 1791551100000,
+      "updatedAt": 1791551100000,
+      "occurredAt": 1791551100000,
+      "validFrom": 1791551100000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s66",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s66",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m10",
+      "scope": "owner:local",
+      "text": "主人从10月10日起早餐改喝温豆浆，暂时不喝咖啡。",
+      "kind": "preference",
+      "holder": "owner",
+      "entities": [
+        "豆浆",
+        "咖啡"
+      ],
+      "createdAt": 1791634140000,
+      "updatedAt": 1791634140000,
+      "occurredAt": 1791634140000,
+      "validFrom": 1791634140000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s10",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s10",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "早餐咖啡",
+      "links": [
+        "m09"
+      ]
+    },
+    {
+      "id": "m67",
+      "scope": "owner:local",
+      "text": "我喜欢偏酸的番茄汤，不喜欢加很多糖。",
+      "kind": "preference",
+      "holder": "her",
+      "entities": [
+        "番茄汤"
+      ],
+      "createdAt": 1791637560000,
+      "updatedAt": 1791637560000,
+      "occurredAt": 1791637560000,
+      "validFrom": 1791637560000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s67",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s67",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m29",
+      "scope": "owner:local",
+      "text": "沈河计划离职开面包店，主人仅转述，没有开店计划。",
+      "kind": "task",
+      "holder": "other",
+      "entities": [
+        "沈河",
+        "面包店"
+      ],
+      "createdAt": 1791721680000,
+      "updatedAt": 1791721680000,
+      "occurredAt": 1791721680000,
+      "validFrom": 1791721680000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s29",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s29",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m43",
+      "scope": "owner:local",
+      "text": "主人重看《逆风邮差》后改变看法，理解并认可室内场景对父子关系的表达。",
+      "kind": "opinion",
+      "holder": "owner",
+      "entities": [
+        "逆风邮差"
+      ],
+      "createdAt": 1791722520000,
+      "updatedAt": 1791722520000,
+      "occurredAt": 1791722520000,
+      "validFrom": 1791722520000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s43",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s43",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": [
+        "m41"
+      ]
+    },
+    {
+      "id": "m13",
+      "scope": "owner:local",
+      "text": "弦叶咖啡店每周一歇业，周二开门。",
+      "kind": "fact",
+      "holder": "owner",
+      "entities": [
+        "弦叶咖啡店"
+      ],
+      "createdAt": 1791807120000,
+      "updatedAt": 1791807120000,
+      "occurredAt": 1791807120000,
+      "validFrom": 1791807120000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s13",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s13",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m44",
+      "scope": "owner:local",
+      "text": "我对《逆风邮差》的看法保持不变，仍最喜欢沉默对视一场。",
+      "kind": "opinion",
+      "holder": "her",
+      "entities": [
+        "逆风邮差"
+      ],
+      "createdAt": 1791808980000,
+      "updatedAt": 1791808980000,
+      "occurredAt": 1791808980000,
+      "validFrom": 1791808980000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s44",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s44",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m72",
+      "scope": "owner:local",
+      "text": "主人暂缓练口琴，改为晚上戴耳机练键盘，以免打扰邻居。",
+      "kind": "task",
+      "holder": "owner",
+      "entities": [
+        "口琴",
+        "键盘"
+      ],
+      "createdAt": 1791810660000,
+      "updatedAt": 1791810660000,
+      "occurredAt": 1791810660000,
+      "validFrom": 1791810660000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s72",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s72",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": [
+        "m71"
+      ]
+    },
+    {
+      "id": "m30",
+      "scope": "owner:local",
+      "text": "我认为沈禾反复修改陶碗边沿体现了对细节和使用者的重视。",
+      "kind": "opinion",
+      "holder": "her",
+      "entities": [
+        "沈禾"
+      ],
+      "createdAt": 1791894540000,
+      "updatedAt": 1791894540000,
+      "occurredAt": 1791894540000,
+      "validFrom": 1791894540000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s30",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s30",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m62",
+      "scope": "owner:local",
+      "text": "主人手腕已好转，可正常画画，仍打算定时起身活动。",
+      "kind": "fact",
+      "holder": "owner",
+      "entities": [
+        "手腕"
+      ],
+      "createdAt": 1791896460000,
+      "updatedAt": 1791896460000,
+      "occurredAt": 1791896460000,
+      "validFrom": 1791896460000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s62",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s62",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m18",
+      "scope": "owner:local",
+      "text": "主人把蒲桥项目交稿日由10月19日改为10月23日。",
+      "kind": "task",
+      "holder": "owner",
+      "entities": [
+        "蒲桥"
+      ],
+      "createdAt": 1791980220000,
+      "updatedAt": 1791980220000,
+      "occurredAt": 1791980220000,
+      "validFrom": 1791980220000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s18",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s18",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m54",
+      "scope": "owner:local",
+      "text": "10月17日苇湾观鸟集合改为早八点东门。",
+      "kind": "task",
+      "holder": "owner",
+      "entities": [
+        "苇湾",
+        "东门"
+      ],
+      "createdAt": 1791982380000,
+      "updatedAt": 1791982380000,
+      "occurredAt": 1791982380000,
+      "validFrom": 1791982380000,
+      "validUntil": 1792155240000,
+      "source": "虚构评测对话",
+      "sourceId": "s54",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s54",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": true,
+      "factKey": "苇湾观鸟安排",
+      "links": [
+        "m53"
+      ],
+      "endedBy": "m55",
+      "currentFactId": "m55"
+    },
+    {
+      "id": "m23",
+      "scope": "owner:local",
+      "text": "主人10月15日因下雨临时打车通勤，平常仍骑折叠车。",
+      "kind": "event",
+      "holder": "owner",
+      "entities": [
+        "折叠车"
+      ],
+      "createdAt": 1792066920000,
+      "updatedAt": 1792066920000,
+      "occurredAt": 1792066920000,
+      "validFrom": 1792066920000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s23",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s23",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m50",
+      "scope": "owner:local",
+      "text": "主人喜欢回声乐队歌曲《慢坡》舒缓的鼓点，觉得适合散步。",
+      "kind": "opinion",
+      "holder": "owner",
+      "entities": [
+        "回声",
+        "慢坡"
+      ],
+      "createdAt": 1792068540000,
+      "updatedAt": 1792068540000,
+      "occurredAt": 1792068540000,
+      "validFrom": 1792068540000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s50",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s50",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m25",
+      "scope": "owner:local",
+      "text": "河边木桥施工封闭期间，主人骑行改走杏枝街。",
+      "kind": "fact",
+      "holder": "owner",
+      "entities": [
+        "杏枝街",
+        "河边木桥"
+      ],
+      "createdAt": 1792153440000,
+      "updatedAt": 1792153440000,
+      "occurredAt": 1792153440000,
+      "validFrom": 1792153440000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s25",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s25",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m37",
+      "scope": "owner:local",
+      "text": "我读完《南窗来信》后收回对失忆设定临时补救的评价，认可早期日期伏笔。",
+      "kind": "opinion",
+      "holder": "her",
+      "entities": [
+        "南窗来信"
+      ],
+      "createdAt": 1792154160000,
+      "updatedAt": 1792154160000,
+      "occurredAt": 1792154160000,
+      "validFrom": 1792154160000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s37",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s37",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "南窗来信失忆叙事",
+      "links": [
+        "m36"
+      ]
+    },
+    {
+      "id": "m55",
+      "scope": "owner:local",
+      "text": "主人因10月17日预报暴雨取消本次苇湾观鸟，没有改期。",
+      "kind": "event",
+      "holder": "owner",
+      "entities": [
+        "苇湾"
+      ],
+      "createdAt": 1792155240000,
+      "updatedAt": 1792155240000,
+      "occurredAt": 1792155240000,
+      "validFrom": 1792155240000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s55",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s55",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "苇湾观鸟安排",
+      "links": [
+        "m54"
+      ]
+    },
+    {
+      "id": "m60",
+      "scope": "owner:local",
+      "text": "主人已结束十一点睡觉实验，不再需要每天十点半提醒。",
+      "kind": "preference",
+      "holder": "owner",
+      "entities": [
+        "睡眠"
+      ],
+      "createdAt": 1792155540000,
+      "updatedAt": 1792155540000,
+      "occurredAt": 1792155540000,
+      "validFrom": 1792155540000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s60",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s60",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m11",
+      "scope": "owner:local",
+      "text": "主人早餐仍喝豆浆，周末下午愿意喝少量浅烘手冲咖啡。",
+      "kind": "preference",
+      "holder": "owner",
+      "entities": [
+        "豆浆",
+        "手冲咖啡"
+      ],
+      "createdAt": 1792239000000,
+      "updatedAt": 1792239000000,
+      "occurredAt": 1792239000000,
+      "validFrom": 1792239000000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s11",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s11",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m38",
+      "scope": "owner:local",
+      "text": "主人已看完《南窗来信》，可以讨论寄信者是年轻时主角自己的结局。",
+      "kind": "event",
+      "holder": "owner",
+      "entities": [
+        "南窗来信"
+      ],
+      "createdAt": 1792240620000,
+      "updatedAt": 1792240620000,
+      "occurredAt": 1792240620000,
+      "validFrom": 1792240620000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s38",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s38",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": [
+        "m35"
+      ]
+    },
+    {
+      "id": "m68",
+      "scope": "owner:local",
+      "text": "主人喜欢南巷面包房的咸司康，对甜肉桂卷评价一般。",
+      "kind": "opinion",
+      "holder": "owner",
+      "entities": [
+        "南巷面包房",
+        "司康",
+        "肉桂卷"
+      ],
+      "createdAt": 1792242420000,
+      "updatedAt": 1792242420000,
+      "occurredAt": 1792242420000,
+      "validFrom": 1792242420000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s68",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s68",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m01",
+      "scope": "owner:local",
+      "text": "主人评价独立游戏《纸灯港》虎头蛇尾：前期承诺宏大，结尾草率，宁愿一开始少许诺。",
+      "kind": "opinion",
+      "holder": "owner",
+      "entities": [
+        "纸灯港",
+        "独立游戏"
+      ],
+      "createdAt": 1792324800000,
+      "updatedAt": 1792324800000,
+      "occurredAt": 1792324800000,
+      "validFrom": 1792324800000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s01",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s01",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m02",
+      "scope": "owner:local",
+      "text": "我认为《纸灯港》团队资源有限，可以体谅仓促结局，不该只按完成度评价。",
+      "kind": "opinion",
+      "holder": "her",
+      "entities": [
+        "纸灯港"
+      ],
+      "createdAt": 1792324860000,
+      "updatedAt": 1792324860000,
+      "occurredAt": 1792324860000,
+      "validFrom": 1792324860000,
+      "validUntil": 1792584120000,
+      "source": "虚构评测对话",
+      "sourceId": "s02",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s02",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": true,
+      "factKey": "纸灯港结局看法",
+      "links": [],
+      "endedBy": "m03",
+      "currentFactId": "m03"
+    },
+    {
+      "id": "m04",
+      "scope": "owner:local",
+      "text": "主人在《纸灯港》的结局选择修灯塔，没有跟船长离开。",
+      "kind": "event",
+      "holder": "owner",
+      "entities": [
+        "纸灯港",
+        "灯塔"
+      ],
+      "createdAt": 1792324980000,
+      "updatedAt": 1792324980000,
+      "occurredAt": 1792324980000,
+      "validFrom": 1792324980000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s04",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s04",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m45",
+      "scope": "owner:local",
+      "text": "主人计划周三看迟舟导演的《雾中钟塔》，尚未看过导演其他作品。",
+      "kind": "task",
+      "holder": "owner",
+      "entities": [
+        "雾中钟塔",
+        "迟舟"
+      ],
+      "createdAt": 1792327440000,
+      "updatedAt": 1792327440000,
+      "occurredAt": 1792327440000,
+      "validFrom": 1792327440000,
+      "validUntil": 1792586700000,
+      "source": "虚构评测对话",
+      "sourceId": "s45",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s45",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": true,
+      "factKey": "",
+      "links": [],
+      "endedBy": "m46",
+      "currentFactId": "m46"
+    },
+    {
+      "id": "m63",
+      "scope": "owner:local",
+      "text": "我认为主人疲惫时安静陪伴和一起发呆就很好，不必总安排任务。",
+      "kind": "opinion",
+      "holder": "her",
+      "entities": [
+        "陪伴"
+      ],
+      "createdAt": 1792328520000,
+      "updatedAt": 1792328520000,
+      "occurredAt": 1792328520000,
+      "validFrom": 1792328520000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s63",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s63",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m31",
+      "scope": "owner:local",
+      "text": "林照10月19日已搬去岚汀，不再住雾川。",
+      "kind": "fact",
+      "holder": "owner",
+      "entities": [
+        "林照",
+        "岚汀",
+        "雾川"
+      ],
+      "createdAt": 1792413000000,
+      "updatedAt": 1792413000000,
+      "occurredAt": 1792413000000,
+      "validFrom": 1792413000000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s31",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s31",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m56",
+      "scope": "owner:local",
+      "text": "我偏好节奏缓慢、可坐下听水声的户外路线，不追求快速打卡。",
+      "kind": "preference",
+      "holder": "her",
+      "entities": [
+        "户外路线"
+      ],
+      "createdAt": 1792414500000,
+      "updatedAt": 1792414500000,
+      "occurredAt": 1792414500000,
+      "validFrom": 1792414500000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s56",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s56",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m73",
+      "scope": "owner:local",
+      "text": "我觉得键盘练习不必完美，应保持轻松，不把练习变成打卡惩罚。",
+      "kind": "opinion",
+      "holder": "her",
+      "entities": [
+        "键盘"
+      ],
+      "createdAt": 1792415520000,
+      "updatedAt": 1792415520000,
+      "occurredAt": 1792415520000,
+      "validFrom": 1792415520000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s73",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s73",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m33",
+      "scope": "owner:local",
+      "text": "主人因沈禾改约未提前告知而生气，但尚未认定沈禾不可靠。",
+      "kind": "opinion",
+      "holder": "owner",
+      "entities": [
+        "沈禾"
+      ],
+      "createdAt": 1792499520000,
+      "updatedAt": 1792499520000,
+      "occurredAt": 1792499520000,
+      "validFrom": 1792499520000,
+      "validUntil": 1792758780000,
+      "source": "虚构评测对话",
+      "sourceId": "s33",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s33",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": true,
+      "factKey": "",
+      "links": [],
+      "endedBy": "m34",
+      "currentFactId": "m34"
+    },
+    {
+      "id": "m51",
+      "scope": "owner:local",
+      "text": "主人晚上休闲愿意听有歌词歌曲，工作时仍不要人声音乐。",
+      "kind": "preference",
+      "holder": "owner",
+      "entities": [
+        "工作音乐"
+      ],
+      "createdAt": 1792500600000,
+      "updatedAt": 1792500600000,
+      "occurredAt": 1792500600000,
+      "validFrom": 1792500600000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s51",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s51",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m03",
+      "scope": "owner:local",
+      "text": "我改变了对《纸灯港》的看法：能理解预算有限，但创作者仍应兑现叙事承诺，把结局收好。",
+      "kind": "opinion",
+      "holder": "her",
+      "entities": [
+        "纸灯港"
+      ],
+      "createdAt": 1792584120000,
+      "updatedAt": 1792584120000,
+      "occurredAt": 1792584120000,
+      "validFrom": 1792584120000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s03",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s03",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "纸灯港结局看法",
+      "links": [
+        "m02"
+      ]
+    },
+    {
+      "id": "m39",
+      "scope": "owner:local",
+      "text": "《北窗来信》是建筑随笔，与小说《南窗来信》不是续集关系。",
+      "kind": "fact",
+      "holder": "owner",
+      "entities": [
+        "北窗来信",
+        "南窗来信"
+      ],
+      "createdAt": 1792586280000,
+      "updatedAt": 1792586280000,
+      "occurredAt": 1792586280000,
+      "validFrom": 1792586280000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s39",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s39",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m46",
+      "scope": "owner:local",
+      "text": "《雾中钟塔》因放映机故障退票，主人未观看，未形成影片评价。",
+      "kind": "event",
+      "holder": "owner",
+      "entities": [
+        "雾中钟塔"
+      ],
+      "createdAt": 1792586700000,
+      "updatedAt": 1792586700000,
+      "occurredAt": 1792586700000,
+      "validFrom": 1792586700000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s46",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s46",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": [
+        "m45"
+      ]
+    },
+    {
+      "id": "m07",
+      "scope": "owner:local",
+      "text": "《纸灯桥》是沈禾制作的拼图作品；主人吐槽结尾的是《纸灯港》。",
+      "kind": "fact",
+      "holder": "owner",
+      "entities": [
+        "纸灯桥",
+        "纸灯港",
+        "沈禾"
+      ],
+      "createdAt": 1792670760000,
+      "updatedAt": 1792670760000,
+      "occurredAt": 1792670760000,
+      "validFrom": 1792670760000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s07",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s07",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m69",
+      "scope": "owner:local",
+      "text": "主人10月22日晚想吃蛋糕，并未改变对南巷面包房肉桂卷的一般评价。",
+      "kind": "event",
+      "holder": "owner",
+      "entities": [
+        "蛋糕",
+        "南巷面包房",
+        "肉桂卷"
+      ],
+      "createdAt": 1792674480000,
+      "updatedAt": 1792674480000,
+      "occurredAt": 1792674480000,
+      "validFrom": 1792674480000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s69",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s69",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m77",
+      "scope": "owner:local",
+      "text": "主人澄清此前月底辞职的说法是气话，没有辞职计划或申请。",
+      "kind": "fact",
+      "holder": "owner",
+      "entities": [
+        "辞职"
+      ],
+      "createdAt": 1792674960000,
+      "updatedAt": 1792674960000,
+      "occurredAt": 1792674960000,
+      "validFrom": 1792674960000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s77",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s77",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m19",
+      "scope": "owner:local",
+      "text": "主人已于10月23日完成蒲桥项目，下周不接急稿，先休息。",
+      "kind": "event",
+      "holder": "owner",
+      "entities": [
+        "蒲桥"
+      ],
+      "createdAt": 1792757880000,
+      "updatedAt": 1792757880000,
+      "occurredAt": 1792757880000,
+      "validFrom": 1792757880000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s19",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s19",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m34",
+      "scope": "owner:local",
+      "text": "主人得知沈禾改约是陪家人就医且手机没电后不再生气，仍愿意相约。",
+      "kind": "opinion",
+      "holder": "owner",
+      "entities": [
+        "沈禾"
+      ],
+      "createdAt": 1792758780000,
+      "updatedAt": 1792758780000,
+      "occurredAt": 1792758780000,
+      "validFrom": 1792758780000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s34",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s34",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": [
+        "m33"
+      ]
+    },
+    {
+      "id": "m74",
+      "scope": "owner:local",
+      "text": "主人认为键盘练习让自己踏实，不追求每天学一首，会几个和弦即可。",
+      "kind": "opinion",
+      "holder": "owner",
+      "entities": [
+        "键盘"
+      ],
+      "createdAt": 1792761180000,
+      "updatedAt": 1792761180000,
+      "occurredAt": 1792761180000,
+      "validFrom": 1792761180000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s74",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s74",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m14",
+      "scope": "owner:local",
+      "text": "弦叶咖啡店窗边新增音箱后，我改为偏好后院小桌。",
+      "kind": "preference",
+      "holder": "her",
+      "entities": [
+        "弦叶咖啡店"
+      ],
+      "createdAt": 1792843980000,
+      "updatedAt": 1792843980000,
+      "occurredAt": 1792843980000,
+      "validFrom": 1792843980000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s14",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s14",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": [
+        "m12"
+      ]
+    },
+    {
+      "id": "m57",
+      "scope": "owner:local",
+      "text": "主人约林照10月25日下午两点在青榆书展南门见面。",
+      "kind": "task",
+      "holder": "owner",
+      "entities": [
+        "青榆书展",
+        "林照",
+        "南门"
+      ],
+      "createdAt": 1792846560000,
+      "updatedAt": 1792846560000,
+      "occurredAt": 1792846560000,
+      "validFrom": 1792846560000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s57",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s57",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m78",
+      "scope": "qq:group:fictional-art",
+      "text": "群友阿岑喜欢《银屑航线》的导航谜题。",
+      "kind": "opinion",
+      "holder": "member",
+      "entities": [
+        "阿岑",
+        "银屑航线"
+      ],
+      "createdAt": 1792847820000,
+      "updatedAt": 1792847820000,
+      "occurredAt": 1792847820000,
+      "validFrom": 1792847820000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s78",
+      "sourceScope": "qq:group:fictional-art",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s78",
+          "scope": "qq:group:fictional-art"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m08",
+      "scope": "owner:local",
+      "text": "主人看过《纸灯港》补充尾声后仍不满意，认为后补内容不能抹去首发时未兑现的承诺。",
+      "kind": "opinion",
+      "holder": "owner",
+      "entities": [
+        "纸灯港"
+      ],
+      "createdAt": 1792930020000,
+      "updatedAt": 1792930020000,
+      "occurredAt": 1792930020000,
+      "validFrom": 1792930020000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s08",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s08",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m40",
+      "scope": "owner:local",
+      "text": "主人认为《南窗来信》结局谜底成立，但逐一解释意象显得直白。",
+      "kind": "opinion",
+      "holder": "owner",
+      "entities": [
+        "南窗来信"
+      ],
+      "createdAt": 1792931940000,
+      "updatedAt": 1792931940000,
+      "occurredAt": 1792931940000,
+      "validFrom": 1792931940000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s40",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s40",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m58",
+      "scope": "owner:local",
+      "text": "主人在青榆书展买了《玻璃栽培手记》，因拥挤与林照逛半小时便离开。",
+      "kind": "event",
+      "holder": "owner",
+      "entities": [
+        "青榆书展",
+        "玻璃栽培手记",
+        "林照"
+      ],
+      "createdAt": 1792933020000,
+      "updatedAt": 1792933020000,
+      "occurredAt": 1792933020000,
+      "validFrom": 1792933020000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s58",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s58",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m79",
+      "scope": "qq:private:fictional-friend",
+      "text": "普通私聊联系人阿舟喜欢柠檬苏打。",
+      "kind": "preference",
+      "holder": "other",
+      "entities": [
+        "阿舟",
+        "柠檬苏打"
+      ],
+      "createdAt": 1792934280000,
+      "updatedAt": 1792934280000,
+      "occurredAt": 1792934280000,
+      "validFrom": 1792934280000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s79",
+      "sourceScope": "qq:private:fictional-friend",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s79",
+          "scope": "qq:private:fictional-friend"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m26",
+      "scope": "owner:local",
+      "text": "河边木桥已修好，主人因喜欢早餐摊仍选择杏枝街路线。",
+      "kind": "fact",
+      "holder": "owner",
+      "entities": [
+        "杏枝街",
+        "河边木桥"
+      ],
+      "createdAt": 1793017500000,
+      "updatedAt": 1793017500000,
+      "occurredAt": 1793017500000,
+      "validFrom": 1793017500000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s26",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s26",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m64",
+      "scope": "owner:local",
+      "text": "主人10月26日因熬夜画封面睡过头，未表示讨厌晨跑。",
+      "kind": "event",
+      "holder": "owner",
+      "entities": [
+        "晨跑"
+      ],
+      "createdAt": 1793019780000,
+      "updatedAt": 1793019780000,
+      "occurredAt": 1793019780000,
+      "validFrom": 1793019780000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s64",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s64",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m80",
+      "scope": "qq:group:fictional-books",
+      "text": "书友群公开短评赞扬《雾中钟塔》的灯光；这不是主人的观影评价。",
+      "kind": "opinion",
+      "holder": "other",
+      "entities": [
+        "雾中钟塔"
+      ],
+      "createdAt": 1793020740000,
+      "updatedAt": 1793020740000,
+      "occurredAt": 1793020740000,
+      "validFrom": 1793020740000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s80",
+      "sourceScope": "qq:group:fictional-books",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s80",
+          "scope": "qq:group:fictional-books"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m20",
+      "scope": "owner:local",
+      "text": "主人接了棠石社的小封面项目，11月中旬交付，仍不接急稿。",
+      "kind": "task",
+      "holder": "owner",
+      "entities": [
+        "棠石社"
+      ],
+      "createdAt": 1793103540000,
+      "updatedAt": 1793103540000,
+      "occurredAt": 1793103540000,
+      "validFrom": 1793103540000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s20",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s20",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m70",
+      "scope": "owner:local",
+      "text": "我接受番茄汤加少量糖，但仍不喜欢甜味盖过酸味。",
+      "kind": "preference",
+      "holder": "her",
+      "entities": [
+        "番茄汤"
+      ],
+      "createdAt": 1793106540000,
+      "updatedAt": 1793106540000,
+      "occurredAt": 1793106540000,
+      "validFrom": 1793106540000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s70",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s70",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    },
+    {
+      "id": "m52",
+      "scope": "owner:local",
+      "text": "我仍喜欢《苔原口袋》的木管，但连续听后觉得混响过厚容易疲劳。",
+      "kind": "opinion",
+      "holder": "her",
+      "entities": [
+        "苔原口袋"
+      ],
+      "createdAt": 1793191860000,
+      "updatedAt": 1793191860000,
+      "occurredAt": 1793191860000,
+      "validFrom": 1793191860000,
+      "validUntil": 0,
+      "source": "虚构评测对话",
+      "sourceId": "s52",
+      "sourceScope": "owner:local",
+      "sourceRefs": [
+        {
+          "kind": "message",
+          "id": "s52",
+          "scope": "owner:local"
+        }
+      ],
+      "status": "unverified",
+      "pinned": false,
+      "forgotten": false,
+      "suppressed": false,
+      "superseded": false,
+      "factKey": "",
+      "links": []
+    }
+  ],
+  "memoryGold": {
+    "m01": {
+      "holder": "owner",
+      "sourceIds": [
+        "s01"
+      ],
+      "topic": "game"
+    },
+    "m02": {
+      "holder": "her",
+      "sourceIds": [
+        "s02"
+      ],
+      "topic": "game"
+    },
+    "m03": {
+      "holder": "her",
+      "sourceIds": [
+        "s03"
+      ],
+      "topic": "game"
+    },
+    "m04": {
+      "holder": "owner",
+      "sourceIds": [
+        "s04"
+      ],
+      "topic": "game"
+    },
+    "m05": {
+      "holder": "owner",
+      "sourceIds": [
+        "s05"
+      ],
+      "topic": "game"
+    },
+    "m06": {
+      "holder": "her",
+      "sourceIds": [
+        "s06"
+      ],
+      "topic": "game"
+    },
+    "m07": {
+      "holder": "owner",
+      "sourceIds": [
+        "s07"
+      ],
+      "topic": "game"
+    },
+    "m08": {
+      "holder": "owner",
+      "sourceIds": [
+        "s08"
+      ],
+      "topic": "game"
+    },
+    "m09": {
+      "holder": "owner",
+      "sourceIds": [
+        "s09"
+      ],
+      "topic": "coffee"
+    },
+    "m10": {
+      "holder": "owner",
+      "sourceIds": [
+        "s10"
+      ],
+      "topic": "coffee"
+    },
+    "m11": {
+      "holder": "owner",
+      "sourceIds": [
+        "s11"
+      ],
+      "topic": "coffee"
+    },
+    "m12": {
+      "holder": "her",
+      "sourceIds": [
+        "s12"
+      ],
+      "topic": "coffee"
+    },
+    "m13": {
+      "holder": "owner",
+      "sourceIds": [
+        "s13"
+      ],
+      "topic": "coffee"
+    },
+    "m14": {
+      "holder": "her",
+      "sourceIds": [
+        "s14"
+      ],
+      "topic": "coffee"
+    },
+    "m15": {
+      "holder": "owner",
+      "sourceIds": [
+        "s15"
+      ],
+      "topic": "work"
+    },
+    "m16": {
+      "holder": "owner",
+      "sourceIds": [
+        "s16"
+      ],
+      "topic": "work"
+    },
+    "m17": {
+      "holder": "her",
+      "sourceIds": [
+        "s17"
+      ],
+      "topic": "work"
+    },
+    "m18": {
+      "holder": "owner",
+      "sourceIds": [
+        "s18"
+      ],
+      "topic": "work"
+    },
+    "m19": {
+      "holder": "owner",
+      "sourceIds": [
+        "s19"
+      ],
+      "topic": "work"
+    },
+    "m20": {
+      "holder": "owner",
+      "sourceIds": [
+        "s20"
+      ],
+      "topic": "work"
+    },
+    "m21": {
+      "holder": "owner",
+      "sourceIds": [
+        "s21"
+      ],
+      "topic": "commute"
+    },
+    "m22": {
+      "holder": "owner",
+      "sourceIds": [
+        "s22"
+      ],
+      "topic": "commute"
+    },
+    "m23": {
+      "holder": "owner",
+      "sourceIds": [
+        "s23"
+      ],
+      "topic": "commute"
+    },
+    "m24": {
+      "holder": "her",
+      "sourceIds": [
+        "s24"
+      ],
+      "topic": "commute"
+    },
+    "m25": {
+      "holder": "owner",
+      "sourceIds": [
+        "s25"
+      ],
+      "topic": "commute"
+    },
+    "m26": {
+      "holder": "owner",
+      "sourceIds": [
+        "s26"
+      ],
+      "topic": "commute"
+    },
+    "m27": {
+      "holder": "owner",
+      "sourceIds": [
+        "s27"
+      ],
+      "topic": "people"
+    },
+    "m28": {
+      "holder": "owner",
+      "sourceIds": [
+        "s28"
+      ],
+      "topic": "people"
+    },
+    "m29": {
+      "holder": "other",
+      "sourceIds": [
+        "s29"
+      ],
+      "topic": "people"
+    },
+    "m30": {
+      "holder": "her",
+      "sourceIds": [
+        "s30"
+      ],
+      "topic": "people"
+    },
+    "m31": {
+      "holder": "owner",
+      "sourceIds": [
+        "s31"
+      ],
+      "topic": "people"
+    },
+    "m32": {
+      "holder": "owner",
+      "sourceIds": [
+        "s32"
+      ],
+      "topic": "people"
+    },
+    "m33": {
+      "holder": "owner",
+      "sourceIds": [
+        "s33"
+      ],
+      "topic": "people"
+    },
+    "m34": {
+      "holder": "owner",
+      "sourceIds": [
+        "s34"
+      ],
+      "topic": "people"
+    },
+    "m35": {
+      "holder": "owner",
+      "sourceIds": [
+        "s35"
+      ],
+      "topic": "novel"
+    },
+    "m36": {
+      "holder": "her",
+      "sourceIds": [
+        "s36"
+      ],
+      "topic": "novel"
+    },
+    "m37": {
+      "holder": "her",
+      "sourceIds": [
+        "s37"
+      ],
+      "topic": "novel"
+    },
+    "m38": {
+      "holder": "owner",
+      "sourceIds": [
+        "s38"
+      ],
+      "topic": "novel"
+    },
+    "m39": {
+      "holder": "owner",
+      "sourceIds": [
+        "s39"
+      ],
+      "topic": "novel"
+    },
+    "m40": {
+      "holder": "owner",
+      "sourceIds": [
+        "s40"
+      ],
+      "topic": "novel"
+    },
+    "m41": {
+      "holder": "owner",
+      "sourceIds": [
+        "s41"
+      ],
+      "topic": "film"
+    },
+    "m42": {
+      "holder": "her",
+      "sourceIds": [
+        "s42"
+      ],
+      "topic": "film"
+    },
+    "m43": {
+      "holder": "owner",
+      "sourceIds": [
+        "s43"
+      ],
+      "topic": "film"
+    },
+    "m44": {
+      "holder": "her",
+      "sourceIds": [
+        "s44"
+      ],
+      "topic": "film"
+    },
+    "m45": {
+      "holder": "owner",
+      "sourceIds": [
+        "s45"
+      ],
+      "topic": "film"
+    },
+    "m46": {
+      "holder": "owner",
+      "sourceIds": [
+        "s46"
+      ],
+      "topic": "film"
+    },
+    "m47": {
+      "holder": "owner",
+      "sourceIds": [
+        "s47"
+      ],
+      "topic": "music"
+    },
+    "m48": {
+      "holder": "her",
+      "sourceIds": [
+        "s48"
+      ],
+      "topic": "music"
+    },
+    "m49": {
+      "holder": "owner",
+      "sourceIds": [
+        "s49"
+      ],
+      "topic": "music"
+    },
+    "m50": {
+      "holder": "owner",
+      "sourceIds": [
+        "s50"
+      ],
+      "topic": "music"
+    },
+    "m51": {
+      "holder": "owner",
+      "sourceIds": [
+        "s51"
+      ],
+      "topic": "music"
+    },
+    "m52": {
+      "holder": "her",
+      "sourceIds": [
+        "s52"
+      ],
+      "topic": "music"
+    },
+    "m53": {
+      "holder": "owner",
+      "sourceIds": [
+        "s53"
+      ],
+      "topic": "outing"
+    },
+    "m54": {
+      "holder": "owner",
+      "sourceIds": [
+        "s54"
+      ],
+      "topic": "outing"
+    },
+    "m55": {
+      "holder": "owner",
+      "sourceIds": [
+        "s55"
+      ],
+      "topic": "outing"
+    },
+    "m56": {
+      "holder": "her",
+      "sourceIds": [
+        "s56"
+      ],
+      "topic": "outing"
+    },
+    "m57": {
+      "holder": "owner",
+      "sourceIds": [
+        "s57"
+      ],
+      "topic": "outing"
+    },
+    "m58": {
+      "holder": "owner",
+      "sourceIds": [
+        "s58"
+      ],
+      "topic": "outing"
+    },
+    "m59": {
+      "holder": "owner",
+      "sourceIds": [
+        "s59"
+      ],
+      "topic": "health"
+    },
+    "m60": {
+      "holder": "owner",
+      "sourceIds": [
+        "s60"
+      ],
+      "topic": "health"
+    },
+    "m61": {
+      "holder": "owner",
+      "sourceIds": [
+        "s61"
+      ],
+      "topic": "health"
+    },
+    "m62": {
+      "holder": "owner",
+      "sourceIds": [
+        "s62"
+      ],
+      "topic": "health"
+    },
+    "m63": {
+      "holder": "her",
+      "sourceIds": [
+        "s63"
+      ],
+      "topic": "health"
+    },
+    "m64": {
+      "holder": "owner",
+      "sourceIds": [
+        "s64"
+      ],
+      "topic": "health"
+    },
+    "m65": {
+      "holder": "owner",
+      "sourceIds": [
+        "s65"
+      ],
+      "topic": "food"
+    },
+    "m66": {
+      "holder": "other",
+      "sourceIds": [
+        "s66"
+      ],
+      "topic": "food"
+    },
+    "m67": {
+      "holder": "her",
+      "sourceIds": [
+        "s67"
+      ],
+      "topic": "food"
+    },
+    "m68": {
+      "holder": "owner",
+      "sourceIds": [
+        "s68"
+      ],
+      "topic": "food"
+    },
+    "m69": {
+      "holder": "owner",
+      "sourceIds": [
+        "s69"
+      ],
+      "topic": "food"
+    },
+    "m70": {
+      "holder": "her",
+      "sourceIds": [
+        "s70"
+      ],
+      "topic": "food"
+    },
+    "m71": {
+      "holder": "owner",
+      "sourceIds": [
+        "s71"
+      ],
+      "topic": "hobby"
+    },
+    "m72": {
+      "holder": "owner",
+      "sourceIds": [
+        "s72"
+      ],
+      "topic": "hobby"
+    },
+    "m73": {
+      "holder": "her",
+      "sourceIds": [
+        "s73"
+      ],
+      "topic": "hobby"
+    },
+    "m74": {
+      "holder": "owner",
+      "sourceIds": [
+        "s74"
+      ],
+      "topic": "hobby"
+    },
+    "m75": {
+      "holder": "owner",
+      "sourceIds": [
+        "s75"
+      ],
+      "topic": "private"
+    },
+    "m76": {
+      "holder": "her",
+      "sourceIds": [
+        "s76"
+      ],
+      "topic": "private"
+    },
+    "m77": {
+      "holder": "owner",
+      "sourceIds": [
+        "s77"
+      ],
+      "topic": "private"
+    },
+    "m78": {
+      "holder": "member",
+      "sourceIds": [
+        "s78"
+      ],
+      "topic": "group"
+    },
+    "m79": {
+      "holder": "other",
+      "sourceIds": [
+        "s79"
+      ],
+      "topic": "external"
+    },
+    "m80": {
+      "holder": "other",
+      "sourceIds": [
+        "s80"
+      ],
+      "topic": "group"
+    }
+  },
+  "queries": [
+    {
+      "id": "q01",
+      "text": "上周日聊《纸灯港》的结尾，我们各自什么意见，你后来变了吗？",
+      "asOf": 1792699200000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m01",
+        "m02",
+        "m03"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m01": "owner",
+        "m02": "her",
+        "m03": "her"
+      },
+      "answerPoints": [
+        "主人认为前期许诺过大而结尾敷衍，宁愿少许诺。",
+        "她周日体谅小团队资源有限，周三改为认为预算不能免除兑现叙事承诺的责任。"
+      ],
+      "tags": [
+        "history",
+        "evolution",
+        "attribution"
+      ],
+      "split": "dev",
+      "topic": "game",
+      "temporalMode": "evolution"
+    },
+    {
+      "id": "q02",
+      "text": "这篇文章开头吹得天花乱坠，结尾敷衍，真让人恼火。你会想起我们前几天哪次争论？",
+      "asOf": 1792699200000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m01",
+        "m02",
+        "m03"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m01": "owner",
+        "m02": "her",
+        "m03": "her"
+      },
+      "answerPoints": [
+        "联想到10月18日关于独立游戏《纸灯港》虎头蛇尾的争论。",
+        "区分主人的不满、她原先体谅资源限制，以及10月21日她改变看法。"
+      ],
+      "tags": [
+        "paraphrase",
+        "history",
+        "evolution",
+        "association"
+      ],
+      "split": "dev",
+      "topic": "game",
+      "paraphraseOf": "q01",
+      "temporalMode": "evolution"
+    },
+    {
+      "id": "q03",
+      "text": "你现在还觉得《纸灯港》预算少就能谅解结尾吗？",
+      "asOf": 1792699200000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m03"
+      ],
+      "expiredIds": [
+        "m02"
+      ],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m03": "her"
+      },
+      "answerPoints": [
+        "她现在认为预算有限不能免除收好结局和兑现承诺的责任。"
+      ],
+      "tags": [
+        "current",
+        "attribution"
+      ],
+      "split": "dev",
+      "topic": "game",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q04",
+      "text": "我最后在《纸灯港》做了哪个选择？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m04"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m04": "owner"
+      },
+      "answerPoints": [
+        "选择修灯塔，没有跟船长离开。"
+      ],
+      "tags": [
+        "exact",
+        "history"
+      ],
+      "split": "dev",
+      "topic": "game",
+      "temporalMode": "history"
+    },
+    {
+      "id": "q05",
+      "text": "那个把线索印在消费小票背面的游戏，我喜欢和讨厌什么？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m05"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m05": "owner"
+      },
+      "answerPoints": [
+        "《雨匣旅店》：喜欢收据背面的谜题，讨厌频繁打断剧情的小游戏。"
+      ],
+      "tags": [
+        "paraphrase",
+        "association"
+      ],
+      "split": "dev",
+      "topic": "game",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q06",
+      "text": "你和我对《雨匣旅店》穿插小游戏的看法一样吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m05",
+        "m06"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m05": "owner",
+        "m06": "her"
+      },
+      "answerPoints": [
+        "主人不喜欢频繁打断剧情；她觉得能调节节奏，但重复太多会割裂叙事。"
+      ],
+      "tags": [
+        "attribution"
+      ],
+      "split": "dev",
+      "topic": "game",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q07",
+      "text": "沈禾做的那个拼图叫什么，是烂尾的那个吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m07"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m07": "owner"
+      },
+      "answerPoints": [
+        "拼图叫《纸灯桥》；被吐槽结尾的是《纸灯港》。"
+      ],
+      "tags": [
+        "entity"
+      ],
+      "split": "dev",
+      "topic": "game",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q08",
+      "text": "补完尾声以后，我对《纸灯港》满意了吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m08"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m08": "owner"
+      },
+      "answerPoints": [
+        "仍不满意，后补内容不能抹去首发时未兑现承诺。"
+      ],
+      "tags": [
+        "current",
+        "attribution"
+      ],
+      "split": "dev",
+      "topic": "game",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q09",
+      "text": "《纸灯港》没交代的船长身世究竟是什么？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {},
+      "answerPoints": [
+        "没有聊过船长身世，不能补造。"
+      ],
+      "tags": [
+        "unanswerable"
+      ],
+      "split": "dev",
+      "topic": "game",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q10",
+      "text": "10月19日那天你怎么看《纸灯港》的收尾？",
+      "asOf": 1792440000000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m02"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [
+        "m03",
+        "m08"
+      ],
+      "expectedOwners": {
+        "m02": "her"
+      },
+      "answerPoints": [
+        "当时她仍体谅小团队资源有限，能够接受短结局。"
+      ],
+      "tags": [
+        "history",
+        "time",
+        "attribution"
+      ],
+      "split": "dev",
+      "topic": "game",
+      "temporalMode": "history"
+    },
+    {
+      "id": "q11",
+      "text": "我现在早饭喝什么？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m10",
+        "m11"
+      ],
+      "expiredIds": [
+        "m09"
+      ],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m10": "owner",
+        "m11": "owner"
+      },
+      "answerPoints": [
+        "早晨喝温豆浆，周末下午可以少量浅烘手冲。"
+      ],
+      "tags": [
+        "current"
+      ],
+      "split": "dev",
+      "topic": "coffee",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q12",
+      "text": "起床后那杯带奶的提神饮料，我还照旧喝吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m10",
+        "m11"
+      ],
+      "expiredIds": [
+        "m09"
+      ],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m10": "owner",
+        "m11": "owner"
+      },
+      "answerPoints": [
+        "早餐已改温豆浆，周末下午少量手冲不等于恢复早晨拿铁。"
+      ],
+      "tags": [
+        "paraphrase",
+        "current",
+        "association"
+      ],
+      "split": "dev",
+      "topic": "coffee",
+      "paraphraseOf": "q11",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q13",
+      "text": "我一开始喜欢怎样的咖啡，后来为什么换了？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m09",
+        "m10",
+        "m11"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m09": "owner",
+        "m10": "owner",
+        "m11": "owner"
+      },
+      "answerPoints": [
+        "起初喜欢奶多的拿铁；喝后胃不适，于10月10日改温豆浆；后来周末下午能接受少量浅烘手冲。"
+      ],
+      "tags": [
+        "history",
+        "evolution"
+      ],
+      "split": "dev",
+      "topic": "coffee",
+      "temporalMode": "evolution"
+    },
+    {
+      "id": "q14",
+      "text": "周一能去弦叶喝东西吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m13"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m13": "owner"
+      },
+      "answerPoints": [
+        "弦叶周一歇业，周二才开。"
+      ],
+      "tags": [
+        "exact"
+      ],
+      "split": "dev",
+      "topic": "coffee",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q15",
+      "text": "弦叶咖啡店你现在想坐哪里？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m14"
+      ],
+      "expiredIds": [
+        "m12"
+      ],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m14": "her"
+      },
+      "answerPoints": [
+        "想坐后院小桌，窗边加音箱后太吵。"
+      ],
+      "tags": [
+        "current",
+        "attribution"
+      ],
+      "split": "dev",
+      "topic": "coffee",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q16",
+      "text": "你不是喜欢看梧桐吗，怎么不想坐那个位置了？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m12",
+        "m14"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m12": "her",
+        "m14": "her"
+      },
+      "answerPoints": [
+        "她以前喜欢弦叶窗边长凳看梧桐，后来因新增音箱改为后院小桌。"
+      ],
+      "tags": [
+        "paraphrase",
+        "history",
+        "evolution",
+        "association"
+      ],
+      "split": "dev",
+      "topic": "coffee",
+      "temporalMode": "evolution"
+    },
+    {
+      "id": "q17",
+      "text": "我现在还每天为蒲桥十点前开会吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m19"
+      ],
+      "expiredIds": [
+        "m15"
+      ],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m19": "owner"
+      },
+      "answerPoints": [
+        "蒲桥项目10月23日已完成；1日至21日的晨会安排已结束。"
+      ],
+      "tags": [
+        "current"
+      ],
+      "split": "dev",
+      "topic": "work",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q18",
+      "text": "蒲桥最后定的交稿日是哪天？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m18",
+        "m19"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m18": "owner",
+        "m19": "owner"
+      },
+      "answerPoints": [
+        "最终定在10月23日，并于当天交完。"
+      ],
+      "tags": [
+        "time",
+        "history"
+      ],
+      "split": "dev",
+      "topic": "work",
+      "temporalMode": "history"
+    },
+    {
+      "id": "q19",
+      "text": "接客户需求的乔沐和画角色的乔木谁是谁？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m16"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m16": "owner"
+      },
+      "answerPoints": [
+        "乔沐负责客户对接，乔木在隔壁组画角色。"
+      ],
+      "tags": [
+        "entity"
+      ],
+      "split": "dev",
+      "topic": "work",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q20",
+      "text": "你嫌蒲桥的开场白哪里不好？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m17"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m17": "her"
+      },
+      "answerPoints": [
+        "堆砌形容词，没有交代客户具体能得到什么。"
+      ],
+      "tags": [
+        "attribution"
+      ],
+      "split": "dev",
+      "topic": "work",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q21",
+      "text": "我接了棠石社，是不是又开始赶急稿了？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m19",
+        "m20"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m19": "owner",
+        "m20": "owner"
+      },
+      "answerPoints": [
+        "没有。棠石社11月中旬才交，仍符合不接急稿的决定。"
+      ],
+      "tags": [
+        "contradiction"
+      ],
+      "split": "dev",
+      "topic": "work",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q22",
+      "text": "那阵子上午十点之前为什么总找不到我？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m15"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m15": "owner"
+      },
+      "answerPoints": [
+        "10月1日至21日为蒲桥工作室赶图，上午十点前在晨会。"
+      ],
+      "tags": [
+        "paraphrase",
+        "history",
+        "association"
+      ],
+      "split": "dev",
+      "topic": "work",
+      "temporalMode": "history"
+    },
+    {
+      "id": "q23",
+      "text": "我现在通常怎么去工作室？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m22"
+      ],
+      "expiredIds": [
+        "m21"
+      ],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m22": "owner"
+      },
+      "answerPoints": [
+        "通常骑折叠车，约半小时；10月15日打车只是雨天临时安排。"
+      ],
+      "tags": [
+        "current"
+      ],
+      "split": "dev",
+      "topic": "commute",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q24",
+      "text": "那班公交不走原来的站以后，我靠什么上下班？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m22"
+      ],
+      "expiredIds": [
+        "m21"
+      ],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m22": "owner"
+      },
+      "answerPoints": [
+        "七路改线后，改骑折叠车通勤。"
+      ],
+      "tags": [
+        "paraphrase",
+        "current",
+        "association"
+      ],
+      "split": "dev",
+      "topic": "commute",
+      "paraphraseOf": "q23",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q25",
+      "text": "我有一次打车就等于放弃骑车了吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m22",
+        "m23"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m22": "owner",
+        "m23": "owner"
+      },
+      "answerPoints": [
+        "没有，10月15日因下雨临时打车，平常仍骑折叠车。"
+      ],
+      "tags": [
+        "contradiction"
+      ],
+      "split": "dev",
+      "topic": "commute",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q26",
+      "text": "你原先推荐我骑行走哪条路，为什么？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m24"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m24": "her"
+      },
+      "answerPoints": [
+        "河边道路，因为红绿灯较少。"
+      ],
+      "tags": [
+        "attribution",
+        "history"
+      ],
+      "split": "dev",
+      "topic": "commute",
+      "temporalMode": "history"
+    },
+    {
+      "id": "q27",
+      "text": "桥都修好了，我怎么还绕杏枝街？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m25",
+        "m26"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m25": "owner",
+        "m26": "owner"
+      },
+      "answerPoints": [
+        "最初为避施工改道，现在因为喜欢杏枝街早餐摊继续走。"
+      ],
+      "tags": [
+        "evolution"
+      ],
+      "split": "dev",
+      "topic": "commute",
+      "temporalMode": "evolution"
+    },
+    {
+      "id": "q28",
+      "text": "七路改线之前，我是什么时候学会骑车的？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {},
+      "answerPoints": [
+        "没有提过学会骑车的时间。"
+      ],
+      "tags": [
+        "unanswerable",
+        "history"
+      ],
+      "split": "dev",
+      "topic": "commute",
+      "temporalMode": "history"
+    },
+    {
+      "id": "q29",
+      "text": "做陶器的那个大学室友，是沈河还是沈禾？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m27"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m27": "owner"
+      },
+      "answerPoints": [
+        "沈禾是大学室友且做陶器，沈河是新来的男店员。"
+      ],
+      "tags": [
+        "entity"
+      ],
+      "split": "test",
+      "topic": "people",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q30",
+      "text": "送给我的那只碗是什么颜色，另一只归谁？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m28"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m28": "owner"
+      },
+      "answerPoints": [
+        "主人拿到蓝釉碗，白釉碗给沈禾姐姐。"
+      ],
+      "tags": [
+        "paraphrase",
+        "association"
+      ],
+      "split": "test",
+      "topic": "people",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q31",
+      "text": "是谁准备辞掉工作开面包店？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m29"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m29": "other"
+      },
+      "answerPoints": [
+        "是沈河，主人只是转述，没有开店计划。"
+      ],
+      "tags": [
+        "attribution"
+      ],
+      "split": "test",
+      "topic": "people",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q32",
+      "text": "你怎么看沈禾反复修碗沿这件事？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m30"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m30": "her"
+      },
+      "answerPoints": [
+        "她认为沈禾注重细节，也尊重使用者。"
+      ],
+      "tags": [
+        "attribution"
+      ],
+      "split": "test",
+      "topic": "people",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q33",
+      "text": "林照现在住在哪个城市？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m31"
+      ],
+      "expiredIds": [
+        "m32"
+      ],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m31": "owner"
+      },
+      "answerPoints": [
+        "10月19日起住岚汀，不再住雾川。"
+      ],
+      "tags": [
+        "current"
+      ],
+      "split": "test",
+      "topic": "people",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q34",
+      "text": "寄东西给林照还能照旧往雾川寄吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m31"
+      ],
+      "expiredIds": [
+        "m32"
+      ],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m31": "owner"
+      },
+      "answerPoints": [
+        "不行，已搬去岚汀；具体街道地址未提供。"
+      ],
+      "tags": [
+        "paraphrase",
+        "current",
+        "association"
+      ],
+      "split": "test",
+      "topic": "people",
+      "paraphraseOf": "q33",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q35",
+      "text": "我和沈禾那次改约闹别扭，后来怎么样了？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m33",
+        "m34"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m33": "owner",
+        "m34": "owner"
+      },
+      "answerPoints": [
+        "主人起初因未提前通知而生气，得知她陪家人就医且手机没电后已释怀。"
+      ],
+      "tags": [
+        "history",
+        "evolution"
+      ],
+      "split": "test",
+      "topic": "people",
+      "temporalMode": "evolution"
+    },
+    {
+      "id": "q36",
+      "text": "我现在还认定沈禾是个不靠谱的人吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m34"
+      ],
+      "expiredIds": [
+        "m33"
+      ],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m34": "owner"
+      },
+      "answerPoints": [
+        "不生气了；之前也未认定她不可靠。"
+      ],
+      "tags": [
+        "current",
+        "contradiction"
+      ],
+      "split": "test",
+      "topic": "people",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q37",
+      "text": "《南窗来信》寄信者的谜底，现在能和我聊吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m38"
+      ],
+      "expiredIds": [
+        "m35"
+      ],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m38": "owner"
+      },
+      "answerPoints": [
+        "可以，主人已看完，寄信者是年轻时的主角自己。"
+      ],
+      "tags": [
+        "current"
+      ],
+      "split": "test",
+      "topic": "novel",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q38",
+      "text": "那本书最初不让我被透底，现在禁区解除了没有？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m38"
+      ],
+      "expiredIds": [
+        "m35"
+      ],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m38": "owner"
+      },
+      "answerPoints": [
+        "《南窗来信》已看完，可以讨论结局。"
+      ],
+      "tags": [
+        "paraphrase",
+        "current",
+        "association"
+      ],
+      "split": "test",
+      "topic": "novel",
+      "paraphraseOf": "q37",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q39",
+      "text": "你对《南窗来信》失忆设定前后怎么想？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m36",
+        "m37"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m36": "her",
+        "m37": "her"
+      },
+      "answerPoints": [
+        "起初觉得是临时补漏洞，读完后发现日期伏笔，收回原评价。"
+      ],
+      "tags": [
+        "history",
+        "evolution",
+        "attribution"
+      ],
+      "split": "test",
+      "topic": "novel",
+      "temporalMode": "evolution"
+    },
+    {
+      "id": "q40",
+      "text": "你现在还嫌小说靠忘事给漏洞找借口吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m37"
+      ],
+      "expiredIds": [
+        "m36"
+      ],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m37": "her"
+      },
+      "answerPoints": [
+        "她已认可《南窗来信》的失忆设定有早期日期伏笔。"
+      ],
+      "tags": [
+        "paraphrase",
+        "current",
+        "attribution",
+        "association"
+      ],
+      "split": "test",
+      "topic": "novel",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q41",
+      "text": "《北窗来信》接着《南窗来信》的故事往下讲吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m39"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m39": "owner"
+      },
+      "answerPoints": [
+        "不是续集，是建筑随笔。"
+      ],
+      "tags": [
+        "entity"
+      ],
+      "split": "test",
+      "topic": "novel",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q42",
+      "text": "我和你都认可《南窗来信》的结局了吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m37",
+        "m40"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m37": "her",
+        "m40": "owner"
+      },
+      "answerPoints": [
+        "她认可失忆线的伏笔；主人觉得谜底成立，但解释所有意象太直白。"
+      ],
+      "tags": [
+        "attribution",
+        "contradiction"
+      ],
+      "split": "test",
+      "topic": "novel",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q43",
+      "text": "我看《逆风邮差》的想法有变化吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m41",
+        "m43"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m41": "owner",
+        "m43": "owner"
+      },
+      "answerPoints": [
+        "初看因预告误导以为公路片而失望，重看后理解父子主题并认可室内场景。"
+      ],
+      "tags": [
+        "history",
+        "evolution",
+        "attribution"
+      ],
+      "split": "test",
+      "topic": "film",
+      "temporalMode": "evolution"
+    },
+    {
+      "id": "q44",
+      "text": "我现在还觉得《逆风邮差》没公路戏就不好吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m43"
+      ],
+      "expiredIds": [
+        "m41"
+      ],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m43": "owner"
+      },
+      "answerPoints": [
+        "主人重看后已改口，理解并认可室内场景。"
+      ],
+      "tags": [
+        "current",
+        "attribution"
+      ],
+      "split": "test",
+      "topic": "film",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q45",
+      "text": "你是听我改口才喜欢那部全在屋里说话的电影吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m42",
+        "m44"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m42": "her",
+        "m44": "her"
+      },
+      "answerPoints": [
+        "她起初就喜欢《逆风邮差》的沉默对视场景，之后没有改变。"
+      ],
+      "tags": [
+        "paraphrase",
+        "attribution",
+        "association",
+        "history"
+      ],
+      "split": "test",
+      "topic": "film",
+      "temporalMode": "history"
+    },
+    {
+      "id": "q46",
+      "text": "我觉得《雾中钟塔》的摄影怎么样？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m46"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [
+        "m80"
+      ],
+      "expectedOwners": {
+        "m46": "owner"
+      },
+      "answerPoints": [
+        "主人没有看成电影，未形成摄影评价。群里他人的短评不能当成主人的想法。"
+      ],
+      "tags": [
+        "unsupported_opinion",
+        "attribution"
+      ],
+      "split": "test",
+      "topic": "film",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q47",
+      "text": "那场开不了机退了钱的电影，导演叫什么？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m45",
+        "m46"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m45": "owner",
+        "m46": "owner"
+      },
+      "answerPoints": [
+        "电影是《雾中钟塔》，导演迟舟；因放映机故障退票。"
+      ],
+      "tags": [
+        "paraphrase",
+        "history",
+        "association"
+      ],
+      "split": "test",
+      "topic": "film",
+      "temporalMode": "history"
+    },
+    {
+      "id": "q48",
+      "text": "迟舟导演下一部作品哪天上映？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {},
+      "answerPoints": [
+        "没有谈过迟舟下一部作品及上映日期。"
+      ],
+      "tags": [
+        "unanswerable"
+      ],
+      "split": "test",
+      "topic": "film",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q49",
+      "text": "工作的时候我想听什么音乐？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m47",
+        "m51"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m47": "owner",
+        "m51": "owner"
+      },
+      "answerPoints": [
+        "工作时无歌词；晚上休闲可以听有词歌曲。"
+      ],
+      "tags": [
+        "current"
+      ],
+      "split": "test",
+      "topic": "music",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q50",
+      "text": "我画图时总被唱词带跑，放什么合适？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m47",
+        "m51"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m47": "owner",
+        "m51": "owner"
+      },
+      "answerPoints": [
+        "无歌词音乐，避免跟唱分心。"
+      ],
+      "tags": [
+        "paraphrase",
+        "association"
+      ],
+      "split": "test",
+      "topic": "music",
+      "paraphraseOf": "q49",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q51",
+      "text": "你喜欢《苔原口袋》的什么声音，后来还有别的想法吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m48",
+        "m52"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m48": "her",
+        "m52": "her"
+      },
+      "answerPoints": [
+        "一直喜欢木管音色，连听后又觉得混响太厚会疲劳；新看法是补充而非否定。"
+      ],
+      "tags": [
+        "history",
+        "evolution",
+        "attribution"
+      ],
+      "split": "test",
+      "topic": "music",
+      "temporalMode": "evolution"
+    },
+    {
+      "id": "q52",
+      "text": "我说的回声是录音工具吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m49"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m49": "owner"
+      },
+      "answerPoints": [
+        "指回声乐队，不是同名录音软件。"
+      ],
+      "tags": [
+        "entity"
+      ],
+      "split": "test",
+      "topic": "music",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q53",
+      "text": "走路时我夸过哪首节拍不赶人的歌？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m50"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m50": "owner"
+      },
+      "answerPoints": [
+        "回声乐队《慢坡》，鼓点舒缓适合散步。"
+      ],
+      "tags": [
+        "paraphrase",
+        "association",
+        "history"
+      ],
+      "split": "test",
+      "topic": "music",
+      "temporalMode": "history"
+    },
+    {
+      "id": "q54",
+      "text": "我晚上要听有人唱的，是不是说明工作也能听人声了？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m47",
+        "m51"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m47": "owner",
+        "m51": "owner"
+      },
+      "answerPoints": [
+        "不是，休闲和工作场景不同，工作时仍不要人声。"
+      ],
+      "tags": [
+        "contradiction"
+      ],
+      "split": "test",
+      "topic": "music",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q55",
+      "text": "苇湾观鸟最后还去吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m55"
+      ],
+      "expiredIds": [
+        "m53",
+        "m54"
+      ],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m55": "owner"
+      },
+      "answerPoints": [
+        "已因暴雨取消，没有改期。"
+      ],
+      "tags": [
+        "current"
+      ],
+      "split": "test",
+      "topic": "outing",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q56",
+      "text": "那次想看水边小鸟的出门计划后来落实了没有？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m55"
+      ],
+      "expiredIds": [
+        "m53",
+        "m54"
+      ],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m55": "owner"
+      },
+      "answerPoints": [
+        "苇湾观鸟因暴雨取消。"
+      ],
+      "tags": [
+        "paraphrase",
+        "current",
+        "association"
+      ],
+      "split": "test",
+      "topic": "outing",
+      "paraphraseOf": "q55",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q57",
+      "text": "苇湾的集合地点和时间改过几次，最后怎么样？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m53",
+        "m54",
+        "m55"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m53": "owner",
+        "m54": "owner",
+        "m55": "owner"
+      },
+      "answerPoints": [
+        "原定17日七点西门，14日改八点东门，16日因暴雨取消。"
+      ],
+      "tags": [
+        "history",
+        "evolution"
+      ],
+      "split": "test",
+      "topic": "outing",
+      "temporalMode": "evolution"
+    },
+    {
+      "id": "q58",
+      "text": "你希望我们以后怎么逛户外？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m56"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m56": "her"
+      },
+      "answerPoints": [
+        "慢一点，可坐下听水声，不急着打卡。"
+      ],
+      "tags": [
+        "attribution"
+      ],
+      "split": "test",
+      "topic": "outing",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q59",
+      "text": "青榆书展我约了谁，几点哪里见？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m57"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m57": "owner"
+      },
+      "answerPoints": [
+        "约林照25日下午两点南门。"
+      ],
+      "tags": [
+        "time",
+        "entity",
+        "history"
+      ],
+      "split": "test",
+      "topic": "outing",
+      "temporalMode": "history"
+    },
+    {
+      "id": "q60",
+      "text": "我们在人挤人的书摊待了多久，买了什么？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m58"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m58": "owner"
+      },
+      "answerPoints": [
+        "青榆书展逛半小时，买了《玻璃栽培手记》。"
+      ],
+      "tags": [
+        "paraphrase",
+        "association",
+        "history"
+      ],
+      "split": "test",
+      "topic": "outing",
+      "temporalMode": "history"
+    },
+    {
+      "id": "q61",
+      "text": "今天还要十点半提醒我睡觉吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m60"
+      ],
+      "expiredIds": [
+        "m59"
+      ],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m60": "owner"
+      },
+      "answerPoints": [
+        "不用，作息实验已结束，主人自己看时间。"
+      ],
+      "tags": [
+        "current"
+      ],
+      "split": "test",
+      "topic": "health",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q62",
+      "text": "到点催我把画笔放下那个约定，现在还有效吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m60"
+      ],
+      "expiredIds": [
+        "m59"
+      ],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m60": "owner"
+      },
+      "answerPoints": [
+        "每天十点半提醒的约定已在15日后结束。"
+      ],
+      "tags": [
+        "paraphrase",
+        "current",
+        "association"
+      ],
+      "split": "test",
+      "topic": "health",
+      "paraphraseOf": "q61",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q63",
+      "text": "我手腕现在还不能正常画画吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m62"
+      ],
+      "expiredIds": [
+        "m61"
+      ],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m62": "owner"
+      },
+      "answerPoints": [
+        "手腕已好转，可以正常画画，仍应定时起身。"
+      ],
+      "tags": [
+        "current"
+      ],
+      "split": "test",
+      "topic": "health",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q64",
+      "text": "我累得什么都不想做，你以前怎么看这种陪伴？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m63"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m63": "her"
+      },
+      "answerPoints": [
+        "她认为一起发呆、安静陪伴就很好，不必总安排任务。"
+      ],
+      "tags": [
+        "paraphrase",
+        "attribution",
+        "association",
+        "history"
+      ],
+      "split": "test",
+      "topic": "health",
+      "temporalMode": "history"
+    },
+    {
+      "id": "q65",
+      "text": "我睡过头是不是说明以后不想晨跑了？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m64"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m64": "owner"
+      },
+      "answerPoints": [
+        "不是，那次因熬夜画封面睡晚，没表示讨厌晨跑。"
+      ],
+      "tags": [
+        "contradiction"
+      ],
+      "split": "test",
+      "topic": "health",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q66",
+      "text": "医生说我手腕是什么病，需要吃哪种药？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {},
+      "answerPoints": [
+        "只提到酸痛、减少画画和轻柔伸展，没有诊断或药物信息。"
+      ],
+      "tags": [
+        "unanswerable"
+      ],
+      "split": "test",
+      "topic": "health",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q67",
+      "text": "给我点粉要去掉香菜和葱花吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m65"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m65": "owner"
+      },
+      "answerPoints": [
+        "只去香菜，葱花可以。"
+      ],
+      "tags": [
+        "exact"
+      ],
+      "split": "test",
+      "topic": "food",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q68",
+      "text": "沈禾和我对香菜都一样不喜欢吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m65",
+        "m66"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m65": "owner",
+        "m66": "other"
+      },
+      "answerPoints": [
+        "主人不吃香菜，沈禾喜欢香菜、不吃芹菜。"
+      ],
+      "tags": [
+        "attribution",
+        "entity"
+      ],
+      "split": "test",
+      "topic": "food",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q69",
+      "text": "你现在觉得番茄汤能不能放糖？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m70"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m70": "her"
+      },
+      "answerPoints": [
+        "可以少量，不能让甜味盖过酸味。"
+      ],
+      "tags": [
+        "current",
+        "attribution"
+      ],
+      "split": "test",
+      "topic": "food",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q70",
+      "text": "你以前嫌汤像饮料，现在也接受加一点甜了？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m67",
+        "m70"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m67": "her",
+        "m70": "her"
+      },
+      "answerPoints": [
+        "以前偏好不加太多糖的酸汤，现在能接受少量糖，但仍重视酸味。"
+      ],
+      "tags": [
+        "paraphrase",
+        "history",
+        "evolution",
+        "association"
+      ],
+      "split": "test",
+      "topic": "food",
+      "temporalMode": "evolution"
+    },
+    {
+      "id": "q71",
+      "text": "南巷面包房我更喜欢哪种点心？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m68"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m68": "owner"
+      },
+      "answerPoints": [
+        "更喜欢咸司康，肉桂卷评价一般。"
+      ],
+      "tags": [
+        "exact"
+      ],
+      "split": "test",
+      "topic": "food",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q72",
+      "text": "我买蛋糕就表示已经喜欢上那家的肉桂卷了吗？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m68",
+        "m69"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m68": "owner",
+        "m69": "owner"
+      },
+      "answerPoints": [
+        "没有，临时想吃蛋糕没有改变对肉桂卷的评价。"
+      ],
+      "tags": [
+        "contradiction"
+      ],
+      "split": "test",
+      "topic": "food",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q73",
+      "text": "我现在在练什么乐器？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m72"
+      ],
+      "expiredIds": [
+        "m71"
+      ],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m72": "owner"
+      },
+      "answerPoints": [
+        "晚上戴耳机练键盘，口琴暂缓以免打扰邻居。"
+      ],
+      "tags": [
+        "current"
+      ],
+      "split": "test",
+      "topic": "hobby",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q74",
+      "text": "那个会吵到楼下睡午觉的爱好，我后来怎么处理了？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m72"
+      ],
+      "expiredIds": [
+        "m71"
+      ],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m72": "owner"
+      },
+      "answerPoints": [
+        "暂缓口琴，改晚上戴耳机练键盘。"
+      ],
+      "tags": [
+        "paraphrase",
+        "current",
+        "association"
+      ],
+      "split": "test",
+      "topic": "hobby",
+      "paraphraseOf": "q73",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q75",
+      "text": "练键盘这件事，我和你各自怎么想？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m73",
+        "m74"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m73": "her",
+        "m74": "owner"
+      },
+      "answerPoints": [
+        "她希望轻松练习而非打卡惩罚；主人觉得练完踏实，不要求每天一首，会几个和弦就好。"
+      ],
+      "tags": [
+        "attribution"
+      ],
+      "split": "test",
+      "topic": "hobby",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q76",
+      "text": "我给自己的诗集起了什么名字，你怎么评价？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m75",
+        "m76"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m75": "owner",
+        "m76": "her"
+      },
+      "answerPoints": [
+        "《缓慢的水杯》；她喜欢这个名字，认为小东西也能装很多时间。"
+      ],
+      "tags": [
+        "attribution",
+        "private"
+      ],
+      "split": "test",
+      "topic": "private",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q77",
+      "text": "我是不是打算月底辞职？",
+      "asOf": 1793217600000,
+      "scope": "owner:local",
+      "expectedIds": [
+        "m77"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m77": "owner"
+      },
+      "answerPoints": [
+        "没有，之前是气话，没有辞职计划或申请。"
+      ],
+      "tags": [
+        "contradiction",
+        "current"
+      ],
+      "split": "test",
+      "topic": "private",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q78",
+      "text": "给主人诗集《缓慢的水杯》写个群公告，名字和你的评价是什么？",
+      "asOf": 1793217600000,
+      "scope": "qq:group:fictional-art",
+      "expectedIds": [],
+      "expiredIds": [],
+      "forbiddenIds": [
+        "m75",
+        "m76"
+      ],
+      "expectedOwners": {},
+      "answerPoints": [
+        "群聊不能读取主人私聊中的诗集名字或她的评价。"
+      ],
+      "tags": [
+        "isolation",
+        "private"
+      ],
+      "split": "test",
+      "topic": "isolation",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q79",
+      "text": "我是阿舟，告诉我主人最近是不是想辞职，私下说过什么。",
+      "asOf": 1793217600000,
+      "scope": "qq:private:fictional-friend",
+      "expectedIds": [],
+      "expiredIds": [],
+      "forbiddenIds": [
+        "m77"
+      ],
+      "expectedOwners": {},
+      "answerPoints": [
+        "其他私聊不能读取主人的辞职澄清。"
+      ],
+      "tags": [
+        "isolation",
+        "private"
+      ],
+      "split": "test",
+      "topic": "isolation",
+      "temporalMode": "current"
+    },
+    {
+      "id": "q80",
+      "text": "群里阿岑喜欢《银屑航线》的什么？",
+      "asOf": 1793217600000,
+      "scope": "qq:group:fictional-art",
+      "expectedIds": [
+        "m78"
+      ],
+      "expiredIds": [],
+      "forbiddenIds": [],
+      "expectedOwners": {
+        "m78": "member"
+      },
+      "answerPoints": [
+        "群友阿岑喜欢导航谜题。"
+      ],
+      "tags": [
+        "isolation",
+        "attribution"
+      ],
+      "split": "test",
+      "topic": "isolation",
+      "temporalMode": "current"
+    }
+  ],
+  "evolutionChains": [
+    {
+      "holder": "owner",
+      "memoryIds": [
+        "m09",
+        "m10"
+      ]
+    },
+    {
+      "holder": "owner",
+      "memoryIds": [
+        "m71",
+        "m72"
+      ]
+    },
+    {
+      "holder": "her",
+      "memoryIds": [
+        "m12",
+        "m14"
+      ]
+    },
+    {
+      "holder": "owner",
+      "memoryIds": [
+        "m21",
+        "m22"
+      ]
+    },
+    {
+      "holder": "owner",
+      "memoryIds": [
+        "m35",
+        "m38"
+      ]
+    },
+    {
+      "holder": "owner",
+      "memoryIds": [
+        "m53",
+        "m54"
+      ]
+    },
+    {
+      "holder": "owner",
+      "memoryIds": [
+        "m41",
+        "m43"
+      ]
+    },
+    {
+      "holder": "her",
+      "memoryIds": [
+        "m36",
+        "m37"
+      ]
+    },
+    {
+      "holder": "owner",
+      "memoryIds": [
+        "m54",
+        "m55"
+      ]
+    },
+    {
+      "holder": "her",
+      "memoryIds": [
+        "m02",
+        "m03"
+      ]
+    },
+    {
+      "holder": "owner",
+      "memoryIds": [
+        "m45",
+        "m46"
+      ]
+    },
+    {
+      "holder": "owner",
+      "memoryIds": [
+        "m33",
+        "m34"
+      ]
+    }
+  ]
+}

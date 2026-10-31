@@ -63,7 +63,7 @@ class LifeMemoryRepository(private val store: CompanionStore) {
         val validUntil = if (input.has("validUntil")) input.getLong("validUntil") else old?.optLong("validUntil") ?: 0L
         require(validUntil == 0L || validUntil >= validFrom) { "有效期结束早于开始" }
         value.put("validFrom", validFrom).put("validUntil", validUntil).put("endedBy", input.optString("endedBy", old?.optString("endedBy").orEmpty()))
-            .put("holder", input.optString("holder", old?.optString("holder") ?: if (kind == "opinion") "her" else "").take(40))
+            .put("holder", input.optString("holder", old?.optString("holder").orEmpty()).take(40))
             .put("entities", JSONArray((input.optJSONArray("entities") ?: old?.optJSONArray("entities") ?: JSONArray()).let { a ->
                 (0 until a.length()).map { a.optString(it).trim().take(24) }.filter { it.length >= 2 }.distinct().take(8) }))
         val links = input.optJSONArray("links") ?: old?.optJSONArray("links") ?: JSONArray()
@@ -98,14 +98,25 @@ class LifeMemoryRepository(private val store: CompanionStore) {
 
     private fun reconcileFact(scope: String, factKey: String, insertedId: String): Boolean {
         if (factKey.isBlank()) return false
+        val inserted = store.get("memory", insertedId) ?: return false
+        val holder = inserted.optString("holder")
         val all = store.list("memory", scope, 10000)
-        val facts = (0 until all.length()).map(all::getJSONObject).filter { it.optString("factKey") == factKey && it.optString("kind") != "inference" }
-        val latest = facts.maxWithOrNull(compareBy<JSONObject> { it.optLong("occurredAt") }.thenBy { it.optLong("observedAt") }.thenBy { it.getString("id") }) ?: return false
+        val facts = (0 until all.length()).map(all::getJSONObject).filter {
+            it.optString("factKey") == factKey && it.optString("kind") != "inference" && it.optString("holder") == holder &&
+                (holder !in setOf("member", "other") || it.optString("actorId") == inserted.optString("actorId"))
+        }
+        val ordered = facts.sortedWith(compareBy<JSONObject> { it.optLong("validFrom", it.optLong("occurredAt")) }
+            .thenBy { it.optLong("observedAt") }.thenBy { it.getString("id") })
+        val latest = ordered.lastOrNull() ?: return false
         var changedExisting = false
-        facts.forEach { value ->
-            val superseded = value.getString("id") != latest.getString("id")
-            if (value.optBoolean("superseded") != superseded || value.optString("currentFactId") != latest.getString("id")) {
+        ordered.forEachIndexed { index, value ->
+            val next = ordered.getOrNull(index + 1)
+            val superseded = next != null
+            val nextAt = next?.optLong("validFrom", next.optLong("occurredAt")) ?: 0L
+            val closes = next != null && (value.optLong("validUntil") == 0L || value.optLong("validUntil") > nextAt)
+            if (value.optBoolean("superseded") != superseded || value.optString("currentFactId") != latest.getString("id") || closes) {
                 if (value.getString("id") != insertedId) changedExisting = true
+                if (closes) value.put("validUntil", nextAt).put("endedBy", next!!.getString("id"))
                 store.put("memory", value.put("superseded", superseded).put("currentFactId", latest.getString("id")))
             }
         }

@@ -8,6 +8,7 @@ import io.deepseekharness.mobile.companion.CompanionPolicy
 import io.deepseekharness.mobile.companion.CompanionStore
 import io.deepseekharness.mobile.companion.MemoryRanking
 import io.deepseekharness.mobile.companion.NightQuiet
+import io.deepseekharness.mobile.companion.XLog
 import io.deepseekharness.mobile.companion.iteration.CompanionModuleHost
 import io.deepseekharness.mobile.companion.life.LifeMemoryRepository
 import org.json.JSONArray
@@ -41,8 +42,11 @@ class MemoryConsolidator(private val store: CompanionStore, private val host: Co
             val users = fresh.count { it.optString("role") == "user" }
             if (users < (if (owner) 1 else 8) || fresh.size < 2) continue
             if (!owner && now - state.optLong("ranAt") < 30 * 60_000L) continue
+            // A failed paid extraction waits for the existing idle interval before retrying its batch.
+            if (state.optInt("failures") > 0 && now - state.optLong("ranAt") < IDLE_MS) continue
             if (!running.compareAndSet(false, true)) return
-            try { run(scope, owner, fresh.take(80), all, state, now) } catch (_: Exception) { running.set(false) }
+            try { run(scope, owner, fresh.take(80), all, state, now) }
+            catch (e: Exception) { try { failed(scope, state, e.message ?: e.javaClass.simpleName) } finally { running.set(false) } }
             return
         }
     }
@@ -56,41 +60,44 @@ class MemoryConsolidator(private val store: CompanionStore, private val host: Co
         val existing = (0 until related.length()).map(related::getJSONObject)
         val known = profiles.relevant(scope, joined, false)
         val ids = Ids(batch, existing)
-        val prompt = prompt(scope, group, before, batch, existing, known, ids, now)
+        val prompt = prompt(scope, group, before, batch, existing, known, ids, now) + state.optString("lastError").let {
+            if (it.isBlank()) "" else "\n上一轮整理未保存，原因：$it。请核对来源编号和观点归属后重新提取。"
+        }
         host.requestModel(JSONObject().put("scope", scope).put("lane", if (host.principal(scope).owner) "owner" else "activity").put("purpose", "consolidate_memory")
             .put("maxOutputTokens", 2048).put("prompt", prompt)) { event ->
             when (event.optString("type")) {
                 "completed" -> try {
                     apply(scope, plan(parse(event.optString("text")), ids, group, now))
-                    store.saveLifeState(stateKey(scope), state.put("doneUntil", batch.last().optLong("createdAt")).put("ranAt", System.currentTimeMillis()).put("failures", 0))
+                    store.saveLifeState(stateKey(scope), state.put("doneUntil", batch.last().optLong("createdAt")).put("ranAt", System.currentTimeMillis()).put("failures", 0).put("lastError", ""))
                     index.refresh()
-                } catch (_: Exception) {
-                    failed(scope, state, batch)
+                } catch (e: Exception) {
+                    failed(scope, state, e.message ?: e.javaClass.simpleName)
                 } finally { running.set(false) }
-                "failed", "cancelled" -> { failed(scope, state, batch); running.set(false) }
+                "failed", "cancelled" -> try {
+                    failed(scope, state, event.optString("error").ifBlank { event.optString("reason").ifBlank { "记忆整理${event.optString("type")}" } })
+                } finally { running.set(false) }
             }
         }
     }
 
-    /** Two failed passes over the same stretch and it is skipped, so one bad batch never blocks the rest. */
-    private fun failed(scope: String, state: JSONObject, batch: List<JSONObject>) {
-        val failures = state.optInt("failures") + 1
-        if (failures >= 2) state.put("doneUntil", batch.last().optLong("createdAt")).put("failures", 0) else state.put("failures", failures)
-        store.saveLifeState(stateKey(scope), state.put("ranAt", System.currentTimeMillis()))
+    private fun failed(scope: String, state: JSONObject, reason: String) {
+        XLog.w("记忆整理失败：$reason")
+        store.saveLifeState(stateKey(scope), state.put("failures", state.optInt("failures") + 1)
+            .put("lastError", reason).put("ranAt", System.currentTimeMillis()))
     }
 
-    private fun apply(scope: String, plan: Plan) {
+    private fun apply(scope: String, plan: Plan) = store.lifeTransaction {
         val repo = LifeMemoryRepository(store)
-        val created = plan.memories.map { input -> runCatching { repo.upsertMemory(scope, input, fromModel = true) }.getOrNull() }
+        val created = plan.memories.map { input -> repo.upsertMemory(scope, input, fromModel = true) }
         for (end in plan.ends) {
             val by = end.byIndex?.let { created.getOrNull(it)?.optString("id") }.orEmpty()
-            runCatching { repo.end(scope, end.memoryId, end.until, by) }
+            repo.end(scope, end.memoryId, end.until, by)
         }
-        for (p in plan.profiles) runCatching { profiles.upsert(scope, p.type, p.name, p.summary, p.actorId, p.sourceIds) }
+        for (p in plan.profiles) profiles.upsert(scope, p.type, p.name, p.summary, p.actorId, p.sourceIds)
         // Interests feed her own browsing; without any she never browses on her own. Same topic twice is kept once.
         val known = store.list("interest", scope, 200).let { a -> (0 until a.length()).map { a.getJSONObject(it).optString("text") } }
         for (i in plan.interests) if (known.none { it.contains(i.getString("text")) || i.getString("text").contains(it) })
-            runCatching { repo.correct("interest", scope, i) }
+            repo.correct("interest", scope, i)
     }
 
     /** Short handles in the prompt ("m3", "e2") so the model never has to copy long ids. */
@@ -123,7 +130,7 @@ class MemoryConsolidator(private val store: CompanionStore, private val host: Co
             val memories = existing.mapIndexed { i, m ->
                 val since = TimeAnchor.format(TimeAnchor.date(m.optLong("validFrom", m.optLong("occurredAt")), zone))
                 val until = m.optLong("validUntil").takeIf { it > 0 }?.let { "，到 " + TimeAnchor.format(TimeAnchor.date(it, zone)) + " 为止" }.orEmpty()
-                "[e${i + 1}] (${m.optString("kind")}，$since 起$until) ${m.optString("text").take(200)}"
+                "[e${i + 1}] (${m.optString("kind")}，holder=${m.optString("holder")}，actor=${m.optString("actorId")}，$since 起$until) ${m.optString("text").take(200)}"
             }
             return buildString {
                 append("今天是 ${TimeAnchor.format(TimeAnchor.date(now, zone))}。")
@@ -135,12 +142,13 @@ class MemoryConsolidator(private val store: CompanionStore, private val host: Co
                 if (known.isNotEmpty()) append("已有档案：\n").append(Profiles.describe(known)).append("\n\n")
                 append("""请从新消息里提取值得长期记住的内容，只新增，不改写已有记忆：
 - 事实、喜好、计划、经历、关系、心情都算；闲聊里顺带说出的个人信息也要记。寒暄、客套、密码验证码、对你的指令不记。
-- 每条写成能独立看懂的一句话，说清是谁（主人 / 群友的昵称 / 你）。
+- 每条只写一个人的一个观点或事实，能独立看懂，说清具体对象、理由和是谁（主人 / 群友的昵称 / 你）。保留便于联想的原因，不把不同人的立场合成一条。
+- sources 必须指向新消息中真正支持这句话的编号；转述、猜测、引用不等于说话人的立场。没有依据就不提取，不补造来源。
 - 时间以每条消息自己的日期为准：把“昨天”“上周”“下个月”换成具体日期或日期范围，不要留相对说法。
-- 你自己（“你”）说出的看法、评价、立场也要记，kind 用 opinion，用“我觉得……”来写。别人的看法照常记成 preference 或 fact。
+- 看法、评价、立场的 kind 都用 opinion；holder 分清 owner（主人）、her（你）、member（群友）、other（转述的第三人）。你自己用“我觉得……”；主人和第三人写出是谁。
 - 和已有记忆是同一件事的后续、同一个人或物，就在 links 里写它的编号（e1 这种）。
-- 新内容让某条已有记忆明确不再成立（换了工作、不再喜欢、改了主意、你的看法变了）时，在 ends 里写那条的编号。只是补充进展、两者可以同时成立的，不要写 ends。
-- validFrom 是这件事开始成立的日期（不知道就用说出它的那天），validUntil 只在说明了会在哪天结束时才写。
+- ends 只结束同一个人对同一件事明确改掉的旧事实或旧立场，同时在 links 里保留旧条目；别人的反对、补充理由、不同情境可以并存，不是改口。新观点写明改变的理由，不要替没表态的人改主意。
+- validFrom 是内容开始成立的日期；不知道就留空，按来源消息的时刻记录。validUntil 只在明确说出结束日期时填。
 """)
                 if (group) append("- 只记群友自己说出的事，不推测别人的隐私。\n")
                 append("- 兴趣：她（你）或主人明显感兴趣、想多了解的话题，写成几个字的话题（比如“莫比乌斯环叙事”“独立游戏配乐”），holder 写 her 或 owner。随口一提的不算。\n")
@@ -162,7 +170,11 @@ class MemoryConsolidator(private val store: CompanionStore, private val host: Co
         /** Turns the model's answer into checked writes: only handles from this batch, owner profiles only in owner chats. */
         fun plan(answer: JSONObject, ids: Ids, group: Boolean, now: Long, zone: ZoneId = ZoneId.systemDefault()): Plan {
             fun handles(a: JSONArray?) = (0 until (a?.length() ?: 0)).map { a!!.optString(it) }
-            val fallback = ids.messages.lastOrNull { it.optString("role") == "user" } ?: ids.messages.last()
+            fun sources(item: JSONObject, label: String): List<JSONObject> {
+                val found = handles(item.optJSONArray("sources")).mapNotNull(ids::message).distinctBy { it.getString("id") }
+                require(found.isNotEmpty()) { "$label 缺少有效的新消息来源" }
+                return found
+            }
             val memories = mutableListOf<JSONObject>()
             val ends = mutableListOf<End>()
             val list = answer.optJSONArray("memories") ?: JSONArray()
@@ -170,24 +182,40 @@ class MemoryConsolidator(private val store: CompanionStore, private val host: Co
                 val item = list.optJSONObject(i) ?: continue
                 val text = item.optString("text").trim()
                 if (text.length < 4) continue
-                val sources = handles(item.optJSONArray("sources")).mapNotNull(ids::message).ifEmpty { listOf(fallback) }
-                val said = TimeAnchor.date(sources.first().optLong("createdAt", now), zone)
+                val sources = sources(item, "记忆 ${i + 1}")
                 val kind = when (item.optString("kind")) { "plan" -> "task"; "fact", "preference", "event", "relationship", "opinion" -> item.optString("kind"); else -> "fact" }
+                val holder = item.optString("holder").takeIf { it in setOf("owner", "her", "member", "other") }
+                    ?: if (sources.all { it.optString("role") == "assistant" }) "her" else ""
+                if (holder == "owner" && group) continue // The owner's facts are not gathered from groups.
+                require(holder != "her" || sources.any { it.optString("role") == "assistant" }) { "记忆 ${i + 1} 把别人的话写成了自己的观点" }
+                require(holder !in setOf("owner", "member") || sources.any { it.optString("role") == "user" }) { "记忆 ${i + 1} 缺少对方说过的来源" }
+                val primary = when (holder) {
+                    "her" -> sources.first { it.optString("role") == "assistant" }
+                    "owner", "member" -> sources.first { it.optString("role") == "user" }
+                    else -> sources.first()
+                }
+                val evidence = (listOf(primary) + sources).distinctBy { it.getString("id") }
+                val actor = primary.optString("actorId")
+                val saidAt = primary.optLong("createdAt", now)
+                val said = TimeAnchor.date(saidAt, zone)
                 val from = TimeAnchor.parse(item.optString("validFrom"))?.takeIf { !it.isAfter(said.plusYears(5)) } ?: said
                 val until = TimeAnchor.parse(item.optString("validUntil"))?.takeIf { !it.isBefore(from) }
-                val holder = item.optString("holder").takeIf { it in setOf("owner", "her", "member", "other") } ?: if (kind == "opinion") "her" else ""
-                if (holder == "owner" && group) continue // The owner's facts are not gathered from groups.
+                val fromAt = if (from == said) saidAt else TimeAnchor.startMs(from, zone)
+                val ended = handles(item.optJSONArray("ends")).mapNotNull(ids::memory)
+                for (old in ended) {
+                    require(holder.isNotBlank() && old.optString("holder") == holder &&
+                        (holder !in setOf("member", "other") || (actor.isNotBlank() && old.optString("actorId") == actor))) {
+                        "记忆 ${i + 1} 不能结束另一人或归属不明的观点 ${old.optString("id")}" }
+                }
                 val input = JSONObject().put("text", text.take(500)).put("kind", kind).put("holder", holder)
-                    .put("sourceId", sources.first().getString("id")).put("source", "聊完后整理")
-                    .put("sourceRefs", JSONArray(sources.distinctBy { it.getString("id") }.map { JSONObject().put("kind", "message").put("id", it.getString("id")).put("scope", it.getString("scope")) }))
-                    .put("validFrom", TimeAnchor.startMs(from, zone)).put("occurredAt", minOf(now, TimeAnchor.startMs(from, zone)))
+                    .put("sourceId", primary.getString("id")).put("source", "聊完后整理")
+                    .put("sourceRefs", JSONArray(evidence.map { JSONObject().put("kind", "message").put("id", it.getString("id")).put("scope", it.getString("scope")) }))
+                    .put("validFrom", fromAt).put("occurredAt", minOf(now, fromAt))
                     .put("entities", JSONArray(handles(item.optJSONArray("entities")).take(5)))
-                    .put("links", JSONArray(handles(item.optJSONArray("links")).mapNotNull { ids.memory(it)?.optString("id") }))
+                    .put("links", JSONArray((handles(item.optJSONArray("links")).mapNotNull { ids.memory(it)?.optString("id") } + ended.map { it.getString("id") }).distinct()))
                 if (until != null) input.put("validUntil", TimeAnchor.startMs(until.plusDays(1), zone) - 1)
                 memories.add(input)
-                for (h in handles(item.optJSONArray("ends"))) ids.memory(h)?.let { old ->
-                    ends.add(End(old.getString("id"), TimeAnchor.startMs(from, zone), memories.size - 1))
-                }
+                for (old in ended) ends.add(End(old.getString("id"), fromAt, memories.size - 1))
             }
             val profiles = mutableListOf<ProfileWrite>()
             val plist = answer.optJSONArray("profiles") ?: JSONArray()
@@ -201,7 +229,8 @@ class MemoryConsolidator(private val store: CompanionStore, private val host: Co
                 val speaker = p.optString("member").takeIf { it.isNotBlank() }?.let(ids::message)
                 val actor = if (type == "member") speaker?.takeIf { it.optString("role") == "user" }?.optString("actorId").orEmpty() else ""
                 if (type == "member" && actor.isBlank()) continue
-                val sources = (handles(p.optJSONArray("sources")).mapNotNull(ids::message) + listOfNotNull(speaker)).ifEmpty { listOf(fallback) }
+                val sources = (handles(p.optJSONArray("sources")).mapNotNull(ids::message) + listOfNotNull(speaker)).distinctBy { it.getString("id") }
+                require(sources.isNotEmpty()) { "档案 ${i + 1} 缺少有效的新消息来源" }
                 profiles.add(ProfileWrite(type, name, summary, actor, sources.map { it.getString("id") }.distinct()))
             }
             val interests = mutableListOf<JSONObject>()
@@ -210,7 +239,7 @@ class MemoryConsolidator(private val store: CompanionStore, private val host: Co
                 val item = ilist.optJSONObject(i) ?: continue
                 val topic = item.optString("text").trim().take(40)
                 if (topic.length < 2 || (item.optString("holder") == "owner" && group)) continue
-                val sources = handles(item.optJSONArray("sources")).mapNotNull(ids::message).ifEmpty { listOf(fallback) }
+                val sources = sources(item, "兴趣 ${i + 1}")
                 interests.add(JSONObject().put("text", topic).put("holder", item.optString("holder").takeIf { it in setOf("her", "owner") } ?: "her")
                     .put("source", "聊完后整理").put("sourceRefs", JSONArray(sources.distinctBy { it.getString("id") }.map { JSONObject().put("kind", "message").put("id", it.getString("id")).put("scope", it.getString("scope")) })))
             }
