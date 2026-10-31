@@ -49,7 +49,7 @@ class CompanionService : Service() {
             io.deepseekharness.mobile.companion.claude.ClaudePermissions.answer(intent.getStringExtra("id").orEmpty(), intent.getBooleanExtra("allow", false))
         if (intent?.action == "pause") {
             engine.store.saveSettings(engine.store.settings().put("paused", true))
-            engine.activeTask?.let(engine::cancel); engine.cancelClaudeTurns()
+            engine.activeTask?.let { engine.cancel(it, "主人在通知栏点了暂停") }; engine.cancelClaudeTurns("主人在通知栏点了暂停")
             OneBotBridge.get(this).stop()
             stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); return START_NOT_STICKY
         }

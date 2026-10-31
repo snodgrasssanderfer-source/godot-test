@@ -463,7 +463,7 @@ class CompanionOverlayService : Service() {
                 CompanionDevice(this).sendUsingUi(current).optString("progress")
             } })
         }
-        extras.addView(button("取消当前模型任务") { engine.activeTask?.let(engine::cancel); engine.cancelClaudeTurns(); localStatus = "已请求取消" })
+        extras.addView(button("取消当前模型任务") { engine.activeTask?.let { engine.cancel(it, "主人在悬浮窗里点了取消") }; engine.cancelClaudeTurns("主人在悬浮窗里点了取消"); localStatus = "已请求取消" })
         extras.addView(button("回到助手（待审清单在这里）") { startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); closePanel() })
         extras.addView(button("关掉悬浮球") { rememberBall(false); stopSelf() })
         val input = EditText(theme).apply {

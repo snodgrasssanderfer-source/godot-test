@@ -33,10 +33,33 @@ class CompanionStartupTest {
             ownerRequestedSendIgnoresGroupReplySettings(engine.store)
             personaVersionsCountUpOnceAndAliasesCount(engine.store)
             claudeOnlyWhereTurnedOn(engine.store)
+            onlyRemovingWhatATurnReadStopsIt(engine.store)
         } catch (e: Throwable) {
             // Stack traces cannot be formatted inside the sandbox on this JDK; carry the cause chain as text.
             throw AssertionError(generateSequence(e) { it.cause }.joinToString(" <- ") { "${it.javaClass.name}: ${it.message}" })
         } finally { java.security.Security.removeProvider("AndroidKeyStore") }
+    }
+
+    /**
+     * 14:42 / 14:50 / 16:00: any memory edit anywhere moved one global epoch and voided every running turn. Now edits
+     * never do; a deletion only voids a turn that read the deleted thing, and only that conversation's Claude session.
+     */
+    private fun onlyRemovingWhatATurnReadStopsIt(store: CompanionStore) {
+        val mine = store.message(CompanionPolicy.OWNER, "user", "我明天去看海", "本机主人")
+        val other = store.message("qq:group:epochtest", "user", "群里的一句话", "群友")
+        val sources = org.json.JSONArray().put(org.json.JSONObject().put("kind", "message").put("id", mine.getString("id")).put("scope", CompanionPolicy.OWNER))
+        val epoch = store.removalEpoch(); val ownerEpoch = store.scopeRemovalEpoch(CompanionPolicy.OWNER)
+        store.saveMemory(CompanionPolicy.OWNER, org.json.JSONObject().put("text", "主人明天去看海").put("kind", "task").put("sourceId", mine.getString("id")))
+        assertEquals(epoch, store.removalEpoch()) // remembering is not removing
+        store.deleteContent(setOf(io.deepseekharness.mobile.companion.life.RecordRef("message", other.getString("id"), "qq:group:epochtest")))
+        assertTrue(store.removalEpoch() != epoch)
+        assertEquals(ownerEpoch, store.scopeRemovalEpoch(CompanionPolicy.OWNER)) // another conversation's deletion
+        assertEquals(null, store.contextBroken(sources))
+        store.commitContext(epoch, sources) { } // the turn carries on
+        store.deleteContent(setOf(io.deepseekharness.mobile.companion.life.RecordRef("message", mine.getString("id"), CompanionPolicy.OWNER)))
+        assertTrue(store.contextBroken(sources)!!.contains("删"))
+        assertThrows(ContextRemoved::class.java) { store.commitContext(epoch, sources) { } }
+        assertTrue(store.scopeRemovalEpoch(CompanionPolicy.OWNER) != ownerEpoch)
     }
 
     /** Groups stay on Gemini unless the owner switches that one group; any outage sends everything back to Gemini. */

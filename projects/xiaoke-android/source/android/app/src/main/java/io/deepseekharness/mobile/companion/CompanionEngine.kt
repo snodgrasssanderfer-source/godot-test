@@ -42,7 +42,7 @@ class CompanionEngine private constructor(private val context: Context) {
         store.recoverJobs()
         io.deepseekharness.mobile.companion.presence.PresenceContexts.access = object : io.deepseekharness.mobile.companion.presence.PresenceContextAccess {
             override fun snapshot(query: String) = store.contextSnapshot(CompanionPolicy.OWNER, query)
-            override fun current(epoch: Long) = epoch == store.contentEpoch()
+            override fun current(epoch: Long) = epoch == store.removalEpoch()
             override fun commit(ticket: JSONObject, mutation: () -> Unit) {
                 store.commitContext(ticket.getLong("epoch"), ticket.getJSONArray("sourceRefs"), mutation)
             }
@@ -101,17 +101,24 @@ class CompanionEngine private constructor(private val context: Context) {
         leftover.lastOrNull()?.let { (message, observation) -> respond(scope, message, leftover.lastOrNull { it.second.isNotBlank() }?.second ?: observation) }
     }
 
-    fun cancel(id: String) {
+    /** [reason] goes to the log: who stopped a turn should never be a guess. */
+    fun cancel(id: String, reason: String = "主人点了停止") {
+        XLog.i("turn $id stopped: $reason")
         worker.cancelQueued(id)
         claudeWorker.cancelQueued(id)
-        claudeTurns[id]?.cancel()
+        claudeTurns[id]?.cancel(reason)
         io.deepseekharness.mobile.companion.claude.ClaudePermissions.dropTask(id)
         synchronized(modelLease) { if (id == activeTask) model.cancel() }
         store.cancelTask(id)
     }
 
     /** Pause, going offline and "cancel" also stop Claude turns, which run outside the Gemini lease. */
-    fun cancelClaudeTurns() = claudeTurns.keys.toList().forEach(::cancel)
+    fun cancelClaudeTurns(reason: String) = claudeTurns.keys.toList().forEach { cancel(it, reason) }
+
+    /** What each running chat turn has read, so a deletion only stops the turns that actually used the deleted thing. */
+    private val turnSources = ConcurrentHashMap<String, Pair<Long, JSONArray>>()
+    /** Turns stopped because something they read was removed; they are answered again instead of failing. */
+    private val removedContext = ConcurrentHashMap<String, String>()
 
     private fun beginModelTask(id: String, owner: Boolean = true) = synchronized(modelLease) {
         activeTask = id; activeOwner = owner; model.reset()
@@ -119,16 +126,34 @@ class CompanionEngine private constructor(private val context: Context) {
     }
     private fun endModelTask(id: String) = synchronized(modelLease) { if (activeTask == id) { activeTask = null; activeContextEpoch = null }; preempted.remove(id) }
     private fun yieldActivityToOwner() = synchronized(modelLease) {
-        if (!activeOwner) activeTask?.let { preempted.add(it); model.cancel() }
+        if (!activeOwner) activeTask?.let { XLog.i("turn $it paused: the owner is waiting"); preempted.add(it); model.cancel() }
     }
 
-    fun contextChanged(epoch: Long) = synchronized(modelLease) {
-        if (activeContextEpoch != null && activeContextEpoch != epoch) model.cancel()
+    /**
+     * Something was deleted, forgotten or restored. Presence and module requests (no source list) stop on any removal;
+     * a chat turn stops only if one of its own sources is gone, and is then answered again without it.
+     */
+    fun contextChanged(epoch: Long) {
+        synchronized(modelLease) {
+            if (activeContextEpoch != null && activeContextEpoch != epoch) { XLog.i("presence/module request stopped: content removed"); model.cancel() }
+        }
+        for ((id, ticket) in turnSources) {
+            if (ticket.first == epoch) continue
+            val broken = synchronized(ticket.second) { store.contextBroken(ticket.second) } ?: continue
+            XLog.i("turn $id stopped: $broken")
+            removedContext[id] = broken
+            claudeTurns[id]?.cancel(broken)
+            synchronized(modelLease) { if (id == activeTask) model.cancel() }
+        }
     }
     fun stopActivityRequests() = synchronized(modelLease) {
         if (!activeOwner) activeTask?.let { preempted.add(it); model.cancel() }
     }
-    private fun checkEpoch(epoch: Long) { check(store.contentEpoch() == epoch) { "上下文已更正、忘掉或删除，请重新开始本轮" } }
+    private fun checkEpoch(epoch: Long) { check(store.removalEpoch() == epoch) { "上下文已被忘掉或删除，请重新开始本轮" } }
+    /** A chat turn is only void when something it actually read was taken away. */
+    private fun checkSources(epoch: Long, sources: JSONArray) {
+        if (store.removalEpoch() != epoch) synchronized(sources) { store.contextBroken(sources) }?.let { throw ContextRemoved(it) }
+    }
 
     private fun accounting(scope: String, lane: String, purpose: String, guard: () -> Unit) = ModelAccounting(
         ledger = { action, data -> modules.router.execute("life", action, data, modules.localOwner) },
@@ -141,7 +166,7 @@ class CompanionEngine private constructor(private val context: Context) {
      * No raw frames, STT, synthetic prompts or unplayed model text enter the Store.
      */
     fun enqueuePresence(job: PresenceModelJob) {
-        val epoch = store.contentEpoch()
+        val epoch = store.removalEpoch()
         yieldActivityToOwner()
         worker.submit(job.id, true) {
             if (!job.isCurrent()) return@submit
@@ -198,7 +223,7 @@ class CompanionEngine private constructor(private val context: Context) {
         val id = CompanionPolicy.id()
         val cancelled = AtomicBoolean(false)
         val suppliedEpoch = request.optLong("contextEpoch", -1)
-        val epoch = if (suppliedEpoch >= 0) suppliedEpoch else store.contentEpoch()
+        val epoch = if (suppliedEpoch >= 0) suppliedEpoch else store.removalEpoch()
         checkEpoch(epoch)
         moduleRequests[id] = cancelled
         fun emit(type: String, text: String? = null, error: String? = null, usage: JSONObject? = null) {
@@ -309,9 +334,9 @@ class CompanionEngine private constructor(private val context: Context) {
             val origin = store.get("message", boundId) ?: error("原消息已删除")
             val ticket = store.contextSnapshot(scope, origin.optString("text"), 256)
             val epoch = ticket.getLong("epoch")
-            activeContextEpoch = epoch
             val sources = JSONArray()
-            fun checkCurrent() { checkTask(id); checkEpoch(epoch) }
+            turnSources[id] = epoch to sources
+            fun checkCurrent() { checkTask(id); removedContext[id]?.let { throw ContextRemoved(it) }; checkSources(epoch, sources) }
             val history = ticket.getJSONArray("messages")
             // Bound the turn to its initiating message: later queued user messages belong to later tasks.
             val all = (0 until history.length()).map(history::getJSONObject)
@@ -482,7 +507,7 @@ class CompanionEngine private constructor(private val context: Context) {
                     onText = { text ->
                         checkCurrent()
                         val now = android.os.SystemClock.elapsedRealtime()
-                        if (now - lastPartialAt >= 350) { lastPartialAt = now; store.commitContext(epoch) { store.transitionTask(id, setOf("running"), "running", "正在生成", JSONObject().put("partialText", text)) } }
+                        if (now - lastPartialAt >= 350) { lastPartialAt = now; store.commitContext(epoch, sources) { store.transitionTask(id, setOf("running"), "running", "正在生成", JSONObject().put("partialText", text)) } }
                     },
                     onAttemptFinished = billing::finished)
                 } catch (e: ModelFailure) {
@@ -537,7 +562,7 @@ class CompanionEngine private constructor(private val context: Context) {
                         saved
                     }
                     modules.router.event(ModuleEvent("conversation.message", scope, message.getString("id"), JSONObject(message.toString()).apply { remove("wire") }))
-                    draft?.let { checkEpoch(epoch); CompanionRouting.maybeAutoSend(context, it) }
+                    draft?.let { checkSources(epoch, sources); CompanionRouting.maybeAutoSend(context, it) }
                     return
                 }
                 check(calls.size <= 8) { "单轮工具数量超过限制" }
@@ -563,7 +588,18 @@ class CompanionEngine private constructor(private val context: Context) {
             }
             error("本轮工具步数达到上限，已停止")
         } catch (e: Exception) {
+            val removed = removedContext[id] ?: generateSequence<Throwable>(e) { it.cause }.filterIsInstance<ContextRemoved>().firstOrNull()?.message
+            val replays = store.get("task", id)?.optInt("replays") ?: 0
             if (id in preempted) update(id, "waiting", "为主人交流暂停；稍后可继续，未自动重复收费请求")
+            else if (removed != null && replays < 2 && store.get("message", store.get("task", id)?.optString("messageId").orEmpty()) != null) {
+                // Answer again from what is still there, rather than drop the reply the owner is waiting for.
+                XLog.i("turn $id answered again: $removed")
+                if (store.transitionTask(id, setOf("queued", "running"), "queued", "$removed，重新回答", JSONObject().put("replays", replays + 1)) != null) {
+                    handedOver = true
+                    val owner = modules.principal(task.getString("scope")).owner || task.optBoolean("ownerAsked")
+                    if (viaClaude) claudeWorker.submit(id, owner) { runChat(id) } else worker.submit(id, owner) { runChat(id) }
+                }
+            }
             else {
                 val scope = task.getString("scope")
                 val failure = e as? ChatDiagnostics.Failed
@@ -575,7 +611,7 @@ class CompanionEngine private constructor(private val context: Context) {
                 if (e.message?.let { "取消" in it || "暂停" in it || "任务已停止" in it } != true)
                     io.deepseekharness.mobile.companion.chat.DeliveryLog.record(store, scope, "model", if (failure != null) "模型请求失败（$reason）" else reason)
             }
-        } finally { if (!viaClaude) endModelTask(id); if (!handedOver) finishTurn(task.getString("scope"), id) }
+        } finally { turnSources.remove(id); removedContext.remove(id); if (!viaClaude) endModelTask(id); if (!handedOver) finishTurn(task.getString("scope"), id) }
     }
 
     /** One tool call, the same for Gemini and Claude (over MCP): scope rules live in [tool]; what it read is recorded as a source. */
@@ -619,11 +655,12 @@ class CompanionEngine private constructor(private val context: Context) {
         if (claude.version() == null) return chat.describe(io.deepseekharness.mobile.companion.claude.ClaudeStream.Failure.NOT_INSTALLED)
         val settings = chat.settings(store)
         // Transcripts from before a correction, "forget" or deletion are removed from the rootfs, not just abandoned.
-        chat.staleSessions(store, epoch).forEach { sid -> runCatching {
+        chat.staleSessions(store).forEach { sid -> runCatching {
             File(claude.hostDirectory(), "root/.claude/projects").listFiles()?.forEach { File(it, "$sid.jsonl").delete() }
         } }
-        chat.forgetSessions(store, epoch)
-        val saved = chat.session(store, scope, epoch)
+        chat.forgetSessions(store)
+        val scopeEpoch = store.scopeRemovalEpoch(scope)
+        val saved = chat.session(store, scope, scopeEpoch)
         val cwd = saved?.optString("cwd")?.takeIf { it.isNotBlank() } ?: chat.cwd(scope, ownerChat, io.deepseekharness.mobile.companion.claude.ClaudeWorkspace.projectReady(claude))
         File(claude.hostDirectory(), cwd.removePrefix("/")).mkdirs()
         val name = store.persona().optString("name", "小克")
@@ -648,7 +685,7 @@ class CompanionEngine private constructor(private val context: Context) {
         fun redact(text: String) = io.deepseekharness.mobile.companion.claude.ClaudeGithub.redact(text, github)
         val grant = io.deepseekharness.mobile.companion.claude.XiaokeMcp.Grant(scope, declarations(scope, webTool = false)) { tool, args ->
             // Nothing she saves or sends through her own abilities (memory, QQ…) may carry the token.
-            checkClaudeCurrent(id, epoch); executeTool(scope, boundId, epoch, sources, tool, JSONObject(redact(args.toString())))
+            checkClaudeCurrent(id, epoch, sources); executeTool(scope, boundId, epoch, sources, tool, JSONObject(redact(args.toString())))
         }
         val token = io.deepseekharness.mobile.companion.claude.XiaokeMcpServer.register(grant)
         var lastPartialAt = 0L
@@ -663,9 +700,12 @@ class CompanionEngine private constructor(private val context: Context) {
                         ownerTools = ownerChat, fullAccess = ownerChat && settings.optBoolean("fullAccess"), githubToken = github, cwd = cwd, mcpPort = io.deepseekharness.mobile.companion.claude.XiaokeMcpServer.port(), mcpToken = token,
                         timeoutMs = if (ownerChat) 45 * 60_000L else 4 * 60_000L),
                         onText = { text ->
-                            if (runCatching { checkClaudeCurrent(id, epoch) }.isFailure) turn.cancel()
+                            runCatching { checkClaudeCurrent(id, epoch, sources) }.onFailure { e ->
+                                if (e is ContextRemoved) removedContext[id] = e.message.orEmpty()
+                                turn.cancel(e.message ?: "本轮已停止")
+                            }
                             val now = android.os.SystemClock.elapsedRealtime()
-                            if (now - lastPartialAt >= 350) { lastPartialAt = now; runCatching { store.commitContext(epoch) { store.transitionTask(id, setOf("running"), "running", "正在生成", JSONObject().put("partialText", text)) } } }
+                            if (now - lastPartialAt >= 350) { lastPartialAt = now; runCatching { store.commitContext(epoch, sources) { store.transitionTask(id, setOf("running"), "running", "正在生成", JSONObject().put("partialText", text)) } } }
                         },
                         onTool = { tool -> runCatching { store.transitionTask(id, setOf("running"), "running", if (tool.startsWith("mcp__")) "正在用自己的能力（${tool.substringAfterLast("__")}）" else "正在用 $tool") } },
                         onUsage = { usage -> store.saveLifeState("claudeUsage", io.deepseekharness.mobile.companion.claude.ClaudeStream.mergeUsage(store.lifeState("claudeUsage"), usage)) },
@@ -673,13 +713,14 @@ class CompanionEngine private constructor(private val context: Context) {
                             // Only the owner's own chats get Claude Code's tools at all; a group never reaches this.
                             // With full access on, whatever is still asked (paths outside the project and the like) is a yes.
                             ownerChat && (settings.optBoolean("fullAccess") || io.deepseekharness.mobile.companion.claude.ClaudePermissions.ask(context, id, scope, tool,
-                                redact(io.deepseekharness.mobile.companion.claude.ClaudeStream.describe(tool, input))) { turn.isCancelled || runCatching { checkClaudeCurrent(id, epoch) }.isFailure })
+                                redact(io.deepseekharness.mobile.companion.claude.ClaudeStream.describe(tool, input))) { turn.isCancelled || runCatching { checkClaudeCurrent(id, epoch, sources) }.isFailure })
                         })
                 } finally { claudeTurns.remove(id, turn) }
             }
             var outcome = attempt(saved?.optString("id"))
             // A session Claude Code no longer has (cleared, or the rootfs was reinstalled): start a fresh one once.
             if (outcome.failure != null && saved != null && "no conversation found" in outcome.detail.lowercase()) outcome = attempt(null)
+            removedContext[id]?.let { throw ContextRemoved(it) } // answered again by runChat
             if (store.get("task", id)?.optString("state") !in setOf("running", "queued")) return null // cancelled or paused meanwhile
             val failure = outcome.failure
             if (failure != null) {
@@ -704,19 +745,20 @@ class CompanionEngine private constructor(private val context: Context) {
                 if (observationId.isNotBlank()) store.get("observation", observationId)?.let { store.put("observation", it.put("analysis", text).put("analyzed", true)) }
                 update(id, "done", "完成（Claude）")
                 if (unmentioned.isNotEmpty()) store.saveLifeState("approvalMention", JSONObject().put("ids", JSONArray(pendingReview)))
-                chat.saveSession(store, scope, outcome.sessionId, epoch, savedMessage.getString("id"), cwd)
+                chat.saveSession(store, scope, outcome.sessionId, scopeEpoch, savedMessage.getString("id"), cwd)
                 savedMessage
             }
             modules.router.event(ModuleEvent("conversation.message", scope, message.getString("id"), JSONObject(message.toString()).apply { remove("wire") }))
-            draft?.let { checkEpoch(epoch); CompanionRouting.maybeAutoSend(context, it) }
+            draft?.let { checkSources(epoch, sources); CompanionRouting.maybeAutoSend(context, it) }
             return null
         } finally { io.deepseekharness.mobile.companion.claude.XiaokeMcpServer.revoke(token) }
     }
 
-    private fun checkClaudeCurrent(id: String, epoch: Long) {
+    private fun checkClaudeCurrent(id: String, epoch: Long, sources: JSONArray) {
         check(store.get("task", id)?.optString("state") in setOf("queued", "running")) { "任务已停止" }
         check(!store.settings().optBoolean("paused")) { "助手已暂停" }
-        checkEpoch(epoch)
+        removedContext[id]?.let { throw ContextRemoved(it) }
+        checkSources(epoch, sources)
     }
 
     /** The owner asked her to say something in one of the groups she is allowed in. Their asking is the approval. */

@@ -75,7 +75,7 @@ class CompanionModuleHost(context: Context, private val engine: CompanionEngine,
     fun contentChanged() {
         val epoch = store.contentEpoch()
         if (lastContentEpoch.getAndSet(epoch) == epoch) return
-        engine.contextChanged(epoch)
+        engine.contextChanged(store.removalEpoch())
         val deleted = store.tombstones()
         val ids = JSONArray()
         for (i in 0 until deleted.length()) ids.put(deleted.getJSONObject(i).getString("id"))

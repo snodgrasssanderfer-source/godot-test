@@ -95,14 +95,45 @@ class CompanionStore(private val context: Context, databaseName: String = "compa
     }
     @Synchronized fun lifeState(id: String): JSONObject = get("lifeState", id) ?: JSONObject().put("id", id).put("scope", CompanionPolicy.OWNER)
     @Synchronized fun saveLifeState(id: String, value: JSONObject): JSONObject = put("lifeState", JSONObject(value.toString()).put("id", id).put("scope", CompanionPolicy.OWNER))
+    /** Moves on every content change (edits too); the pages use it to know when to reload. Turns do not depend on it. */
     @Synchronized fun contentEpoch(): Long = lifeState("contentEpoch").optLong("value", 1)
+
+    /**
+     * Moves only when something is taken away: deleted, forgotten, or replaced by a restored backup. A turn is
+     * stamped with it; while it has not moved, nothing a turn could have read is gone. Per scope as well, so a
+     * deletion in one group does not throw away the Claude session of another conversation.
+     */
+    @Synchronized fun removalEpoch(): Long = lifeState("removalEpoch").optLong("value", 1)
+    @Synchronized fun scopeRemovalEpoch(scope: String): Long = removalEpochFor(CompanionPolicy.digest(scope))
+    @Synchronized fun removalEpochFor(scopeDigest: String): Long = lifeState("removalEpoch").let { it.optLong("all") + it.optLong(scopeDigest) }
+    @Synchronized fun bumpRemoval(scopes: Collection<String>?) = lifeTransaction {
+        val state = lifeState("removalEpoch")
+        state.put("value", state.optLong("value", 1) + 1)
+        if (scopes == null) state.put("all", state.optLong("all") + 1)
+        else scopes.distinct().forEach { CompanionPolicy.digest(it).let { key -> state.put(key, state.optLong(key) + 1) } }
+        saveLifeState("removalEpoch", state)
+    }
+
+    /** Why a turn can no longer use what it read, or null: one of its sources was deleted or forgotten. */
+    @Synchronized fun contextBroken(sources: JSONArray): String? {
+        for (i in 0 until sources.length()) {
+            val ref = RecordRef.parse(sources.getJSONObject(i))
+            val record = get(ref.kind, ref.id) ?: return "本轮用到的${KIND_NAMES[ref.kind] ?: ref.kind}被删了"
+            if (record.getString("scope") != ref.scope) return "本轮用到的${KIND_NAMES[ref.kind] ?: ref.kind}换了会话"
+            if (record.optBoolean("forgotten") || record.optBoolean("suppressed")) return "本轮用到的${KIND_NAMES[ref.kind] ?: ref.kind}被忘掉了"
+        }
+        return null
+    }
+
+    /** For work without its own source list (presence, module requests): any removal anywhere stops it. */
     @Synchronized fun <T> commitContext(epoch: Long, block: () -> T): T = lifeTransaction {
-        check(epoch == contentEpoch()) { "上下文已被纠正、忘掉或删除，请重新生成" }
+        check(epoch == removalEpoch()) { "上下文已被忘掉或删除，请重新生成" }
         block()
     }
-    @Synchronized fun <T> commitContext(epoch: Long, sources: JSONArray, block: () -> T): T = commitContext(epoch) {
+    /** A turn that knows what it read is only stopped when one of those sources was actually taken away. */
+    @Synchronized fun <T> commitContext(epoch: Long, sources: JSONArray, block: () -> T): T = lifeTransaction {
+        if (epoch != removalEpoch()) contextBroken(sources)?.let { throw ContextRemoved(it) }
         val refs = (0 until sources.length()).map { RecordRef.parse(sources.getJSONObject(it)) }
-        refs.forEach { check(get(it.kind, it.id)?.getString("scope") == it.scope) { "上下文来源已失效" } }
         val previous = committingSources.get()
         committingSources.set(refs)
         try { block() } finally { committingSources.set(previous) }
@@ -116,7 +147,7 @@ class CompanionStore(private val context: Context, databaseName: String = "compa
         for ((kind, rows) in listOf("message" to messages, "memory" to memories)) {
             for (i in 0 until rows.length()) refs.put(LifePolicy.reference(kind, rows.getJSONObject(i)).json())
         }
-        JSONObject().put("epoch", contentEpoch()).put("messages", messages).put("memories", memories).put("sourceRefs", refs)
+        JSONObject().put("epoch", removalEpoch()).put("messages", messages).put("memories", memories).put("sourceRefs", refs)
     }
     @Synchronized fun bumpContentEpoch(): Long = lifeTransaction {
         val next = Math.addExact(contentEpoch(), 1L)
@@ -162,6 +193,7 @@ class CompanionStore(private val context: Context, databaseName: String = "compa
         val deleted = LifePolicy.descendants(roots + LifePolicy.legacyOutputs(roots, records), records)
         if (deleted.isEmpty()) return@lifeTransaction JSONObject().put("deleted", JSONArray()).put("contentEpoch", contentEpoch())
         val epoch = bumpContentEpoch()
+        bumpRemoval(deleted.map { it.scope })
         for (ref in deleted) {
             val values = ContentValues().apply {
                 put("kind", ref.kind); put("id", ref.id); put("scope", ref.scope); put("deleted_at", System.currentTimeMillis())
@@ -215,6 +247,7 @@ class CompanionStore(private val context: Context, databaseName: String = "compa
             }
         }
         bumpContentEpoch()
+        bumpRemoval(listOf(scope))
         get("memory", id)!!
     }
 
@@ -558,6 +591,7 @@ class CompanionStore(private val context: Context, databaseName: String = "compa
             CompanionPolicy.scope(row.getString("scope")); require(row.getString("id").length in 1..160)
         }
         val epoch = bumpContentEpoch()
+        bumpRemoval(null)
         writableDatabase.delete("memory_vectors", null, null) // Rebuilt in the background from the restored text.
         plan.tombstones.forEach { row ->
             val ref = RecordRef.parse(row)
@@ -596,7 +630,12 @@ class CompanionStore(private val context: Context, databaseName: String = "compa
     companion object {
         private val BACKUP_KINDS = listOf("persona", "personaVersion", "memory", "message", "observation", "task", "diary", "interest", "lifeEvent", "lifeState", "profile")
         private val KINDS = BACKUP_KINDS + listOf("settings", "conversation", "usage")
+        private val KIND_NAMES = mapOf("memory" to "记忆", "message" to "消息", "observation" to "观察资料", "diary" to "日记",
+            "interest" to "兴趣", "task" to "任务", "lifeEvent" to "经历", "profile" to "档案")
     }
 }
+
+/** Something a turn had read was deleted or forgotten while it ran. The turn is answered again without it. */
+class ContextRemoved(message: String) : IllegalStateException(message)
 
 fun JSONObject.removeGrant(): JSONObject { remove("grantDigest"); remove("grantExpiresAt"); return this }

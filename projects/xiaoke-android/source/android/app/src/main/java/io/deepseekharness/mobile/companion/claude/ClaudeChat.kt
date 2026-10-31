@@ -93,8 +93,8 @@ object ClaudeChat {
     // ---- Sessions
 
     /**
-     * Each conversation keeps its own Claude Code session. A session made before the owner corrected, forgot or
-     * deleted something ([epoch] changed) is dropped: its transcript could still hold what was removed.
+     * Each conversation keeps its own Claude Code session. A session made before something in this conversation was
+     * forgotten or deleted ([epoch] is the scope's removal epoch) is dropped: its transcript could still hold what was removed.
      */
     fun session(store: CompanionStore, scope: String, epoch: Long): JSONObject? =
         store.lifeState("claudeSessions").optJSONObject(CompanionPolicy.digest(scope))?.takeIf { it.optLong("epoch") == epoch && it.optString("id").isNotBlank() }
@@ -106,15 +106,14 @@ object ClaudeChat {
     }
 
     /** Session ids whose transcripts should be deleted from the rootfs (the epoch moved on). */
-    fun staleSessions(store: CompanionStore, epoch: Long): List<String> {
+    fun staleSessions(store: CompanionStore): List<String> {
         val all = store.lifeState("claudeSessions")
-        return all.keys().asSequence().filter { it != "id" && it != "scope" }.mapNotNull { all.optJSONObject(it) }
-            .filter { it.optLong("epoch") != epoch }.map { it.optString("id") }.filter { it.isNotBlank() }.toList()
+        return all.keys().asSequence().filter { it != "id" && it != "scope" }.mapNotNull { k -> all.optJSONObject(k)?.takeIf { it.optLong("epoch") != store.removalEpochFor(k) } }
+            .map { it.optString("id") }.filter { it.isNotBlank() }.toList()
     }
-
-    fun forgetSessions(store: CompanionStore, epoch: Long) {
+    fun forgetSessions(store: CompanionStore) {
         val all = store.lifeState("claudeSessions")
-        all.keys().asSequence().toList().filter { k -> all.optJSONObject(k)?.let { it.optLong("epoch") != epoch } == true }.forEach(all::remove)
+        all.keys().asSequence().toList().filter { k -> all.optJSONObject(k)?.let { it.optLong("epoch") != store.removalEpochFor(k) } == true }.forEach(all::remove)
         store.saveLifeState("claudeSessions", all)
     }
 

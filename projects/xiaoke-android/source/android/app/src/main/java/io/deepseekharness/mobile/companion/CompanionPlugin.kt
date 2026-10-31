@@ -144,14 +144,14 @@ class CompanionPlugin : Plugin() {
                         val previous = store.settings()
                         store.saveSettings(data).also {
                         if (it.optBoolean("backgroundEnabled")) CompanionService.start(context)
-                        if (!it.optBoolean("networkEnabled")) { engine.activeTask?.let(engine::cancel); engine.cancelClaudeTurns() }
+                        if (!it.optBoolean("networkEnabled")) { engine.activeTask?.let { t -> engine.cancel(t, "主人关了联网") }; engine.cancelClaudeTurns("主人关了联网") }
                         if (!it.optBoolean("oneBotEnabled") || !it.optBoolean("networkEnabled") || it.optBoolean("paused") ||
                             it.optString("oneBotAccount") != previous.optString("oneBotAccount") || it.optString("oneBotUrl") != previous.optString("oneBotUrl")) OneBotBridge.get(context).stop()
                         engine.modules.refreshConnectivity()
                         }
                     }
                     "saveKey" -> { engine.secrets.save(data.getString("key")); store.credentialChanged(); JSONObject().put("configured", true) }
-                    "clearKey" -> { engine.activeTask?.let(engine::cancel); engine.secrets.clear(); store.credentialChanged(); JSONObject().put("configured", false) }
+                    "clearKey" -> { engine.activeTask?.let { engine.cancel(it, "主人清除了 Gemini 密钥") }; engine.secrets.clear(); store.credentialChanged(); JSONObject().put("configured", false) }
                     "configureQq" -> {
                         val url = data.getString("url").trim()
                         val uri = java.net.URI(url)
@@ -225,7 +225,7 @@ class CompanionPlugin : Plugin() {
                     "cancel" -> { engine.cancel(data.getString("id")); JSONObject().put("ok", true) }
                     "pause" -> {
                         store.saveSettings(store.settings().put("paused", data.getBoolean("paused")))
-                        if (data.getBoolean("paused")) { engine.activeTask?.let(engine::cancel); engine.cancelClaudeTurns() }
+                        if (data.getBoolean("paused")) { engine.activeTask?.let { engine.cancel(it, "主人在 App 里点了暂停") }; engine.cancelClaudeTurns("主人在 App 里点了暂停") }
                         if (data.getBoolean("paused")) OneBotBridge.get(context).stop()
                         engine.modules.refreshConnectivity()
                         JSONObject().put("ok", true)

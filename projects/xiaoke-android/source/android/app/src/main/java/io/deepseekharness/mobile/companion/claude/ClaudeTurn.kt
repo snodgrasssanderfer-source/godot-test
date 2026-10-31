@@ -39,7 +39,10 @@ class ClaudeTurn(private val runtime: ClaudeRuntime, val id: String) {
     /** Whatever leaves this class (partial text, the reply, error details) has the GitHub token taken out. */
     private fun redact(text: String) = ClaudeGithub.redact(text, secret)
     @Volatile private var process: Process? = null
-    fun cancel() { cancelled.set(true); process?.destroy() }
+    @Volatile var stopReason = ""
+        private set
+    /** [reason] ends up in the log line for this turn, so a stopped turn always says who stopped it. */
+    fun cancel(reason: String = "已取消") { if (stopReason.isEmpty()) stopReason = reason; cancelled.set(true); process?.destroy() }
     val isCancelled get() = cancelled.get()
 
     fun run(options: Options, onText: (String) -> Unit, onTool: (String) -> Unit, onUsage: (JSONObject) -> Unit,
@@ -73,6 +76,7 @@ class ClaudeTurn(private val runtime: ClaudeRuntime, val id: String) {
             if (options.github) send(options.githubToken!!)
             send(ClaudeStream.userMessage(options.content))
             val begun = System.currentTimeMillis()
+            var readError = ""
             val initAt = java.util.concurrent.atomic.AtomicLong(0L)
             val stuck = java.util.concurrent.atomic.AtomicReference("")
             XLog.i("claude turn $id started")
@@ -112,22 +116,30 @@ class ClaudeTurn(private val runtime: ClaudeRuntime, val id: String) {
                     }
                 }
             } } catch (e: java.io.IOException) {
-                if (!cancelled.get() && stuck.get().isEmpty()) throw e
+                // Stopped from outside (cancel, watchdog) or the process went away: either way the outcome below says
+                // what happened, with the exit code and stderr, instead of a bare "Stream closed".
+                if (!cancelled.get() && stuck.get().isEmpty()) readError = e.message ?: e.javaClass.simpleName
             }
             runCatching { stdin.close() }
             if (!started.waitFor(5, TimeUnit.SECONDS)) started.destroyForcibly()
             watchdog.interrupt(); errThread.join(1_000)
-            XLog.i("claude turn $id ended in ${System.currentTimeMillis() - begun} ms: ${result?.let { if (it.isError) "error ${it.subtype}" else "ok" } ?: "no result"}")
+            XLog.i("claude turn $id ended in ${System.currentTimeMillis() - begun} ms: " + when {
+                result != null -> if (result!!.isError) "error ${result!!.subtype}" else "ok"
+                stopReason.isNotEmpty() -> "stopped: $stopReason"
+                stuck.get().isNotEmpty() -> "watchdog: ${stuck.get()}"
+                readError.isNotEmpty() -> "output closed: $readError, exit ${runCatching { started.exitValue() }.getOrNull()}"
+                else -> "no result, exit ${runCatching { started.exitValue() }.getOrNull()}"
+            })
             val exit = runCatching { started.exitValue() }.getOrNull()
             val err = redact(synchronized(stderr) { stderr.toString() })
             val r = result
             return when {
-                cancelled.get() -> Outcome(sessionId, "", ClaudeStream.Failure.ERROR, "已取消", usage)
+                cancelled.get() -> Outcome(sessionId, "", ClaudeStream.Failure.ERROR, stopReason.ifEmpty { "已取消" }, usage)
                 stuck.get().isNotEmpty() && result == null -> Outcome(sessionId, "", ClaudeStream.Failure.ERROR, stuck.get() + "：" + err.trim().takeLast(200), usage)
                 r != null && !r.isError -> Outcome(sessionId, redact(r.text.ifBlank { text.toString() }), null, "", usage)
                 r != null -> Outcome(sessionId, "", ClaudeStream.classify(r.text + "\n" + r.subtype, usage), redact(r.text.ifBlank { r.subtype }).take(300), usage)
                 exit == ClaudeRuntime.SIGSYS_EXIT -> Outcome(sessionId, "", ClaudeStream.Failure.ERROR, "被系统拦截了一个调用（SIGSYS），PRoot 没接住", usage)
-                else -> Outcome(sessionId, "", ClaudeStream.classify(err, usage), "Claude Code 退出了（$exit）：${err.trim().takeLast(300)}", usage)
+                else -> Outcome(sessionId, "", ClaudeStream.classify(err, usage), "Claude Code 退出了（$exit${if (readError.isNotEmpty()) "，$readError" else ""}）：${err.trim().takeLast(300)}", usage)
             }
         } finally {
             process = null
