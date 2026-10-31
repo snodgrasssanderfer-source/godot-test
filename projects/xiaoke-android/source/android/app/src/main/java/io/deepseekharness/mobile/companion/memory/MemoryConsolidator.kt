@@ -46,7 +46,7 @@ class MemoryConsolidator(private val store: CompanionStore, private val host: Co
             if (state.optInt("failures") > 0 && now - state.optLong("ranAt") < IDLE_MS) continue
             if (!running.compareAndSet(false, true)) return
             try { run(scope, owner, fresh.take(80), all, state, now) }
-            catch (e: Exception) { try { failed(scope, state, e.message ?: e.javaClass.simpleName) } finally { running.set(false) } }
+            catch (e: Exception) { try { failed(scope, state, e.message ?: e.javaClass.simpleName, fresh.take(80)) } finally { running.set(false) } }
             return
         }
     }
@@ -67,37 +67,48 @@ class MemoryConsolidator(private val store: CompanionStore, private val host: Co
             .put("maxOutputTokens", 2048).put("prompt", prompt)) { event ->
             when (event.optString("type")) {
                 "completed" -> try {
-                    apply(scope, plan(parse(event.optString("text")), ids, group, now))
+                    val planned = plan(parse(event.optString("text")), ids, group, now)
+                    planned.skipped.forEach { XLog.w("记忆整理跳过一条：$it") }
+                    apply(scope, planned)
                     store.saveLifeState(stateKey(scope), state.put("doneUntil", batch.last().optLong("createdAt")).put("ranAt", System.currentTimeMillis()).put("failures", 0).put("lastError", ""))
                     index.refresh()
                 } catch (e: Exception) {
-                    failed(scope, state, e.message ?: e.javaClass.simpleName)
+                    failed(scope, state, e.message ?: e.javaClass.simpleName, batch)
                 } finally { running.set(false) }
                 "failed", "cancelled" -> try {
-                    failed(scope, state, event.optString("error").ifBlank { event.optString("reason").ifBlank { "记忆整理${event.optString("type")}" } })
+                    failed(scope, state, event.optString("error").ifBlank { event.optString("reason").ifBlank { "记忆整理${event.optString("type")}" } }, batch)
                 } finally { running.set(false) }
             }
         }
     }
 
-    private fun failed(scope: String, state: JSONObject, reason: String) {
-        XLog.w("记忆整理失败：$reason")
-        store.saveLifeState(stateKey(scope), state.put("failures", state.optInt("failures") + 1)
-            .put("lastError", reason).put("ranAt", System.currentTimeMillis()))
+    /** The reason goes back to the model on the retry; a stretch that fails twice is skipped so it never blocks the rest. */
+    private fun failed(scope: String, state: JSONObject, reason: String, batch: List<JSONObject>) {
+        val failures = state.optInt("failures") + 1
+        if (failures >= 2) {
+            XLog.w("记忆整理连续两次失败，跳过这一段（${batch.size} 条消息）：$reason")
+            state.put("doneUntil", batch.last().optLong("createdAt")).put("failures", 0).put("lastError", "")
+        } else {
+            XLog.w("记忆整理失败，稍后重试：$reason")
+            state.put("failures", failures).put("lastError", reason)
+        }
+        store.saveLifeState(stateKey(scope), state.put("ranAt", System.currentTimeMillis()))
     }
 
-    private fun apply(scope: String, plan: Plan) = store.lifeTransaction {
+    /** Each write stands on its own: one that fails is logged and the rest of the batch is still kept. */
+    private fun apply(scope: String, plan: Plan) {
         val repo = LifeMemoryRepository(store)
-        val created = plan.memories.map { input -> repo.upsertMemory(scope, input, fromModel = true) }
+        fun attempt(what: String, block: () -> Unit) = try { block() } catch (e: Exception) { XLog.w("记忆整理没存上$what：${e.message}") }
+        val created = plan.memories.map { input -> try { repo.upsertMemory(scope, input, fromModel = true) } catch (e: Exception) { XLog.w("记忆整理没存上一条记忆：${e.message}"); null } }
         for (end in plan.ends) {
             val by = end.byIndex?.let { created.getOrNull(it)?.optString("id") }.orEmpty()
-            repo.end(scope, end.memoryId, end.until, by)
+            attempt("一条结束标记") { repo.end(scope, end.memoryId, end.until, by) }
         }
-        for (p in plan.profiles) profiles.upsert(scope, p.type, p.name, p.summary, p.actorId, p.sourceIds)
+        for (p in plan.profiles) attempt("一份档案") { profiles.upsert(scope, p.type, p.name, p.summary, p.actorId, p.sourceIds) }
         // Interests feed her own browsing; without any she never browses on her own. Same topic twice is kept once.
         val known = store.list("interest", scope, 200).let { a -> (0 until a.length()).map { a.getJSONObject(it).optString("text") } }
         for (i in plan.interests) if (known.none { it.contains(i.getString("text")) || i.getString("text").contains(it) })
-            repo.correct("interest", scope, i)
+            attempt("一条兴趣") { repo.correct("interest", scope, i) }
     }
 
     /** Short handles in the prompt ("m3", "e2") so the model never has to copy long ids. */
@@ -108,7 +119,9 @@ class MemoryConsolidator(private val store: CompanionStore, private val host: Co
 
     data class End(val memoryId: String, val until: Long, val byIndex: Int?)
     data class ProfileWrite(val type: String, val name: String, val summary: String, val actorId: String, val sourceIds: List<String>)
-    data class Plan(val memories: List<JSONObject>, val ends: List<End>, val profiles: List<ProfileWrite>, val interests: List<JSONObject> = emptyList())
+    data class Plan(val memories: List<JSONObject>, val ends: List<End>, val profiles: List<ProfileWrite>, val interests: List<JSONObject> = emptyList(),
+                    /** Items the model got wrong (no real source, someone else's words as hers…), with why. */
+                    val skipped: List<String> = emptyList())
 
     companion object {
         const val IDLE_MS = 10 * 60_000L
@@ -170,11 +183,11 @@ class MemoryConsolidator(private val store: CompanionStore, private val host: Co
         /** Turns the model's answer into checked writes: only handles from this batch, owner profiles only in owner chats. */
         fun plan(answer: JSONObject, ids: Ids, group: Boolean, now: Long, zone: ZoneId = ZoneId.systemDefault()): Plan {
             fun handles(a: JSONArray?) = (0 until (a?.length() ?: 0)).map { a!!.optString(it) }
-            fun sources(item: JSONObject, label: String): List<JSONObject> {
-                val found = handles(item.optJSONArray("sources")).mapNotNull(ids::message).distinctBy { it.getString("id") }
-                require(found.isNotEmpty()) { "$label 缺少有效的新消息来源" }
-                return found
-            }
+            val skipped = mutableListOf<String>()
+            // No real source, no write: a made-up source would outlive the message it actually came from.
+            fun sources(item: JSONObject, label: String): List<JSONObject>? =
+                handles(item.optJSONArray("sources")).mapNotNull(ids::message).distinctBy { it.getString("id") }
+                    .ifEmpty { skipped.add("$label 没有对得上的新消息来源"); null }
             val memories = mutableListOf<JSONObject>()
             val ends = mutableListOf<End>()
             val list = answer.optJSONArray("memories") ?: JSONArray()
@@ -182,13 +195,13 @@ class MemoryConsolidator(private val store: CompanionStore, private val host: Co
                 val item = list.optJSONObject(i) ?: continue
                 val text = item.optString("text").trim()
                 if (text.length < 4) continue
-                val sources = sources(item, "记忆 ${i + 1}")
+                val sources = sources(item, "记忆 ${i + 1}") ?: continue
                 val kind = when (item.optString("kind")) { "plan" -> "task"; "fact", "preference", "event", "relationship", "opinion" -> item.optString("kind"); else -> "fact" }
                 val holder = item.optString("holder").takeIf { it in setOf("owner", "her", "member", "other") }
                     ?: if (sources.all { it.optString("role") == "assistant" }) "her" else ""
                 if (holder == "owner" && group) continue // The owner's facts are not gathered from groups.
-                require(holder != "her" || sources.any { it.optString("role") == "assistant" }) { "记忆 ${i + 1} 把别人的话写成了自己的观点" }
-                require(holder !in setOf("owner", "member") || sources.any { it.optString("role") == "user" }) { "记忆 ${i + 1} 缺少对方说过的来源" }
+                if (holder == "her" && sources.none { it.optString("role") == "assistant" }) { skipped.add("记忆 ${i + 1} 把别人的话写成了她自己的观点"); continue }
+                if (holder in setOf("owner", "member") && sources.none { it.optString("role") == "user" }) { skipped.add("记忆 ${i + 1} 没有对方自己说过的来源"); continue }
                 val primary = when (holder) {
                     "her" -> sources.first { it.optString("role") == "assistant" }
                     "owner", "member" -> sources.first { it.optString("role") == "user" }
@@ -201,11 +214,11 @@ class MemoryConsolidator(private val store: CompanionStore, private val host: Co
                 val from = TimeAnchor.parse(item.optString("validFrom"))?.takeIf { !it.isAfter(said.plusYears(5)) } ?: said
                 val until = TimeAnchor.parse(item.optString("validUntil"))?.takeIf { !it.isBefore(from) }
                 val fromAt = if (from == said) saidAt else TimeAnchor.startMs(from, zone)
-                val ended = handles(item.optJSONArray("ends")).mapNotNull(ids::memory)
-                for (old in ended) {
-                    require(holder.isNotBlank() && old.optString("holder") == holder &&
-                        (holder !in setOf("member", "other") || (actor.isNotBlank() && old.optString("actorId") == actor))) {
-                        "记忆 ${i + 1} 不能结束另一人或归属不明的观点 ${old.optString("id")}" }
+                // Only the same person changing their own fact or view ends it; someone else disagreeing does not.
+                val ended = handles(item.optJSONArray("ends")).mapNotNull(ids::memory).filter { old ->
+                    (holder.isNotBlank() && old.optString("holder") == holder &&
+                        (holder !in setOf("member", "other") || (actor.isNotBlank() && old.optString("actorId") == actor)))
+                        .also { if (!it) skipped.add("记忆 ${i + 1} 想结束别人的记忆 ${old.optString("id")}，只记新的、不结束旧的") }
                 }
                 val input = JSONObject().put("text", text.take(500)).put("kind", kind).put("holder", holder)
                     .put("sourceId", primary.getString("id")).put("source", "聊完后整理")
@@ -230,7 +243,7 @@ class MemoryConsolidator(private val store: CompanionStore, private val host: Co
                 val actor = if (type == "member") speaker?.takeIf { it.optString("role") == "user" }?.optString("actorId").orEmpty() else ""
                 if (type == "member" && actor.isBlank()) continue
                 val sources = (handles(p.optJSONArray("sources")).mapNotNull(ids::message) + listOfNotNull(speaker)).distinctBy { it.getString("id") }
-                require(sources.isNotEmpty()) { "档案 ${i + 1} 缺少有效的新消息来源" }
+                if (sources.isEmpty()) { skipped.add("档案 ${i + 1} 没有对得上的新消息来源"); continue }
                 profiles.add(ProfileWrite(type, name, summary, actor, sources.map { it.getString("id") }.distinct()))
             }
             val interests = mutableListOf<JSONObject>()
@@ -239,11 +252,11 @@ class MemoryConsolidator(private val store: CompanionStore, private val host: Co
                 val item = ilist.optJSONObject(i) ?: continue
                 val topic = item.optString("text").trim().take(40)
                 if (topic.length < 2 || (item.optString("holder") == "owner" && group)) continue
-                val sources = sources(item, "兴趣 ${i + 1}")
+                val sources = sources(item, "兴趣 ${i + 1}") ?: continue
                 interests.add(JSONObject().put("text", topic).put("holder", item.optString("holder").takeIf { it in setOf("her", "owner") } ?: "her")
                     .put("source", "聊完后整理").put("sourceRefs", JSONArray(sources.distinctBy { it.getString("id") }.map { JSONObject().put("kind", "message").put("id", it.getString("id")).put("scope", it.getString("scope")) })))
             }
-            return Plan(memories, ends, profiles, interests)
+            return Plan(memories, ends, profiles, interests, skipped)
         }
     }
 }

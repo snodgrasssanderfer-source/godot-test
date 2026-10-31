@@ -34,36 +34,35 @@ class MemoryEvolutionTest {
         assertEquals("a", view.getString("sourceId"))
         assertEquals("new", view.getString("endedBy"))
         assertEquals("older", view.getJSONArray("links").getString(0))
-        assertTrue(view.getString("validFrom").contains("20:15"))
+        assertTrue(view.getString("since").contains("20:15"))
         assertTrue(view.getBoolean("past"))
     }
 
     @Test fun `来源缺失不能拿最后一条用户消息充数`() {
-        val error = assertThrows(IllegalArgumentException::class.java) { plan(item(sources = JSONArray().put("m99"))) }
-        assertTrue(error.message!!.contains("来源"))
+        val result = plan(item(sources = JSONArray().put("m99")))
+        assertTrue(result.memories.isEmpty())
+        assertTrue(result.skipped.single().contains("来源"))
     }
 
     @Test fun `无来源档案不能落库`() {
         val answer = JSONObject().put("profiles", JSONArray().put(JSONObject().put("type", "game").put("name", "纸星")
             .put("summary", "听说结局很草率").put("sources", JSONArray())))
-        assertThrows(IllegalArgumentException::class.java) {
-            MemoryConsolidator.plan(answer, MemoryConsolidator.Ids(listOf(message("a", "user")), emptyList()), false, at, zone)
-        }
+        val result = MemoryConsolidator.plan(answer, MemoryConsolidator.Ids(listOf(message("a", "user")), emptyList()), false, at, zone)
+        assertTrue(result.profiles.isEmpty() && result.skipped.isNotEmpty())
     }
 
     @Test fun `无来源兴趣不能凭空产生`() {
         val answer = JSONObject().put("interests", JSONArray().put(JSONObject().put("text", "独立游戏叙事").put("holder", "her")))
-        assertThrows(IllegalArgumentException::class.java) {
-            MemoryConsolidator.plan(answer, MemoryConsolidator.Ids(listOf(message("a", "user")), emptyList()), false, at, zone)
-        }
+        val result = MemoryConsolidator.plan(answer, MemoryConsolidator.Ids(listOf(message("a", "user")), emptyList()), false, at, zone)
+        assertTrue(result.interests.isEmpty() && result.skipped.isNotEmpty())
     }
 
     @Test fun `不能把主人说的话提取成她的观点`() {
-        assertThrows(IllegalArgumentException::class.java) { plan(item(sources = JSONArray().put("m1"))) }
+        assertTrue(plan(item(sources = JSONArray().put("m1"))).let { it.memories.isEmpty() && it.skipped.isNotEmpty() })
     }
 
     @Test fun `不能把她说的话提取成主人的观点`() {
-        assertThrows(IllegalArgumentException::class.java) { plan(item("owner")) }
+        assertTrue(plan(item("owner")).let { it.memories.isEmpty() && it.skipped.isNotEmpty() })
     }
 
     @Test fun `同一天改口用消息时刻而非当天零点`() {
@@ -74,14 +73,15 @@ class MemoryEvolutionTest {
 
     @Test fun `她改变观点不会结束主人仍然持有的观点`() {
         val old = JSONObject().put("id", "old").put("kind", "opinion").put("holder", "owner")
-        assertThrows(IllegalArgumentException::class.java) { plan(item().put("ends", JSONArray().put("e1")), listOf(old)) }
+        // Her new view is kept; the owner's old one is not ended.
+        val result = plan(item().put("ends", JSONArray().put("e1")), listOf(old))
+        assertEquals(1, result.memories.size); assertTrue(result.ends.isEmpty() && result.skipped.isNotEmpty())
     }
 
     @Test fun `群友同名也不能互相改观点`() {
         val old = JSONObject().put("id", "old").put("holder", "member").put("actorId", "qq:alice")
-        assertThrows(IllegalArgumentException::class.java) {
-            plan(item("member", JSONArray().put("m1")).put("ends", JSONArray().put("e1")), listOf(old), listOf(message("a", "user", actor = "qq:bob")))
-        }
+        val result = plan(item("member", JSONArray().put("m1")).put("ends", JSONArray().put("e1")), listOf(old), listOf(message("a", "user", actor = "qq:bob")))
+        assertTrue(result.ends.isEmpty() && result.skipped.isNotEmpty())
     }
 
     @Test fun `观点改口保留旧观点链接和准确结束时刻`() {

@@ -109,6 +109,11 @@ class CompanionStartupTest {
             assertTrue(snapshot.getJSONArray("memories").toString().contains("domain-group"))
             assertTrue(snapshot.getJSONArray("diary").toString().contains("domain-public-diary"))
             assertTrue(snapshot.getJSONArray("interests").toString().contains("domain-public-interest"))
+            // The seventh path: the owner talking to her in the group. What she reads there goes into a group reply, so
+            // it is read as the group and the private-derived records stay out.
+            for (action in listOf("memory.search", "diary.list", "interest.list"))
+                assertEquals(action, emptyList<String>(), derived(engine.lifeActionAs(group, owner = true, ownersOwnChat = false, action).getJSONArray("items")))
+            assertThrows(IllegalArgumentException::class.java) { engine.lifeActionAs(group, owner = true, ownersOwnChat = false, "attention.status") }
             val ownerPrincipal = io.deepseekharness.mobile.companion.iteration.CommandPrincipal("owner", "owner_ui", CompanionPolicy.OWNER, true)
             val ownerReview = engine.modules.life.execute("memory.search", JSONObject().put("scope", group), ownerPrincipal).getJSONArray("items")
             assertEquals(listOf("domain-derived-local"), derived(ownerReview))

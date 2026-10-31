@@ -20,6 +20,7 @@ object MemoryRanking {
     private val latin = Regex("[a-z0-9_]{2,}")
     private val han = Regex("[\\p{IsHan}]+")
     private val history = Regex("以前|之前|当时|那时|那天|那阵|曾经|过去|上周|上个|前几天|原先|起初|一开始|最初|后来|变化|改变|改口|变了|怎么.*不|还记得|聊过|各自|我们.*争论|\\d{1,2}月\\d{1,2}日")
+    private val present = Regex("现在|目前|如今|眼下|最近|还[是在有会]|还觉得|还喝|还用")
     private val joint = Regex("我们|咱们|各自|双方|你和我|我和你")
     private val herView = Regex("你(?:自己)?(?:现在|当时|以前|后来|原先|最初|还|更|是|对[^，。？！?]{0,24})*(?:觉得|认为|怎么看|喜欢|讨厌|建议|推荐|想|嫌|支持|反对)")
 
@@ -88,12 +89,17 @@ object MemoryRanking {
      * Historical questions keep ended facts; an empty query falls back to the newest few.
      */
     fun relevant(records: List<JSONObject>, query: String, limit: Int = 8, semantic: Map<String, Double>? = null, minScore: Double = 0.35,
-                 now: Long = System.currentTimeMillis()): List<JSONObject> {
+                 now: Long = System.currentTimeMillis()): List<JSONObject> = scored(records, query, limit, semantic, minScore, now).map { it.first }
+
+    /** [relevant] with each memory's relevance (0–1). [relative]: how close to the best match a memory must score. */
+    fun scored(records: List<JSONObject>, query: String, limit: Int = 8, semantic: Map<String, Double>? = null, minScore: Double = 0.35,
+               now: Long = System.currentTimeMillis(), relative: Double = 0.75): List<Pair<JSONObject, Double>> {
         val values = records.filter(::recallable)
-        if (query.isBlank()) return values.sortedByDescending { it.optLong("updatedAt", it.optLong("createdAt")) }.take(limit)
+        if (query.isBlank()) return values.sortedByDescending { it.optLong("updatedAt", it.optLong("createdAt")) }.take(limit).map { it to 0.0 }
         val historical = history.containsMatchIn(query)
         val hers = !joint.containsMatchIn(query) && herView.containsMatchIn(query)
-        val scores = score(values, query, semantic, now).toMutableMap()
+        val own = score(values, query, semantic, now)
+        val scores = own.toMutableMap()
         val byId = values.associateBy { it.optString("id") }
         // Follow only explicit evolution edges inside the already scoped candidates.
         for (value in values) {
@@ -111,11 +117,23 @@ object MemoryRanking {
             val id = it.optString("id")
             scores[id] = (scores[id] ?: 0.0) * 1.35
         }
-        val eligible = values.filter { historical || !past(it, now) }
+        // A current record that only ranks because it inherited its predecessor's match ("是谁觉得结局仓促" → the
+        // later view) brings the predecessor along, marked past, unless the question asks about now.
+        val asksNow = present.containsMatchIn(query)
+        val inheritedFrom = values.filter { past(it, now) }.mapNotNull { old ->
+            val next = byId[old.optString("endedBy").ifBlank { old.optString("currentFactId") }] ?: return@mapNotNull null
+            old.takeIf { (own[old.optString("id")] ?: 0.0) > (own[next.optString("id")] ?: 0.0) }
+        }.map { it.optString("id") }.toSet()
+        if (!asksNow) for (id in inheritedFrom) byId[id]?.let { old ->
+            val next = old.optString("endedBy").ifBlank { old.optString("currentFactId") }
+            scores[id] = maxOf(scores[id] ?: 0.0, scores[next] ?: 0.0)
+        }
+        val eligible = values.filter { historical || !past(it, now) || (!asksNow && it.optString("id") in inheritedFrom) }
         val best = eligible.maxOfOrNull { scores[it.optString("id")] ?: 0.0 } ?: 0.0
-        val threshold = maxOf(minScore, best * 0.75)
+        val threshold = maxOf(minScore, best * relative)
         return eligible.filter { it.optBoolean("pinned") || (scores[it.optString("id")] ?: 0.0) >= threshold }
             .sortedByDescending { scores[it.optString("id")] ?: 0.0 }.take(limit)
+            .map { it to (scores[it.optString("id")] ?: 0.0).coerceIn(0.0, 1.0) }
     }
 
     fun rank(records: JSONArray, query: String, limit: Int = 80, semantic: Map<String, Double>? = null, now: Long = System.currentTimeMillis()): JSONArray {
