@@ -628,7 +628,7 @@ class CompanionEngine private constructor(private val context: Context) {
         File(claude.hostDirectory(), cwd.removePrefix("/")).mkdirs()
         val name = store.persona().optString("name", "小克")
         val claudeSystem = system + "\n【在 Claude Code 里怎么做】你是$name，现在通过 Claude Code 运行。你最后写出的正文就是发给对方的消息，不要写成报告，也不要提“工具”“MCP”。" +
-            "你的记忆、日记、QQ、手机、B站、待审清单这些能力在 xiaoke 这组工具里（remember、recall、job_status、say_in_group 等），用法和平时一样。" +
+            "你的记忆、日记、QQ、手机、B站、待审清单这些能力在 xiaoke 这组工具里（remember、recall、job_status、say_in_group 等），用法和平时一样；remember 的 sourceId 留空，记在当前这条消息上。" +
             (if (ownerChat) "主人交代代码的事时：这个项目（你自己的 App）在 ${io.deepseekharness.mobile.companion.claude.ClaudeWorkspace.PROJECT}，先读那里的 CLAUDE.md；读代码随意；改文件、跑命令会弹到主人手机上等主人点允许。" +
                 "改代码一律在新分支上做（git switch -c 起个说明用途的名字），改完提交，用几句话告诉主人改了什么、在哪个分支、怎么验证的；不碰 main，不碰签名和密钥（签名和发版只在云端做）。手机上没法跑完整的 Gradle 构建就说没验证。没有推送凭据就说已提交在本地，请主人推送。\n"
             else "这里不是主人的私聊：只回这个对话里该说的话，不写代码、不读写文件、不提主人的私事。\n")
