@@ -101,7 +101,7 @@
 - **日记：** 用上游定时任务（`gw/sched.mjs`）每晚跑，素材由我们自己的模块白天随时记，不用改上游。
   - 素材：新增 `gw/xk-diary.mjs`，挂到 `queue.mjs:161` 导出的 `END_HOOKS`。每轮结束时，从会话记录里取出这一轮的问答，标上时间和渠道（App、QQ 私聊、QQ 群），追加到 `roles/<角色>/diary/inputs/<日期>.md`；定时任务自己的运行（`run.sched`）不记。素材白天随时攒，夜里不用临时去翻会话记录。会话记录在 `~/.claude/projects` 里，不在项目目录下，无人值守的任务读不到。
   - 每个角色建一个定时任务：`projectId` 设成该角色项目，`freq` 每天 22:00 左右，`perm:"proj"`（可以改项目内的文件，其余要确认的操作一律拒绝），`missed:"run"`，`retry:2`，`saveSession:false`（不在会话列表里留一条），`limitMin` 10 左右。提示词写："只根据 diary/inputs/今天.md 写 diary/今天.md，没写到的事不编。"任务字段见 `sched.mjs:296-330`，可以由我们的模块调 `POST /api/sched` 一次性建好。
-  - 小克走订阅账号：定时任务默认会跳过订阅账号（`sched.mjs:179` 的 `allowLogin`），需要主人在定时任务页打开，并以 Anthropic 关于无人值守使用的条款为准。不打开的话，小克的日记只能靠主人打开 App 时由我们的模块补写。
+  - 小克走订阅账号：定时任务默认跳过订阅账号（`sched.mjs:179` 的 `allowLogin`），主人已确定会在定时任务页底部"订阅账户"里手动打开。日记会占用订阅的 5 小时和每周额度；22:00 时额度刚好用完，任务会失败，而自带的重试只隔 2 分钟，没有用。所以由 `xk-diary.mjs` 在失败时读额度事件里的 `resetsAt`，等额度重置后再调 `/api/sched/missed` 或重新触发一次。
   - 夜里被冻结：任务靠系统精确闹钟叫醒应用（`SchedAlarm.java:40`；targetSdk 36 要用户授予精确闹钟权限）。厂商冻结会让它错过，`missed:"run"` 能在下次启动时补跑，但写出来的日记会晚。
   - 查看：日记是普通 Markdown 文件，上游自带的查看器就能渲染。体验更好的做法是在 `xk.js` 里加一个"日记"页，配一个只读接口 `/api/xk/diary`，按角色和日期列出。
   - 隐私：日记里会有 App 私聊的内容。QQ 群会话由我们的模块调 `enqueue({internal:true, disallowedTools:["Read(diary/**)"]})`，挡住群里有人让她读日记。
