@@ -65,12 +65,10 @@
 **Gemini 中转的两条路：**
 - **走自定义 Anthropic 兼容端点**（推荐先试）：
   - 中转要提供 `/v1/messages`，并完整支持流式事件、tool_use / tool_result 和 Claude Code 的 beta 请求头。new-api 这类中转有"Claude 格式"入口，主人的中转开没开要实测。
-  - 网关会自动给自定义端点包一层流式补尾（`claude.mjs:226`），会自动去掉地址末尾的 `/v1`（`providers.mjs:387`）。
-  - 第三方型号会自动打开未知窗口放宽和任务清单工具（`claude.mjs` 中 claudeEnv 的第三方分支）。
+  - 网关会自动给自定义端点包一层流式补尾（`claude.mjs:226`）、去掉地址末尾的 `/v1`（`providers.mjs:387`），第三方型号自动放宽窗口识别并打开任务清单工具。
 - **走 openai-bridge 组件：**
   - 这是社区组件仓库 cccodroid-components 的组件。网关只负责在本轮开始前把它拉起来（`gw/managed-bridge.mjs:340`），条件是该接口的地址恰好是 `http://127.0.0.1:端口`。
-  - 需要的是中转的 OpenAI 兼容 `/v1/chat/completions` 地址、密钥和型号名。
-  - 已知问题第 7 条：转成 OpenAI 协议后，工具结果里的图片会丢；要勾选"图片随消息发"。
+  - 需要中转的 OpenAI 兼容 `/v1/chat/completions` 地址、密钥和型号名。已知问题第 7 条：转协议后工具结果里的图片会丢，要勾选"图片随消息发"。
   - 组件是按 cc.codroid 的工具包构建的。我们改了包名，就得自己重新构建，或者另跑一个转换进程，当作普通自定义端点接进来。
 
 **额度和接班信号：**
@@ -81,7 +79,7 @@
 
 ## 4. 扩展点和同步方案
 
-**结论：** 四项功能大部分可以放进新增文件。上游原文件预计改约 6 处，每处一两行，集中在 `server.mjs`、`index.html`、`Env.java`、`Updater.java`、`AndroidManifest.xml`、`run.mjs`。
+**结论：** 四项功能和日记大部分可以放进新增文件。上游原文件预计改约 6 处，每处一两行，集中在 `server.mjs`、`index.html`、`Env.java`、`Updater.java`、`AndroidManifest.xml`、`run.mjs`。
 
 - **三个角色、共用世界书：** 不需要改代码。
   - 每个角色是一个项目目录，例如 `workspace/roles/xiaoke`。
@@ -100,6 +98,14 @@
   - 收到消息：映射到角色项目和会话，调 `enqueue()`。
   - 发出回复：从 `onPublish` 收到的事件里拼出回复正文。
   - 网关进程被杀时 QQ 也会断线，消息要自己落盘、重连后补回。
+- **日记：** 用上游定时任务（`gw/sched.mjs`）每晚跑，素材由我们自己的模块白天随时记，不用改上游。
+  - 素材：新增 `gw/xk-diary.mjs`，挂到 `queue.mjs:161` 导出的 `END_HOOKS`。每轮结束时，从会话记录里取出这一轮的问答，标上时间和渠道（App、QQ 私聊、QQ 群），追加到 `roles/<角色>/diary/inputs/<日期>.md`；定时任务自己的运行（`run.sched`）不记。素材白天随时攒，夜里不用临时去翻会话记录。会话记录在 `~/.claude/projects` 里，不在项目目录下，无人值守的任务读不到。
+  - 每个角色建一个定时任务：`projectId` 设成该角色项目，`freq` 每天 22:00 左右，`perm:"proj"`（可以改项目内的文件，其余要确认的操作一律拒绝），`missed:"run"`，`retry:2`，`saveSession:false`（不在会话列表里留一条），`limitMin` 10 左右。提示词写："只根据 diary/inputs/今天.md 写 diary/今天.md，没写到的事不编。"任务字段见 `sched.mjs:296-330`，可以由我们的模块调 `POST /api/sched` 一次性建好。
+  - 小克走订阅账号：定时任务默认会跳过订阅账号（`sched.mjs:179` 的 `allowLogin`），需要主人在定时任务页打开，并以 Anthropic 关于无人值守使用的条款为准。不打开的话，小克的日记只能靠主人打开 App 时由我们的模块补写。
+  - 夜里被冻结：任务靠系统精确闹钟叫醒应用（`SchedAlarm.java:40`；targetSdk 36 要用户授予精确闹钟权限）。厂商冻结会让它错过，`missed:"run"` 能在下次启动时补跑，但写出来的日记会晚。
+  - 查看：日记是普通 Markdown 文件，上游自带的查看器就能渲染。体验更好的做法是在 `xk.js` 里加一个"日记"页，配一个只读接口 `/api/xk/diary`，按角色和日期列出。
+  - 隐私：日记里会有 App 私聊的内容。QQ 群会话由我们的模块调 `enqueue({internal:true, disallowedTools:["Read(diary/**)"]})`，挡住群里有人让她读日记。
+  - 旧 App 的数据不迁移，`inputs/` 从新 App 装好那天开始攒。
 - **前端外观：**
   - 新增 `web/xk.css` 和 `web/xk.js`，在 `index.html` 的 `style.css` 后面和 `app.js`（`:982`）后面各加一行引用。
   - 样式全靠 CSS 变量和 `html[data-skin]` 驱动（style.css 里有 1291 处变量）。新增一套皮肤还要改 `theme.js:35` 和 Java 的 `skinPref`，所以优先只覆盖变量。
@@ -113,11 +119,9 @@
 **同步方案：**
 - 上游节奏：10-18 以来，每天发 2～5 个版本，一周 246 个提交。改得最频繁的是 `web/app.js`、`server.mjs`、`MainActivity.java`、`run.mjs`、`queue.mjs`。
 - 建议的做法：
-  1. 在我们这边建 `upstream` 镜像分支，只跟上游的 tag。
-  2. 补丁只碰上面约 6 个文件，每一处都用 `// xk:` 标记，并单独存一份 patch 清单。
-  3. 每周挑一个上游 tag 做一次 rebase，用 `git rebase --onto`，冲突只会落在那几行。
-  4. 同步后跑上游自己的 `node scripts/test.mjs`，再跑我们自己的接班和 QQ 测试。
-  5. 打包时用 `build.sh` 加我们的签名。
+  1. 在我们这边建 `upstream` 镜像分支，只跟上游的 tag。补丁只碰上面约 6 个文件，每处用 `// xk:` 标记，另存一份 patch 清单。
+  2. 每周挑一个上游 tag 做一次 rebase，用 `git rebase --onto`，冲突只会落在那几行。
+  3. 同步后跑上游自己的 `node scripts/test.mjs`，再跑我们自己的接班、QQ 和日记测试；打包用 `build.sh` 加我们的签名。
 
 ## 5. 包名和共存
 
