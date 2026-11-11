@@ -146,7 +146,7 @@ tools/setup_env.sh
       --resolution 960x540 -- --res=960x540 --shoot=/tmp/shots
   ```
 
-- **改了玩法代码就跑自测**（无界面，约 10 秒，63 项，失败时退出码 1）：
+- **改了玩法代码就跑自测**（无界面，约 20 秒，87 项，失败时退出码 1）：
 
   ```bash
   godot --headless --fixed-fps 60 --path fps -- --selftest
