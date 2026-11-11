@@ -42,8 +42,9 @@ blender --background --factory-startup --python art/concept/make_concepts.py -- 
 - `post_grade.gdshader`：全屏胶片层（色散、分离调色、暗角、颗粒），算法和 `art/concept/post.py` 一致。
 - 加入 `street_lamp` 分组的灯会跟随预设的 `lamp_power` 亮灭，停电时自动熄灭。
 
-**靶场**（`fps/test/range_street.tscn`，当前的主场景）：灰盒街道 + 玩家 + 三把武器 + 七个靶子，
-用来调移动和枪械手感、测帧率。备弹无限，靶子倒下几秒后自己站起来。
+**靶场**（`fps/test/range_street.tscn`，当前的主场景）：灰盒街道 + 玩家 + 三把武器 + 七个靶子 + 八只休眠的电视怪，
+用来调移动和枪械手感、测帧率。备弹无限，靶子倒下几秒后自己站起来。枪开多了，那一段电网上的电视怪会醒过来找你
+（`N` 直接给脚下的电网加惊扰，`M` 收走 / 放回怪物）。
 
 | 按键 | 作用 |
 | --- | --- |
@@ -68,9 +69,14 @@ blender --background --factory-startup --python art/concept/make_concepts.py -- 
   体力条只在不满时出现。
 - `fps/test/`：`street_set` 给灰盒街道生成碰撞、路灯和靶子；`target_dummy.gd` 是靶子；
   `benchmark.gd` 是基准测试；`range_auto.gd` 是脚本化的自测和截图。
-- 任何能被打的东西只要实现 `take_hit(damage, point, dir, weapon_data) -> Dictionary` 就行，怪物以后照这个接；怪物打玩家则调 `player.body.hit(伤害, 伤型, 攻击类型)`。
+- `fps/world/`：`noise_bus.gd` 是全局噪音广播；`grid_sim.gd`、`grid.gd`、`grid_node.gd` 是"电网惊扰"（枪声让沿街的电网节点升温，
+  升到阈值就叫醒挂在上面的怪）；`nav.gd` 从静态碰撞体烘导航网格并回答寻路。
+- `fps/creatures/`：`creature.gd` 是怪物本体（休眠、起身、调查噪音、追击、前摇、扑击、硬直、死亡；外壳和肉核两层受击），
+  `creature_data.gd` 是一种怪的全部数值。目前只有 CRT 电视一种。数值和实现偏差见 `docs/design_supplement.md` 的"五之二"。
+- 任何能被打的东西只要实现 `take_hit(damage, point, dir, weapon_data) -> Dictionary` 就行（返回值里 `flesh` 为假表示打在硬壳上，画火花不画血）；
+  怪物打玩家则调 `player.body.hit(伤害, 伤型, 攻击类型)`。
 
-**自测**：不开窗口，用真实的输入事件驱动玩家把移动、攀爬和三把武器全走一遍，再加上电网惊扰和部位负伤的规则，共 141 项检查，失败时退出码为 1。
+**自测**：不开窗口，用真实的输入事件驱动玩家把移动、攀爬和三把武器全走一遍，再加上电网惊扰、部位负伤和怪物，共 171 项检查，失败时退出码为 1（`--only=creatures,grid` 可以只跑几段）。
 `--fixed-fps 60` 让时间确定，无界面时约 10 秒跑完：
 
 ```bash
@@ -102,7 +108,7 @@ xvfb-run -a -s "-screen 0 960x540x24" godot --path fps --rendering-driver vulkan
 | `game/` | Godot 项目（`project.godot`、`main.tscn`、`scripts/`、`assets/`、`export_presets.cfg`） |
 | `fps/` | 3D 第一人称项目：`player/`、`weapons/`、`ui/`、`atmosphere/`（氛围系统）、`test/`（靶场和测试场景）、`assets/`（灰盒街道、武器模型、占位音效） |
 | `art/weapons/` | 三把武器模型的生成脚本 `make_weapons.py` |
-| `art/range/` | 靶场的引擎截图（软件渲染，960×540）：三把武器的腰射、开镜、换弹、冲刺、挥击，弹孔，停电夜里开火 |
+| `art/range/` | 靶场的引擎截图（软件渲染，960×540）：三把武器的腰射、开镜、换弹、冲刺、挥击，弹孔，停电夜里开火；负伤后的画面；电视怪从休眠到死亡的八张 |
 | `art/concept/` | 基调概念图、生成脚本 `make_concepts.py`、后期脚本 `post.py`、引擎对照图 `engine/` |
 | `art/crate/` | 木箱的 Blender 源文件、建模脚本 `make_crate.py`、预览图 `crate_preview.png` |
 | `tools/setup_env.sh` | **环境初始化脚本**：安装 Godot + 网页导出模板 + Blender + godot-mcp（校验哈希，可重复运行） |

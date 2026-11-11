@@ -6,7 +6,7 @@ extends Node
 ##                   exits with 0 if everything passed
 ##                   (--only=creatures,grid picks sections)
 ##   --shoot=<dir>   poses each weapon and saves screenshots for review
-##                   (--shots=pistol,shotgun,pipe,holes,hurt,night picks sections)
+##                   (--shots=pistol,shotgun,pipe,holes,hurt,creature,creature_night,night picks sections)
 ##
 ## Run with --fixed-fps 60 so that time is deterministic (and, headless, much
 ## faster than real time):
@@ -1175,7 +1175,10 @@ func _test_creatures() -> void:
 	_check("creature: two sets sleep by each of the four lamps, legs tucked away", crts.size() == 8 and asleep
 			and Grid.sim.count() == 8 and Grid.sim.count(true) == 0, "%d" % crts.size())
 
-	# Asleep: it does not move, and its screen follows the grid.
+	# Asleep: it does not move, and its screen follows the grid. The player
+	# waits at the far end of the street: once awake it wanders, and it must
+	# not catch sight of anyone in this part.
+	await _place(Vector3(-0.9, 0.05, -104.0), 0.0)
 	var c := crts[0]                                # lamp 1, the one that wakes at 70
 	var node := c.grid_node
 	var rest := c.global_position
@@ -1220,19 +1223,24 @@ func _test_creatures() -> void:
 	await _secs(0.6)
 	_check("creature: legs gone again", not c._legs[0].visible and c._power < 0.05, "power %.2f" % c._power)
 
-	# Seeing the player: chase, and no more going back to sleep.
+	# Seeing the player: chase, and no more going back to sleep. A fresh set on
+	# a clear stretch of road, the player standing 7 m in front of it.
+	crts = await _creature_setup()
+	c = crts[4]                                      # lamp 3: nothing lying about between pavement and road
+	node = c.grid_node
 	var events: Array = []
 	var on_state := func(_who: Creature, st: Creature.State) -> void: events.append([st, Engine.get_physics_frames()])
 	var attacks: Array = []
 	var on_attack := func(_who: Creature, landed: bool) -> void: attacks.append(landed)
 	c.state_changed.connect(on_state)
 	c.attacked.connect(on_attack)
+	var ahead := c.global_position - c.global_basis.z * 7.0
+	await _place(Vector3(ahead.x, 0.05, ahead.z), -90.0)
+	_check("creature: asleep it does not notice a player standing in front of it", c.state == S.DORMANT)
 	_charge(node, 74.0)
 	await _wait_state(c, S.INVESTIGATE, 3.0)
-	var ahead := c.global_position - c.global_basis.z * 9.0
-	await _place(Vector3(ahead.x, c.global_position.y + 0.05, ahead.z), 0.0)
 	var seen := await _wait_state(c, S.CHASE, 2.0)
-	_check("creature: it sees a player 9 m in front of it and gives chase", c.state != S.INVESTIGATE and seen < 0.3
+	_check("creature: awake, it sees a player 7 m in front of it and gives chase", c.state != S.INVESTIGATE and seen < 0.3
 			and Grid.sim.cells[node].roster[c.grid_entry]["engaged"], "%.2f s" % seen)
 	var wounds := player.body.sim.wounds.size()
 	await _wait_state(c, S.RECOVER, 8.0)
@@ -1358,7 +1366,7 @@ func _shoot(dir: String) -> void:
 		if arg.begins_with("--shots="):
 			only = arg.trim_prefix("--shots=").split(",")
 	await _snap(dir, "00_settle", 70)              # the fog needs about 60 frames to settle
-	for section: String in ["pistol", "shotgun", "pipe", "holes", "hurt", "night"]:
+	for section: String in ["pistol", "shotgun", "pipe", "holes", "hurt", "creature", "creature_night", "night"]:
 		if only.is_empty() or only.has(section):
 			await call("_shoot_" + section, dir)
 
@@ -1458,6 +1466,70 @@ func _shoot_hurt(dir: String) -> void:
 	_look_at(dummy.chest_point() + Vector3(0.5, 0.2, 0.0))
 	await _snap(dir, "18_body_blood_20", 20)
 	player.body.reset()
+
+
+## The television: asleep, lit, getting up, about to jump, shot open, dead.
+func _shoot_creature(dir: String) -> void:
+	const S := Creature.State
+	scene.bake_nav()
+	scene.build_grid(true)
+	await _select(0)
+	var c: Creature = scene.creatures[0]
+	var node := c.grid_node
+	var front := c.global_position - c.global_basis.z * 3.1 + c.global_basis.x * 0.9
+	await _place(Vector3(front.x, 0.05, front.z), 0.0)
+	_look_at(c.shell_point())
+	await _snap(dir, "16_crt_asleep", 20)
+	_charge(node, 45.0)
+	await _snap(dir, "17_crt_snow", 30)
+	_charge(node, 74.0)
+	await _wait_state(c, S.WAKING, 1.0)
+	await _secs(0.75)
+	_look_at(c.screen_point())
+	await _snap(dir, "18_crt_getting_up", 1)
+	await _wait_state(c, S.WINDUP, 4.0)
+	await _secs(0.42)
+	_look_at(c.screen_point())
+	await _snap(dir, "19_crt_about_to_jump", 1)
+	await _wait_state(c, S.RECOVER, 3.0)
+	await _secs(0.5)
+	_look_at(c.screen_point())
+	await _snap(dir, "20_crt_after_its_hit", 1)
+	await _tap(&"fire")
+	await _secs(0.12)
+	_look_at(c.screen_point())
+	await _snap(dir, "21_crt_glass_out", 1)
+	for i in 4:
+		if c.state == S.DEAD:
+			break
+		_look_at(c.screen_point())
+		await _secs(0.05)
+		await _tap(&"fire")
+		await _secs(0.2)
+	await _secs(1.0)
+	_look_at(c.shell_point())
+	await _snap(dir, "22_crt_dead", 1)
+
+	scene.build_grid()
+
+
+## A sleeping set in a blackout, lit only by its own snow.
+func _shoot_creature_night(dir: String) -> void:
+	scene.build_grid(true)
+	var c: Creature = scene.creatures[4]             # lamp 3: nothing parked in front of it
+	var node := c.grid_node
+	var front := c.global_position - c.global_basis.z * 3.4 + c.global_basis.x * 1.1
+	await _place(Vector3(front.x, 0.05, front.z), 0.0)
+	scene.atmosphere.power_on = false
+	scene.atmosphere.time_of_day = 23.0
+	_look_at(c.shell_point())
+	for i in 10:                                     # hold the cell at 45 while the fog settles
+		_charge(node, 45.0)
+		await _frames(7)
+	await _snap(dir, "23_crt_snow_at_night", 1)
+	scene.atmosphere.power_on = true
+	scene.atmosphere.time_of_day = 11.0
+	scene.build_grid()
 
 
 ## Night, power out, flashlight.
