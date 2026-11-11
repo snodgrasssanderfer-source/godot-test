@@ -123,6 +123,7 @@ var _step_index := 0
 
 
 func _ready() -> void:
+	add_to_group(&"player")           # creatures find their prey through this
 	collision_layer = LAYER_PLAYER
 	collision_mask = LAYER_WORLD | LAYER_HITBOX
 	floor_snap_length = 0.25

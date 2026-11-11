@@ -126,6 +126,16 @@ func kill(node: int, entry: int) -> void:
 	cells[node].charge = maxf(0.0, cells[node].charge - KILL_RELIEF)
 
 
+## Something woke this one directly (it was shot in its sleep).
+func rouse(node: int, entry: int) -> void:
+	var e: Dictionary = cells[node].roster[entry]
+	if e["dead"] or e["awake"]:
+		return
+	e["awake"] = true
+	e["below"] = 0.0
+	woke.emit(node, entry, e["kind"])
+
+
 ## A creature that has seen the player does not go back to sleep.
 func set_engaged(node: int, entry: int, on: bool) -> void:
 	cells[node].roster[entry]["engaged"] = on
