@@ -45,6 +45,7 @@ var _moon: DirectionalLight3D
 
 
 func _ready() -> void:
+	add_to_group(&"atmosphere")       # Body finds the film grade through this
 	_env = Environment.new()
 	var sky_mat := ProceduralSkyMaterial.new()
 	sky_mat.sun_angle_max = 0.0

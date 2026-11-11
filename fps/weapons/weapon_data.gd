@@ -9,6 +9,9 @@ enum Kind { PISTOL, SHOTGUN, MELEE }
 @export var id := &"pistol"
 @export var display_name := "Pistol"
 @export var kind := Kind.PISTOL
+## Needs both hands and a shoulder. With the gun arm useless it can still be
+## fired, badly (see BodySim: long_aim_spread_scale, long_pump_scale).
+@export var long_gun := false
 ## Barrel along -Z, origin at the grip. Optional child nodes by name: Slide,
 ## Pump, Mag (moving parts), Muzzle, Eject, Sight, Tip (markers).
 @export var model: PackedScene

@@ -10,6 +10,8 @@ extends Node3D
 ##   G    SDFGI on / off          V  volumetric fog on / off
 ##   - =  mouse sensitivity down / up
 ##   B    benchmark (about two minutes; results stay on screen)
+##   F6 F7 F8 F9  hurt a leg / the support arm / the gun arm / the torso
+##   J    tape the worst bleeding   K  painkiller   H  heal everything
 ##   F1   help    F2  numbers     F5  back to the start       F11 fullscreen
 ##   Esc  free the mouse          F10 quit
 ##
@@ -23,6 +25,7 @@ const SPAWN := Vector3(-0.9, 0.1, -3.0)
 const HELP := """WASD move   Shift sprint   Ctrl/C crouch, slide   Space jump / climb / vault   Q E lean
 LMB fire   RMB aim   R reload   1 2 3 or wheel: weapons   F flashlight
 [ ] time   T clock   P power   G SDFGI   V fog   B benchmark   - = mouse sensitivity
+F6 F7 F8 F9 hurt leg / support arm / gun arm / torso   J tape   K painkiller   H heal
 F1 help   F2 numbers   F5 respawn   F11 fullscreen   Esc mouse   F10 quit"""
 
 @onready var atmosphere: Atmosphere = $Atmosphere
@@ -87,6 +90,7 @@ func _ready() -> void:
 			_noise_age = 0.0)
 	_respawn()
 	build_grid()
+	player.body.died.connect(_on_player_died)
 
 	hud = Hud.new()
 	add_child(hud)
@@ -159,9 +163,31 @@ func build_grid() -> void:
 
 
 func _respawn() -> void:
+	player.body.reset()
 	player.global_position = SPAWN
 	player.velocity = Vector3.ZERO
 	player.set_look(0.0)
+
+
+## On the range, dying just puts you back at the start a few seconds later.
+func _on_player_died(_cause: StringName) -> void:
+	if _automated:
+		return
+	await get_tree().create_timer(5.0).timeout
+	if player.body.sim.dead:
+		_respawn()
+
+
+## Debug keys: a hit hard enough to drop the part one step, as a cut (it bleeds).
+func _hurt(part: BodySim.Part, damage: float, kind: BodySim.Kind) -> void:
+	player.body.hit_part(part, damage, kind)
+
+
+func _tape_worst() -> void:
+	var sim := player.body.sim
+	var id := sim.worst_bleeding()
+	if id > 0 and not sim.tape(id):
+		sim.towel_tape(id)
 
 
 func _input(event: InputEvent) -> void:
@@ -197,6 +223,13 @@ func _input(event: InputEvent) -> void:
 			KEY_F1: _help.visible = not _help.visible
 			KEY_F2: _overlay.visible = not _overlay.visible
 			KEY_F5: _respawn()
+			KEY_F6: _hurt(BodySim.Part.LEG_L, 30.0, BodySim.Kind.CUT)
+			KEY_F7: _hurt(BodySim.Part.ARM_L, 25.0, BodySim.Kind.CUT)
+			KEY_F8: _hurt(BodySim.Part.ARM_R, 25.0, BodySim.Kind.CUT)
+			KEY_F9: _hurt(BodySim.Part.TORSO, 30.0, BodySim.Kind.CRUSH)
+			KEY_J: _tape_worst()
+			KEY_K: player.body.sim.take_painkiller()
+			KEY_H: player.body.reset()
 			KEY_F11:
 				var window := get_window()
 				var full := window.mode == Window.MODE_EXCLUSIVE_FULLSCREEN or window.mode == Window.MODE_FULLSCREEN
@@ -240,9 +273,10 @@ func _process(delta: float) -> void:
 	var grid_text := ""
 	for node in grid_nodes:
 		grid_text += ("  --" if Grid.sim.is_tripped(node.id) else "  %2d" % int(node.charge()))
-	_overlay.text = "%d fps   %.1f ms   worst %.1f ms\n%02d:%02d   power %s   SDFGI %s   fog %s\n%.1f m/s   noise %s   mouse %.0f%%\ngrid%s   awake %d / %d" % [
+	var body_text := "DEAD" if player.body.sim.dead else player.body.sim.summary()
+	_overlay.text = "%d fps   %.1f ms   worst %.1f ms\n%02d:%02d   power %s   SDFGI %s   fog %s\n%.1f m/s   noise %s   mouse %.0f%%\ngrid%s   awake %d / %d\n%s" % [
 		Engine.get_frames_per_second(), _frame_ms, _worst_ms, hour, minute,
 		"on" if atmosphere.power_on else "OFF", "on" if atmosphere.sdfgi else "off",
 		"on" if atmosphere.volumetric_fog else "off", player.horizontal_speed(),
 		("%d m" % _noise) if _noise_age < 1.5 else "-", Controls.mouse_sensitivity / 0.0021 * 100.0,
-		grid_text, Grid.sim.count(true), Grid.sim.count()]
+		grid_text, Grid.sim.count(true), Grid.sim.count(), body_text]

@@ -47,6 +47,7 @@ var _index := 0
 var _pending := -1
 var _t := 0.0
 var _dur := 0.0
+var _rate := 1.0                   # how fast this state's clock runs (injuries slow the hands)
 var _events := 0                   # one bit per sound / effect already done in this state
 var _fire_buffer := 0.0
 var _reload_buffer := 0.0
@@ -135,6 +136,9 @@ func _process(delta: float) -> void:
 	var d := current.data
 	_fire_buffer = maxf(_fire_buffer - delta, 0.0)
 	_reload_buffer = maxf(_reload_buffer - delta, 0.0)
+	if player.body.mods.input_lost:        # staggering: the hands do nothing
+		_fire_buffer = 0.0
+		_reload_buffer = 0.0
 	if player.sprinting:
 		_sprint_lock = d.sprint_out_time
 	else:
@@ -154,11 +158,22 @@ func _process(delta: float) -> void:
 
 # --- state machine -------------------------------------------------------------
 
-func _enter(next: State, duration := 0.0) -> void:
+## `slowdown` stretches the whole state: its clock runs that many times slower,
+## so every time written into the state (durations, sound cues, poses) stays
+## in the weapon's own units.
+func _enter(next: State, duration := 0.0, slowdown := 1.0) -> void:
 	state = next
 	_t = 0.0
 	_dur = duration
+	_rate = 1.0 / maxf(slowdown, 0.01)
 	_events = 0
+
+
+## Pump time factor from the body: the support hand works the action; a long
+## gun that cannot be shouldered is slower still.
+func _pump_slowdown() -> float:
+	var m := player.body.mods
+	return m.pump_scale * (m.long_pump_scale if current.data.long_gun else 1.0)
 
 
 ## True the first time it is called for a given bit after `when` has passed.
@@ -174,7 +189,7 @@ func _switch_wanted() -> bool:
 
 
 func _tick_state(delta: float) -> void:
-	_t += delta
+	_t += delta * _rate
 	var d := current.data
 	match state:
 		State.READY:
@@ -315,8 +330,10 @@ func _fire() -> void:
 	if hurt:
 		hit_confirmed.emit(head, killed, total)
 
+	var m := player.body.mods
 	var steady := lerpf(1.0, d.aim_kick_scale, aim) * (0.85 if player.crouched else 1.0)
-	player.add_view_kick(d.kick_pitch * steady, randf_range(-d.kick_yaw, d.kick_yaw) * steady, d.kick_recover)
+	player.add_view_kick(d.kick_pitch * m.kick_scale * steady, randf_range(-d.kick_yaw, d.kick_yaw) * steady,
+			d.kick_recover * m.kick_recover_scale)
 	_kick_v += Vector3(d.model_kick_back, deg_to_rad(d.model_kick_up), deg_to_rad(randf_range(-1.5, 1.5))) \
 			* KICK_IMPULSE * lerpf(1.0, 0.6, aim)
 	_bloom = minf(_bloom + d.bloom_per_shot, d.bloom_max)
@@ -327,7 +344,7 @@ func _fire() -> void:
 	player.interrupt_sprint(0.3)
 	if d.pump_time > 0.0:
 		_pump_ejects = true
-		_enter(State.PUMP, d.pump_time)
+		_enter(State.PUMP, d.pump_time, _pump_slowdown())
 	else:
 		_slide_kick = 1.0
 		_eject_shell()
@@ -349,6 +366,7 @@ func _swing() -> void:
 	_swing_scale = 1.5 if player.exhausted else 1.0
 	player.use_stamina(d.swing_stamina)
 	player.interrupt_sprint(0.4)
+	player.body.exert(&"swing")
 	Sfx.play(&"pipe_swing", -3.0)
 	_enter(State.SWING, d.fire_interval * _swing_scale)
 
@@ -412,12 +430,14 @@ func _start_reload() -> void:
 	var d := current.data
 	_reload_buffer = 0.0
 	_reload_empty = current.mag == 0
+	var slowdown := player.body.mods.reload_scale
+	player.body.exert(&"reload")
 	if d.pump_time > 0.0:
-		_enter(State.RELOAD)
+		_enter(State.RELOAD, 0.0, slowdown)
 		_shell_step = Shell.START
 		_shell_stop = false
 	else:
-		_enter(State.RELOAD, d.reload_empty_time if _reload_empty else d.reload_time)
+		_enter(State.RELOAD, d.reload_empty_time if _reload_empty else d.reload_time, slowdown)
 
 
 func _load(rounds: int) -> void:
@@ -438,6 +458,12 @@ func _tick_mag_reload() -> void:
 	if _once(1, d.reload_time * 0.20):
 		Sfx.play(&"mag_out", -3.0)
 	if _once(2, d.reload_time * 0.60):
+		if randf() < player.body.mods.mag_drop_chance:
+			# A useless support hand fumbles the magazine: start over.
+			Sfx.play(&"mag_out", -1.0)
+			_kick_v += Vector3(0.0, deg_to_rad(-3.0), deg_to_rad(4.0)) * KICK_IMPULSE
+			_enter(State.RELOAD, _dur, 1.0 / _rate)
+			return
 		_load(d.mag_size - current.mag)
 		Sfx.play(&"mag_in", -2.0)
 		_kick_v += Vector3(0.0, deg_to_rad(2.5), 0.0) * KICK_IMPULSE
@@ -479,7 +505,7 @@ func _tick_shell_reload() -> void:
 			if _t >= d.shell_end_time:
 				if _reload_empty and current.mag > 0:
 					_pump_ejects = false
-					_enter(State.PUMP, d.pump_time)
+					_enter(State.PUMP, d.pump_time, _pump_slowdown())
 				else:
 					_enter(State.READY)
 					_act()
@@ -495,13 +521,14 @@ func _shell_goto(step: Shell) -> void:
 
 func _tick_aim(delta: float) -> void:
 	var d := current.data
-	var want := (Input.is_action_pressed(&"aim") and d.kind != WeaponData.Kind.MELEE
+	var m := player.body.mods
+	var want := (Input.is_action_pressed(&"aim") and d.kind != WeaponData.Kind.MELEE and not m.input_lost
 			and state in [State.READY, State.COOLDOWN, State.PUMP])
 	if want:
 		player.interrupt_sprint(0.15)
 		if _sprint_lock > 0.0:
 			want = false
-	_aim_linear = move_toward(_aim_linear, 1.0 if want else 0.0, delta / maxf(d.aim_time, 0.01))
+	_aim_linear = move_toward(_aim_linear, 1.0 if want else 0.0, delta / maxf(d.aim_time * m.aim_time_scale, 0.01))
 	aim = smoothstep(0.0, 1.0, _aim_linear)
 
 
@@ -514,7 +541,8 @@ func _tick_spread(delta: float) -> void:
 		hip += d.air_spread
 	elif player.crouched:
 		hip *= 0.8
-	_centre_spread = lerpf(hip, d.aim_spread, aim)
+	var aimed := d.aim_spread * (player.body.mods.long_aim_spread_scale if d.long_gun else 1.0)
+	_centre_spread = lerpf(hip, aimed, aim)
 	_pellet_cone = lerpf(d.pellet_spread, d.pellet_spread_aim, aim)
 	spread = _centre_spread + _pellet_cone
 
@@ -631,10 +659,15 @@ func _tick_pose(delta: float) -> void:
 	pos += Vector3(sin(ph) * 0.0048, -absf(cos(ph)) * 0.0052, 0.0) * stride
 	rot += Vector3(cos(ph * 2.0) * 0.008, sin(ph) * 0.006, sin(ph) * 0.014) * stride
 
-	# Breathing.
+	# Breathing, and the shake of hurt or bloodless hands (which aiming does not steady).
 	_breath += delta
-	pos.y += sin(_breath * 1.5) * 0.0013 * loose
-	rot.x += sin(_breath * 1.5 + 0.7) * deg_to_rad(0.22) * loose
+	var shake := player.body.mods.sway_scale
+	pos.y += sin(_breath * 1.5) * 0.0013 * loose * shake
+	rot.x += sin(_breath * 1.5 + 0.7) * deg_to_rad(0.22) * loose * shake
+	if shake > 1.0:
+		var tremble := (shake - 1.0) * deg_to_rad(0.35)
+		rot += Vector3(sin(_breath * 7.3) + sin(_breath * 11.9 + 1.0), sin(_breath * 8.7 + 2.0) + sin(_breath * 13.1),
+				sin(_breath * 6.1 + 0.5)) * tremble * 0.5
 
 	# Jumping and landing: the weapon is heavy and arrives late.
 	var lift_to := 0.0

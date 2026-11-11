@@ -68,7 +68,7 @@ func _process(delta: float) -> void:
 	var show_ammo := _ammo_linger > 0.0 or rig.aim > 0.3 or rig.is_reloading()
 	_ammo_alpha = move_toward(_ammo_alpha, 1.0 if show_ammo else 0.0, delta * (8.0 if show_ammo else 1.6))
 	_name_alpha = maxf(_name_alpha - delta, 0.0)
-	var tired := player.stamina < player.stamina_max - 0.5
+	var tired := player.stamina < player.stamina_cap() - 0.5
 	_stamina_alpha = move_toward(_stamina_alpha, 1.0 if tired else 0.0, delta * (6.0 if tired else 1.5))
 	var cross := 0.0 if player.sprinting or rig.state in [WeaponRig.State.HOLSTER, WeaponRig.State.EQUIP] else 1.0
 	_cross_alpha = move_toward(_cross_alpha, cross, delta * 7.0)

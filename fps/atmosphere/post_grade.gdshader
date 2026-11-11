@@ -12,8 +12,11 @@ uniform float gain = 1.0;
 uniform float vignette = 0.35;
 uniform float grain = 0.022;
 uniform float aberration = 0.0018;
-// 0 = off. Sanity effects will drive these later.
+// 0 = off. Driven by the player's Body: blood loss drains the colour and closes
+// the edges in, a blow to the head or passing out takes the picture away.
 uniform float extra_desaturate = 0.0;
+uniform float extra_vignette = 0.0;
+uniform float blackout = 0.0;
 
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
 
@@ -39,11 +42,14 @@ void fragment() {
 
 	float r2 = dot(c * 2.0, c * 2.0);
 	col *= 1.0 - vignette * pow(clamp(r2 * 0.5, 0.0, 1.0), 1.3);
+	col *= 1.0 - clamp(extra_vignette * pow(clamp(r2 * 0.62, 0.0, 1.0), 0.9) * 1.25, 0.0, 0.97);
 
 	// Grain is re-seeded every frame and is strongest in the mid-tones.
 	float n = hash(FRAGCOORD.xy + fract(TIME) * 917.0) - 0.5;
 	l = dot(col, LUMA);
 	col += n * 2.0 * grain * (0.35 + 0.65 * sin(clamp(l, 0.0, 1.0) * PI));
+
+	col *= 1.0 - blackout;
 
 	COLOR = vec4(col, 1.0);
 }

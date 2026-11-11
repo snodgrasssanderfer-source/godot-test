@@ -5,7 +5,7 @@ extends Node
 ##   --selftest      walks, jumps, climbs and shoots, checks the results and
 ##                   exits with 0 if everything passed
 ##   --shoot=<dir>   poses each weapon and saves screenshots for review
-##                   (--shots=pistol,shotgun,pipe,holes,night picks sections)
+##                   (--shots=pistol,shotgun,pipe,holes,hurt,night picks sections)
 ##
 ## Run with --fixed-fps 60 so that time is deterministic (and, headless, much
 ## faster than real time):
@@ -99,6 +99,7 @@ func _place(at: Vector3, yaw_deg: float) -> void:
 	player.velocity = Vector3.ZERO
 	player.mode = Player.Mode.NORMAL
 	player.crouched = false
+	player.body.reset()
 	player.stamina = player.stamina_max
 	player.exhausted = false
 	player.set_look(deg_to_rad(yaw_deg))
@@ -157,6 +158,8 @@ func _selftest() -> void:
 	await _test_rig()
 	_test_grid_model()
 	await _test_grid_in_scene()
+	_test_body_model()
+	await _test_body_in_scene()
 
 
 func _test_movement() -> void:
@@ -682,6 +685,453 @@ func _test_grid_in_scene() -> void:
 	scene.build_grid()
 
 
+# --- injuries --------------------------------------------------------------------
+
+## Runs a BodySim until `done` says so; returns the seconds it took (or `limit`).
+func _body_until(b: BodySim, limit: float, done: Callable) -> float:
+	var t := 0.0
+	while t < limit and not done.call():
+		b.advance(0.25)
+		t += 0.25
+	return t
+
+
+# The injury model on its own: no scene, fixed seed, simulated time.
+func _test_body_model() -> void:
+	const HEAD := BodySim.Part.HEAD
+	const TORSO := BodySim.Part.TORSO
+	const ARM_R := BodySim.Part.ARM_R
+	const ARM_L := BodySim.Part.ARM_L
+	const LEG_L := BodySim.Part.LEG_L
+	const LEG_R := BodySim.Part.LEG_R
+	const CUT := BodySim.Kind.CUT
+	const CRUSH := BodySim.Kind.CRUSH
+	const BURN := BodySim.Kind.BURN
+	const FINE := BodySim.Tier.FINE
+	const LIGHT := BodySim.Tier.LIGHT
+	const HEAVY := BodySim.Tier.HEAVY
+	const DEAD := BodySim.Tier.DEAD
+
+	var b := BodySim.new(7)
+	var m := b.mods
+	_check("body: starts whole, every modifier at 1", is_equal_approx(b.blood, 100.0) and b.wounds.is_empty()
+			and m.can_sprint and m.can_slide and is_equal_approx(m.walk_scale * m.sprint_scale * m.reload_scale
+			* m.pump_scale * m.sway_scale * m.kick_scale * m.stamina_max_scale * m.stamina_regen_scale, 1.0))
+	var levels: Array = []
+	for dmg: float in [11.9, 12.0, 25.0, 25.1]:
+		b.reset()
+		levels.append(b.hit_part(TORSO, dmg, CUT)["level"])
+	_check("body: wound level follows the damage of the hit", levels == [1, 2, 2, 3], str(levels))
+
+	# Bleeding.
+	b.reset()
+	b.hit_part(ARM_L, 20.0, CUT)
+	var t := _body_until(b, 400.0, func() -> bool: return b.blood <= 25.0)
+	_check("body: one level 2 cut bleeds to the brink in about 167 s", absf(t - 166.7) < 2.0, "%.1f s" % t)
+	b.reset()
+	b.hit_part(ARM_L, 30.0, CUT)
+	t = _body_until(b, 400.0, func() -> bool: return b.blood <= 25.0)
+	_check("body: a level 3 cut takes about 68 s", absf(t - 68.2) < 2.0, "%.1f s" % t)
+	t = _body_until(b, 400.0, func() -> bool: return b.collapsing)
+	var cause: Array = []
+	b.died.connect(func(c: StringName) -> void: cause.append(c))
+	var down := _body_until(b, 60.0, func() -> bool: return b.dead)
+	_check("body: out of blood means four seconds on the knees, then death", absf(t - 22.7) < 1.5 and absf(down - 4.0) < 0.5
+			and cause == [&"blood"] and b.mods.input_lost, "collapse after %.1f s more, dead %.1f s later, %s" % [t, down, cause])
+	b = BodySim.new(7)
+	b.hit_part(LEG_R, 8.0, CUT)
+	b.advance(59.0)
+	var still := b.bleed_rate()
+	b.advance(2.0)
+	_check("body: a level 1 cut closes by itself after a minute", is_equal_approx(still, 0.15) and is_zero_approx(b.bleed_rate())
+			and absf(b.blood - 91.0) < 0.3, "%.2f/s then %.2f/s, blood %.1f" % [still, b.bleed_rate(), b.blood])
+	var low := b.blood
+	b.advance(100.0)
+	var plain := b.blood - low
+	b.sports_drink()
+	low = b.blood
+	b.advance(100.0)
+	_check("body: blood comes back at 0.02/s, three times faster on a sports drink", absf(plain - 2.0) < 0.1
+			and absf(b.blood - low - 6.0) < 0.2, "+%.2f then +%.2f per 100 s" % [plain, b.blood - low])
+
+	# Dying, and damage spilling out of a dead limb.
+	b.reset()
+	for i in 3:
+		b.hit_part(ARM_L, 25.0, CUT)
+	_check("body: a limb at zero is useless, not fatal, and half the excess reaches the torso", b.tier(ARM_L) == DEAD
+			and not b.dead and is_equal_approx(b.function[TORSO], 117.5), "torso %.1f" % b.function[TORSO])
+	var causes: Array = []
+	for part: BodySim.Part in [HEAD, TORSO]:
+		var x := BodySim.new(7)
+		x.died.connect(func(c: StringName) -> void: causes.append(c))
+		for i in 5:
+			x.hit_part(part, 30.0, CUT)
+	_check("body: head or torso at zero kills", causes == [&"head", &"torso"], str(causes))
+
+	# Legs.
+	b.reset()
+	b.hit_part(LEG_L, 30.0, CUT)
+	m = b.mods
+	_check("body: a lightly hurt leg sprints at 5.8, jumps lower, slides dearer", b.tier(LEG_L) == LIGHT and m.can_sprint
+			and absf(m.sprint_scale * 6.6 - 5.8) < 0.01 and is_equal_approx(m.jump_scale, 0.85)
+			and is_equal_approx(m.slide_cost_scale, 1.5) and is_equal_approx(m.walk_scale, 1.0))
+	b.hit_part(LEG_R, 30.0, CUT)
+	_check("body: both legs hurt costs another tenth", absf(b.mods.sprint_scale * 6.6 - 5.8 * 0.9) < 0.01
+			and is_equal_approx(b.mods.walk_scale, 0.9))
+	b.reset()
+	b.hit_part(LEG_L, 30.0, CUT)
+	b.hit_part(LEG_L, 30.0, CUT)
+	m = b.mods
+	_check("body: a badly hurt leg cannot sprint or slide, walks at 3.4 and climbs 1.25 m at most", b.tier(LEG_L) == HEAVY
+			and not m.can_sprint and not m.can_slide and absf(m.walk_scale * 4.3 - 3.4) < 0.01
+			and is_equal_approx(m.mantle_max_override, 1.25) and is_equal_approx(m.mantle_time_scale, 1.5) and m.limp > 0.0)
+	b.hit_part(LEG_L, 30.0, CUT)
+	m = b.mods
+	_check("body: a useless leg walks at 2.4 and cannot jump", b.tier(LEG_L) == DEAD and absf(m.walk_scale * 4.3 - 2.4) < 0.01
+			and is_zero_approx(m.jump_scale) and is_equal_approx(m.limp, 1.0))
+
+	# Arms. Crush wounds here: they hurt but do not bleed, so only the arm is in play.
+	b.reset()
+	b.hit_part(ARM_L, 15.0, CRUSH)
+	m = b.mods
+	_check("body: a lightly hurt support arm reloads 1.25x and pumps 1.3x slower", b.tier(ARM_L) == LIGHT
+			and is_equal_approx(m.reload_scale, 1.25) and is_equal_approx(m.pump_scale, 1.3) and is_zero_approx(b.bleed_rate()),
+			"function %.0f" % b.function[ARM_L])
+	b.hit_part(ARM_L, 15.0, CRUSH)
+	m = b.mods
+	_check("body: badly hurt, 1.6x and 1.7x", b.tier(ARM_L) == HEAVY and is_equal_approx(m.reload_scale, 1.6)
+			and is_equal_approx(m.pump_scale, 1.7) and is_zero_approx(m.mag_drop_chance))
+	b.hit_part(ARM_L, 15.0, CRUSH)
+	m = b.mods
+	_check("body: useless, 2.2x, fumbles magazines, cannot carry or use the stun gun", b.tier(ARM_L) == DEAD
+			and is_equal_approx(m.reload_scale, 2.2) and is_equal_approx(m.mag_drop_chance, 0.15)
+			and not m.can_carry and not m.can_use_stun_gun)
+	b.reset()
+	b.hit_part(ARM_R, 15.0, CRUSH)
+	m = b.mods
+	_check("body: a lightly hurt gun arm sways 1.4x and recovers from recoil slower", b.tier(ARM_R) == LIGHT
+			and is_equal_approx(m.sway_scale, 1.4) and is_equal_approx(m.kick_recover_scale, 0.85)
+			and is_equal_approx(m.aim_time_scale, 1.0), "sway %.2f" % m.sway_scale)
+	b.hit_part(ARM_R, 15.0, CRUSH)
+	m = b.mods
+	_check("body: badly hurt, sways 2.2x, aims 1.35x slower, kicks 1.25x harder", b.tier(ARM_R) == HEAVY
+			and is_equal_approx(m.sway_scale, 2.2) and is_equal_approx(m.aim_time_scale, 1.35)
+			and is_equal_approx(m.kick_scale, 1.25) and is_equal_approx(m.kick_recover_scale, 0.85)
+			and is_equal_approx(m.long_aim_spread_scale, 1.0))
+	b.hit_part(ARM_R, 15.0, CRUSH)
+	m = b.mods
+	_check("body: useless, long guns cannot be shouldered", b.tier(ARM_R) == DEAD
+			and is_equal_approx(m.long_aim_spread_scale, 3.0) and is_equal_approx(m.long_pump_scale, 1.8))
+
+	# Torso, head, blood.
+	b.reset()
+	b.hit_part(TORSO, 30.0, CRUSH)
+	m = b.mods
+	_check("body: a hurt torso has less stamina and gets it back slower", b.tier(TORSO) == LIGHT
+			and is_equal_approx(m.stamina_max_scale, 0.8) and is_equal_approx(m.stamina_regen_scale, 0.7))
+	b.hit_part(TORSO, 26.0, CUT)
+	b.towel_tape(b.worst_bleeding())
+	var coughs: Array = []
+	b.vocalised.connect(func(what: StringName) -> void: coughs.append(what))
+	b.advance(120.0)
+	_check("body: badly hurt, stamina at 60% and a cough every 20 to 40 s", b.tier(TORSO) == HEAVY
+			and is_equal_approx(b.mods.stamina_max_scale, 0.6) and coughs.size() >= 3 and coughs.size() <= 6
+			and coughs.count(&"cough") == coughs.size(), "%d coughs in 120 s" % coughs.size())
+	b = BodySim.new(7)
+	b.hit_part(HEAD, 20.0, CRUSH)
+	var ring := b.mods.ear_ring
+	b.advance(2.5)
+	_check("body: a blow to the head rings in the ears for two seconds", b.tier(HEAD) == LIGHT and is_equal_approx(ring, 2.0)
+			and is_zero_approx(b.mods.ear_ring))
+	b.hit_part(HEAD, 6.0, CRUSH)
+	var blackouts: Array = []
+	var dark := [0.0]
+	b.blackout_started.connect(func() -> void: blackouts.append(1))
+	for i in 2000:
+		b.advance(0.05)
+		dark[0] += 0.05 * b.mods.blackout
+	_check("body: badly hurt, 0.4 s blackouts every 15 to 25 s", b.tier(HEAD) == HEAVY and blackouts.size() >= 4
+			and blackouts.size() <= 7 and absf(dark[0] / maxf(blackouts.size(), 1) - 0.4) < 0.06,
+			"%d in 100 s, %.2f s each" % [blackouts.size(), dark[0] / maxf(blackouts.size(), 1)])
+	b = BodySim.new(7)
+	b.blood = 60.0
+	b.advance(0.1)
+	var at60 := b.mods
+	b.blood = 40.0
+	b.advance(0.1)
+	var at40 := b.mods
+	b.blood = 20.0
+	var stumbles := [0, 0.0]
+	b.stumbled.connect(func() -> void: stumbles[0] += 1)
+	for i in 1200:
+		b.advance(0.05)
+		stumbles[1] += 0.05 if b.mods.input_lost else 0.0
+	_check("body: under 70 blood stamina returns slower and the colour drains", is_equal_approx(at60.stamina_regen_scale, 0.8)
+			and at60.desaturate > 0.0 and is_equal_approx(at60.sway_scale, 1.0))
+	_check("body: under 45 the hands shake and sprinting costs more", is_equal_approx(at40.sway_scale, 1.3)
+			and is_equal_approx(at40.sprint_drain_scale, 1.4) and at40.tunnel > 0.0)
+	_check("body: under 25 the view drifts and the controls drop out for 0.3 s every 8 to 14 s", b.mods.aim_drift > 0.0
+			and b.mods.muffled and stumbles[0] >= 4 and stumbles[0] <= 8 and absf(stumbles[1] / maxf(stumbles[0], 1) - 0.3) < 0.06,
+			"%d in 60 s, %.2f s each" % [stumbles[0], stumbles[1] / maxf(stumbles[0], 1)])
+
+	# Supplies.
+	b = BodySim.new(7)
+	var cut3: int = b.hit_part(LEG_L, 30.0, CUT)["wound"]
+	var open_rate := b.bleed_rate()
+	var glued := b.glue(cut3)
+	b.tape(cut3)
+	var taped := b.bleed_rate()
+	b.towel_tape(cut3)
+	_check("body: tape slows a level 3 cut to 0.15/s; only a towel under it closes it; glue cannot", is_equal_approx(open_rate, 1.1)
+			and not glued and is_equal_approx(taped, 0.15) and is_zero_approx(b.bleed_rate()),
+			"%.2f -> %.2f -> %.2f" % [open_rate, taped, b.bleed_rate()])
+	var cut2: int = b.hit_part(LEG_R, 20.0, CUT)["wound"]
+	var before := b.pain()
+	_check("body: tape closes a level 2 cut, and a closed wound hurts half as much", b.tape(cut2) and is_zero_approx(b.bleed_rate())
+			and is_equal_approx(before, 19.0 + 24.0) and is_equal_approx(b.pain(), 19.0 + 12.0), "%.0f -> %.0f" % [before, b.pain()])
+	var arm: int = b.hit_part(ARM_L, 20.0, CUT)["wound"]
+	b.tape(arm)
+	var none := b.strain_legs(0.0)
+	var tore := b.strain_legs(1.0)
+	_check("body: hard use of the legs can tear their closed wounds open, and only theirs", not none and tore
+			and b.wound(cut2).state == BodySim.WoundState.TORN and b.wound(cut3).state == BodySim.WoundState.TORN
+			and b.wound(arm).state == BodySim.WoundState.SEALED and is_equal_approx(b.bleed_rate(), 0.30))
+	var screams: Array = []
+	b.vocalised.connect(func(what: StringName) -> void: screams.append(what))
+	b.tape(cut2)
+	b.tape(cut3)
+	b.pour_whiskey(cut2)
+	b.pour_whiskey(cut3)
+	_check("body: a wound doused in whiskey never tears again (and the pouring is loud)", not b.strain_legs(1.0)
+			and is_zero_approx(b.bleed_rate()) and screams == [&"scream", &"scream"] and b.strain_arms(1.0), str(screams))
+	b = BodySim.new(7)
+	b.hit_part(ARM_R, 15.0, CRUSH)
+	b.take_painkiller()
+	b.advance(19.0)
+	var early := b.mods.sway_scale
+	b.advance(2.0)
+	var working := b.mods.sway_scale
+	var numb := b.mods.numb
+	b.advance(180.0)
+	_check("body: a painkiller does nothing for 20 s, then takes 60% off for three minutes", is_equal_approx(early, 1.4)
+			and absf(working - (1.0 + 0.4 * 0.4)) < 0.001 and numb and is_equal_approx(b.mods.sway_scale, 1.4) and not b.mods.numb,
+			"%.2f -> %.2f -> %.2f" % [early, working, b.mods.sway_scale])
+	b.take_painkiller()
+	b.advance(61.0)
+	b.take_painkiller()
+	var spaced := b.mods.woozy
+	b.advance(30.0)
+	b.take_painkiller()
+	_check("body: two pills inside a minute make the view swim", not spaced and b.mods.woozy)
+	b = BodySim.new(7)
+	b.hit_part(ARM_R, 15.0, CRUSH)
+	b.drink_whiskey()
+	var drunk := b.mods.sway_scale
+	var eased := b.relief()
+	b.take_painkiller()
+	b.advance(21.0)
+	var both := b.relief()
+	b.advance(100.0)
+	_check("body: whiskey takes 40% off the pain for two minutes but unsteadies the hands; with a pill, 76%",
+			is_equal_approx(eased, 0.4) and absf(drunk - (1.0 + 0.4 * 0.6) * 1.15) < 0.001 and absf(both - 0.76) < 0.001
+			and is_equal_approx(b.relief(), 0.6), "sway %.3f, relief %.2f / %.2f / %.2f" % [drunk, eased, both, b.relief()])
+	b = BodySim.new(7)
+	b.hit_part(LEG_L, 20.0, CRUSH)
+	b.hit_part(LEG_L, 20.0, CRUSH)
+	b.hit_part(LEG_R, 30.0, CUT)
+	var was := b.tier(LEG_L)
+	_check("body: a splint makes a crushed limb count one step better; it does nothing for a cut", was == HEAVY
+			and b.splint(LEG_L) and b.tier(LEG_L) == LIGHT and b.mods.can_sprint and not b.splint(LEG_R) and not b.splint(TORSO))
+	b = BodySim.new(7)
+	b.hit_part(ARM_L, 30.0, CUT)
+	b.hit_part(ARM_L, 30.0, CUT)
+	_check("body: a first aid kit stops all bleeding on a part and gives 40 function back", b.first_aid(ARM_L)
+			and is_zero_approx(b.bleed_rate()) and is_equal_approx(b.function[ARM_L], 50.0))
+	b = BodySim.new(7)
+	b.coffee()
+	var perky := b.mods
+	b.advance(91.0)
+	_check("body: coffee brings stamina back 1.5x faster for 90 s, with slightly shakier hands",
+			is_equal_approx(perky.stamina_regen_scale, 1.5) and is_equal_approx(perky.sway_scale, 1.1)
+			and is_equal_approx(b.mods.stamina_regen_scale, 1.0))
+
+	# Electric burns.
+	b = BodySim.new(7)
+	var drops: Array = []
+	b.dropped_item.connect(func() -> void: drops.append(1))
+	var burn1: Dictionary = b.hit_part(TORSO, 8.0, BURN)
+	var shaking := b.mods.sway_scale
+	b.advance(8.5)
+	var calm := b.mods.sway_scale
+	var burn3: Dictionary = b.hit_part(TORSO, 26.0, BURN)
+	b.advance(24.0)
+	var late := b.mods.sway_scale
+	b.advance(2.0)
+	_check("body: a burn shakes the hands for 8 / 25 s by level, and a bad one always empties them",
+			is_equal_approx(shaking, 1.6) and is_equal_approx(calm, 1.0) and b.wounds.is_empty() and not burn1["dropped"]
+			and burn3["dropped"] and drops.size() == 1 and is_equal_approx(late, 1.6) and is_equal_approx(b.mods.sway_scale, 1.0))
+
+	# Where attacks land.
+	b = BodySim.new(7)
+	var share := func(attack: BodySim.Attack, aiming: bool) -> Array:
+		var counts := [0, 0, 0, 0, 0, 0]
+		for i in 4000:
+			b.reset()
+			counts[b.hit(1.0, CUT, attack, aiming)["part"]] += 1
+		return counts.map(func(c: int) -> float: return c / 4000.0)
+	var bite: Array = share.call(BodySim.Attack.LOW_BITE, false)
+	var pounce: Array = share.call(BodySim.Attack.POUNCE, false)
+	var pounce_aim: Array = share.call(BodySim.Attack.POUNCE, true)
+	var lash: Array = share.call(BodySim.Attack.LASH, false)
+	_check("body: a low bite goes for the legs 70% of the time", absf(bite[LEG_L] + bite[LEG_R] - 0.70) < 0.03
+			and absf(bite[ARM_L] - 0.20) < 0.03 and absf(bite[TORSO] - 0.10) < 0.03 and bite[HEAD] == 0.0, str(bite))
+	_check("body: a pounce lands on the arms half the time, 65% if they are up aiming", absf(pounce[ARM_L] + pounce[ARM_R] - 0.50) < 0.03
+			and absf(pounce_aim[ARM_L] + pounce_aim[ARM_R] - 0.65) < 0.03 and absf(pounce[TORSO] - 0.40) < 0.03,
+			"%.2f / %.2f" % [pounce[ARM_L] + pounce[ARM_R], pounce_aim[ARM_L] + pounce_aim[ARM_R]])
+	_check("body: a lash from above finds the head 30% of the time", absf(lash[HEAD] - 0.30) < 0.03, str(lash))
+
+
+# Injuries acting on the real player and weapons.
+func _test_body_in_scene() -> void:
+	var body := player.body
+	await _select(0)
+	await _place(Vector3(-0.9, 0.05, 2.0), 0.0)
+	_check("body: the player has one, unhurt", body != null and body.sim.wounds.is_empty() and player.stamina_cap() == 100.0)
+
+	# Legs.
+	body.hit_part(BodySim.Part.LEG_L, 15.0, BodySim.Kind.CRUSH)
+	_hold(&"move_forward")
+	_hold(&"sprint")
+	await _secs(1.5)
+	_check("body: a lightly hurt leg sprints at 5.8 m/s", player.sprinting and absf(player.horizontal_speed() - 5.8) < 0.2,
+			"%.2f m/s" % player.horizontal_speed())
+	body.hit_part(BodySim.Part.LEG_L, 15.0, BodySim.Kind.CRUSH)
+	await _secs(1.0)
+	_check("body: badly hurt, holding sprint only walks, at 3.4 m/s", not player.sprinting
+			and absf(player.horizontal_speed() - 3.4) < 0.15, "%.2f m/s, tier %d" % [player.horizontal_speed(),
+			body.sim.tier(BodySim.Part.LEG_L)])
+	await _tap(&"crouch")
+	await _secs(0.1)
+	_check("body: and crouch does not slide", player.mode == Player.Mode.NORMAL, "mode %d" % player.mode)
+	_release_all()
+	await _secs(0.4)
+
+	# A leg that bad still gets over a low barricade, just slowly.
+	await _place(Vector3(-1.75, 0.05, -19.6), 0.0)
+	body.hit_part(BodySim.Part.LEG_L, 30.0, BodySim.Kind.CRUSH)
+	body.hit_part(BodySim.Part.LEG_L, 15.0, BodySim.Kind.CRUSH)
+	_hold(&"move_forward")
+	await _secs(0.3)
+	await _tap(&"jump")
+	await _secs(0.08)
+	var slow := player._mantle_time
+	await _secs(2.2)
+	_release_all()
+	await _secs(0.4)
+	_check("body: a badly hurt leg still vaults a barricade, half as fast again", player.global_position.z < -21.4
+			and player.is_on_floor() and slow > 0.5, "%s, %.2f s" % [_pos(), slow])
+
+	await _place(Vector3(-0.9, 0.05, 2.0), 0.0)
+	for i in 3:
+		body.hit_part(BodySim.Part.LEG_R, 30.0, BodySim.Kind.CRUSH)
+	await _tap(&"jump")
+	await _secs(0.15)
+	var hopped := not player.is_on_floor()
+	_hold(&"move_forward")
+	await _secs(1.2)
+	_check("body: a useless leg cannot jump and drags along at 2.4 m/s", not hopped and absf(player.horizontal_speed() - 2.4) < 0.15,
+			"%.2f m/s" % player.horizontal_speed())
+	_release_all()
+
+	# Torso.
+	await _place(Vector3(-0.9, 0.05, 2.0), 0.0)
+	body.hit_part(BodySim.Part.TORSO, 30.0, BodySim.Kind.CRUSH)
+	await _secs(0.2)
+	_check("body: a hurt torso caps stamina at 80", absf(player.stamina - 80.0) < 0.01 and player.stamina_cap() == 80.0,
+			"%.1f" % player.stamina)
+
+	# Support arm: reloading and pumping.
+	await _place(Vector3(-0.9, 0.05, 2.0), 180.0)
+	await _wait_ready()
+	player.set_look(deg_to_rad(180.0), deg_to_rad(40.0))
+	await _tap(&"fire")
+	await _secs(0.3)
+	body.hit_part(BodySim.Part.ARM_L, 15.0, BodySim.Kind.CRUSH)
+	await _tap(&"reload")
+	var rest := await _wait_ready()
+	_check("body: a lightly hurt support arm reloads the pistol in 1.55 x 1.25 s", absf(0.03 + rest - 1.55 * 1.25) < 0.06
+			and rig.current.mag == 15, "%.2f s" % (0.03 + rest))
+	await _select(1)
+	await _tap(&"fire")
+	rest = await _wait_ready()
+	var pump_time: float = rig.current.data.pump_time
+	_check("body: and pumps the shotgun 1.3x slower", absf(0.03 + rest - pump_time * 1.3) < 0.06, "%.2f s, base %.2f" % [0.03 + rest, pump_time])
+
+	# Gun arm: aiming.
+	await _select(0)
+	body.reset()
+	_hold(&"aim")
+	var sound := 0.0
+	while rig.aim < 0.999 and sound < 2.0:
+		await get_tree().physics_frame
+		sound += 1.0 / TICKS
+	_release(&"aim")
+	await _secs(0.5)
+	body.hit_part(BodySim.Part.ARM_R, 15.0, BodySim.Kind.CRUSH)
+	body.hit_part(BodySim.Part.ARM_R, 15.0, BodySim.Kind.CRUSH)
+	_hold(&"aim")
+	var hurt := 0.0
+	while rig.aim < 0.999 and hurt < 2.0:
+		await get_tree().physics_frame
+		hurt += 1.0 / TICKS
+	await _secs(0.3)
+	# Compared as a difference: both times carry the same frame or two of slack,
+	# which a ratio would magnify when frames are long.
+	var extra: float = rig.current.data.aim_time * 0.35
+	_check("body: a badly hurt gun arm takes 1.35x as long to aim, and the aim wanders", absf(hurt - sound - extra) < 0.03
+			and player.view_wobble.length() > 0.0, "%.3f s vs %.3f s, wobble %.4f" % [hurt, sound, player.view_wobble.length()])
+	_release(&"aim")
+
+	# Out loud.
+	body.reset()
+	var voices: Array = []
+	var listen := func(_p: Vector3, r: float, _e: float, src: StringName, _o: float) -> void: voices.append([src, r])
+	NoiseBus.heard.connect(listen)
+	await _select(2)
+	var cut: int = body.hit_part(BodySim.Part.ARM_R, 20.0, BodySim.Kind.CUT)["wound"]
+	await _secs(0.2)
+	voices.clear()
+	await _tap(&"fire")
+	await _secs(0.3)
+	_check("body: swinging with a wounded arm draws a grunt heard 3 m away", voices.has([&"grunt", 3.0]), str(voices))
+	body.sim.pour_whiskey(cut)
+	await _secs(0.1)
+	_check("body: pouring whiskey on a wound is heard 8 m away", voices.has([&"scream", 8.0]), str(voices))
+	NoiseBus.heard.disconnect(listen)
+
+	# Dying.
+	await _wait_ready()
+	body.reset()
+	var deaths: Array = []
+	var on_died := func(c: StringName) -> void: deaths.append(c)
+	body.died.connect(on_died)
+	body.hit_part(BodySim.Part.HEAD, 40.0, BodySim.Kind.CRUSH)
+	_hold(&"move_forward")
+	await _secs(0.8)
+	_check("body: a dead player does not move", deaths == [&"head"] and player.horizontal_speed() < 0.05
+			and player.head.position.y < 1.0, "%s, %.2f m/s, eye %.2f" % [deaths, player.horizontal_speed(), player.head.position.y])
+	body.died.disconnect(on_died)
+	_release_all()
+	body.reset()
+	await _select(0)
+	await _place(Vector3(-0.9, 0.05, 2.0), 0.0)
+	_hold(&"move_forward")
+	_hold(&"sprint")
+	await _secs(1.5)
+	_check("body: healed, everything is back to normal", absf(player.horizontal_speed() - 6.6) < 0.2, "%.2f m/s" % player.horizontal_speed())
+	_release_all()
+
+
 # --- screenshots ---------------------------------------------------------------
 
 func _snap(dir: String, shot: String, settle := 8) -> void:
@@ -700,7 +1150,7 @@ func _shoot(dir: String) -> void:
 		if arg.begins_with("--shots="):
 			only = arg.trim_prefix("--shots=").split(",")
 	await _snap(dir, "00_settle", 70)              # the fog needs about 60 frames to settle
-	for section: String in ["pistol", "shotgun", "pipe", "holes", "night"]:
+	for section: String in ["pistol", "shotgun", "pipe", "holes", "hurt", "night"]:
 		if only.is_empty() or only.has(section):
 			await call("_shoot_" + section, dir)
 
@@ -783,6 +1233,23 @@ func _shoot_holes(dir: String) -> void:
 	_release(&"aim")
 	_look_at(car + Vector3(-0.2, -0.15, 0.3))
 	await _snap(dir, "13_bullet_holes", 20)
+
+
+## What losing blood does to the picture: the same view whole, at 40 and at 20.
+func _shoot_hurt(dir: String) -> void:
+	var dummy := targets[0]
+	await _select(0)
+	await _place(Vector3(-1.2, 0.05, -11.0), 0.0)
+	_look_at(dummy.chest_point() + Vector3(0.5, 0.2, 0.0))
+	await _snap(dir, "16_body_whole", 20)
+	player.body.hit_part(BodySim.Part.ARM_R, 20.0, BodySim.Kind.CUT)
+	player.body.sim.blood = 40.0
+	_look_at(dummy.chest_point() + Vector3(0.5, 0.2, 0.0))
+	await _snap(dir, "17_body_blood_40", 20)
+	player.body.sim.blood = 20.0
+	_look_at(dummy.chest_point() + Vector3(0.5, 0.2, 0.0))
+	await _snap(dir, "18_body_blood_20", 20)
+	player.body.reset()
 
 
 ## Night, power out, flashlight.

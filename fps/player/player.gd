@@ -3,7 +3,8 @@ extends CharacterBody3D
 ## First-person body: walking, sprinting, crouching, sliding, jumping, mantling
 ## and vaulting, leaning, stamina, and all the camera motion that sells them.
 ## Weapons live in the WeaponRig (a child of the camera), which reads state from
-## here and writes aim_amount / aim_zoom / move_scale back.
+## here and writes aim_amount / aim_zoom / move_scale back. Injuries live in
+## Body; everything here that an injury can change is multiplied by body.mods.
 
 signal stamina_changed(value: float, maximum: float)
 ## Something the player did made a sound that carries this far, in metres.
@@ -76,8 +77,12 @@ var move_scale := 1.0
 var bob_phase := 0.0
 var bob_amount := 0.0
 
+# Written by Body every frame: the aim wandering off, in radians (pitch, yaw).
+var view_wobble := Vector2.ZERO
+
 var head: Node3D
 var camera: Camera3D
+var body: Body
 var rig: WeaponRig
 var flashlight: SpotLight3D
 
@@ -158,6 +163,11 @@ func _ready() -> void:
 	_yaw = rotation.y
 	stamina = stamina_max
 
+	body = Body.new()
+	body.name = "Body"
+	add_child(body)
+	body.setup(self)
+
 	rig = WeaponRig.new()
 	rig.name = "WeaponRig"
 	camera.add_child(rig)
@@ -165,6 +175,8 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if body.sim.dead:
+		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var sens: float = Controls.mouse_sensitivity * lerpf(1.0, 1.0 / aim_zoom, aim_amount)
 		_yaw -= event.relative.x * sens
@@ -195,6 +207,17 @@ func set_look(yaw: float, pitch := 0.0) -> void:
 	rotation.y = _yaw
 
 
+## Turns the view by a small angle in radians (Body: drifting aim).
+func nudge_look(yaw: float, pitch: float) -> void:
+	_yaw += yaw
+	_pitch = clampf(_pitch + pitch, deg_to_rad(-88.0), deg_to_rad(88.0))
+
+
+## Stamina ceiling right now: a hurt torso lowers it.
+func stamina_cap() -> float:
+	return stamina_max * body.mods.stamina_max_scale
+
+
 ## Kicks the view up (degrees) and sideways; it then settles back on its own.
 func add_view_kick(pitch_deg: float, yaw_deg: float, recover_deg_per_sec := 10.0) -> void:
 	_recoil_target += Vector2(deg_to_rad(pitch_deg), deg_to_rad(yaw_deg))
@@ -221,7 +244,7 @@ func use_stamina(amount: float) -> void:
 	_stamina_delay = 0.9
 	if stamina <= 0.0:
 		exhausted = true
-	stamina_changed.emit(stamina, stamina_max)
+	stamina_changed.emit(stamina, stamina_cap())
 
 
 # --- simulation --------------------------------------------------------------
@@ -250,17 +273,21 @@ func _physics_process(delta: float) -> void:
 
 
 func _tick_normal(delta: float) -> void:
+	var m := body.mods
 	var input := Input.get_vector(&"move_left", &"move_right", &"move_forward", &"move_back")
+	if m.input_lost:
+		input = Vector2.ZERO
+		_jump_buffer = 0.0
 	var wish := global_basis * Vector3(input.x, 0.0, input.y)
 	wish.y = 0.0
 	var grounded := is_on_floor()
 	_coyote = 0.1 if grounded else maxf(_coyote - delta, 0.0)
 
 	var moving_forward := input.y < -0.5 and absf(input.x) < 0.75
-	sprinting = (grounded and not crouched and moving_forward and not exhausted
+	sprinting = (grounded and not crouched and moving_forward and not exhausted and m.can_sprint
 			and _sprint_block <= 0.0 and Input.is_action_pressed(&"sprint"))
 
-	if (grounded and sprinting and Input.is_action_just_pressed(&"crouch")
+	if (grounded and sprinting and m.can_slide and Input.is_action_just_pressed(&"crouch")
 			and _slide_cooldown <= 0.0 and horizontal_speed() > walk_speed * 1.1):
 		_start_slide()
 		return
@@ -270,11 +297,11 @@ func _tick_normal(delta: float) -> void:
 			crouched = true
 		elif crouched and _capsule_fits(global_position, STAND_HEIGHT):
 			crouched = false
-		var speed := walk_speed
+		var speed := walk_speed * m.walk_scale
 		if sprinting:
-			speed = sprint_speed
+			speed = sprint_speed * m.sprint_scale
 		elif crouched:
-			speed = crouch_speed
+			speed = minf(crouch_speed, speed)
 		speed *= lerpf(1.0, ads_move_scale, aim_amount) * move_scale
 		var hv := Vector3(velocity.x, 0.0, velocity.z)
 		var rate := ground_accel if wish != Vector3.ZERO else ground_friction
@@ -285,19 +312,21 @@ func _tick_normal(delta: float) -> void:
 			_jump_buffer = 0.0
 			if _try_mantle():
 				return
-			if crouched and _capsule_fits(global_position, STAND_HEIGHT):
-				crouched = false
-			velocity.y = sqrt(2.0 * gravity * jump_height)
-			_coyote = 0.0
-			use_stamina(jump_cost)
-			_footstep(-4.0)
+			if m.jump_scale > 0.0:
+				if crouched and _capsule_fits(global_position, STAND_HEIGHT):
+					crouched = false
+				velocity.y = sqrt(2.0 * gravity * jump_height * m.jump_scale)
+				_coyote = 0.0
+				use_stamina(jump_cost)
+				_footstep(-4.0)
+				body.exert(&"jump")
 		elif wish != Vector3.ZERO and _try_step_up(hv, delta):
 			return
 	else:
-		if _jump_buffer > 0.0 and _coyote > 0.0:       # just walked off an edge
+		if _jump_buffer > 0.0 and _coyote > 0.0 and m.jump_scale > 0.0:       # just walked off an edge
 			_jump_buffer = 0.0
 			_coyote = 0.0
-			velocity.y = sqrt(2.0 * gravity * jump_height)
+			velocity.y = sqrt(2.0 * gravity * jump_height * m.jump_scale)
 			use_stamina(jump_cost)
 		velocity.y -= gravity * delta
 		# Air control: you can add speed towards where you steer, but only up to
@@ -351,6 +380,8 @@ func _on_land(fall_speed: float) -> void:
 	Sfx.play(&"land", clampf(-14.0 + fall_speed, -14.0, 0.0))
 	make_noise(clampf(fall_speed * 1.6, 4.0, 16.0))
 	landed.emit(fall_speed)
+	if fall_speed > 5.0:
+		body.exert(&"land")
 
 
 func _start_slide() -> void:
@@ -362,9 +393,10 @@ func _start_slide() -> void:
 	_slide_speed = maxf(hv.length(), slide_speed)
 	_slide_time = 0.0
 	_slide_air = 0.0
-	use_stamina(slide_cost)
+	use_stamina(slide_cost * body.mods.slide_cost_scale)
 	Sfx.play(&"slide", -5.0)
 	make_noise(9.0)
+	body.exert(&"slide")
 
 
 func _tick_slide(delta: float) -> void:
@@ -387,7 +419,7 @@ func _tick_slide(delta: float) -> void:
 		_end_slide()
 		if _capsule_fits(global_position, STAND_HEIGHT):
 			crouched = false
-		velocity.y = sqrt(2.0 * gravity * jump_height)
+		velocity.y = sqrt(2.0 * gravity * jump_height * maxf(body.mods.jump_scale, 0.3))
 		use_stamina(jump_cost)
 	elif (_slide_speed < slide_end_speed or _slide_time > slide_max_time or _slide_air > 0.2
 			or (_slide_time > 0.3 and not Input.is_action_pressed(&"crouch"))):
@@ -425,12 +457,16 @@ func _try_mantle() -> bool:
 	var wall := wall_hit.get_position()
 	var feet := global_position.y
 	var probe_top := feet + mantle_max + 0.3
+	# A hurt leg cannot push as high.
+	var reach := mantle_max
+	if body.mods.mantle_max_override > 0.0:
+		reach = minf(reach, body.mods.mantle_max_override)
 
 	var near := _surface_below(wall + fwd * 0.08, probe_top, mantle_max + 1.0)
 	if is_nan(near):
 		return false
 	var h := near - feet
-	if h < mantle_min or h > mantle_max:
+	if h < mantle_min or h > reach:
 		return false
 	var far := _surface_below(wall + fwd * 0.55, probe_top, mantle_max + 4.0)
 	var target := wall + fwd * 0.48
@@ -469,13 +505,15 @@ func _try_mantle() -> bool:
 	_mantle_peak = maxf(near, target.y) + (0.12 if vault else 0.0)
 	_mantle_dir = fwd
 	_mantle_t = 0.0
-	_mantle_time = lerpf(0.30, 0.62, inverse_lerp(mantle_min, mantle_max, h)) * (1.15 if vault else 1.0)
+	_mantle_time = lerpf(0.30, 0.62, inverse_lerp(mantle_min, mantle_max, h)) * (1.15 if vault else 1.0) \
+			* body.mods.mantle_time_scale
 	velocity = Vector3.ZERO
 	crouched = true
 	sprinting = false
 	use_stamina(mantle_cost)
 	Sfx.play(&"mantle", -4.0)
 	make_noise(7.0)
+	body.exert(&"mantle")
 	_dip_v -= 0.5
 	return true
 
@@ -545,20 +583,23 @@ func _capsule_fits(feet: Vector3, height: float) -> bool:
 
 
 func _tick_stamina(delta: float) -> void:
+	var m := body.mods
+	var cap := stamina_cap()
 	var before := stamina
-	if sprinting and horizontal_speed() > walk_speed:
-		stamina = maxf(stamina - sprint_drain * delta, 0.0)
+	if sprinting and horizontal_speed() > walk_speed * m.walk_scale:
+		stamina = maxf(stamina - sprint_drain * m.sprint_drain_scale * delta, 0.0)
 		_stamina_delay = 0.8
 		if stamina <= 0.0:
 			exhausted = true
 	elif _stamina_delay > 0.0:
 		_stamina_delay -= delta
-	else:
-		stamina = minf(stamina + stamina_regen * (1.3 if crouched else 1.0) * delta, stamina_max)
-	if exhausted and stamina >= stamina_max * 0.25:
+	elif stamina < cap:
+		stamina = minf(stamina + stamina_regen * m.stamina_regen_scale * (1.3 if crouched else 1.0) * delta, cap)
+	stamina = minf(stamina, cap)
+	if exhausted and stamina >= cap * 0.25:
 		exhausted = false
 	if not is_equal_approx(before, stamina):
-		stamina_changed.emit(stamina, stamina_max)
+		stamina_changed.emit(stamina, cap)
 
 
 func _footstep(volume_db: float) -> void:
@@ -578,7 +619,9 @@ func _process(delta: float) -> void:
 	var walking := mode == Mode.NORMAL and is_on_floor() and hs > 0.7
 
 	var eye := EYE_STAND
-	if mode == Mode.SLIDE:
+	if body.sim.collapsing or body.sim.dead:
+		eye = EYE_SLIDE                      # on the knees
+	elif mode == Mode.SLIDE:
 		eye = EYE_SLIDE
 	elif crouched:
 		eye = EYE_CROUCH
@@ -602,6 +645,10 @@ func _process(delta: float) -> void:
 				make_noise(6.0)
 	var stride := clampf(hs / walk_speed, 0.4, 1.7) * bob_amount * lerpf(1.0, 0.25, aim_amount)
 	var bob := Vector3(cos(bob_phase) * 0.013, sin(bob_phase * 2.0) * 0.019, 0.0) * stride
+	# A limp: every other step the body drops onto the bad leg and tips over it.
+	var limp := body.mods.limp * bob_amount
+	var bad_step := maxf(sin(bob_phase), 0.0)
+	bob.y -= bad_step * bad_step * 0.045 * limp
 
 	# Landing dip: a damped spring kicked by _on_land.
 	_dip_v += (-_dip * 190.0 - _dip_v * 20.0) * delta
@@ -609,7 +656,7 @@ func _process(delta: float) -> void:
 
 	# Lean, shortened when a wall is in the way.
 	var lean_in := 0.0
-	if mode == Mode.NORMAL and is_on_floor() and not sprinting:
+	if mode == Mode.NORMAL and is_on_floor() and not sprinting and not body.mods.input_lost:
 		lean_in = Input.get_axis(&"lean_left", &"lean_right")
 	if lean_in != 0.0:
 		var from := global_position + Vector3.UP * _eye
@@ -628,7 +675,7 @@ func _process(delta: float) -> void:
 	_recoil += _recoil_v * delta
 
 	var strafe := velocity.dot(global_basis.x) / walk_speed
-	var roll := -strafe * deg_to_rad(1.3) - _lean * deg_to_rad(9.0)
+	var roll := -strafe * deg_to_rad(1.3) - _lean * deg_to_rad(9.0) - bad_step * deg_to_rad(2.6) * limp
 	if mode == Mode.SLIDE:
 		roll -= deg_to_rad(4.5)
 	elif mode == Mode.MANTLE:
@@ -636,7 +683,8 @@ func _process(delta: float) -> void:
 	_roll = lerpf(_roll, roll, k.call(10.0))
 
 	head.position = Vector3(_lean * 0.34, _eye + _step_offset, 0.0)
-	head.rotation = Vector3(clampf(_pitch + _recoil.x, deg_to_rad(-89.0), deg_to_rad(89.0)), _recoil.y, 0.0)
+	head.rotation = Vector3(clampf(_pitch + _recoil.x + view_wobble.x, deg_to_rad(-89.0), deg_to_rad(89.0)),
+			_recoil.y + view_wobble.y, 0.0)
 	camera.position = bob + Vector3(0.0, _dip, 0.0)
 	camera.rotation = Vector3(0.0, 0.0, _roll)
 

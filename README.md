@@ -58,6 +58,9 @@ blender --background --factory-startup --python art/concept/make_concepts.py -- 
 
 - `fps/player/player.gd`：第一人称身体。走、冲刺、蹲、滑铲、跳、翻越和攀爬、上台阶、探头、体力、手电，
   以及镜头的晃动、落地下沉、倾斜、后坐力回正、视野变化。
+- `fps/player/body_sim.gd`、`body.gd`：部位负伤。没有血条：六个部位各有机能值，流血只掉血量，受伤后移动、体力、换弹、
+  开镜、后坐力按部位变差，靠画面褪色、隧道视野、跛行和瞄准晃动告诉玩家。规则在 `BodySim`（可无界面自测），
+  其余代码只读 `player.body.mods`。设计和实现偏差见 `docs/design_supplement.md` 第一节。
 - `fps/weapons/`：`weapon_data.gd` 是一把武器的全部数值（`data/*.tres` 各一份，可在编辑器里直接调）；
   `weapon.gd` 是手里的一把枪（模型、活动部件、弹药）；`weapon_rig.gd` 挂在相机下，负责开火、泵动、换弹、
   挥击、切枪的状态机和全部程序化姿态（没有关键帧动画）；`fx.gd` 是枪口闪光、曳光、弹孔、命中烟尘和弹壳。
@@ -65,9 +68,9 @@ blender --background --factory-startup --python art/concept/make_concepts.py -- 
   体力条只在不满时出现。
 - `fps/test/`：`street_set` 给灰盒街道生成碰撞、路灯和靶子；`target_dummy.gd` 是靶子；
   `benchmark.gd` 是基准测试；`range_auto.gd` 是脚本化的自测和截图。
-- 任何能被打的东西只要实现 `take_hit(damage, point, dir, weapon_data) -> Dictionary` 就行，丧尸以后照这个接。
+- 任何能被打的东西只要实现 `take_hit(damage, point, dir, weapon_data) -> Dictionary` 就行，怪物以后照这个接；怪物打玩家则调 `player.body.hit(伤害, 伤型, 攻击类型)`。
 
-**自测**：不开窗口，用真实的输入事件驱动玩家把移动、攀爬和三把武器全走一遍，共 63 项检查，失败时退出码为 1。
+**自测**：不开窗口，用真实的输入事件驱动玩家把移动、攀爬和三把武器全走一遍，再加上电网惊扰和部位负伤的规则，共 141 项检查，失败时退出码为 1。
 `--fixed-fps 60` 让时间确定，无界面时约 10 秒跑完：
 
 ```bash

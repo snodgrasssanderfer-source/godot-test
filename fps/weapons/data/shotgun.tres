@@ -9,6 +9,7 @@ model = ExtResource("2")
 id = &"shotgun"
 display_name = "Pump shotgun"
 kind = 1
+long_gun = true
 damage = 17.0
 pellets = 8
 head_multiplier = 2.0
