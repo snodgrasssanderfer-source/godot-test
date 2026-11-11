@@ -30,9 +30,9 @@ signal power_changed(on: bool)
 @export var sunset_azimuth := 12.0
 
 @export_group("Quality")
-@export var volumetric_fog := true
-@export var ssao := true
-@export var sdfgi := false
+@export var volumetric_fog := true: set = set_volumetric_fog
+@export var ssao := true: set = set_ssao
+@export var sdfgi := false: set = set_sdfgi
 
 ## The blended preset currently applied. Read-only for other systems.
 var current: AtmospherePreset
@@ -105,6 +105,24 @@ func set_power(on: bool) -> void:
 	power_changed.emit(on)
 	if is_node_ready():
 		_apply()
+
+
+func set_volumetric_fog(on: bool) -> void:
+	volumetric_fog = on
+	if _env:
+		_env.volumetric_fog_enabled = on
+
+
+func set_ssao(on: bool) -> void:
+	ssao = on
+	if _env:
+		_env.ssao_enabled = on
+
+
+func set_sdfgi(on: bool) -> void:
+	sdfgi = on
+	if _env:
+		_env.sdfgi_enabled = on
 
 
 func _make_directional(light_name: String) -> DirectionalLight3D:

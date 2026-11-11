@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://weapons/weapon_data.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/weapons/pipe.glb" id="2"]
+
+[resource]
+script = ExtResource("1")
+model = ExtResource("2")
+id = &"pipe"
+display_name = "Steel pipe"
+kind = 2
+damage = 55.0
+pellets = 1
+head_multiplier = 2.0
+max_range = 2.2
+melee_arc = 28.0
+fire_interval = 0.62
+hit_time = 0.2
+swing_stamina = 8.0
+equip_time = 0.34
+sprint_out_time = 0.12
+mag_size = 0
+reserve = 0
+hip_spread = 0.0
+bloom_per_shot = 0.0
+move_spread = 0.0
+air_spread = 0.0
+hip_position = Vector3(0.24, -0.28, -0.32)
+hip_rotation = Vector3(54, 3, -6)
+sprint_position = Vector3(0.0, -0.03, 0.03)
+sprint_rotation = Vector3(-14, 6, -10)
+move_scale = 1.05
+noise_radius = 12.0
+fire_sound = &"pipe_swing"

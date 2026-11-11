@@ -11,11 +11,6 @@ extends Node3D
 
 const VIEW_FROM := Vector3(-0.9, 1.62, -3.0)
 const VIEW_AT := Vector3(0.9, 3.3, -50.0)
-## Street lamps: position, relative brightness (the second one is failing).
-const LAMPS := [
-	[Vector3(2.35, 7.0, -10.0), 1.0], [Vector3(-2.35, 7.0, -38.0), 0.12],
-	[Vector3(2.35, 7.0, -66.0), 1.0], [Vector3(-2.35, 7.0, -94.0), 1.0],
-]
 ## name, hour, power, flashlight
 const SHOTS := [
 	["A_cold_fog", 11.0, true, false], ["B_rust_dusk", 18.0, true, false],
@@ -35,31 +30,6 @@ var _worst_age := 0.0
 
 
 func _ready() -> void:
-	for entry in LAMPS:
-		var lamp := SpotLight3D.new()
-		lamp.position = entry[0]
-		lamp.rotation_degrees.x = -90.0
-		lamp.spot_angle = 64.0
-		lamp.spot_angle_attenuation = 0.6
-		lamp.spot_range = 24.0
-		lamp.light_color = Color(1.0, 0.50, 0.14)
-		lamp.light_energy = 18.0 * entry[1]
-		lamp.light_volumetric_fog_energy = 2.0
-		lamp.shadow_enabled = true
-		lamp.add_to_group(&"street_lamp")
-		add_child(lamp)
-		# The glowing lamp head: a child, so it goes dark with the light.
-		var bulb := MeshInstance3D.new()
-		var bulb_mesh := BoxMesh.new()
-		bulb_mesh.size = Vector3(0.5, 0.18, 0.04)
-		var bulb_mat := StandardMaterial3D.new()
-		bulb_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		bulb_mat.albedo_color = Color(1.0, 0.55, 0.18) * (6.0 * entry[1] + 0.6)
-		bulb_mesh.material = bulb_mat
-		bulb.mesh = bulb_mesh
-		bulb.position = Vector3(0.0, 0.0, 0.07)
-		lamp.add_child(bulb)
-
 	_camera = Camera3D.new()
 	_camera.fov = 51.5      # same framing as the concept renders (21 mm lens)
 	_camera.far = 400.0

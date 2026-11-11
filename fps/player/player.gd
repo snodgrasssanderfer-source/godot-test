@@ -2,12 +2,12 @@ class_name Player
 extends CharacterBody3D
 ## First-person body: walking, sprinting, crouching, sliding, jumping, mantling
 ## and vaulting, leaning, stamina, and all the camera motion that sells them.
-## Weapons will live in a WeaponRig (a child of the camera) that reads state
-## from here. It is not written yet: see HANDOFF.md at the repo root.
+## Weapons live in the WeaponRig (a child of the camera), which reads state from
+## here and writes aim_amount / aim_zoom / move_scale back.
 
 signal stamina_changed(value: float, maximum: float)
 ## Something the player did made a sound that carries this far, in metres.
-## Nothing listens yet; the zombie hearing system will.
+## Only the test range's noise readout listens so far; zombie hearing will.
 signal noise_made(radius: float)
 signal landed(fall_speed: float)
 
@@ -78,7 +78,7 @@ var bob_amount := 0.0
 
 var head: Node3D
 var camera: Camera3D
-var rig: Node3D     # becomes the WeaponRig once it exists
+var rig: WeaponRig
 var flashlight: SpotLight3D
 
 var _shape: CapsuleShape3D
@@ -155,11 +155,13 @@ func _ready() -> void:
 	flashlight.visible = false
 	camera.add_child(flashlight)
 
-	# TODO(weapons): create the WeaponRig here, as a child of the camera:
-	#   rig = WeaponRig.new(); camera.add_child(rig); rig.setup(self)
-
 	_yaw = rotation.y
 	stamina = stamina_max
+
+	rig = WeaponRig.new()
+	rig.name = "WeaponRig"
+	camera.add_child(rig)
+	rig.setup(self)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -218,7 +220,6 @@ func use_stamina(amount: float) -> void:
 # --- simulation --------------------------------------------------------------
 
 func _physics_process(delta: float) -> void:
-	rotation.y = _yaw
 	_jump_buffer = maxf(_jump_buffer - delta, 0.0)
 	if Input.is_action_just_pressed(&"jump"):
 		_jump_buffer = 0.13
@@ -449,7 +450,10 @@ func _try_mantle() -> bool:
 		var q := PhysicsRayQueryParameters3D.create(a, b, LAYER_WORLD, [get_rid()])
 		if not space.intersect_ray(q).is_empty():
 			return false
-	if not _capsule_fits(target + Vector3.UP * 0.03, CROUCH_HEIGHT):
+	# Find where a crouched body actually comes to rest there: uneven ground
+	# (a lumpy lawn) holds a wide capsule higher than the thin probe found.
+	target.y = _settle(target + Vector3.UP * 0.35, CROUCH_HEIGHT, 0.7)
+	if is_nan(target.y):
 		return false
 
 	mode = Mode.MANTLE
@@ -503,6 +507,24 @@ func _surface_below(point: Vector3, from_y: float, max_drop: float) -> float:
 	return from_y - max_drop * r[1] - sphere.radius
 
 
+## Lowers a capsule of the given height from `feet` by up to max_drop and
+## returns the height its feet stop at, or NAN if it does not fit at the start.
+func _settle(feet: Vector3, height: float, max_drop: float) -> float:
+	var capsule := CapsuleShape3D.new()
+	capsule.radius = RADIUS
+	capsule.height = height
+	var q := PhysicsShapeQueryParameters3D.new()
+	q.shape = capsule
+	q.transform = Transform3D(Basis.IDENTITY, feet + Vector3.UP * (height * 0.5))
+	q.motion = Vector3.DOWN * max_drop
+	q.collision_mask = LAYER_WORLD | LAYER_HITBOX
+	q.exclude = [get_rid()]
+	var space := get_world_3d().direct_space_state
+	if not space.intersect_shape(q, 1).is_empty():
+		return NAN
+	return feet.y - max_drop * space.cast_motion(q)[0]
+
+
 func _capsule_fits(feet: Vector3, height: float) -> bool:
 	var capsule := CapsuleShape3D.new()
 	capsule.radius = RADIUS - 0.03
@@ -540,6 +562,10 @@ func _footstep(volume_db: float) -> void:
 # --- camera ------------------------------------------------------------------
 
 func _process(delta: float) -> void:
+	# Turning is applied every rendered frame, not every physics tick, so the
+	# view never lags the mouse. A long hitch must not blow up the springs.
+	rotation.y = _yaw
+	delta = minf(delta, 0.05)
 	var k := func(rate: float) -> float: return 1.0 - exp(-rate * delta)
 	var hs := horizontal_speed()
 	var walking := mode == Mode.NORMAL and is_on_floor() and hs > 0.7

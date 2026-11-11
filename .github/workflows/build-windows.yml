@@ -1,0 +1,71 @@
+name: Build Windows test build
+
+# Builds the first-person project (fps/) for Windows on every push that
+# touches it and keeps the zip as a workflow artifact (download it from the
+# run's page; needs a GitHub login). Publishing it as a public pre-release is
+# a separate, manual step: run this workflow by hand with "publish" ticked.
+
+on:
+  push:
+    branches: ["ccr-**"]
+    paths: ["fps/**", "tools/export_windows.sh", "tools/setup_env.sh", ".github/workflows/build-windows.yml"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Also publish the zip as a public pre-release"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  INSTALL_ROOT: /home/runner/opt
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot + export templates
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/opt/godot
+            ~/.local/share/godot/export_templates
+          key: godot-${{ hashFiles('tools/setup_env.sh') }}
+
+      - name: Install Godot
+        run: tools/setup_env.sh --godot-only
+
+      - name: Import
+        run: godot --headless --path fps --import
+
+      - name: Self-test (movement and weapons, headless)
+        run: godot --headless --path fps -- --selftest
+
+      - name: Export
+        run: tools/export_windows.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Greyfog-windows-${{ github.sha }}
+          path: build/windows/
+          retention-days: 30
+
+      - name: Publish pre-release
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="greyfog-range-$(date -u +%Y%m%d)-$(git rev-parse --short HEAD)"
+          gh release create "$TAG" build/Greyfog-windows-*.zip \
+            --target "$GITHUB_SHA" --prerelease \
+            --title "Greyfog 靶场测试包 $(date -u +%Y-%m-%d)" \
+            --notes-file fps/TESTBUILD.txt

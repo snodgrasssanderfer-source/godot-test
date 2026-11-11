@@ -2,11 +2,12 @@
 
 [ext_resource type="Script" path="res://test/tone_street.gd" id="1"]
 [ext_resource type="PackedScene" path="res://atmosphere/atmosphere.tscn" id="2"]
-[ext_resource type="PackedScene" path="res://assets/greybox/street.glb" id="3"]
+[ext_resource type="PackedScene" path="res://test/street_set.tscn" id="3"]
 
 [node name="ToneStreet" type="Node3D"]
 script = ExtResource("1")
 
 [node name="Atmosphere" parent="." instance=ExtResource("2")]
 
-[node name="Street" parent="." instance=ExtResource("3")]
+[node name="StreetSet" parent="." instance=ExtResource("3")]
+make_targets = false
