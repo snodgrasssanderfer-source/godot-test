@@ -1,5 +1,7 @@
 # godot-test
 
+> **接手这个项目？先读 [HANDOFF.md](HANDOFF.md)。** 里面有已定的方向、当前进度、哪些代码还没验证过，以及下一步做什么。
+
 用"手机 + 云端（Claude Code 云会话）"做 Godot 网页小游戏的试跑项目。
 
 - 游戏：**Box Jumper** —— 方块左右移动、跳跃，有地面和平台，掉下去自动回到起点；
@@ -69,7 +71,7 @@ xvfb-run -a -s "-screen 0 1280x720x24" godot --path fps --rendering-driver vulka
 | 组件 | 版本 | 位置 |
 | --- | --- | --- |
 | Godot（Linux x86_64，标准版，不是 .NET 版） | 4.7.2-stable | `/opt/godot/`，软链接 `/usr/local/bin/godot` |
-| 网页导出模板（只解压了 `web_*`） | 4.7.2.stable（必须和 Godot 版本号完全一致） | `~/.local/share/godot/export_templates/4.7.2.stable/` |
+| 导出模板（只解压了网页 `web_*` 和 Windows x86_64） | 4.7.2.stable（必须和 Godot 版本号完全一致） | `~/.local/share/godot/export_templates/4.7.2.stable/` |
 | Blender（官方 Linux 版） | 5.1.2 | `/opt/blender-5.1.2-linux-x64/`，`/opt/blender` 指向它，软链接 `/usr/local/bin/blender` |
 | MCP 服务器 Coding-Solo/godot-mcp | GitHub 提交 `1209744`（2026-04-16） | 本地构建到 `/opt/godot-mcp/build/` |
 | MCP 服务器 sandraschi/blender-mcp | GitHub 提交 `b786a39`（2026-10-24） | 通过 `uvx` 按需安装 |

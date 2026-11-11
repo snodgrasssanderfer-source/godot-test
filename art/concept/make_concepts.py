@@ -141,11 +141,11 @@ def aim(ob, target):
     ob.rotation_euler = d.to_track_quat('-Z', 'Y').to_euler()
 
 
-def skin_obj(verts, edges, radii, mat, loc=(0, 0, 0), rot=(0, 0, 0), parent=None, sub=1):
-    me = bpy.data.meshes.new("skin")
+def skin_obj(verts, edges, radii, mat, loc=(0, 0, 0), rot=(0, 0, 0), parent=None, sub=1, name="skin"):
+    me = bpy.data.meshes.new(name)
     me.from_pydata(verts, edges, [])
     me.update()
-    ob = bpy.data.objects.new("skin", me)
+    ob = bpy.data.objects.new(name, me)
     ob.location = loc
     ob.rotation_euler = rot
     me.materials.append(mat)
@@ -736,7 +736,7 @@ def tree(x, y, height, seed):
                 grow(idx, nd, length * rnd.uniform(0.62, 0.8), r * 0.72, depth + 1)
 
     grow(0, Vector((0, 0, 1)), height * 0.36, height * 0.028, 0)
-    return skin_obj([tuple(v) for v in verts], edges, radii, MAT['bark'], (x, y, 0.1), sub=0)
+    return skin_obj([tuple(v) for v in verts], edges, radii, MAT['bark'], (x, y, 0.1), sub=0, name="tree")
 
 
 def zombie(x, y, yaw, cloth, lean=0.0, scale=1.0):
@@ -755,7 +755,7 @@ def zombie(x, y, yaw, cloth, lean=0.0, scale=1.0):
     R = [.15, .14, .16, .06, .10, .09, .075, .05, .04, .075, .05, .04, .095, .065, .05, .04, .095, .065, .05, .04]
     P = [tuple(c * scale for c in p) for p in P]
     R = [r * scale for r in R]
-    ob = skin_obj(P, E, R, cloth, (x, y, 0.0), (lean, 0, yaw), sub=2)
+    ob = skin_obj(P, E, R, cloth, (x, y, 0.0), (lean, 0, yaw), sub=2, name="zombie")
     return ob
 
 
