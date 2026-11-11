@@ -22,6 +22,8 @@ const GRAVITY := 22.0
 const STAGGER_TIME := 0.7
 const RAGE_TIME := 15.0            # after its cell trips (design supplement 4.3)
 const RAGE_SPEED := 1.25
+## Upward speed of the hop that clears low clutter (about 0.45 m).
+const HOP_SPEED := 4.5
 ## Grid level from which a sleeping set lights up with snow (charge 35).
 const SNOW_LEVEL := 2
 
@@ -60,6 +62,10 @@ var _lunge_hit := false
 var _rage := 0.0
 var _home := Vector3.ZERO
 var _idle := 0.0
+var _stuck := 0.0                   # seconds of pushing without getting anywhere
+var _hop_wait := 0.0
+var _dodge := 0.0
+var _dodge_side := 1.0
 
 # presentation
 var _rise := 0.0
@@ -467,6 +473,25 @@ func _travel(goal: Vector3, speed: float, delta: float) -> void:
 	if dir.length() < 0.05:
 		return
 	dir = dir.normalized()
+
+	# Clutter the navigation mesh does not know about (or another set in the
+	# way): first hop it, and if that does not help, go round it.
+	_hop_wait = maxf(_hop_wait - delta, 0.0)
+	if Vector2(velocity.x, velocity.z).length() < speed * 0.25:
+		_stuck += delta
+	else:
+		_stuck = 0.0
+	if _stuck > 0.35 and _hop_wait <= 0.0 and is_on_floor():
+		velocity.y = HOP_SPEED
+		_hop_wait = 0.9
+	if _stuck > 1.5:
+		_stuck = 0.6
+		_dodge = 0.7
+		_dodge_side = -_dodge_side
+	if _dodge > 0.0:
+		_dodge -= delta
+		dir = dir.rotated(Vector3.UP, _dodge_side * deg_to_rad(75.0))
+
 	var k := 1.0 - exp(-8.0 * delta)
 	velocity.x = lerpf(velocity.x, dir.x * speed, k)
 	velocity.z = lerpf(velocity.z, dir.z * speed, k)

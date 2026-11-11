@@ -23,7 +23,10 @@ const CONDUCT := 0.08          # share of the difference passed to a neighbour p
 const DECAY_DELAY := 6.0       # quiet seconds before a cell starts to drain
 const DECAY_RATE := 1.2        # charge per second
 const KILL_RELIEF := 8.0       # a dead creature shorts its cell
-const TRIP_HOLD := 5.0         # seconds at 100 before the breaker trips
+const TRIP_HOLD := 5.0         # seconds at full charge before the breaker trips
+## "Full" for the breaker. Not quite 100: between two shots a cell always leaks
+## a little to its neighbours, and a hold at exactly 100 could never last.
+const TRIP_LEVEL := 97.0
 const TRIP_TIME := 45.0        # seconds a tripped cell stays dead
 const TRIP_RESTART := 30.0     # charge it comes back with
 const BREAKER_CAP := 40.0      # ceiling of a cell whose breaker box was pulled
@@ -218,7 +221,7 @@ func _step(dt: float) -> void:
 		c.idle += dt
 		if c.idle >= DECAY_DELAY:
 			c.charge = maxf(0.0, c.charge - DECAY_RATE * dt)
-		if c.charge >= 99.999:
+		if c.charge >= TRIP_LEVEL:
 			c.full += dt
 			if c.full >= TRIP_HOLD - 0.00001:
 				c.full = 0.0

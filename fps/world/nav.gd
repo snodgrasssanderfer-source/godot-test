@@ -18,7 +18,10 @@ static func bake(root: Node3D, bounds: AABB, mask: int = 1, agent_radius: float 
 	mesh.cell_height = CELL_HEIGHT
 	mesh.agent_radius = agent_radius
 	mesh.agent_height = 1.0
-	mesh.agent_max_climb = 0.3          # curbs and door sills, not car bonnets
+	mesh.agent_max_climb = 0.2          # curbs and door sills; not suitcases, cartons or car bonnets
+	# Drop walkable patches too small to matter (the tops of cars and clutter):
+	# nothing can reach them, and a goal up there would send walkers into the side of the thing.
+	mesh.region_min_size = 12.0         # in cells, squared: 9 square metres
 	mesh.agent_max_slope = 40.0
 	mesh.filter_baking_aabb = bounds
 	var map := root.get_world_3d().navigation_map

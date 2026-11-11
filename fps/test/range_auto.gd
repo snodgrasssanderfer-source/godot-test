@@ -4,6 +4,7 @@ extends Node
 ##
 ##   --selftest      walks, jumps, climbs and shoots, checks the results and
 ##                   exits with 0 if everything passed
+##                   (--only=creatures,grid picks sections)
 ##   --shoot=<dir>   poses each weapon and saves screenshots for review
 ##                   (--shots=pistol,shotgun,pipe,holes,hurt,night picks sections)
 ##
@@ -150,16 +151,15 @@ func _pos() -> String:
 # --- self test -----------------------------------------------------------------
 
 func _selftest() -> void:
-	await _test_movement()
-	await _test_climbing()
-	await _test_pistol()
-	await _test_shotgun()
-	await _test_pipe()
-	await _test_rig()
-	_test_grid_model()
-	await _test_grid_in_scene()
-	_test_body_model()
-	await _test_body_in_scene()
+	# --only=creatures,grid runs just those sections (handy while working on one).
+	var only := PackedStringArray()
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--only="):
+			only = arg.trim_prefix("--only=").split(",")
+	for section: String in ["movement", "climbing", "pistol", "shotgun", "pipe", "rig", "grid_model", "grid_in_scene",
+			"body_model", "body_in_scene", "creatures"]:
+		if only.is_empty() or only.has(section) or only.has(section.get_slice("_", 0)):
+			await call("_test_" + section)
 
 
 func _test_movement() -> void:
@@ -1130,6 +1130,214 @@ func _test_body_in_scene() -> void:
 	await _secs(1.5)
 	_check("body: healed, everything is back to normal", absf(player.horizontal_speed() - 6.6) < 0.2, "%.2f m/s" % player.horizontal_speed())
 	_release_all()
+
+
+# --- creatures -----------------------------------------------------------------
+
+## Fresh street with the sets asleep on it, the player parked out of their sight.
+func _creature_setup() -> Array[Creature]:
+	scene.bake_nav()
+	scene.build_grid(true)
+	await _place(Vector3(-0.9, 0.05, -52.0), 0.0)
+	await _secs(0.4)
+	return scene.creatures
+
+
+func _wait_state(c: Creature, want: Creature.State, limit: float) -> float:
+	var t := 0.0
+	while c.state != want and t < limit:
+		await get_tree().physics_frame
+		t += 1.0 / TICKS
+	return t
+
+
+## Puts a grid cell at a charge, as if it had just been disturbed. (Injecting
+## exact amounts is no good for thresholds: charge starts leaking to the
+## neighbouring cells at once.)
+func _charge(node: int, value: float) -> void:
+	Grid.sim.cells[node].charge = value
+	Grid.sim.cells[node].idle = 0.0
+
+
+func _flat_distance(a: Vector3, b: Vector3) -> float:
+	return Vector2(a.x - b.x, a.z - b.z).length()
+
+
+func _test_creatures() -> void:
+	const S := Creature.State
+	var crts: Array[Creature] = await _creature_setup()
+	var region: NavigationRegion3D = scene.nav_region
+	var polygons: int = region.navigation_mesh.get_polygon_count() if region != null else 0
+	_check("creature: the street has a navigation mesh", polygons > 50, "%d polygons" % polygons)
+	var asleep := true
+	for c in crts:
+		asleep = asleep and c.state == S.DORMANT and c.is_on_floor() and not c._legs[0].visible
+	_check("creature: two sets sleep by each of the four lamps, legs tucked away", crts.size() == 8 and asleep
+			and Grid.sim.count() == 8 and Grid.sim.count(true) == 0, "%d" % crts.size())
+
+	# Asleep: it does not move, and its screen follows the grid.
+	var c := crts[0]                                # lamp 1, the one that wakes at 70
+	var node := c.grid_node
+	var rest := c.global_position
+	NoiseBus.emit(rest + Vector3(-3.0, 0.0, 0.0), 30.0, 0.0, &"test")
+	await _secs(1.0)
+	_check("creature: asleep it ignores noise and stays put", c.state == S.DORMANT and c.global_position.distance_to(rest) < 0.01
+			and c._power < 0.05, "moved %.3f" % c.global_position.distance_to(rest))
+	_charge(node, 45.0)
+	await _secs(0.5)
+	_check("creature: at 35 on its cell the screen fills with snow, and it sleeps on", c.state == S.DORMANT and c._power > 0.6
+			and c._glow.visible, "power %.2f" % c._power)
+
+	# Woken by the grid, it goes to the last noise it heard, round whatever is in the way.
+	var noise_at := Vector3(1.3, 0.0, -24.5)        # behind the car and a road barricade from where it sits
+	NoiseBus.emit(noise_at, 40.0, 0.0, &"test")
+	_charge(node, 74.0)
+	await _secs(0.15)
+	_check("creature: at 70 the first set wakes and the second (80) does not", c.state == S.WAKING
+			and crts[1].state == S.DORMANT and Grid.sim.count(true) == 1, "states %d %d" % [c.state, crts[1].state])
+	var took := 0.15 + await _wait_state(c, S.INVESTIGATE, 3.0)
+	_check("creature: it takes 1.3 s to get up", absf(took - 1.3) < 0.1 and c._legs[0].visible and c._rise > 0.5, "%.2f s" % took)
+	var straight := _flat_distance(c.global_position, noise_at)
+	var walked := 0.0
+	var last := c.global_position
+	var t := 0.0
+	while _flat_distance(c.global_position, noise_at) > 1.2 and t < 25.0:
+		await _secs(0.25)
+		t += 0.25
+		_charge(node, 74.0)                         # or the cell cools and it dozes off on the way
+		walked += _flat_distance(c.global_position, last)
+		last = c.global_position
+	_check("creature: it walks to the noise", _flat_distance(c.global_position, noise_at) <= 1.2 and c.state == S.INVESTIGATE,
+			"%.1f m away after %.1f s" % [_flat_distance(c.global_position, noise_at), t])
+	_check("creature: and went round the obstacles to get there", walked > straight + 0.5 and walked < straight * 1.8,
+			"walked %.1f m for %.1f m as the crow flies" % [walked, straight])
+
+	# Nothing found and the grid quiet again: back to sleep.
+	_charge(node, 20.0)
+	took = await _wait_state(c, S.DORMANT, 14.0)
+	_check("creature: 10 s after the cell goes quiet it sleeps again, screen dark", c.state == S.DORMANT and absf(took - 10.0) < 0.6
+			and Grid.sim.count(true) == 0, "%.1f s" % took)
+	await _secs(0.6)
+	_check("creature: legs gone again", not c._legs[0].visible and c._power < 0.05, "power %.2f" % c._power)
+
+	# Seeing the player: chase, and no more going back to sleep.
+	var events: Array = []
+	var on_state := func(_who: Creature, st: Creature.State) -> void: events.append([st, Engine.get_physics_frames()])
+	var attacks: Array = []
+	var on_attack := func(_who: Creature, landed: bool) -> void: attacks.append(landed)
+	c.state_changed.connect(on_state)
+	c.attacked.connect(on_attack)
+	_charge(node, 74.0)
+	await _wait_state(c, S.INVESTIGATE, 3.0)
+	var ahead := c.global_position - c.global_basis.z * 9.0
+	await _place(Vector3(ahead.x, c.global_position.y + 0.05, ahead.z), 0.0)
+	var seen := await _wait_state(c, S.CHASE, 2.0)
+	_check("creature: it sees a player 9 m in front of it and gives chase", c.state != S.INVESTIGATE and seen < 0.3
+			and Grid.sim.cells[node].roster[c.grid_entry]["engaged"], "%.2f s" % seen)
+	var wounds := player.body.sim.wounds.size()
+	await _wait_state(c, S.RECOVER, 8.0)
+	var windup_at := -1
+	var lunge_at := -1
+	for e in events:
+		if e[0] == S.WINDUP and windup_at < 0:
+			windup_at = e[1]
+		elif e[0] == S.LUNGE and lunge_at < 0:
+			lunge_at = e[1]
+	var warning := (lunge_at - windup_at) / TICKS
+	_check("creature: it winds up for at least half a second before it jumps", windup_at > 0 and lunge_at > windup_at
+			and warning >= 0.49 and warning < 0.6, "%.2f s" % warning)
+	_check("creature: the jump lands and leaves a wound", attacks == [true] and player.body.sim.wounds.size() == wounds + 1
+			and player.body.sim.bleed_rate() > 0.0, "%s, %d wounds" % [str(attacks), player.body.sim.wounds.size()])
+	Grid.sim.cells[node].charge = 0.0
+	await _secs(0.2)
+
+	# Step out of the way during the wind-up and it misses.
+	player.body.reset()
+	attacks.clear()
+	await _wait_state(c, S.WINDUP, 8.0)
+	await _secs(0.35)
+	var side := c.global_basis.x * 7.5
+	player.global_position += Vector3(side.x, 0.0, side.z)
+	await _wait_state(c, S.RECOVER, 3.0)
+	_check("creature: a jump at where the player was hits nothing", attacks == [false] and player.body.sim.wounds.is_empty(),
+			"%s, %d wounds" % [str(attacks), player.body.sim.wounds.size()])
+	_check("creature: having seen the player it stays awake on a dead quiet cell", c.is_awake() and Grid.sim.charge(node) < 30.0)
+	c.state_changed.disconnect(on_state)
+	c.attacked.disconnect(on_attack)
+
+	# Two layers: casing, glass, and the meat behind the glass.
+	crts = await _creature_setup()
+	c = crts[2]                                      # lamp 2
+	node = c.grid_node
+	var pistol_data: WeaponData = rig.weapons[0].data
+	var pipe_data: WeaponData = rig.weapons[2].data
+	var into := -c.global_basis.z * -1.0             # a shot from the front travels along its +Z
+	var r: Dictionary = c.take_hit(34.0, c.shell_point() + Vector3.UP * 0.2, Vector3.DOWN, pistol_data)
+	_check("creature: the casing lets 30 % through and sparks", is_equal_approx(r.damage, 10.2) and not r.flesh and not r.head
+			and is_equal_approx(c.health, 99.8), str(r))
+	_check("creature: being shot wakes it", c.state == S.WAKING and Grid.sim.count(true) == 1)
+	r = c.take_hit(55.0, c.shell_point() + Vector3.UP * 0.2, Vector3.DOWN, pipe_data)
+	_check("creature: a pipe dents 60 % through", is_equal_approx(r.damage, 33.0) and not r.flesh, str(r))
+	r = c.take_hit(34.0, c._body.to_global(Vector3(0.15, -0.2, 0.1)), into, pistol_data)
+	_check("creature: the legs are bare meat at 80 %", is_equal_approx(r.damage, 27.2) and r.flesh and not r.head, str(r))
+	r = c.take_hit(20.0, c.screen_point(), into, pistol_data)
+	_check("creature: the screen is shell until its 30 points of glass are gone", is_equal_approx(r.damage, 6.0) and not r.flesh
+			and is_equal_approx(c.glass, 10.0) and c._glass_node.visible, str(r))
+	r = c.take_hit(20.0, c.screen_point(), into, pistol_data)
+	_check("creature: then the glass breaks and the meat shows", c.glass == 0.0 and not c._glass_node.visible and c._meat_node.visible
+			and not c._screen.visible and not r.flesh, str(r))
+	var before := c.health
+	r = c.take_hit(10.0, c.screen_point(), into, pistol_data)
+	_check("creature: through the hole it is the weak point at 150 %", is_equal_approx(r.damage, 15.0) and r.flesh and r.head
+			and is_equal_approx(before - c.health, 15.0) and not r.killed, str(r))
+	_charge(node, 50.0)
+	var deaths: Array = []
+	c.died.connect(func(who: Creature) -> void: deaths.append(who))
+	r = c.take_hit(34.0, c.screen_point(), into, pistol_data)
+	_check("creature: it dies when the meat does", r.killed and c.state == S.DEAD and deaths == [c], str(r))
+	_check("creature: its death takes 8 off the cell and it leaves the roster", absf(Grid.sim.charge(node) - 42.0) < 0.3
+			and Grid.sim.count() == 7, "%.1f, %d left" % [Grid.sim.charge(node), Grid.sim.count()])
+	rest = c.global_position
+	_charge(node, 85.0)
+	await _secs(1.5)
+	_check("creature: the dead stay dead", c.state == S.DEAD and c.take_hit(34.0, c.shell_point(), into, pistol_data).is_empty()
+			and _flat_distance(c.global_position, rest) < 0.05 and not c.is_awake())
+	_check("creature: its neighbour on the same cell woke at 80 instead", crts[3].state != S.DORMANT, "state %d" % crts[3].state)
+
+	# The whole chain with real bullets: three aimed pistol shots into the screen.
+	crts = await _creature_setup()
+	c = crts[4]                                      # lamp 3, on the +X pavement, facing the road
+	await _select(0)
+	await _wait_ready()
+	var front := c.global_position - c.global_basis.z * 6.0
+	await _place(Vector3(front.x, 0.05, front.z), 0.0)
+	_hold(&"aim")
+	await _secs(0.4)
+	_hits.clear()
+	for shot in 3:
+		_look_at(c.screen_point())
+		await _secs(0.05)
+		await _tap(&"fire")
+		await _secs(0.22)
+	_release(&"aim")
+	_check("creature: three aimed pistol shots at the screen kill it", c.state == S.DEAD and _hits.size() == 3
+			and _hits[0] == [false, false, 10.2] and _hits[1] == [true, false, 51.0] and _hits[2] == [true, true, 51.0], str(_hits))
+	_check("creature: the corpse is scenery now, not a target", c.collision_layer == 1)
+
+	# Overloading the cell until the breaker trips enrages whatever is awake on it.
+	c = crts[6]                                      # lamp 4
+	node = c.grid_node
+	await _place(Vector3(-0.9, 0.05, -40.0), 0.0)
+	_charge(node, 75.0)
+	await _wait_state(c, S.INVESTIGATE, 3.0)
+	for i in 14:                                    # sustained fire: a jolt every 0.4 s for 5.6 s
+		Grid.sim.inject_node(node, 30.0)
+		await _secs(0.4)
+	_check("creature: when its cell trips, one that is awake goes into a rage", Grid.sim.is_tripped(node) and c._rage > 5.0,
+			"rage %.1f" % c._rage)
+
+	scene.build_grid()
+	await _place(Vector3(-0.9, 0.05, 2.0), 0.0)
 
 
 # --- screenshots ---------------------------------------------------------------

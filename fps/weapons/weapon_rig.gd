@@ -320,8 +320,8 @@ func _fire() -> void:
 		if target == null:
 			fx.impact(at, hit.normal, hit.collider, false, true, i < 2)
 			continue
-		fx.impact(at, hit.normal, hit.collider, true, false, i < 2)
 		var result: Dictionary = target.take_hit(d.damage_at(origin.distance_to(at)), at, dir, d)
+		_show_hit(result, hit, i < 2)
 		if not result.is_empty():
 			hurt = true
 			head = head or result.get("head", false)
@@ -351,6 +351,19 @@ func _fire() -> void:
 		w.slide_locked = w.mag == 0
 		_enter(State.COOLDOWN, d.fire_interval)
 	ammo_changed.emit(w)
+
+
+## The effect for a hit on something that takes damage. The target says what
+## it was made of where it was struck: flesh bleeds, a casing sparks. An empty
+## result means it took nothing (a corpse): dust, like the scenery. None of
+## these get a bullet hole, since they move.
+func _show_hit(result: Dictionary, hit: Dictionary, sound: bool) -> void:
+	if result.is_empty():
+		fx.impact(hit.position, hit.normal, hit.collider, false, false, sound)
+	elif result.get("flesh", true):
+		fx.impact(hit.position, hit.normal, hit.collider, true, false, sound)
+	else:
+		fx.spark(hit.position, hit.normal)
 
 
 func _eject_shell() -> void:
@@ -397,8 +410,8 @@ func _melee_hit() -> void:
 				wall = hit
 		elif not struck.has(target):
 			struck[target] = true
-			fx.impact(hit.position, hit.normal, hit.collider, true, false)
 			var result: Dictionary = target.take_hit(d.damage, hit.position, -cam.basis.z, d)
+			_show_hit(result, hit, true)
 			if not result.is_empty():
 				head = head or result.get("head", false)
 				killed = killed or result.get("killed", false)

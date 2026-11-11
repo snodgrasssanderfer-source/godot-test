@@ -1,6 +1,8 @@
 extends Node3D
 ## Shooting range on the greybox street: the player, the three weapons and
 ## seven targets, for tuning movement and gun feel. Reserve ammo is endless.
+## Two television sets sleep by every street lamp; enough gunfire on their
+## stretch of the power grid wakes them.
 ##
 ##   WASD move    Shift sprint    Ctrl / C crouch (while sprinting: slide)
 ##   Space jump, climb, vault     Q / E lean      F flashlight
@@ -12,6 +14,7 @@ extends Node3D
 ##   B    benchmark (about two minutes; results stay on screen)
 ##   F6 F7 F8 F9  hurt a leg / the support arm / the gun arm / the torso
 ##   J    tape the worst bleeding   K  painkiller   H  heal everything
+##   N    jolt the nearest grid cell (+25)   M  creatures on / off
 ##   F1   help    F2  numbers     F5  back to the start       F11 fullscreen
 ##   Esc  free the mouse          F10 quit
 ##
@@ -22,10 +25,15 @@ extends Node3D
 ##   --shoot=<dir>    scripted screenshots of the weapons, then quit
 
 const SPAWN := Vector3(-0.9, 0.1, -3.0)
+const CRT: CreatureData = preload("res://creatures/data/crt.tres")
+## What the navigation mesh covers: the road, pavements and front gardens, up
+## to head height (roofs are not for walking on).
+const NAV_BOUNDS := AABB(Vector3(-30.0, -1.0, -110.0), Vector3(60.0, 3.5, 120.0))
 const HELP := """WASD move   Shift sprint   Ctrl/C crouch, slide   Space jump / climb / vault   Q E lean
 LMB fire   RMB aim   R reload   1 2 3 or wheel: weapons   F flashlight
 [ ] time   T clock   P power   G SDFGI   V fog   B benchmark   - = mouse sensitivity
 F6 F7 F8 F9 hurt leg / support arm / gun arm / torso   J tape   K painkiller   H heal
+N jolt the power grid here (+25)   M creatures on / off
 F1 help   F2 numbers   F5 respawn   F11 fullscreen   Esc mouse   F10 quit"""
 
 @onready var atmosphere: Atmosphere = $Atmosphere
@@ -47,6 +55,9 @@ var _noise_age := 99.0
 
 ## The power grid on this street: one cell per lamp, wired in a line.
 var grid_nodes: Array[GridNode] = []
+## The sleepers hanging on it (empty when the range runs without creatures).
+var creatures: Array[Creature] = []
+var nav_region: NavigationRegion3D
 
 
 func _ready() -> void:
@@ -89,7 +100,11 @@ func _ready() -> void:
 			_noise = radius
 			_noise_age = 0.0)
 	_respawn()
-	build_grid()
+	# Scripted runs start without creatures: the weapon checks fire a lot, and
+	# woken sets wandering in would spoil them. The creature checks add their own.
+	if not _automated:
+		bake_nav()
+	build_grid(not _automated)
 	player.body.died.connect(_on_player_died)
 
 	hud = Hud.new()
@@ -146,8 +161,21 @@ func _label(layer: CanvasLayer, font_size: int) -> Label:
 	return label
 
 
-## (Re)builds the power grid from scratch: one GridNode under every street lamp.
-func build_grid() -> void:
+## Bakes the navigation mesh creatures walk on, from the street's collision.
+## Does nothing the second time. The map takes a physics frame to pick it up.
+func bake_nav() -> void:
+	if nav_region == null:
+		nav_region = Nav.bake(street, NAV_BOUNDS)
+
+
+## (Re)builds the power grid from scratch: one GridNode under every street
+## lamp. With creatures, two CRT sets sleep on the pavement by each lamp post,
+## tied to that cell; without, the cells carry a default roster that exists
+## only as numbers.
+func build_grid(with_creatures := false) -> void:
+	for old in creatures:
+		old.queue_free()
+	creatures.clear()
 	for old in grid_nodes:
 		old.queue_free()
 	grid_nodes.clear()
@@ -156,10 +184,18 @@ func build_grid() -> void:
 		var node := GridNode.new()
 		node.position = Vector3(lamp.global_position.x, 0.0, lamp.global_position.z)
 		node.lamp = lamp
+		if with_creatures:
+			node.roster = {CRT.grid_kind: 2}
 		add_child(node)
 		if not grid_nodes.is_empty():
 			node.link_to(grid_nodes.back())
 		grid_nodes.append(node)
+		if with_creatures:
+			# The lamp head hangs over the road; its post stands on the pavement behind it.
+			var side := signf(lamp.global_position.x)
+			for entry in 2:
+				var at := Vector3(side * 4.75, 0.3, lamp.global_position.z + (1.3 if entry == 0 else -1.3))
+				creatures.append(Creature.spawn(CRT, self, at, side * PI * 0.5, node.id, entry))
 
 
 func _respawn() -> void:
@@ -230,6 +266,8 @@ func _input(event: InputEvent) -> void:
 			KEY_J: _tape_worst()
 			KEY_K: player.body.sim.take_painkiller()
 			KEY_H: player.body.reset()
+			KEY_N: Grid.sim.inject_node(Grid.sim.nearest(player.global_position), 25.0)
+			KEY_M: build_grid(creatures.is_empty())
 			KEY_F11:
 				var window := get_window()
 				var full := window.mode == Window.MODE_EXCLUSIVE_FULLSCREEN or window.mode == Window.MODE_FULLSCREEN
@@ -274,6 +312,8 @@ func _process(delta: float) -> void:
 	for node in grid_nodes:
 		grid_text += ("  --" if Grid.sim.is_tripped(node.id) else "  %2d" % int(node.charge()))
 	var body_text := "DEAD" if player.body.sim.dead else player.body.sim.summary()
+	if creatures.is_empty():
+		grid_text += "   (no creatures)"
 	_overlay.text = "%d fps   %.1f ms   worst %.1f ms\n%02d:%02d   power %s   SDFGI %s   fog %s\n%.1f m/s   noise %s   mouse %.0f%%\ngrid%s   awake %d / %d\n%s" % [
 		Engine.get_frames_per_second(), _frame_ms, _worst_ms, hour, minute,
 		"on" if atmosphere.power_on else "OFF", "on" if atmosphere.sdfgi else "off",

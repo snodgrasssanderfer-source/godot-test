@@ -20,8 +20,10 @@ var _tracer_left: Array[float] = []
 var _next_tracer := 0
 var _dust: Array[CPUParticles3D] = []
 var _blood: Array[CPUParticles3D] = []
+var _sparks: Array[CPUParticles3D] = []
 var _next_dust := 0
 var _next_blood := 0
+var _next_spark := 0
 var _shells: Array[RigidBody3D] = []
 var _shell_meshes := {}
 var _flash_light: OmniLight3D
@@ -82,6 +84,7 @@ func _ready() -> void:
 	for i in PUFFS:
 		_dust.append(_make_puff(Color(0.55, 0.53, 0.50, 0.55), 10, 0.45, Vector3(0, -5.0, 0), 1.2, 3.2, 0.07))
 		_blood.append(_make_puff(Color(0.22, 0.015, 0.012, 0.9), 14, 0.5, Vector3(0, -9.0, 0), 1.0, 3.6, 0.05))
+		_sparks.append(_make_puff(Color(1.0, 0.72, 0.30) * 2.5, 9, 0.28, Vector3(0, -9.0, 0), 2.5, 6.5, 0.022, true))
 
 	var brass := StandardMaterial3D.new()
 	brass.albedo_color = Color(0.72, 0.52, 0.20)
@@ -120,9 +123,12 @@ func _cylinder(radius: float, height: float, mat: Material) -> CylinderMesh:
 
 
 func _make_puff(color: Color, amount: int, life: float, grav: Vector3, v_min: float, v_max: float,
-		size: float) -> CPUParticles3D:
+		size: float, glowing := false) -> CPUParticles3D:
 	var mat := StandardMaterial3D.new()
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	if glowing:
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
 	mat.billboard_keep_scale = true
 	mat.vertex_color_use_as_albedo = true
@@ -218,6 +224,13 @@ func impact(point: Vector3, normal: Vector3, collider: Object, flesh: bool, hole
 		Sfx.play_at(&"impact", point, -6.0)
 	if hole and collider is StaticBody3D:
 		_bullet_hole(point, normal)
+
+
+## A bullet glancing off metal or plastic: a spray of sparks, no blood, no
+## hole. Whatever was struck makes its own sound.
+func spark(point: Vector3, normal: Vector3) -> void:
+	_puff(_sparks[_next_spark], point, normal)
+	_next_spark = (_next_spark + 1) % PUFFS
 
 
 func _puff(p: CPUParticles3D, point: Vector3, normal: Vector3) -> void:
