@@ -104,8 +104,11 @@ tools/setup_env.sh
 
 - **godot MCP 在会话启动时会连接失败**，因为那时 `/opt/godot-mcp` 还不存在。跑完脚本后要用户在客户端里重连；
   连不上也没关系，直接用命令行跑 Godot 效果一样。blender MCP 启动时就能连上。
-- **云环境（名叫 "bloody"）没有保存 setup script**。我提议过用 `update_environment` 保存，但用户的手机 App
-  弹不出确认框。用户更新 App 或在电脑上打开会话后可以再提一次，脚本内容就是 `tools/setup_env.sh` 原文。
+- **云环境没有保存 setup script**。上一个会话的环境叫 "bloody"，提议过用 `update_environment` 保存，但用户的手机 App
+  弹不出确认框。第二个会话跑在用户的 "Default" 环境上（个人环境，网络不受限，也没有 setup script，看不到别的环境），
+  这次没有再提。要注意：这个仓库里还有别的不相干的项目（安卓应用等）也用同一个环境开会话，
+  把 2.5 分钟的 Godot 安装脚本存进 Default 会拖慢它们，更合适的是给这个项目单独建一个环境。这件事等用户决定。
+  脚本内容就是 `tools/setup_env.sh` 原文。
 - **没有显卡**。Godot 靠软件 Vulkan（llvmpipe）渲染，960×540 下每秒约 3 帧，只能用来截图验证画面：
 
   ```bash
