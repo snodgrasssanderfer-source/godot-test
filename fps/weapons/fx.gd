@@ -252,8 +252,10 @@ var _hole_tex: GradientTexture2D
 
 func _hole_texture() -> GradientTexture2D:
 	if _hole_tex == null:
-		_hole_tex = _radial([0.0, 0.32, 0.6, 1.0], [Color(0.01, 0.01, 0.01, 1.0),
-				Color(0.02, 0.02, 0.02, 0.95), Color(0.06, 0.055, 0.05, 0.4), Color(0.1, 0.1, 0.1, 0.0)])
+		# A dark core inside a pale chipped rim, so it reads on light and dark surfaces alike.
+		_hole_tex = _radial([0.0, 0.24, 0.34, 0.62, 1.0], [Color(0.01, 0.01, 0.01, 1.0),
+				Color(0.02, 0.02, 0.02, 0.95), Color(0.62, 0.60, 0.57, 0.6), Color(0.55, 0.53, 0.50, 0.12),
+				Color(0.5, 0.5, 0.5, 0.0)])
 	return _hole_tex
 
 

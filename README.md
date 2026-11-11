@@ -99,6 +99,7 @@ xvfb-run -a -s "-screen 0 960x540x24" godot --path fps --rendering-driver vulkan
 | `game/` | Godot 项目（`project.godot`、`main.tscn`、`scripts/`、`assets/`、`export_presets.cfg`） |
 | `fps/` | 3D 第一人称项目：`player/`、`weapons/`、`ui/`、`atmosphere/`（氛围系统）、`test/`（靶场和测试场景）、`assets/`（灰盒街道、武器模型、占位音效） |
 | `art/weapons/` | 三把武器模型的生成脚本 `make_weapons.py` |
+| `art/range/` | 靶场的引擎截图（软件渲染，960×540）：三把武器的腰射、开镜、换弹、冲刺、挥击，弹孔，停电夜里开火 |
 | `art/concept/` | 基调概念图、生成脚本 `make_concepts.py`、后期脚本 `post.py`、引擎对照图 `engine/` |
 | `art/crate/` | 木箱的 Blender 源文件、建模脚本 `make_crate.py`、预览图 `crate_preview.png` |
 | `tools/setup_env.sh` | **环境初始化脚本**：安装 Godot + 网页导出模板 + Blender + godot-mcp（校验哈希，可重复运行） |

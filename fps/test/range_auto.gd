@@ -640,11 +640,16 @@ func _shoot_holes(dir: String) -> void:
 	await _select(0)
 	await _place(Vector3(2.0, 0.05, -10.0), 0.0)
 	var car := Vector3(2.9, 0.75, -13.5)
-	for i in 5:
-		_look_at(car + Vector3(randf_range(-0.3, 0.3), randf_range(-0.15, 0.15), 0.0))
+	_hold(&"aim")
+	await _secs(0.4)
+	for offset: Vector3 in [Vector3(-0.25, 0.1, 0.0), Vector3(0.2, 0.05, 0.0), Vector3(-0.5, -0.3, 0.6),
+			Vector3(-0.15, -0.32, 0.7), Vector3(-0.75, -0.36, 0.5)]:
+		_look_at(car + offset)
+		await _secs(0.1)
 		await _tap(&"fire")
-		await _secs(0.25)
-	_look_at(car)
+		await _secs(0.3)
+	_release(&"aim")
+	_look_at(car + Vector3(-0.2, -0.15, 0.3))
 	await _snap(dir, "13_bullet_holes", 20)
 
 
