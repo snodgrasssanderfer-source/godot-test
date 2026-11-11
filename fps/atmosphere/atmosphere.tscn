@@ -1,0 +1,14 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://atmosphere/atmosphere.gd" id="1"]
+[ext_resource type="Resource" path="res://atmosphere/presets/cold_fog_day.tres" id="2"]
+[ext_resource type="Resource" path="res://atmosphere/presets/rust_dusk.tres" id="3"]
+[ext_resource type="Resource" path="res://atmosphere/presets/night_powered.tres" id="4"]
+[ext_resource type="Resource" path="res://atmosphere/presets/night_blackout.tres" id="5"]
+
+[node name="Atmosphere" type="Node3D"]
+script = ExtResource("1")
+day = ExtResource("2")
+dusk = ExtResource("3")
+night_powered = ExtResource("4")
+night_blackout = ExtResource("5")

@@ -7,11 +7,56 @@
   屏幕上有虚拟按键（左下 `<` `>` 移动，右下 `^` 跳跃，支持同时按），电脑上可用方向键 / A D / 空格。
 - 在线试玩：https://snodgrasssanderfer-source.github.io/godot-test/
 
+## 第一人称生存恐怖项目（`fps/`，进行中）
+
+仓库里现在有两个 Godot 项目：`game/` 是最早的 2D 网页试跑 Demo（上面说的 Box Jumper），
+`fps/` 是正在做的 3D 游戏（暂定名 Greyfog）。两者互不依赖。
+
+**已定的方向**
+
+- 平台：PC（Steam），纯单机。渲染器 Forward+。
+- 性能目标：RTX 5060、1080p、高画质稳定 120 帧。
+- 卖点：枪械手感和机动做到顶，但枪声引怪、弹药靠搜刮，每一枪都是一个决定；理智值低时会出现假丧尸。
+- 美术基调：现代光照 + 压抑的调子。白天主基调是「冷雾」，黄昏是「锈色」时段，
+  夜晚分有电（钠灯）和停电（月光 + 手电）两种状态。
+
+**基调概念图**（`art/concept/`）：同一条街在五种光照下的 Blender 渲染，`engine/` 里是 Godot 实际渲染的对照图。
+模型全是代码生成的占位体，只看光、雾和色彩。重新生成：
+
+```bash
+blender --background --factory-startup --python art/concept/make_concepts.py -- \
+    --variant A_cold_fog --out /tmp/raw/A_cold_fog.png      # 还有 B_rust_dusk C_sodium_night D_blackout E_safehouse
+python3 art/concept/post.py /tmp/raw art/concept            # 辉光、调色、暗角、颗粒
+blender --background --factory-startup --python art/concept/make_concepts.py -- \
+    --variant A_cold_fog --export-glb fps/assets/greybox/street.glb   # 导出灰盒街道给 Godot
+```
+
+**氛围系统**（`fps/atmosphere/`）
+
+- `atmosphere.tscn`：放进任何场景就接管太阳、月亮、天空、雾、曝光和最终调色，并随时间在四套预设间过渡。
+  常用属性：`time_of_day`（0–24）、`day_length_minutes`（一昼夜的真实分钟数，0 为冻结）、`power_on`（是否有电）。
+- `presets/*.tres`：四套预设（`cold_fog_day`、`rust_dusk`、`night_powered`、`night_blackout`），
+  所有数值都能在编辑器里直接调。
+- `post_grade.gdshader`：全屏胶片层（色散、分离调色、暗角、颗粒），算法和 `art/concept/post.py` 一致。
+- 加入 `street_lamp` 分组的灯会跟随预设的 `lamp_power` 亮灭，停电时自动熄灭。
+
+**测试场景**（`fps/test/tone_street.tscn`，也是当前的主场景）：WASD + 鼠标飞行，`[` `]` 调时间，
+`T` 让时间流动，`P` 开关电力，`F` 手电，`F1` 隐藏左上角的帧率和帧时间。
+
+云端没有显卡，用软件 Vulkan 截图验证（`tools/setup_env.sh` 会装好驱动），帧率只能在真机上测：
+
+```bash
+xvfb-run -a -s "-screen 0 1280x720x24" godot --path fps --rendering-driver vulkan \
+    --resolution 1280x720 res://test/tone_street.tscn -- --shoot=/tmp/shots
+```
+
 ## 目录结构
 
 | 路径 | 说明 |
 | --- | --- |
 | `game/` | Godot 项目（`project.godot`、`main.tscn`、`scripts/`、`assets/`、`export_presets.cfg`） |
+| `fps/` | 3D 第一人称项目：`atmosphere/`（氛围系统）、`test/`（测试场景）、`assets/greybox/`（灰盒街道） |
+| `art/concept/` | 基调概念图、生成脚本 `make_concepts.py`、后期脚本 `post.py`、引擎对照图 `engine/` |
 | `art/crate/` | 木箱的 Blender 源文件、建模脚本 `make_crate.py`、预览图 `crate_preview.png` |
 | `tools/setup_env.sh` | **环境初始化脚本**：安装 Godot + 网页导出模板 + Blender + godot-mcp（校验哈希，可重复运行） |
 | `tools/export_web.sh` | 无界面导出网页版到 `build/web/` |

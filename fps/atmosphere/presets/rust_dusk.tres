@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="AtmospherePreset" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://atmosphere/atmosphere_preset.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+sun_color = Color(1, 0.48, 0.16, 1)
+sun_energy = 2.2
+sun_fog_energy = 3.0
+moon_color = Color(0.55, 0.72, 1, 1)
+moon_energy = 0.0
+sky_color = Color(0.95, 0.62, 0.36, 1)
+sky_energy = 0.9
+ambient_color = Color(0.6, 0.36, 0.22, 1)
+ambient_energy = 0.5
+fog_color = Color(0.95, 0.66, 0.4, 1)
+fog_density = 0.016
+fog_sun_scatter = 0.6
+volumetric_density = 0.02
+volumetric_albedo = Color(1, 0.82, 0.62, 1)
+volumetric_anisotropy = 0.65
+lamp_power = 0.0
+exposure = 1.0
+glow_intensity = 0.5
+glow_threshold = 0.9
+saturation = 0.88
+shadow_tint = Color(0.84, 0.98, 1.1, 1)
+highlight_tint = Color(1.04, 1, 0.93, 1)
+contrast = 1.14
+gain = 0.96
+vignette = 0.4
+grain = 0.022

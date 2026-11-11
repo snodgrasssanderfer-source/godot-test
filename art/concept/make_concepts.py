@@ -22,10 +22,11 @@ from mathutils import Vector, noise
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--variant", required=True)
-ap.add_argument("--out", required=True)
+ap.add_argument("--out", default="")
 ap.add_argument("--scale", type=int, default=100)
 ap.add_argument("--samples", type=int, default=0)
 ap.add_argument("--save-blend", default="")
+ap.add_argument("--export-glb", default="", help="write the street as a flat-colour greybox .glb instead of rendering")
 args = ap.parse_args(sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else [])
 
 VARIANTS = {
@@ -165,6 +166,15 @@ def skin_obj(verts, edges, radii, mat, loc=(0, 0, 0), rot=(0, 0, 0), parent=None
 # --------------------------------------------------------------------------
 # Material helpers
 # --------------------------------------------------------------------------
+FLAT = {      # name -> (base colour, roughness): flat stand-ins for the procedural shaders in the greybox export
+    'asphalt': ((0.030, 0.030, 0.032), 0.40), 'concrete': ((0.13, 0.13, 0.125), 0.85),
+    'ground': ((0.045, 0.040, 0.022), 1.0), 'deadgrass': ((0.16, 0.14, 0.06), 0.9),
+    'brick': ((0.11, 0.045, 0.03), 0.9), 'roof': ((0.040, 0.036, 0.034), 0.8),
+    'trim': ((0.30, 0.29, 0.26), 0.7), 'glass': ((0.010, 0.012, 0.016), 0.1),
+    'stripes': ((0.50, 0.30, 0.20), 0.7),
+}
+
+
 class M:
     def __init__(self, name):
         self.mat = bpy.data.materials.new(name)
@@ -306,6 +316,7 @@ def mat_grass():
 
 
 def mat_siding(name, color):
+    FLAT[name] = (tuple(c * 0.75 for c in color), 0.85)
     m = M(name)
     xyz = m.sep()
     lap = m.math('FRACT', m.math('MULTIPLY', xyz[2], 5.5))
@@ -373,6 +384,7 @@ def mat_emit(name, color, strength, mottled=False):
 
 
 def mat_wood(name="wood", tone=(0.10, 0.065, 0.035), stretch=(1, 14, 14)):
+    FLAT[name] = (tuple(c * 0.65 for c in tone), 0.75)
     m = M(name)
     grain = m.noise(2.0, 6, 0.7, m.coords(stretch))
     dark = tuple(c * 0.35 for c in tone)
@@ -382,6 +394,7 @@ def mat_wood(name="wood", tone=(0.10, 0.065, 0.035), stretch=(1, 14, 14)):
 
 
 def mat_paint(name, color, rust=0.5):
+    FLAT[name] = (tuple(c * 0.8 for c in color), 0.4)
     m = M(name)
     r = m.ramp(m.noise(2.5, 8, 0.75), [(0.75 - 0.25 * rust, 0.0), (0.82 - 0.2 * rust, 1.0)])
     dirt = m.ramp(m.noise(0.8, 5, 0.7), [(0.3, 0.45), (0.8, 1.0)])
@@ -391,10 +404,12 @@ def mat_paint(name, color, rust=0.5):
 
 
 def mat_plain(name, color, rough=0.7, metallic=0.0):
+    FLAT[name] = (color, rough)
     return M(name).set(Base_Color=color, Roughness=rough, Metallic=metallic)
 
 
 def mat_metal(name="metal", color=(0.16, 0.17, 0.17)):
+    FLAT[name] = (tuple(c * 0.85 for c in color), 0.55)
     m = M(name)
     r = m.ramp(m.noise(4.0, 8, 0.75), [(0.55, 0.0), (0.68, 1.0)])
     col = m.mix(r, color, (0.10, 0.04, 0.018))
@@ -402,6 +417,7 @@ def mat_metal(name="metal", color=(0.16, 0.17, 0.17)):
 
 
 def mat_cloth(name, color):
+    FLAT[name] = (tuple(c * 0.65 for c in color), 0.95)
     m = M(name)
     stain = m.ramp(m.noise(5.0, 6, 0.7), [(0.3, 0.3), (0.75, 1.0)])
     m.bump(m.noise(60, 2, 0.5), 0.2, 0.005)
@@ -470,6 +486,7 @@ def volume_box(size, loc, density, color, aniso):
     nt.links.new(vol.outputs[0], out.inputs['Volume'])
     ob.data.materials.append(mat)
     ob.visible_shadow = False
+    ob.name = "fog_volume"
     return ob
 
 
@@ -803,19 +820,21 @@ def build_street():
     # dead grass and weeds as one mesh of thin blades
     bm = bmesh.new()
 
-    def blade(px, py, pz, h, w):
+    def blade(px, py, pz, h, w, emit=True):
         a = random.uniform(0, math.tau)
         dx, dy = math.cos(a) * w, math.sin(a) * w
         lx, ly = random.uniform(-.5, .5) * h, random.uniform(-.5, .5) * h
+        if not emit:        # still draws the same random numbers, so the rest of the street is identical
+            return
         vs = [bm.verts.new((px - dx, py - dy, pz)), bm.verts.new((px + dx, py + dy, pz)),
               bm.verts.new((px + lx, py + ly, pz + h))]
         bm.faces.new(vs)
 
-    for _ in range(70000):
+    for i in range(70000):
         sg = random.choice((-1, 1))
         py = -14 + 110 * random.random() ** 1.6
         px = sg * (5.5 + 24 * random.random() ** 1.5)
-        blade(px, py, 0.10, random.uniform(0.15, 0.5), 0.028)
+        blade(px, py, 0.10, random.uniform(0.15, 0.5), 0.028, emit=not args.export_glb or i % 4 == 0)
     for _ in range(2500):        # weeds along curbs and in sidewalk seams
         sg = random.choice((-1, 1))
         px = sg * random.choice((3.5, 3.52, 5.5, 5.48, 4.5)) + random.uniform(-0.05, 0.05)
@@ -1076,5 +1095,26 @@ vs.exposure = V['exposure']
 print("VIEW", vs.view_transform, vs.look, "samples", c.samples)
 if args.save_blend:
     bpy.ops.wm.save_as_mainfile(filepath=args.save_blend)
-bpy.ops.render.render(write_still=True)
-print("RENDERED", args.out)
+if args.export_glb:
+    # Realtime greybox: geometry only, flat colours, no lights / camera / fog.
+    for ob in list(scene.objects):
+        if ob.type in {'LIGHT', 'CAMERA'} or ob.name.startswith("fog_volume"):
+            bpy.data.objects.remove(ob, do_unlink=True)
+    for mat in bpy.data.materials:
+        key = mat.name.split('.')[0]
+        if key not in FLAT or not mat.node_tree:
+            continue
+        bsdf = next((n for n in mat.node_tree.nodes if n.type == 'BSDF_PRINCIPLED'), None)
+        if bsdf is None:
+            continue
+        for sock in ('Base Color', 'Roughness', 'Normal'):
+            for l in list(bsdf.inputs[sock].links):
+                mat.node_tree.links.remove(l)
+        bsdf.inputs['Base Color'].default_value = (*FLAT[key][0], 1.0)
+        bsdf.inputs['Roughness'].default_value = FLAT[key][1]
+    bpy.ops.export_scene.gltf(filepath=args.export_glb, export_format='GLB', export_apply=True,
+                              export_lights=False, export_cameras=False, export_yup=True, export_texcoords=False)
+    print("EXPORTED", args.export_glb)
+else:
+    bpy.ops.render.render(write_still=True)
+    print("RENDERED", args.out)

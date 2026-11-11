@@ -87,4 +87,10 @@ fi
 uvx --from "git+https://github.com/sandraschi/blender-mcp@$BLENDER_MCP_COMMIT" \
   blender-mcp --version >/dev/null 2>&1 || echo "WARN: blender-mcp pre-fetch failed (MCP will retry on start)"
 
+# --- Software Vulkan: lets Godot render (and screenshot) the 3D project without a GPU ---
+if [ ! -f /usr/share/vulkan/icd.d/lvp_icd.json ]; then
+  ($SUDO apt-get update -qq && $SUDO apt-get install -y -qq --no-install-recommends mesa-vulkan-drivers) \
+    >/dev/null 2>&1 || echo "WARN: software Vulkan not installed (3D screenshots unavailable)"
+fi
+
 echo "Setup complete: Godot $GODOT_VERSION, Blender $BLENDER_VERSION, godot-mcp ${GODOT_MCP_COMMIT:0:7}"
