@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# One-shot environment setup for this repo: Godot + matching Web export
-# templates, Blender, and the Godot MCP server build. Safe to re-run (skips
+# One-shot environment setup for this repo: Godot + matching Web and Windows
+# export templates, Blender, and the Godot MCP server build. Safe to re-run (skips
 # anything already installed). Self-contained, so it can be pasted as-is into
 # the cloud environment's "Setup script" setting.
 #
@@ -24,7 +24,8 @@ GODOT_BIN="$INSTALL_ROOT/godot/Godot_v${GODOT_VERSION}_linux.x86_64"
 TPL_DIR="$HOME/.local/share/godot/export_templates/${GODOT_VERSION/-/.}"   # e.g. 4.7.2.stable
 
 godot_verify() { (cd "$TMP" && grep " $1\$" SHA512-SUMS.txt | sha512sum -c --quiet -); }
-if [ ! -x "$GODOT_BIN" ] || [ ! -f "$TPL_DIR/web_nothreads_release.zip" ]; then
+have_templates() { [ -f "$TPL_DIR/web_nothreads_release.zip" ] && [ -f "$TPL_DIR/windows_release_x86_64.exe" ]; }
+if [ ! -x "$GODOT_BIN" ] || ! have_templates; then
   curl -fsSL -o "$TMP/SHA512-SUMS.txt" "$GODOT_URL/SHA512-SUMS.txt"
 fi
 if [ ! -x "$GODOT_BIN" ]; then
@@ -37,14 +38,14 @@ if [ ! -x "$GODOT_BIN" ]; then
 fi
 $SUDO ln -sf "$GODOT_BIN" /usr/local/bin/godot
 
-if [ ! -f "$TPL_DIR/web_nothreads_release.zip" ]; then
-  echo "Installing Godot Web export templates (full pack is ~1.2 GB, keeping web_* only) ..."
+if ! have_templates; then
+  echo "Installing Godot export templates (full pack is ~1.2 GB, keeping web + Windows x86_64 only) ..."
   curl -fsSL -o "$TMP/Godot_v${GODOT_VERSION}_export_templates.tpz" \
     "$GODOT_URL/Godot_v${GODOT_VERSION}_export_templates.tpz"
   godot_verify "Godot_v${GODOT_VERSION}_export_templates.tpz"
   mkdir -p "$TPL_DIR"
   unzip -ojq "$TMP/Godot_v${GODOT_VERSION}_export_templates.tpz" \
-    'templates/web_*' 'templates/version.txt' -d "$TPL_DIR"
+    'templates/web_*' 'templates/windows_*_x86_64*.exe' 'templates/version.txt' -d "$TPL_DIR"
   rm -f "$TMP/Godot_v${GODOT_VERSION}_export_templates.tpz"
 fi
 godot --headless --version
@@ -86,5 +87,11 @@ if ! command -v uvx >/dev/null; then
 fi
 uvx --from "git+https://github.com/sandraschi/blender-mcp@$BLENDER_MCP_COMMIT" \
   blender-mcp --version >/dev/null 2>&1 || echo "WARN: blender-mcp pre-fetch failed (MCP will retry on start)"
+
+# --- Software Vulkan: lets Godot render (and screenshot) the 3D project without a GPU ---
+if [ ! -f /usr/share/vulkan/icd.d/lvp_icd.json ]; then
+  ($SUDO apt-get update -qq && $SUDO apt-get install -y -qq --no-install-recommends mesa-vulkan-drivers) \
+    >/dev/null 2>&1 || echo "WARN: software Vulkan not installed (3D screenshots unavailable)"
+fi
 
 echo "Setup complete: Godot $GODOT_VERSION, Blender $BLENDER_VERSION, godot-mcp ${GODOT_MCP_COMMIT:0:7}"

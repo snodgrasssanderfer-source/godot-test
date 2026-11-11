@@ -1,0 +1,224 @@
+extends Node3D
+## Shooting range on the greybox street: the player, the three weapons and
+## seven targets, for tuning movement and gun feel. Reserve ammo is endless.
+##
+##   WASD move    Shift sprint    Ctrl / C crouch (while sprinting: slide)
+##   Space jump, climb, vault     Q / E lean      F flashlight
+##   LMB fire     RMB aim         R reload        1 2 3 / wheel  weapons
+##
+##   [ ]  time -/+ half an hour   T  run / freeze the clock   P  power on / off
+##   G    SDFGI on / off          V  volumetric fog on / off
+##   - =  mouse sensitivity down / up
+##   B    benchmark (about two minutes; results stay on screen)
+##   F1   help    F2  numbers     F5  back to the start       F11 fullscreen
+##   Esc  free the mouse          F10 quit
+##
+## Command line (after "--"):
+##   --res=1280x720   render size (default 1920x1080, scaled to the window)
+##   --bench[=secs]   run the benchmark and quit
+##   --selftest       scripted checks of movement and weapons, then quit
+##   --shoot=<dir>    scripted screenshots of the weapons, then quit
+
+const SPAWN := Vector3(-0.9, 0.1, -3.0)
+const HELP := """WASD move   Shift sprint   Ctrl/C crouch, slide   Space jump / climb / vault   Q E lean
+LMB fire   RMB aim   R reload   1 2 3 or wheel: weapons   F flashlight
+[ ] time   T clock   P power   G SDFGI   V fog   B benchmark   - = mouse sensitivity
+F1 help   F2 numbers   F5 respawn   F11 fullscreen   Esc mouse   F10 quit"""
+
+@onready var atmosphere: Atmosphere = $Atmosphere
+@onready var street: StreetSet = $StreetSet
+
+var player: Player
+var hud: Hud
+var benchmark: Benchmark
+
+var _overlay: Label
+var _help: Label
+var _report: Label
+var _automated := false
+var _frame_ms := 0.0
+var _worst_ms := 0.0
+var _worst_age := 0.0
+var _noise := 0.0
+var _noise_age := 99.0
+
+
+func _ready() -> void:
+	var render_size := Vector2i(1920, 1080)
+	var auto_mode := ""
+	var auto_arg := ""
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--res="):
+			var parts := arg.trim_prefix("--res=").split("x")
+			if parts.size() == 2 and int(parts[0]) > 0 and int(parts[1]) > 0:
+				render_size = Vector2i(int(parts[0]), int(parts[1]))
+		elif arg == "--selftest":
+			auto_mode = "selftest"
+		elif arg.begins_with("--shoot="):
+			auto_mode = "shoot"
+			auto_arg = arg.trim_prefix("--shoot=")
+		elif arg.begins_with("--bench"):
+			auto_mode = "bench"
+			auto_arg = arg.trim_prefix("--bench").trim_prefix("=")
+	_automated = auto_mode != ""
+
+	# Always render at a fixed size, whatever the monitor: frame rates measured
+	# on different screens stay comparable, and 1080p is the size we target.
+	var window := get_window()
+	window.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
+	window.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
+	window.content_scale_size = render_size
+	if OS.has_feature("template") and not _automated:
+		window.mode = Window.MODE_EXCLUSIVE_FULLSCREEN
+
+	atmosphere.day_length_minutes = 0.0
+	atmosphere.time_of_day = 11.0
+
+	player = Player.new()
+	player.name = "Player"
+	add_child(player)
+	player.rig.infinite_reserve = true
+	player.noise_made.connect(func(radius: float) -> void:
+		if radius >= _noise or _noise_age > 0.6:
+			_noise = radius
+			_noise_age = 0.0)
+	_respawn()
+
+	hud = Hud.new()
+	add_child(hud)
+	hud.setup(player)
+	hud.show_damage = true
+
+	benchmark = Benchmark.new()
+	add_child(benchmark)
+	benchmark.finished.connect(_on_benchmark_finished)
+
+	var layer := CanvasLayer.new()
+	layer.layer = 110       # above the film pass, so the numbers stay crisp
+	add_child(layer)
+	_overlay = _label(layer, 18)
+	_overlay.position = Vector2(16, 12)
+	_help = _label(layer, 18)
+	_help.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 16)
+	_help.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_help.text = HELP
+	_report = _label(layer, 26)
+	_report.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	_report.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_report.grow_vertical = Control.GROW_DIRECTION_BOTH
+	var mono := SystemFont.new()
+	mono.font_names = PackedStringArray(["Consolas", "DejaVu Sans Mono", "Courier New", "monospace"])
+	_report.add_theme_font_override(&"font", mono)
+	_report.visible = false
+
+	atmosphere.set_time(atmosphere.time_of_day)      # lamps exist now: sync them
+
+	match auto_mode:
+		"":
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		"bench":
+			_overlay.visible = false
+			_help.visible = false
+			if auto_arg.is_valid_float():
+				benchmark.seconds_per_run = float(auto_arg)
+			_start_benchmark()
+		_:
+			_help.visible = false
+			var auto := RangeAuto.new()
+			add_child(auto)
+			auto.start(self, auto_mode, auto_arg)
+
+
+func _label(layer: CanvasLayer, font_size: int) -> Label:
+	var label := Label.new()
+	label.add_theme_font_size_override(&"font_size", font_size)
+	label.add_theme_color_override(&"font_outline_color", Color.BLACK)
+	label.add_theme_constant_override(&"outline_size", 6)
+	layer.add_child(label)
+	return label
+
+
+func _respawn() -> void:
+	player.global_position = SPAWN
+	player.velocity = Vector3.ZERO
+	player.set_look(0.0)
+
+
+func _input(event: InputEvent) -> void:
+	if _automated:
+		return
+	if event is InputEventKey and event.pressed and event.physical_keycode == KEY_F10:
+		get_tree().quit()
+		return
+	if benchmark.running:
+		get_viewport().set_input_as_handled()
+		return
+	if _report.visible and event.is_pressed() and (event is InputEventKey or event is InputEventMouseButton):
+		_report.visible = false
+		get_viewport().set_input_as_handled()
+		return
+	if event is InputEventMouseButton and event.pressed and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+		# The click that grabs the mouse must not also fire the gun.
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		get_viewport().set_input_as_handled()
+		return
+	if event is InputEventKey and event.pressed and not event.echo:
+		match event.physical_keycode:
+			KEY_ESCAPE: Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+			KEY_BRACKETLEFT: atmosphere.time_of_day = fposmod(atmosphere.time_of_day - 0.5, 24.0)
+			KEY_BRACKETRIGHT: atmosphere.time_of_day = fposmod(atmosphere.time_of_day + 0.5, 24.0)
+			KEY_T: atmosphere.day_length_minutes = 0.0 if atmosphere.day_length_minutes > 0.0 else 2.0
+			KEY_P: atmosphere.power_on = not atmosphere.power_on
+			KEY_G: atmosphere.sdfgi = not atmosphere.sdfgi
+			KEY_V: atmosphere.volumetric_fog = not atmosphere.volumetric_fog
+			KEY_B: _start_benchmark()
+			KEY_MINUS: Controls.mouse_sensitivity = maxf(Controls.mouse_sensitivity / 1.1, 0.0003)
+			KEY_EQUAL: Controls.mouse_sensitivity = minf(Controls.mouse_sensitivity * 1.1, 0.012)
+			KEY_F1: _help.visible = not _help.visible
+			KEY_F2: _overlay.visible = not _overlay.visible
+			KEY_F5: _respawn()
+			KEY_F11:
+				var window := get_window()
+				var full := window.mode == Window.MODE_EXCLUSIVE_FULLSCREEN or window.mode == Window.MODE_FULLSCREEN
+				window.mode = Window.MODE_WINDOWED if full else Window.MODE_EXCLUSIVE_FULLSCREEN
+
+
+func _start_benchmark() -> void:
+	player.process_mode = Node.PROCESS_MODE_DISABLED
+	hud.visible = false
+	_report.visible = false
+	benchmark.run(atmosphere)
+
+
+func _on_benchmark_finished(report: String) -> void:
+	if _automated:
+		get_tree().quit()
+		return
+	player.process_mode = Node.PROCESS_MODE_INHERIT
+	hud.visible = true
+	_report.text = report + "\n\n(any key to close)"
+	_report.visible = true
+
+
+func _process(delta: float) -> void:
+	# Smoothed frame time plus the worst frame of the last two seconds: the
+	# worst frame is what a 120 fps target actually has to survive.
+	var ms := delta * 1000.0
+	_frame_ms = lerpf(_frame_ms, ms, 0.05) if _frame_ms > 0.0 else ms
+	_worst_age += delta
+	_noise_age += delta
+	if ms > _worst_ms or _worst_age > 2.0:
+		_worst_ms = ms
+		_worst_age = 0.0
+	if not _overlay.visible:
+		return
+	if benchmark.running:
+		_overlay.text = benchmark.status
+		return
+	var hour := int(atmosphere.time_of_day)
+	var minute := int(fposmod(atmosphere.time_of_day, 1.0) * 60.0)
+	_overlay.text = "%d fps   %.1f ms   worst %.1f ms\n%02d:%02d   power %s   SDFGI %s   fog %s\n%.1f m/s   noise %s   mouse %.0f%%" % [
+		Engine.get_frames_per_second(), _frame_ms, _worst_ms, hour, minute,
+		"on" if atmosphere.power_on else "OFF", "on" if atmosphere.sdfgi else "off",
+		"on" if atmosphere.volumetric_fog else "off", player.horizontal_speed(),
+		("%d m" % _noise) if _noise_age < 1.5 else "-", Controls.mouse_sensitivity / 0.0021 * 100.0]

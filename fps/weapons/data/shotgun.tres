@@ -1,0 +1,56 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://weapons/weapon_data.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/weapons/shotgun.glb" id="2"]
+
+[resource]
+script = ExtResource("1")
+model = ExtResource("2")
+id = &"shotgun"
+display_name = "Pump shotgun"
+kind = 1
+damage = 17.0
+pellets = 8
+head_multiplier = 2.0
+falloff_start = 9.0
+falloff_end = 28.0
+falloff_floor = 0.3
+fire_interval = 0.2
+pump_time = 0.62
+equip_time = 0.45
+holster_time = 0.26
+sprint_out_time = 0.22
+aim_time = 0.26
+mag_size = 5
+reserve = 20
+shell_start_time = 0.35
+shell_time = 0.48
+shell_end_time = 0.4
+hip_spread = 0.6
+bloom_per_shot = 0.0
+bloom_max = 0.0
+aim_spread = 0.2
+move_spread = 0.6
+air_spread = 2.0
+pellet_spread = 3.6
+pellet_spread_aim = 2.6
+kick_pitch = 4.2
+kick_yaw = 1.1
+kick_recover = 9.0
+aim_kick_scale = 0.9
+model_kick_back = 0.06
+model_kick_up = 7.0
+hip_position = Vector3(0.105, -0.125, -0.2)
+hip_rotation = Vector3(0, 0, 0)
+aim_distance = 0.22
+aim_zoom = 1.15
+aim_offset = Vector3(0, -0.009, 0)
+aim_rotation = Vector3(0.6, 0, 0)
+sprint_position = Vector3(-0.05, -0.05, 0.05)
+sprint_rotation = Vector3(-8, 38, 8)
+reload_position = Vector3(-0.03, -0.02, 0.04)
+reload_rotation = Vector3(18, 10, -58)
+move_scale = 0.94
+noise_radius = 110.0
+fire_sound = &"shotgun_shot"
+fire_volume = 0.0
