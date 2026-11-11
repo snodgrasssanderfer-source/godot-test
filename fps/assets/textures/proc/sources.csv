@@ -1,0 +1,82 @@
+set,source,asset,url,license,note
+A35_PuddleMask,procedural,art/textures/gen_procedural.py,,original,"low-frequency noise, thresholded"
+C64_WindowCondensation,procedural,art/textures/gen_procedural.py,,original,"fog denser towards the sill, with clear drip tracks"
+D63_SettledDust,procedural,art/textures/gen_procedural.py,,original,broad drifts plus fine grain
+E60_MirrorCracks,procedural,art/textures/gen_procedural.py,,original,impact point with radial and ring cracks
+F03_CarMudAndRunoff,procedural,art/textures/gen_procedural.py,,original,"splatter thickest low on the body, plus vertical run-off"
+F20a_WindshieldDroplets,procedural,art/textures/gen_procedural.py,,original,where the drops are
+F20a_WindshieldDroplets,procedural,art/textures/gen_procedural.py,,original,lens-shaped drops
+F20b_WiperArc,procedural,art/textures/gen_procedural.py,,original,the two swept fans; white = wiped clean
+H28_NicotineCeilingStain,procedural,art/textures/gen_procedural.py,,original,"yellow-brown film, heaviest at the top"
+L38_PulseVeins,procedural,art/textures/gen_procedural.py,,original,vein network; animate brightness along it
+M40_WallBaseDamp,procedural,art/textures/gen_procedural.py,,original,white = wet; ragged upper edge where the damp has climbed
+P03_SleeveRainWet,procedural,art/textures/gen_procedural.py,,original,shoulders and upper arm soak first
+K07_TelevisionScreen,procedural,art/textures/gen_procedural.py,,original,"frames 0-7 snow, 8-11 colour bars, 12-15 a face dissolving into static"
+K29_ElectricArc,procedural,art/textures/gen_procedural.py,,original,arc between two contacts
+P37_StunGunArc,procedural,art/textures/gen_procedural.py,,original,short tight arc between the probes
+O23_Sparks,procedural,art/textures/gen_procedural.py,,original,a burst that arcs down under gravity
+O24_MuzzleFlashes,procedural,art/textures/gen_procedural.py,,original,"pistol, shotgun, submachine gun, oil-filter suppressor (smoke, hardly any flame)"
+O03_LightningBolts,procedural,art/textures/gen_procedural.py,,original,four different bolts
+O12_SteamAndBreath,procedural,art/textures/gen_procedural.py,,original,"a puff that rises and thins; for manholes, the coffee pot, breath (also K44, L39)"
+O25_GunSmoke,procedural,art/textures/gen_procedural.py,,original,denser puff that hangs; for muzzles and shorted appliances
+O27_FluidMist,procedural,art/textures/gen_procedural.py,,original,"white, tint it red for blood or near-black for oil"
+O07_RainSplash,procedural,art/textures/gen_procedural.py,,original,crown and ring of one raindrop hitting a wet surface
+O06_RainRipples,procedural,art/textures/gen_procedural.py,,original,"normal maps; each frame tiles, and the sequence loops"
+O04a_RainStreaksNear,procedural,art/textures/gen_procedural.py,,original,"few long streaks, close to the camera"
+O04b_RainStreaksFar,procedural,art/textures/gen_procedural.py,,original,many fine streaks for the distant layer
+O05_RainInLightBeam,procedural,art/textures/gen_procedural.py,,original,slanted streaks; show only inside light cones
+O10_GroundFog,procedural,art/textures/gen_procedural.py,,original,soft low bank for fog cards
+O14_LightGlares,procedural,art/textures/gen_procedural.py,,original,"sodium lamp, neon, cold white (tint for red / blue police lights), mercury-vapour green"
+O02_HorizonLightPollution,procedural,art/textures/gen_procedural.py,,original,"overcast night with the orange glow of two distant towns on the horizon; dark, meant to be scaled up in engine"
+O15_StreetLampGlobe,procedural,art/textures/gen_procedural.py,,original,"prismatic refractor ribs, dim spot under the bulb, a little dirt"
+O16a_VenetianBlinds,procedural,art/textures/gen_procedural.py,,original,striped light through bent slats
+O16b_WindowPanes,procedural,art/textures/gen_procedural.py,,original,"six panes with the shadow of the muntins, dirty glass"
+O17_CeilingFan,procedural,art/textures/gen_procedural.py,,original,four blades; rotate the light to animate
+O18_PoliceBeacon,procedural,art/textures/gen_procedural.py,,original,two opposite beams; rotate to sweep
+O19a_HeadlightLowBeam,procedural,art/textures/gen_procedural.py,,original,"wide, flat cut-off on top, kick-up to the right"
+O19b_HeadlightHighBeam,procedural,art/textures/gen_procedural.py,,original,central hot spot
+O20a_PoliceFlashlight,procedural,art/textures/gen_procedural.py,,original,"hot spot, corona, reflector rings, dust on the lens"
+O20b_LampEyeLight,procedural,art/textures/gen_procedural.py,,original,the creature-eye attachment: iris fibres around a dark pupil
+O21_TelevisionFlicker,procedural,art/textures/gen_procedural.py,,original,"read left to right over about 4 s: cold, jumpy light of a TV on a wall"
+O22_FluorescentFlicker,procedural,art/textures/gen_procedural.py,,original,"starter strikes, then steady light with dropouts"
+R01a_DetailConcrete,procedural,art/textures/gen_procedural.py,,original,fine aggregate
+R01b_DetailBrushedMetal,procedural,art/textures/gen_procedural.py,,original,scratches along x
+R01c_DetailFabric,procedural,art/textures/gen_procedural.py,,original,plain weave
+R01d_DetailPlasticGrain,procedural,art/textures/gen_procedural.py,,original,leather-grain plastic
+R01e_DetailWood,procedural,art/textures/gen_procedural.py,,original,grain along y
+R01f_DetailRubber,procedural,art/textures/gen_procedural.py,,original,fine pebbling
+R02a_NoiseFractal,procedural,art/textures/gen_procedural.py,,original,"fractal (Perlin-like), tileable"
+R02b_NoiseCellular,procedural,art/textures/gen_procedural.py,,original,"cellular (Worley), tileable"
+R02c_NoiseBlue,procedural,art/textures/gen_procedural.py,,original,"high-pass noise with a flat histogram, for dithering"
+R03a_DirtEdgeWear,procedural,art/textures/gen_procedural.py,,original,multiply with a curvature / edge mask
+R03b_DirtCavityDust,procedural,art/textures/gen_procedural.py,,original,multiply with an occlusion mask
+R03c_DirtRainStreaksFine,procedural,art/textures/gen_procedural.py,,original,"thin vertical run-off, strongest at the top"
+R03d_DirtRainStreaksBroad,procedural,art/textures/gen_procedural.py,,original,wide stains under sills and gutters
+R03e_DirtLeaks,procedural,art/textures/gen_procedural.py,,original,blotchy leaks
+R03f_DirtSplotches,procedural,art/textures/gen_procedural.py,,original,big soft patches
+R04_Wetness,procedural,art/textures/gen_procedural.py,,original,where surfaces stay wet longest
+R05a_BlendBrickToPlaster,procedural,art/textures/gen_procedural.py,,original,plaster breaks off brick by brick
+R05b_BlendAsphaltToMud,procedural,art/textures/gen_procedural.py,,original,mud fills the cracks first
+R06_StillWater,procedural,art/textures/gen_procedural.py,,original,barely moving water; scroll two copies against each other
+R07_OldGlass,procedural,art/textures/gen_procedural.py,,original,"the wobble of drawn glass, a few seeds"
+R08_NeutralLut,procedural,art/textures/gen_procedural.py,,original,identity 16x16x16 strip; grade a screenshot together with it to make a preset's LUT
+R09_FilmGrain,procedural,art/textures/gen_procedural.py,,original,"four frames, mid-grey = no change"
+O09_FogNoiseVolume,procedural,art/textures/gen_procedural.py,,original,64 slices of a 64-cubed volume that tiles in all three directions
+O26_ImpactDebris,procedural,art/textures/gen_procedural.py,,original,"rows: brick, concrete, wood, metal, enamel, glass, plaster, plastic; four pieces each"
+A37,engine,shader,,n/a,curb water flow: no image file
+B06,engine,mesh,,n/a,overhead wires: no image file
+C71,engine,uses K07 + O21,,n/a,TV light in windows: no image file
+E50,engine,uses K07,,n/a,CCTV monitor: no image file
+F22,engine,real-time reflection,,n/a,wing mirror: no image file
+G35,engine,shader,,n/a,oil surface in the pit: no image file
+H09,engine,real-time reflection + E60 mask,,n/a,back-bar mirror: no image file
+I07,engine,shader,,n/a,washer window: water and suds: no image file
+I09,engine,shader,,n/a,washer window: bloody water: no image file
+K43,engine,emission parameter,,n/a,mimic tell: faint glow: no image file
+K44,engine,uses O12,,n/a,mimic tell: dry lid and steam: no image file
+L15,engine,shader,,n/a,black oil: no image file
+L23,engine,shader,,n/a,blood in water: no image file
+L39,engine,uses O12,,n/a,breath: no image file
+O08,engine,shader,,n/a,water running down glass: no image file
+O11,engine,shader,,n/a,black fog wall: no image file
+Q11,engine,captured from the game,,n/a,store screenshots: no image file
