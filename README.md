@@ -42,29 +42,73 @@ blender --background --factory-startup --python art/concept/make_concepts.py -- 
 - `post_grade.gdshader`：全屏胶片层（色散、分离调色、暗角、颗粒），算法和 `art/concept/post.py` 一致。
 - 加入 `street_lamp` 分组的灯会跟随预设的 `lamp_power` 亮灭，停电时自动熄灭。
 
-**测试场景**（`fps/test/tone_street.tscn`，也是当前的主场景）：WASD + 鼠标飞行，`[` `]` 调时间，
-`T` 让时间流动，`P` 开关电力，`F` 手电，`F1` 隐藏左上角的帧率和帧时间。
+**靶场**（`fps/test/range_street.tscn`，当前的主场景）：灰盒街道 + 玩家 + 三把武器 + 七个靶子，
+用来调移动和枪械手感、测帧率。备弹无限，靶子倒下几秒后自己站起来。
 
-云端没有显卡，用软件 Vulkan 截图验证（`tools/setup_env.sh` 会装好驱动），帧率只能在真机上测：
+| 按键 | 作用 |
+| --- | --- |
+| WASD / Shift / Ctrl 或 C / 空格 | 移动 / 冲刺 / 蹲（冲刺中按是滑铲）/ 跳，对着矮墙、栅栏、车是攀爬或翻越 |
+| Q E / F | 左右探头 / 手电 |
+| 左键 / 右键 / R / 1 2 3 或滚轮 | 开火或挥击 / 开镜 / 换弹 / 手枪、霰弹枪、钢管 |
+| `[` `]` / T / P / G / V | 调时间 / 时间流动 / 电力 / SDFGI / 体积雾 |
+| B | 基准测试：镜头沿街飞一遍，4 种光照 × 3 种画质设置，约 2 分钟，结果显示在屏幕上并写入 `user://benchmark.txt` |
+| `-` `=` / F1 / F2 / F5 / F11 / Esc / F10 | 鼠标灵敏度 / 按键提示 / 左上角数字 / 回出生点 / 全屏 / 释放鼠标 / 退出 |
+
+**代码结构**
+
+- `fps/player/player.gd`：第一人称身体。走、冲刺、蹲、滑铲、跳、翻越和攀爬、上台阶、探头、体力、手电，
+  以及镜头的晃动、落地下沉、倾斜、后坐力回正、视野变化。
+- `fps/weapons/`：`weapon_data.gd` 是一把武器的全部数值（`data/*.tres` 各一份，可在编辑器里直接调）；
+  `weapon.gd` 是手里的一把枪（模型、活动部件、弹药）；`weapon_rig.gd` 挂在相机下，负责开火、泵动、换弹、
+  挥击、切枪的状态机和全部程序化姿态（没有关键帧动画）；`fx.gd` 是枪口闪光、曳光、弹孔、命中烟尘和弹壳。
+- `fps/ui/hud.gd`：极简 HUD。准星的开口就是真实散布；弹药数只在开镜、换弹、刚开过枪或刚切枪时出现；
+  体力条只在不满时出现。
+- `fps/test/`：`street_set` 给灰盒街道生成碰撞、路灯和靶子；`target_dummy.gd` 是靶子；
+  `benchmark.gd` 是基准测试；`range_auto.gd` 是脚本化的自测和截图。
+- 任何能被打的东西只要实现 `take_hit(damage, point, dir, weapon_data) -> Dictionary` 就行，丧尸以后照这个接。
+
+**自测**：不开窗口，用真实的输入事件驱动玩家把移动、攀爬和三把武器全走一遍，共 63 项检查，失败时退出码为 1。
+`--fixed-fps 60` 让时间确定，无界面时约 10 秒跑完：
 
 ```bash
+godot --headless --fixed-fps 60 --path fps -- --selftest
+```
+
+**氛围测试场景**（`fps/test/tone_street.tscn`）：WASD + 鼠标飞行，`[` `]` 调时间，
+`T` 让时间流动，`P` 开关电力，`F` 手电，`F1` 隐藏左上角的帧率和帧时间。
+
+云端没有显卡，用软件 Vulkan 截图验证（`tools/setup_env.sh` 会装好驱动），大约每秒 3 帧，帧率只能在真机上测：
+
+```bash
+# 氛围的四张对照图
 xvfb-run -a -s "-screen 0 1280x720x24" godot --path fps --rendering-driver vulkan \
     --resolution 1280x720 res://test/tone_street.tscn -- --shoot=/tmp/shots
+# 武器在画面里的样子（腰射、开镜、开火、换弹、冲刺、挥击、弹孔、夜里的手电），约 10 分钟
+xvfb-run -a -s "-screen 0 960x540x24" godot --path fps --rendering-driver vulkan --fixed-fps 60 \
+    --resolution 960x540 -- --res=960x540 --shoot=/tmp/shots
 ```
+
+**Windows 测试包**：`tools/export_windows.sh` 导出单个 `Greyfog.exe`（约 120 MB，压缩后约 48 MB）到 `build/`，
+附带给测试者看的说明 `fps/TESTBUILD.txt`。推送到 `ccr-**` 分支时 `.github/workflows/build-windows.yml`
+会自动跑自测、导出，并把包存成这次运行的 artifact；手动运行这个工作流并勾选 publish 才会发成公开的预发布版本。
 
 ## 目录结构
 
 | 路径 | 说明 |
 | --- | --- |
 | `game/` | Godot 项目（`project.godot`、`main.tscn`、`scripts/`、`assets/`、`export_presets.cfg`） |
-| `fps/` | 3D 第一人称项目：`atmosphere/`（氛围系统）、`test/`（测试场景）、`assets/greybox/`（灰盒街道） |
+| `fps/` | 3D 第一人称项目：`player/`、`weapons/`、`ui/`、`atmosphere/`（氛围系统）、`test/`（靶场和测试场景）、`assets/`（灰盒街道、武器模型、占位音效） |
+| `art/weapons/` | 三把武器模型的生成脚本 `make_weapons.py` |
 | `art/concept/` | 基调概念图、生成脚本 `make_concepts.py`、后期脚本 `post.py`、引擎对照图 `engine/` |
 | `art/crate/` | 木箱的 Blender 源文件、建模脚本 `make_crate.py`、预览图 `crate_preview.png` |
 | `tools/setup_env.sh` | **环境初始化脚本**：安装 Godot + 网页导出模板 + Blender + godot-mcp（校验哈希，可重复运行） |
 | `tools/export_web.sh` | 无界面导出网页版到 `build/web/` |
+| `tools/export_windows.sh` | 无界面导出 `fps/` 的 Windows 测试包到 `build/` |
+| `tools/make_placeholder_sfx.py` | 合成 23 个占位音效到 `fps/assets/sfx/` |
 | `tools/godot-headless.sh` | 给 MCP 用的包装脚本：总是加 `--headless` 启动 Godot |
 | `.mcp.json` | Godot MCP + Blender MCP 配置 |
 | `.github/workflows/deploy-web.yml` | 自动导出并发布到 GitHub Pages |
+| `.github/workflows/build-windows.yml` | 自测并导出 Windows 测试包（artifact；手动触发时可发预发布版本） |
 
 ## 安装了什么
 
