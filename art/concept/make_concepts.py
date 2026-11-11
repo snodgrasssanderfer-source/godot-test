@@ -992,11 +992,12 @@ def build_interior():
     # lantern
     lx, ly = tx + 0.12, ty - 0.2
     cyl(0.05, 0.03, (lx, ly, 0.795), mat=MAT['steel'], seg=12)
-    cyl(0.035, 0.10, (lx, ly, 0.86), mat=MAT['bottle'], seg=12)
+    for ax, ay in ((0.036, 0), (-0.036, 0), (0, 0.036), (0, -0.036)):     # open cage, so the flame lights the room
+        cyl(0.003, 0.10, (lx + ax, ly + ay, 0.86), mat=MAT['steel'], seg=6)
     cyl(0.045, 0.025, (lx, ly, 0.92), mat=MAT['steel'], seg=12)
-    blob(0.012, (1, 1, 2.2), (lx, ly, 0.86), mat=MAT['flame'])
-    add_light('POINT', (lx, ly, 0.90), 26.0, (1.0, 0.55, 0.2), shadow_soft_size=0.02)
-    fill = add_light('AREA', (0.6, 2.2, Hh - 0.05), 4.0, (0.62, 0.72, 0.85), size=2.5)      # stand-in for sky bounce
+    blob(0.014, (1, 1, 2.2), (lx, ly, 0.85), mat=MAT['flame'])
+    add_light('POINT', (lx, ly, 0.87), 14.0, (1.0, 0.55, 0.2), shadow_soft_size=0.015)
+    fill = add_light('AREA', (0.6, 2.2, Hh - 0.05), 2.6, (0.62, 0.72, 0.85), size=2.5)      # stand-in for sky bounce
     fill.rotation_euler = (0, 0, 0)
     # chair
     cx, cy = -1.05, 3.2
@@ -1023,7 +1024,7 @@ def build_interior():
     set_world((0.62, 0.70, 0.80), 3.0)
     sun = add_light('SUN', (0, 0, 10), 14.0, (1.0, 0.90, 0.76), angle=math.radians(1.2))
     sun.rotation_euler = Vector((1.0, 0.22, -0.52)).to_track_quat('-Z', 'Y').to_euler()
-    volume_box((W - 0.02, D - 0.02, Hh - 0.02), (0, D / 2, Hh / 2), 0.075, (0.95, 0.93, 0.88), 0.55)
+    volume_box((W - 0.02, D - 0.02, Hh - 0.02), (0, D / 2, Hh / 2), 0.045, (0.95, 0.93, 0.88), 0.55)
     cam = bpy.data.objects.new("cam", bpy.data.cameras.new("cam"))
     cam.data.lens = 20
     cam.location = (1.75, 0.45, 1.5)
