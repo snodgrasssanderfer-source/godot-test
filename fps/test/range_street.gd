@@ -42,6 +42,9 @@ var _worst_age := 0.0
 var _noise := 0.0
 var _noise_age := 99.0
 
+## The power grid on this street: one cell per lamp, wired in a line.
+var grid_nodes: Array[GridNode] = []
+
 
 func _ready() -> void:
 	var render_size := Vector2i(1920, 1080)
@@ -83,6 +86,7 @@ func _ready() -> void:
 			_noise = radius
 			_noise_age = 0.0)
 	_respawn()
+	build_grid()
 
 	hud = Hud.new()
 	add_child(hud)
@@ -136,6 +140,22 @@ func _label(layer: CanvasLayer, font_size: int) -> Label:
 	label.add_theme_constant_override(&"outline_size", 6)
 	layer.add_child(label)
 	return label
+
+
+## (Re)builds the power grid from scratch: one GridNode under every street lamp.
+func build_grid() -> void:
+	for old in grid_nodes:
+		old.queue_free()
+	grid_nodes.clear()
+	Grid.reset()
+	for lamp: Light3D in get_tree().get_nodes_in_group(&"street_lamp"):
+		var node := GridNode.new()
+		node.position = Vector3(lamp.global_position.x, 0.0, lamp.global_position.z)
+		node.lamp = lamp
+		add_child(node)
+		if not grid_nodes.is_empty():
+			node.link_to(grid_nodes.back())
+		grid_nodes.append(node)
 
 
 func _respawn() -> void:
@@ -217,8 +237,12 @@ func _process(delta: float) -> void:
 		return
 	var hour := int(atmosphere.time_of_day)
 	var minute := int(fposmod(atmosphere.time_of_day, 1.0) * 60.0)
-	_overlay.text = "%d fps   %.1f ms   worst %.1f ms\n%02d:%02d   power %s   SDFGI %s   fog %s\n%.1f m/s   noise %s   mouse %.0f%%" % [
+	var grid_text := ""
+	for node in grid_nodes:
+		grid_text += ("  --" if Grid.sim.is_tripped(node.id) else "  %2d" % int(node.charge()))
+	_overlay.text = "%d fps   %.1f ms   worst %.1f ms\n%02d:%02d   power %s   SDFGI %s   fog %s\n%.1f m/s   noise %s   mouse %.0f%%\ngrid%s   awake %d / %d" % [
 		Engine.get_frames_per_second(), _frame_ms, _worst_ms, hour, minute,
 		"on" if atmosphere.power_on else "OFF", "on" if atmosphere.sdfgi else "off",
 		"on" if atmosphere.volumetric_fog else "off", player.horizontal_speed(),
-		("%d m" % _noise) if _noise_age < 1.5 else "-", Controls.mouse_sensitivity / 0.0021 * 100.0]
+		("%d m" % _noise) if _noise_age < 1.5 else "-", Controls.mouse_sensitivity / 0.0021 * 100.0,
+		grid_text, Grid.sim.count(true), Grid.sim.count()]

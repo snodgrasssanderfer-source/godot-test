@@ -210,4 +210,5 @@ func _apply() -> void:
 		if not lamp.has_meta(&"base_energy"):
 			lamp.set_meta(&"base_energy", lamp.light_energy)
 		lamp.light_energy = lamp.get_meta(&"base_energy") * p.lamp_power
+		lamp.set_meta(&"powered_energy", lamp.light_energy)      # GridNode flickers around this
 		lamp.visible = lamp.light_energy > 0.001

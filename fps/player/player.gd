@@ -209,6 +209,13 @@ func interrupt_sprint(seconds := 0.25) -> void:
 	sprinting = false
 
 
+## Every sound the player makes goes through here: the signal is for local
+## listeners (HUD, tests), NoiseBus is for the world.
+func make_noise(radius: float, grid_energy: float = 0.0, source: StringName = &"player") -> void:
+	noise_made.emit(radius)
+	NoiseBus.emit(global_position, radius, grid_energy, source)
+
+
 func use_stamina(amount: float) -> void:
 	stamina = maxf(stamina - amount, 0.0)
 	_stamina_delay = 0.9
@@ -342,7 +349,7 @@ func _on_land(fall_speed: float) -> void:
 		return
 	_dip_v -= clampf(fall_speed * 0.17, 0.3, 2.2)
 	Sfx.play(&"land", clampf(-14.0 + fall_speed, -14.0, 0.0))
-	noise_made.emit(clampf(fall_speed * 1.6, 4.0, 16.0))
+	make_noise(clampf(fall_speed * 1.6, 4.0, 16.0))
 	landed.emit(fall_speed)
 
 
@@ -357,7 +364,7 @@ func _start_slide() -> void:
 	_slide_air = 0.0
 	use_stamina(slide_cost)
 	Sfx.play(&"slide", -5.0)
-	noise_made.emit(9.0)
+	make_noise(9.0)
 
 
 func _tick_slide(delta: float) -> void:
@@ -468,7 +475,7 @@ func _try_mantle() -> bool:
 	sprinting = false
 	use_stamina(mantle_cost)
 	Sfx.play(&"mantle", -4.0)
-	noise_made.emit(7.0)
+	make_noise(7.0)
 	_dip_v -= 0.5
 	return true
 
@@ -586,13 +593,13 @@ func _process(delta: float) -> void:
 		if int(floor(bob_phase / PI)) != before:
 			if sprinting:
 				_footstep(-3.0)
-				noise_made.emit(12.0)
+				make_noise(12.0)
 			elif crouched:
 				_footstep(-16.0)
-				noise_made.emit(2.0)
+				make_noise(2.0)
 			else:
 				_footstep(-8.0)
-				noise_made.emit(6.0)
+				make_noise(6.0)
 	var stride := clampf(hs / walk_speed, 0.4, 1.7) * bob_amount * lerpf(1.0, 0.25, aim_amount)
 	var bob := Vector3(cos(bob_phase) * 0.013, sin(bob_phase * 2.0) * 0.019, 0.0) * stride
 

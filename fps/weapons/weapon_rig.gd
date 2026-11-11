@@ -323,7 +323,7 @@ func _fire() -> void:
 	Sfx.play(d.fire_sound, d.fire_volume, 0.04)
 	# Aimed, the muzzle sits on the line of sight: keep the flash off the target.
 	fx.muzzle_flash(w.muzzle, (1.7 if d.kind == WeaponData.Kind.SHOTGUN else 1.0) * lerpf(1.0, 0.5, aim))
-	player.noise_made.emit(d.noise_radius)
+	player.make_noise(d.noise_radius, d.grid_energy, d.id)
 	player.interrupt_sprint(0.3)
 	if d.pump_time > 0.0:
 		_pump_ejects = true
@@ -388,16 +388,16 @@ func _melee_hit() -> void:
 	if not struck.is_empty():
 		Sfx.play(&"pipe_hit", -1.0)
 		player.add_view_kick(-1.2, 0.8, 14.0)
-		player.noise_made.emit(d.noise_radius)
+		player.make_noise(d.noise_radius, d.grid_energy, d.id)
 		if total > 0.0:
 			hit_confirmed.emit(head, killed, total)
 	elif not wall.is_empty():
 		fx.impact(wall.position, wall.normal, wall.collider, false, false)
 		Sfx.play(&"pipe_hit", -5.0)
 		player.add_view_kick(-0.8, 0.5, 14.0)
-		player.noise_made.emit(d.noise_radius)
+		player.make_noise(d.noise_radius, d.grid_energy, d.id)
 	else:
-		player.noise_made.emit(3.0)
+		player.make_noise(3.0)
 
 
 # --- reloading -----------------------------------------------------------------

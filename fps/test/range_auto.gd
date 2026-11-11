@@ -155,6 +155,8 @@ func _selftest() -> void:
 	await _test_shotgun()
 	await _test_pipe()
 	await _test_rig()
+	_test_grid_model()
+	await _test_grid_in_scene()
 
 
 func _test_movement() -> void:
@@ -548,6 +550,136 @@ func _test_rig() -> void:
 	var pose := rig._holder.position
 	_check("the weapon pose is finite", is_finite(pose.x) and is_finite(pose.y) and is_finite(pose.z)
 			and is_finite(player.camera.global_position.y))
+
+
+# The power grid model on its own (docs/design_supplement.md, section 4).
+# No scene needed: build a GridSim, feed it, step it.
+func _test_grid_model() -> void:
+	# 15 pistol shots, 10 m from one pole and 30 m from the next one down the wire
+	var g := GridSim.new()
+	var near := g.add_node(Vector3(0, 0, -10))
+	var far := g.add_node(Vector3(0, 0, -30))
+	g.link(near, far)
+	g.add_roster(near, &"small", 3)
+	g.add_roster(near, &"medium", 2)
+	var woken: Array = []
+	g.woke.connect(func(n: int, _e: int, k: StringName) -> void: woken.append([n, k]))
+	for i in 15:
+		g.inject(Vector3.ZERO, 70.0, 6.0)
+		g.advance(0.13)
+	_check("grid: a pistol magazine at 10 m brings the nearest cell to 60-70", g.charge(near) > 60.0 and g.charge(near) < 70.0,
+			"%.1f" % g.charge(near))
+	_check("grid: and the next cell, 30 m off, to 25-35", g.charge(far) > 25.0 and g.charge(far) < 35.0, "%.1f" % g.charge(far))
+	_check("grid: that wakes the small ones but nothing bigger", woken == [[near, &"small"], [near, &"small"], [near, &"small"]]
+			and g.count(true) == 3, str(woken))
+	_check("grid: the street shows it (level 3 near, level 1 far)", g.level(near) == 3 and g.level(far) == 1,
+			"%d %d" % [g.level(near), g.level(far)])
+
+	# drain: nothing for 6 s, then 1.2 per second
+	g = GridSim.new()
+	var a := g.add_node(Vector3.ZERO)
+	g.inject_node(a, 50.0)
+	g.advance(5.9)
+	_check("grid: a cell holds its charge for 6 quiet seconds", is_equal_approx(g.charge(a), 50.0), "%.2f" % g.charge(a))
+	g.advance(10.1)
+	_check("grid: then drains at 1.2 per second", absf(g.charge(a) - 38.0) < 0.2, "%.2f" % g.charge(a))
+
+	# creatures doze off again, unless they have seen the player
+	g = GridSim.new()
+	a = g.add_node(Vector3.ZERO)
+	var ids := g.add_roster(a, &"small", 2)
+	g.inject_node(a, 56.0)
+	g.advance(0.1)
+	_check("grid: two small ones wake at 50 and 55", g.count(true) == 2)
+	g.set_engaged(a, ids[1], true)
+	g.cells[a].charge = 20.0
+	g.advance(9.8)
+	_check("grid: still awake 9.8 s after the charge fell", g.count(true) == 2)
+	g.advance(0.3)
+	_check("grid: after 10 s the one that never saw the player sleeps again", g.count(true) == 1
+			and g.cells[a].roster[ids[1]]["awake"])
+
+	# kills short the cell, and the roster never refills
+	g = GridSim.new()
+	a = g.add_node(Vector3.ZERO)
+	ids = g.add_roster(a, &"small", 1)
+	g.inject_node(a, 60.0)
+	g.advance(0.1)
+	g.kill(a, ids[0])
+	_check("grid: a kill takes 8 off the cell", is_equal_approx(g.charge(a), 52.0), "%.2f" % g.charge(a))
+	woken.clear()
+	g.woke.connect(func(n: int, _e: int, k: StringName) -> void: woken.append([n, k]))
+	g.inject_node(a, 40.0)
+	g.advance(1.0)
+	_check("grid: an emptied cell wakes nothing more", woken.is_empty() and g.count() == 0)
+
+	# breaker trip
+	g = GridSim.new()
+	a = g.add_node(Vector3.ZERO)
+	var events: Array = []
+	g.tripped.connect(func(n: int) -> void: events.append("trip"))
+	g.restored.connect(func(n: int) -> void: events.append("back"))
+	g.inject_node(a, 200.0)
+	g.advance(4.8)
+	_check("grid: 4.8 s at 100 is not yet a trip", is_equal_approx(g.charge(a), 100.0) and events.is_empty())
+	g.advance(0.3)
+	_check("grid: 5 s at 100 trips the cell", g.is_tripped(a) and events == ["trip"] and g.charge(a) == 0.0)
+	g.inject_node(a, 50.0)
+	_check("grid: a tripped cell takes no charge", g.charge(a) == 0.0)
+	g.advance(44.5)
+	_check("grid: it stays dead for 45 s", g.is_tripped(a))
+	g.advance(0.6)
+	_check("grid: and comes back at 30", not g.is_tripped(a) and events == ["trip", "back"] and absf(g.charge(a) - 30.0) < 0.2,
+			"%.2f %s" % [g.charge(a), str(events)])
+
+	# pulled breaker box, scripted jolt
+	g = GridSim.new()
+	a = g.add_node(Vector3.ZERO)
+	var b := g.add_node(Vector3(0, 0, -25))
+	g.set_breaker(a, true)
+	g.inject_node(a, 90.0)
+	_check("grid: a pulled breaker caps the cell at 40", is_equal_approx(g.charge(a), 40.0))
+	g.raise_all(70.0)
+	_check("grid: a scripted jolt lifts every cell (the capped one stays capped)", is_equal_approx(g.charge(b), 70.0)
+			and is_equal_approx(g.charge(a), 40.0))
+
+
+# The grid wired into the range: real shots, through NoiseBus.
+func _test_grid_in_scene() -> void:
+	scene.build_grid()
+	await _secs(0.1)
+	var nodes: Array[GridNode] = scene.grid_nodes
+	_check("grid: the range has one cell per street lamp", nodes.size() == 4 and Grid.sim.cells.size() == 4
+			and Grid.sim.cells[1].links.size() == 2, "%d nodes" % nodes.size())
+	var heard: Array = []
+	var listen := func(_p: Vector3, r: float, e: float, src: StringName, _o: float) -> void: heard.append([r, e, src])
+	NoiseBus.heard.connect(listen)
+	await _select(0)
+	await _place(Vector3(2.35, 0.05, 0.0), 180.0)       # 10 m from the first lamp, facing away from the targets
+	_hold(&"move_back")
+	await _secs(1.0)
+	_release_all()
+	_check("grid: footsteps do not disturb it", is_zero_approx(nodes[0].charge()) and heard.size() > 0, "%.2f" % nodes[0].charge())
+	await _place(Vector3(2.35, 0.05, 0.0), 180.0)
+	await _wait_ready()
+	heard.clear()
+	await _tap(&"fire")
+	await _secs(0.05)
+	var want := 6.0 * pow(1.0 - 10.0 / 70.0, 2.0)
+	_check("grid: one pistol shot at 10 m adds about 4.4 to the nearest cell", absf(nodes[0].charge() - want) < 0.25,
+			"%.2f, expected %.2f" % [nodes[0].charge(), want])
+	_check("grid: the shot went over NoiseBus as a pistol", heard.has([70.0, 6.0, &"pistol"]), str(heard))
+	_check("grid: cells further down the street got less", nodes[1].charge() < nodes[0].charge() and nodes[1].charge() > 0.0
+			and is_zero_approx(nodes[3].charge()), "%.2f %.2f %.2f" % [nodes[1].charge(), nodes[2].charge(), nodes[3].charge()])
+	var before := nodes[0].charge()
+	await _select(1)
+	await _tap(&"fire")
+	await _secs(0.05)
+	_check("grid: a shotgun blast adds far more than a pistol shot", nodes[0].charge() - before > 10.0,
+			"+%.2f" % (nodes[0].charge() - before))
+	NoiseBus.heard.disconnect(listen)
+	await _select(0)
+	scene.build_grid()
 
 
 # --- screenshots ---------------------------------------------------------------

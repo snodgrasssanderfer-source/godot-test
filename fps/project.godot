@@ -33,6 +33,8 @@ anti_aliasing/quality/screen_space_aa=1
 
 Controls="*res://core/controls.gd"
 Sfx="*res://core/sfx.gd"
+NoiseBus="*res://world/noise_bus.gd"
+Grid="*res://world/grid.gd"
 
 [layer_names]
 

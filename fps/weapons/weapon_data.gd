@@ -98,8 +98,10 @@ enum Kind { PISTOL, SHOTGUN, MELEE }
 @export var move_scale := 1.0
 
 @export_group("Noise")
-## How far the shot (or a melee hit) is heard, for the zombies.
+## How far the shot (or a melee hit) is heard.
 @export var noise_radius := 70.0
+## How hard a shot (or a melee hit) shakes the power grid; see GridSim.
+@export var grid_energy := 6.0
 @export var fire_sound := &"pistol_shot"
 @export var fire_volume := 0.0
 

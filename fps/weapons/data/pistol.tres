@@ -46,5 +46,6 @@ reload_position = Vector3(-0.02, -0.05, 0.03)
 reload_rotation = Vector3(24, 16, -30)
 move_scale = 1.0
 noise_radius = 70.0
+grid_energy = 6.0
 fire_sound = &"pistol_shot"
 fire_volume = 0.0
