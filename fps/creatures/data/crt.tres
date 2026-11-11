@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="CreatureData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://creatures/creature_data.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/creatures/crt.glb" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"crt"
+display_name = "CRT"
+grid_kind = &"medium"
+model = ExtResource("2")

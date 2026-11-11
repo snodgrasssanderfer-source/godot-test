@@ -125,6 +125,28 @@ def build():
     s["slide"] = scrape * np.minimum(t(1.0) / 0.04, 1) * np.minimum((1.0 - t(1.0)) / 0.25, 1) * 0.45
     s["mantle"] = mix(0.5, (0.0, band(noise(0.3), 300, 3000) * np.sin(np.pi * t(0.3) / 0.3) * 0.25),
                       (0.22, band(noise(0.2), 60, 600) * decay(0.2, 0.03) * 1.2))
+    # The CRT television creature.
+    static = band(noise(0.7), 1200, 11000)
+    s["crt_static"] = static * np.minimum(t(0.7) / 0.02, 1) * np.minimum((0.7 - t(0.7)) / 0.2, 1) * 0.5
+    hum = sum(np.sin(2 * np.pi * f * t(0.9)) * a for f, a in ((60, 1.0), (120, 0.6), (180, 0.3)))
+    s["crt_wake"] = np.tanh(mix(0.9, (0.0, sweep(0.25, 90, 38, 0.07) * 1.6),
+                                (0.0, hum * np.minimum(t(0.9) / 0.05, 1) * decay(0.9, 0.35) * 0.7),
+                                (0.05, band(noise(0.8), 1500, 9000) * np.linspace(0.1, 1, int(SR * 0.8)) ** 2 * 0.45)) * 1.3)
+    tt = t(0.5)
+    wobble = 1.0 + 0.5 * np.sin(2 * np.pi * 37 * tt)
+    shriek = np.sin(2 * np.pi * np.cumsum(900 + 1500 * tt / 0.5 * wobble) / SR)
+    s["crt_screech"] = np.tanh((shriek * 0.9 + band(noise(0.5), 2500, 9000) * 0.7)
+                               * np.minimum(tt / 0.03, 1) * (0.4 + 0.6 * tt / 0.5) * 2.2)
+    s["glass_break"] = mix(0.7, (0.0, band(noise(0.08), 2500, 14000) * decay(0.08, 0.012) * 1.6),
+                           (0.02, band(noise(0.6), 3500, 13000) * decay(0.6, 0.11) * 0.6),
+                           (0.05, ring(0.6, [(4200, 1.0), (6100, 0.7), (7700, 0.5), (9300, 0.4)], 0.06) * 0.25))
+    s["shell_hit"] = np.tanh(mix(0.35, (0.0, band(noise(0.05), 800, 7000) * decay(0.05, 0.008) * 1.8),
+                                 (0.0, ring(0.35, [(310, 1.0), (790, 0.6), (1650, 0.4)], 0.05) * 0.6)) * 1.5)
+    tt = t(0.9)
+    whine = np.sin(2 * np.pi * np.cumsum(2600 * np.exp(-tt / 0.22) + 60) / SR) * decay(0.9, 0.3)
+    s["crt_die"] = np.tanh(mix(0.9, (0.0, whine * 0.9), (0.0, band(noise(0.3), 1500, 9000) * decay(0.3, 0.06) * 0.5),
+                               (0.35, band(noise(0.3), 50, 600) * decay(0.3, 0.05) * 2.0),
+                               (0.35, sweep(0.25, 100, 45, 0.06) * 1.0)) * 1.3)
     return s
 
 
