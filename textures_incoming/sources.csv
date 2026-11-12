@@ -7,9 +7,9 @@ A46,A/A46_TrafficCone_Color.png,gpt-image-2.6-sunburst,2026-11-12
 B03,B/B03_StaplesOnPole_Color.png,gpt-image-2.6-sunburst,2026-11-12
 B04,B/B04_TransformerTank_Color.png,gpt-image-2.6-sunburst,2026-11-12
 B07,B/B07_CobraHeadStreetLight_Color.png,gpt-image-2.6-sunburst,2026-11-12
-B10,B/B10_YellowFlasher_Emission.png,gpt-image-2.6-sunburst,2026-11-12
+B10,B/B10_YellowFlasher_Color.png,gpt-image-2.6-sunburst,2026-11-12
 B32,B/B32_ShoppingCart_Color.png,gpt-image-2.6-sunburst,2026-11-12
-B43,B/B43_CarLampLenses_Emission.png,gpt-image-2.6-sunburst,2026-11-12
+B43,B/B43_CarLampLenses_Color.png,gpt-image-2.6-sunburst,2026-11-12
 C08,C/C08_GlassBlock_Color.png,gpt-image-2.6-sunburst,2026-11-12
 C14,C/C14_PeelingClapboard_Color.png,gpt-image-2.6-sunburst,2026-11-12
 C20,C/C20_DelaminatedPlywood_Color.png,gpt-image-2.6-sunburst,2026-11-12
@@ -61,12 +61,12 @@ E52,E/E52_StaffLockers_Color.png,gpt-image-2.6-sunburst,2026-11-12
 E58,E/E58_SmallSafe_Color.png,gpt-image-2.6-sunburst,2026-11-12
 E59,E/E59_RestroomFixtures_Color.png,gpt-image-2.6-sunburst,2026-11-12
 E62,E/E62_HandDryer_Color.png,gpt-image-2.6-sunburst,2026-11-12
-F04,F/F04_LightBar_Emission.png,gpt-image-2.6-sunburst,2026-11-12
+F04,F/F04_LightBar_Color.png,gpt-image-2.6-sunburst,2026-11-12
 F05,F/F05_PushBar_Color.png,gpt-image-2.6-sunburst,2026-11-12
-F06,F/F06_APillarSpotlight_Emission.png,gpt-image-2.6-sunburst,2026-11-12
+F06,F/F06_APillarSpotlight_Color.png,gpt-image-2.6-sunburst,2026-11-12
 F16,F/F16_FrontGrille_Color.png,gpt-image-2.6-sunburst,2026-11-12
-F17,F/F17_Headlight_Emission.png,gpt-image-2.6-sunburst,2026-11-12
-F18,F/F18_TailLight_Emission.png,gpt-image-2.6-sunburst,2026-11-12
+F17,F/F17_Headlight_Color.png,gpt-image-2.6-sunburst,2026-11-12
+F18,F/F18_TailLight_Color.png,gpt-image-2.6-sunburst,2026-11-12
 F19,F/F19_ChromeBumper_Color.png,gpt-image-2.6-sunburst,2026-11-12
 F21,F/F21_WindowGlass_Color.png,gpt-image-2.6-sunburst,2026-11-12
 F25,F/F25_Generator_Color.png,gpt-image-2.6-sunburst,2026-11-12
@@ -96,7 +96,7 @@ H02,H/H02_BeerNeon_Emission.png,gpt-image-2.6-sunburst,2026-11-12
 H11,H/H11_BeerTaps_Color.png,gpt-image-2.6-sunburst,2026-11-12
 H12,H/H12_Glassware_Color.png,gpt-image-2.6-sunburst,2026-11-12
 H13,H/H13_CoastersNapkinsAshtray_Color.png,gpt-image-2.6-sunburst,2026-11-12
-H16,H/H16_Jukebox_Emission.png,gpt-image-2.6-sunburst,2026-11-12
+H16,H/H16_Jukebox_Color.png,gpt-image-2.6-sunburst,2026-11-12
 H17,H/H17_PoolTable_Color.png,gpt-image-2.6-sunburst,2026-11-12
 H21,H/H21_Payphone_Color.png,gpt-image-2.6-sunburst,2026-11-12
 H23,H/H23_BoothTabletop_Color.png,gpt-image-2.6-sunburst,2026-11-12
@@ -107,7 +107,7 @@ H30,H/H30_DeepFryerPrepTable_Color.png,gpt-image-2.6-sunburst,2026-11-12
 I02,I/I02_WindowDecal_Color.png,gpt-image-2.6-sunburst,2026-11-12
 I06,I/I06_RoundPorthole_Color.png,gpt-image-2.6-sunburst,2026-11-12
 I14,I/I14_SlideCoinSlot_Color.png,gpt-image-2.6-sunburst,2026-11-12
-I15,I/I15_ChangeMachine_Emission.png,gpt-image-2.6-sunburst,2026-11-12
+I15,I/I15_ChangeMachine_Color.png,gpt-image-2.6-sunburst,2026-11-12
 I17,I/I17_FoldingTable_Color.png,gpt-image-2.6-sunburst,2026-11-12
 I18,I/I18_LaundryCart_Color.png,gpt-image-2.6-sunburst,2026-11-12
 I20,I/I20_OldMagazines_Color.png,gpt-image-2.6-sunburst,2026-11-12
