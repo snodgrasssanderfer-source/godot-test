@@ -6,104 +6,279 @@ A05,柏油裂缝,P0,贴花,ambientCG,AsphaltDamageSet001,图集,https://ambientc
 A06,坑洼,P1,贴花,ambientCG,AsphaltDamageSet001,图集,https://ambientcg.com/view?id=AsphaltDamageSet001,https://ambientcg.com/get?file=AsphaltDamageSet001_2K-JPG.zip,凑合,只有破损边缘，积水和碎石没有
 A15,人行道混凝土板,P0,平铺,ambientCG,Concrete040,材质,https://ambientcg.com/view?id=Concrete040,https://ambientcg.com/get?file=Concrete040_2K-JPG.zip,对得上,伸缩缝要自己加
 A16,破碎翘起的人行道板,P1,平铺,ambientCG,Concrete042C,材质,https://ambientcg.com/view?id=Concrete042C,https://ambientcg.com/get?file=Concrete042C_2K-JPG.zip,凑合,
+A17,人行道扫帚纹混凝土,P2,平铺,Poly Haven,brushed_concrete,材质,https://polyhaven.com/a/brushed_concrete,https://polyhaven.com/a/brushed_concrete,对得上,
 A18,路缘石,P0,饰条,Poly Haven,gravel_concrete_03,材质,https://polyhaven.com/a/gravel_concrete_03,https://polyhaven.com/a/gravel_concrete_03,凑合,混凝土底材，掉角靠模型
 A19,路缘石黄漆,P1,饰条,Poly Haven,gravel_concrete_03,材质,https://polyhaven.com/a/gravel_concrete_03,https://polyhaven.com/a/gravel_concrete_03,凑合,混凝土底材，黄漆要另叠
 A20,路缘石红漆,P1,饰条,Poly Haven,gravel_concrete_03,材质,https://polyhaven.com/a/gravel_concrete_03,https://polyhaven.com/a/gravel_concrete_03,凑合,混凝土底材，红漆要另叠
-A22,雨水箅子,P0,物件,Poly Haven,water_manhole_cover,三维模型,https://polyhaven.com/a/water_manhole_cover,https://polyhaven.com/a/water_manhole_cover,凑合,是带字的圆井盖，不是格栅；可当 A23 井盖的参考
+A21,残障坡道防滑砖,P2,平铺,ambientCG,TactilePaving003,材质,https://ambientcg.com/view?id=TactilePaving003,https://ambientcg.com/get?file=TactilePaving003_2K-JPG.zip,对得上,
+A22,雨水箅子,P0,物件,ambientCG,Grate002,材质,https://ambientcg.com/view?id=Grate002,https://ambientcg.com/get?file=Grate002_2K-JPG.zip,对得上,矩形排水格栅；替换原来凑合的圆井盖
 A25,碎石路肩,P1,平铺,ambientCG,Gravel029,材质,https://ambientcg.com/view?id=Gravel029,https://ambientcg.com/get?file=Gravel029_2K-JPG.zip,对得上,
 A26,砂石停车场,P1,平铺,ambientCG,Gravel029,材质,https://ambientcg.com/view?id=Gravel029,https://ambientcg.com/get?file=Gravel029_2K-JPG.zip,凑合,和 A25 同一张，要调色区分
 A27,泥地,P1,平铺,ambientCG,Ground082L,材质,https://ambientcg.com/view?id=Ground082L,https://ambientcg.com/get?file=Ground082L_2K-JPG.zip,对得上,
+A28,泥地车辙,P1,贴花,Poly Haven,muddy_tracks,材质,https://polyhaven.com/a/muddy_tracks,https://polyhaven.com/a/muddy_tracks,凑合,整面带车辙的泥地，贴花要自己抠
 A29,枯草地,P1,平铺,Poly Haven,grass_path_3,材质,https://polyhaven.com/a/grass_path_3,https://polyhaven.com/a/grass_path_3,凑合,偏绿，要调枯
+A30,杂草丛,P1,卡片,ambientCG,Foliage002,图集,https://ambientcg.com/view?id=Foliage002,https://ambientcg.com/get?file=Foliage002_2K-JPG.zip,对得上,带透明的杂草图集，做成卡片
+A31,蒲公英和阔叶野草,P2,卡片,Poly Haven,dandelion_01,三维模型,https://polyhaven.com/a/dandelion_01,https://polyhaven.com/a/dandelion_01,对得上,现成模型；阔叶野草另配 weed_plant_02
 A32,苔藓斑,P1,贴花,ambientCG,Ground037,材质,https://ambientcg.com/view?id=Ground037,https://ambientcg.com/get?file=Ground037_2K-JPG.zip,凑合,整面苔藓地，贴花要自己抠
+A33,湿落叶堆,P1,贴花,ambientCG,ScatteredLeaves001,材质,https://ambientcg.com/view?id=ScatteredLeaves001,https://ambientcg.com/get?file=ScatteredLeaves001_2K-JPG.zip,凑合,整面落叶，边缘要自己做；要调暗调湿
+A34,松针和小树枝,P2,贴花,ambientCG,PineNeedles001,图集,https://ambientcg.com/view?id=PineNeedles001,https://ambientcg.com/get?file=PineNeedles001_2K-JPG.zip,对得上,带透明的图集
+A41,金属刮地痕,P0,贴花,ambientCG,Scratches004,材质,https://ambientcg.com/view?id=Scratches004,https://ambientcg.com/get?file=Scratches004_2K-JPG.zip,凑合,划痕叠加层，要做成贴花
 A44,波形梁护栏,P1,物件,ambientCG,Metal059C,材质,https://ambientcg.com/view?id=Metal059C,https://ambientcg.com/get?file=Metal059C_2K-JPG.zip,凑合,通用金属底材
+A45,混凝土隔离墩,P1,物件,Poly Haven,concrete_road_barrier,三维模型,https://polyhaven.com/a/concrete_road_barrier,https://polyhaven.com/a/concrete_road_barrier,对得上,现成模型
+A48,半挂车厢板,P1,物件,Poly Haven,container_side,材质,https://polyhaven.com/a/container_side,https://polyhaven.com/a/container_side,凑合,是集装箱侧板，颜色要改
 A50,原木树皮,P1,平铺,ambientCG,Bark015,材质,https://ambientcg.com/view?id=Bark015,https://ambientcg.com/get?file=Bark015_2K-JPG.zip,对得上,
+A51,原木年轮截面,P1,物件,ambientCG,TreeEnd002,材质,https://ambientcg.com/view?id=TreeEnd002,https://ambientcg.com/get?file=TreeEnd002_2K-JPG.zip,对得上,
+A52,捆扎链条和绑带,P2,物件,ambientCG,Rope002,材质,https://ambientcg.com/view?id=Rope002,https://ambientcg.com/get?file=Rope002_2K-JPG.zip,凑合,只有绳，没有链条和绑带
+A53,卡车轮胎和挡泥板,P2,物件,Poly Haven,old_tyre,三维模型,https://polyhaven.com/a/old_tyre,https://polyhaven.com/a/old_tyre,凑合,轿车旧胎模型，没有挡泥板
+A54,柴油渍和木屑,P2,贴花,Poly Haven,wood_chips,材质,https://polyhaven.com/a/wood_chips,https://polyhaven.com/a/wood_chips,凑合,只有木屑，柴油渍没有
+B01,木电线杆,P0,物件,Poly Haven,modular_electricity_poles,三维模型,https://polyhaven.com/a/modular_electricity_poles,https://polyhaven.com/a/modular_electricity_poles,对得上,电线杆套件模型
+B05,瓷绝缘子和横担,P1,物件,Poly Haven,modular_electricity_poles,三维模型,https://polyhaven.com/a/modular_electricity_poles,https://polyhaven.com/a/modular_electricity_poles,凑合,套件里的横担；瓷绝缘子要确认
+B07,路灯杆,P0,物件,Poly Haven,street_lamp_01,三维模型,https://polyhaven.com/a/street_lamp_01,https://polyhaven.com/a/street_lamp_01,凑合,是欧式复古灯杆，不是公路弯臂灯
+B08,路灯灯头,P0,发光,Poly Haven,street_lamp_02,三维模型,https://polyhaven.com/a/street_lamp_02,https://polyhaven.com/a/street_lamp_02,凑合,是复古灯笼灯头
 B09,路灯检修门,P2,物件,Poly Haven,rusty_metal_04,材质,https://polyhaven.com/a/rusty_metal_04,https://polyhaven.com/a/rusty_metal_04,凑合,锈铁底材
 B20,木条长椅,P1,物件,ambientCG,PaintedWood008C,材质,https://ambientcg.com/view?id=PaintedWood008C,https://ambientcg.com/get?file=PaintedWood008C_2K-JPG.zip,凑合,旧木底材
+B21,街边垃圾桶,P0,物件,Poly Haven,metal_trash_can,三维模型,https://polyhaven.com/a/metal_trash_can,https://polyhaven.com/a/metal_trash_can,对得上,现成模型
 B22,消防栓,P0,物件,Poly Haven,fire_hydrant,三维模型,https://polyhaven.com/a/fire_hydrant,https://polyhaven.com/a/fire_hydrant,对得上,现成模型，黄漆款要改色
 B23,自行车架,P2,物件,Poly Haven,rusty_metal_04,材质,https://polyhaven.com/a/rusty_metal_04,https://polyhaven.com/a/rusty_metal_04,凑合,锈铁底材
+B26,枯死的花箱,P2,物件,Poly Haven,planter_box_01,三维模型,https://polyhaven.com/a/planter_box_01,https://polyhaven.com/a/planter_box_01,对得上,现成模型，植物要换成枯的
 B27,链环铁丝网,P0,平铺,Poly Haven,modular_chainlink_fence,三维模型,https://polyhaven.com/a/modular_chainlink_fence,https://polyhaven.com/a/modular_chainlink_fence,对得上,现成模型，自带透明贴图
 B28,带刺铁丝顶,P2,物件,Poly Haven,rusty_metal_04,材质,https://polyhaven.com/a/rusty_metal_04,https://polyhaven.com/a/rusty_metal_04,凑合,锈铁底材
 B29,尖头木栅栏,P1,物件,ambientCG,PaintedWood008C,材质,https://ambientcg.com/view?id=PaintedWood008C,https://ambientcg.com/get?file=PaintedWood008C_2K-JPG.zip,凑合,旧木底材
 B30,隐私木板栅栏,P1,平铺,ambientCG,PaintedWood008C,材质,https://ambientcg.com/view?id=PaintedWood008C,https://ambientcg.com/get?file=PaintedWood008C_2K-JPG.zip,凑合,旧木底材
 B31,砖砌矮墙和压顶,P2,平铺,ambientCG,Bricks100,材质,https://ambientcg.com/view?id=Bricks100,https://ambientcg.com/get?file=Bricks100_2K-JPG.zip,凑合,旧砖底材
 B34,生锈自行车,P2,物件,Poly Haven,rusty_metal_04,材质,https://polyhaven.com/a/rusty_metal_04,https://polyhaven.com/a/rusty_metal_04,凑合,锈铁底材
+B35,弃置的沙发和床垫,P2,物件,Poly Haven,sofa_03,三维模型,https://polyhaven.com/a/sofa_03,https://polyhaven.com/a/sofa_03,凑合,只有旧沙发，没有床垫
+B36,湿烂纸箱,P1,物件,Poly Haven,cardboard_box_01,三维模型,https://polyhaven.com/a/cardboard_box_01,https://polyhaven.com/a/cardboard_box_01,对得上,现成模型
+B37,黑色垃圾袋,P1,物件,Poly Haven,trashbag,三维模型,https://polyhaven.com/a/trashbag,https://polyhaven.com/a/trashbag,对得上,现成模型
 B38,木托盘,P1,物件,ambientCG,PaintedWood008C,材质,https://ambientcg.com/view?id=PaintedWood008C,https://ambientcg.com/get?file=PaintedWood008C_2K-JPG.zip,凑合,旧木底材
+B39,塑料牛奶箱,P1,物件,Poly Haven,plastic_crate_02,三维模型,https://polyhaven.com/a/plastic_crate_02,https://polyhaven.com/a/plastic_crate_02,对得上,现成模型
+B40,民用车漆面,P1,物件,ambientCG,PaintedMetal002,材质,https://ambientcg.com/view?id=PaintedMetal002,https://ambientcg.com/get?file=PaintedMetal002_2K-JPG.zip,凑合,带划痕的蓝色漆面，当车漆底材
 B42,民用车轮胎和轮毂,P1,物件,Poly Haven,rusted_wheel_rim_02,三维模型,https://polyhaven.com/a/rusted_wheel_rim_02,https://polyhaven.com/a/rusted_wheel_rim_02,凑合,只有轮毂，没有轮胎
 C01,红砖墙,P0,平铺,Poly Haven,red_brick,材质,https://polyhaven.com/a/red_brick,https://polyhaven.com/a/red_brick,对得上,
 C02,风化泛碱的红砖,P0,平铺,Poly Haven,brick_wall_001,材质,https://polyhaven.com/a/brick_wall_001,https://polyhaven.com/a/brick_wall_001,对得上,泛碱要另叠贴花
-C04,刷白漆后剥落的砖,P1,平铺,ambientCG,Bricks100,材质,https://ambientcg.com/view?id=Bricks100,https://ambientcg.com/get?file=Bricks100_2K-JPG.zip,凑合,是发黄的旧砖，白漆剥落要另做
+C03,煤烟熏黑的红砖,P1,平铺,Poly Haven,dark_brick_wall,材质,https://polyhaven.com/a/dark_brick_wall,https://polyhaven.com/a/dark_brick_wall,对得上,
+C04,刷白漆后剥落的砖,P1,平铺,ambientCG,PaintedBricks005,材质,https://ambientcg.com/view?id=PaintedBricks005,https://ambientcg.com/get?file=PaintedBricks005_2K-JPG.zip,对得上,替换原来凑合的发黄旧砖
+C06,砖拱窗楣和石窗台,P1,饰条,Poly Haven,factory_brick,材质,https://polyhaven.com/a/factory_brick,https://polyhaven.com/a/factory_brick,凑合,砖底材，拱和窗台靠模型
+C07,砖檐口线脚,P1,饰条,Poly Haven,factory_brick,材质,https://polyhaven.com/a/factory_brick,https://polyhaven.com/a/factory_brick,凑合,砖底材，线脚靠模型
 C09,混凝土砌块墙,P0,平铺,Poly Haven,concrete_block_wall_02,材质,https://polyhaven.com/a/concrete_block_wall_02,https://polyhaven.com/a/concrete_block_wall_02,对得上,
 C10,刷漆的砌块墙,P1,平铺,Poly Haven,concrete_block_wall_02,材质,https://polyhaven.com/a/concrete_block_wall_02,https://polyhaven.com/a/concrete_block_wall_02,凑合,要改色
+C11,现浇混凝土,P1,平铺,Poly Haven,wood_textured_concrete,材质,https://polyhaven.com/a/wood_textured_concrete,https://polyhaven.com/a/wood_textured_concrete,对得上,带木模板纹的混凝土
 C12,基础水线污渍,P0,贴花,ambientCG,Leaking005,贴花,https://ambientcg.com/view?id=Leaking005,https://ambientcg.com/get?file=Leaking005_2K-JPG.zip,对得上,
-C15,褪色的彩色木护墙板,P1,平铺,ambientCG,Wood095,材质,https://ambientcg.com/view?id=Wood095,https://ambientcg.com/get?file=Wood095_2K-JPG.zip,凑合,干净木板，褪色漆面要另做
-C20,受潮分层的胶合板,P0,平铺,Poly Haven,oriented_strand_board,材质,https://polyhaven.com/a/oriented_strand_board,https://polyhaven.com/a/oriented_strand_board,凑合,是刨花板，不是分层的胶合板
+C13,开裂的灰泥墙,P2,平铺,Poly Haven,worn_cracked_plaster,材质,https://polyhaven.com/a/worn_cracked_plaster,https://polyhaven.com/a/worn_cracked_plaster,对得上,
+C14,白漆剥落的木护墙板,P0,平铺,ambientCG,WoodSiding009,材质,https://ambientcg.com/view?id=WoodSiding009,https://ambientcg.com/get?file=WoodSiding009_2K-JPG.zip,对得上,浅色漆面壁板；剥落处可叠 PaintedWood009C
+C15,褪色的彩色木护墙板,P1,平铺,ambientCG,WoodSiding006,材质,https://ambientcg.com/view?id=WoodSiding006,https://ambientcg.com/get?file=WoodSiding006_2K-JPG.zip,对得上,替换原来凑合的干净松木
+C16,木瓦墙板,P2,平铺,ambientCG,WoodSiding012,材质,https://ambientcg.com/view?id=WoodSiding012,https://ambientcg.com/get?file=WoodSiding012_2K-JPG.zip,凑合,是风化的搭接壁板，不是木瓦
+C17,乙烯基壁板,P1,平铺,Poly Haven,exterior_wall_cladding,材质,https://polyhaven.com/a/exterior_wall_cladding,https://polyhaven.com/a/exterior_wall_cladding,凑合,横向外墙挂板
+C18,石棉水泥墙板,P1,平铺,Poly Haven,asbestos_sheet,材质,https://polyhaven.com/a/asbestos_sheet,https://polyhaven.com/a/asbestos_sheet,对得上,
+C20,受潮分层的胶合板,P0,平铺,Poly Haven,plywood,材质,https://polyhaven.com/a/plywood,https://polyhaven.com/a/plywood,对得上,替换原来凑合的刨花板；受潮分层要叠贴花
 C21,定向刨花板,P2,平铺,Poly Haven,oriented_strand_board,材质,https://polyhaven.com/a/oriented_strand_board,https://polyhaven.com/a/oriented_strand_board,对得上,
-C23,粉化的压型钢板,P1,平铺,ambientCG,PaintedMetal013,材质,https://ambientcg.com/view?id=PaintedMetal013,https://ambientcg.com/get?file=PaintedMetal013_2K-JPG.zip,凑合,漆面底材，压型靠模型
+C22,镀锌波纹铁皮,P1,平铺,Poly Haven,corrugated_iron,材质,https://polyhaven.com/a/corrugated_iron,https://polyhaven.com/a/corrugated_iron,对得上,
+C23,粉化的压型钢板,P1,平铺,Poly Haven,box_profile_metal_sheet,材质,https://polyhaven.com/a/box_profile_metal_sheet,https://polyhaven.com/a/box_profile_metal_sheet,对得上,替换原来凑合的漆面底材
 C24,金属包边和泛水,P1,饰条,ambientCG,PaintedMetal013,材质,https://ambientcg.com/view?id=PaintedMetal013,https://ambientcg.com/get?file=PaintedMetal013_2K-JPG.zip,凑合,漆面底材
 C25,檐沟和落水管,P0,饰条,ambientCG,Metal059C,材质,https://ambientcg.com/view?id=Metal059C,https://ambientcg.com/get?file=Metal059C_2K-JPG.zip,凑合,通用金属底材，凹痕靠法线
+C26,腐朽的木封檐板,P1,饰条,ambientCG,PaintedWood009B,材质,https://ambientcg.com/view?id=PaintedWood009B,https://ambientcg.com/get?file=PaintedWood009B_2K-JPG.zip,凑合,掉漆的旧木板
+C27,屋檐底板,P2,平铺,Poly Haven,distressed_painted_planks,材质,https://polyhaven.com/a/distressed_painted_planks,https://polyhaven.com/a/distressed_painted_planks,凑合,掉漆木板
+C28,沥青瓦,P0,平铺,Poly Haven,grey_roof_01,材质,https://polyhaven.com/a/grey_roof_01,https://polyhaven.com/a/grey_roof_01,对得上,
+C29,缺片长苔的沥青瓦,P1,平铺,ambientCG,RoofingTiles013C,材质,https://ambientcg.com/view?id=RoofingTiles013C,https://ambientcg.com/get?file=RoofingTiles013C_2K-JPG.zip,对得上,长苔的深色瓦；缺片要靠模型
+C30,平屋顶沥青卷材,P1,平铺,Poly Haven,bitumen,材质,https://polyhaven.com/a/bitumen,https://polyhaven.com/a/bitumen,对得上,
+C33,屋顶通风帽和排气管,P2,物件,Poly Haven,modular_airduct_circular_01,三维模型,https://polyhaven.com/a/modular_airduct_circular_01,https://polyhaven.com/a/modular_airduct_circular_01,凑合,圆风管套件模型，通风帽要改
+C35,窗式空调外壳,P1,物件,Poly Haven,exterior_aircon_unit,三维模型,https://polyhaven.com/a/exterior_aircon_unit,https://polyhaven.com/a/exterior_aircon_unit,凑合,是壁挂空调外机模型
+C36,屋顶空调机组,P2,物件,Poly Haven,exterior_aircon_unit,三维模型,https://polyhaven.com/a/exterior_aircon_unit,https://polyhaven.com/a/exterior_aircon_unit,凑合,是壁挂空调外机模型，比屋顶机组小
+C37,外墙电表,P1,物件,Poly Haven,power_box_01,三维模型,https://polyhaven.com/a/power_box_01,https://polyhaven.com/a/power_box_01,凑合,是配电箱，不是电表
+C38,外墙断路器箱,P0,物件,Poly Haven,utility_box_01,三维模型,https://polyhaven.com/a/utility_box_01,https://polyhaven.com/a/utility_box_01,对得上,现成模型
+C39,煤气表和电话接线盒,P2,物件,Poly Haven,utility_box_02,三维模型,https://polyhaven.com/a/utility_box_02,https://polyhaven.com/a/utility_box_02,凑合,是电气箱，当接线盒用
+C40,外墙灯,P1,发光,Poly Haven,industrial_wall_lamp,三维模型,https://polyhaven.com/a/industrial_wall_lamp,https://polyhaven.com/a/industrial_wall_lamp,对得上,现成模型
+C41,老式监控摄像头,P2,物件,Poly Haven,security_camera_02,三维模型,https://polyhaven.com/a/security_camera_02,https://polyhaven.com/a/security_camera_02,对得上,现成模型
+C43,门廊木地板,P1,平铺,Poly Haven,wood_floor_deck,材质,https://polyhaven.com/a/wood_floor_deck,https://polyhaven.com/a/wood_floor_deck,对得上,
+C44,门廊立柱和栏杆,P1,饰条,ambientCG,PaintedWood009C,材质,https://ambientcg.com/view?id=PaintedWood009C,https://ambientcg.com/get?file=PaintedWood009C_2K-JPG.zip,凑合,白漆旧木底材
+C45,门廊台阶,P1,物件,Poly Haven,stair_planks,材质,https://polyhaven.com/a/stair_planks,https://polyhaven.com/a/stair_planks,凑合,木踏板底材
+C47,百叶护窗,P2,物件,Poly Haven,wood_shutter,材质,https://polyhaven.com/a/wood_shutter,https://polyhaven.com/a/wood_shutter,对得上,
+C49,波形铝遮雨棚,P2,物件,ambientCG,CorrugatedSteel005,材质,https://ambientcg.com/view?id=CorrugatedSteel005,https://ambientcg.com/get?file=CorrugatedSteel005_2K-JPG.zip,凑合,镀锌波纹板，当铝遮雨棚用
 C50,店面铝合金框,P0,饰条,ambientCG,Metal059C,材质,https://ambientcg.com/view?id=Metal059C,https://ambientcg.com/get?file=Metal059C_2K-JPG.zip,凑合,通用金属底材
+C51,店面橱窗底墙瓷砖,P1,平铺,Poly Haven,square_tiled_wall,材质,https://polyhaven.com/a/square_tiled_wall,https://polyhaven.com/a/square_tiled_wall,凑合,米色条纹砖
 C54,分节式车库门,P0,物件,ambientCG,PaintedMetal012,材质,https://ambientcg.com/view?id=PaintedMetal012,https://ambientcg.com/get?file=PaintedMetal012_2K-JPG.zip,对得上,
-C55,工业卷帘门,P1,平铺,ambientCG,PaintedMetal013,材质,https://ambientcg.com/view?id=PaintedMetal013,https://ambientcg.com/get?file=PaintedMetal013_2K-JPG.zip,凑合,漆面底材，卷帘的横纹靠模型
+C55,工业卷帘门,P1,平铺,Poly Haven,rusty_metal_shutter,材质,https://polyhaven.com/a/rusty_metal_shutter,https://polyhaven.com/a/rusty_metal_shutter,对得上,替换原来凑合的漆面底材
+C56,钢板后门,P0,物件,ambientCG,PaintedMetal007,材质,https://ambientcg.com/view?id=PaintedMetal007,https://ambientcg.com/get?file=PaintedMetal007_2K-JPG.zip,凑合,锈蚀的深蓝漆面钢板
+C57,防盗铁栅门,P2,物件,Poly Haven,large_iron_gate,三维模型,https://polyhaven.com/a/large_iron_gate,https://polyhaven.com/a/large_iron_gate,凑合,是庄园式大铁门模型
+C59,实木镶板前门,P0,物件,Poly Haven,rough_pine_door,材质,https://polyhaven.com/a/rough_pine_door,https://polyhaven.com/a/rough_pine_door,对得上,木门贴图
+C60,门把手、锁具和合页,P0,图集,Poly Haven,gate_latch_01,三维模型,https://polyhaven.com/a/gate_latch_01,https://polyhaven.com/a/gate_latch_01,凑合,只有一个门闩模型
 C61,木双悬窗,P0,饰条,ambientCG,PaintedWood008C,材质,https://ambientcg.com/view?id=PaintedWood008C,https://ambientcg.com/get?file=PaintedWood008C_2K-JPG.zip,凑合,旧木底材，白漆要另做
 C63,脏玻璃,P0,平铺,ambientCG,Fingerprints007,材质,https://ambientcg.com/view?id=Fingerprints007,https://ambientcg.com/get?file=Fingerprints007_2K-JPG.zip,凑合,只是污迹层，叠在玻璃上用
+C67,从外面看的窗帘,P1,平铺,Poly Haven,velour_velvet,材质,https://polyhaven.com/a/velour_velvet,https://polyhaven.com/a/velour_velvet,凑合,绒布，要改色
+C69,钉窗木板,P1,物件,Poly Haven,worn_planks,材质,https://polyhaven.com/a/worn_planks,https://polyhaven.com/a/worn_planks,对得上,
+D07,墙纸翘边和撕裂,P0,贴花,Poly Haven,decrepit_wallpaper,材质,https://polyhaven.com/a/decrepit_wallpaper,https://polyhaven.com/a/decrepit_wallpaper,凑合,整面破旧墙纸，翘边要自己抠
 D08,深色胡桃木饰板,P1,平铺,ambientCG,WoodFloor051,材质,https://ambientcg.com/view?id=WoodFloor051,https://ambientcg.com/get?file=WoodFloor051_2K-JPG.zip,凑合,是地板纹，颜色偏浅
 D09,带节疤的松木饰板,P2,平铺,ambientCG,Wood095,材质,https://ambientcg.com/view?id=Wood095,https://ambientcg.com/get?file=Wood095_2K-JPG.zip,凑合,松木，节疤不明显
 D10,乳胶漆石膏板,P0,平铺,Poly Haven,blue_plaster_wall,材质,https://polyhaven.com/a/blue_plaster_wall,https://polyhaven.com/a/blue_plaster_wall,凑合,要改色
 D11,破洞露出木板条的灰泥墙,P1,贴花,Poly Haven,damaged_plaster,材质,https://polyhaven.com/a/damaged_plaster,https://polyhaven.com/a/damaged_plaster,凑合,露出的是砖不是木板条
+D13,矿棉吸音天花板,P0,平铺,ambientCG,OfficeCeiling001,材质,https://ambientcg.com/view?id=OfficeCeiling001,https://ambientcg.com/get?file=OfficeCeiling001_2K-JPG.zip,对得上,
+D14,天花龙骨,P1,饰条,ambientCG,OfficeCeiling005,材质,https://ambientcg.com/view?id=OfficeCeiling005,https://ambientcg.com/get?file=OfficeCeiling005_2K-JPG.zip,凑合,带龙骨格的天花，龙骨本身靠模型
+D15,颗粒喷涂天花,P1,平铺,ambientCG,Wallpaper002C,材质,https://ambientcg.com/view?id=Wallpaper002C,https://ambientcg.com/get?file=Wallpaper002C_2K-JPG.zip,凑合,发黄的粗颗粒墙纸，当喷涂天花用
 D17,天花水渍圈,P0,贴花,ambientCG,Leaking015C,贴花,https://ambientcg.com/view?id=Leaking015C,https://ambientcg.com/get?file=Leaking015C_2K-JPG.zip,对得上,
+D19,木梁,P1,平铺,Poly Haven,dark_wood,材质,https://polyhaven.com/a/dark_wood,https://polyhaven.com/a/dark_wood,凑合,深色木材底材
+D23,地板革翘边和破口,P1,贴花,Poly Haven,old_linoleum_flooring_01,材质,https://polyhaven.com/a/old_linoleum_flooring_01,https://polyhaven.com/a/old_linoleum_flooring_01,凑合,整面旧地板革，破口要自己做
 D24,商用方块塑胶地板,P0,平铺,ambientCG,Terrazzo001,材质,https://ambientcg.com/view?id=Terrazzo001,https://ambientcg.com/get?file=Terrazzo001_2K-JPG.zip,凑合,是水磨石，花纹不同
+D25,长绒地毯,P1,平铺,Poly Haven,dirty_carpet,材质,https://polyhaven.com/a/dirty_carpet,https://polyhaven.com/a/dirty_carpet,对得上,
 D26,圈绒商用地毯,P1,平铺,ambientCG,Carpet001,材质,https://ambientcg.com/view?id=Carpet001,https://ambientcg.com/get?file=Carpet001_2K-JPG.zip,凑合,白色，要改色
 D29,亮漆实木条地板,P1,平铺,ambientCG,WoodFloor051,材质,https://ambientcg.com/view?id=WoodFloor051,https://ambientcg.com/get?file=WoodFloor051_2K-JPG.zip,对得上,
 D30,未处理的宽木地板,P1,平铺,ambientCG,WoodFloor051,材质,https://ambientcg.com/view?id=WoodFloor051,https://ambientcg.com/get?file=WoodFloor051_2K-JPG.zip,凑合,是窄条，不是宽板
-D31,胶合板底板,P2,平铺,ambientCG,Wood095,材质,https://ambientcg.com/view?id=Wood095,https://ambientcg.com/get?file=Wood095_2K-JPG.zip,凑合,木质底材
+D31,胶合板底板,P2,平铺,Poly Haven,plywood,材质,https://polyhaven.com/a/plywood,https://polyhaven.com/a/plywood,对得上,替换原来凑合的松木
 D32,六角小白地砖,P1,平铺,ambientCG,Tiles118,材质,https://ambientcg.com/view?id=Tiles118,https://ambientcg.com/get?file=Tiles118_2K-JPG.zip,对得上,
 D33,四寸方墙砖,P0,平铺,ambientCG,Tiles109,材质,https://ambientcg.com/view?id=Tiles109,https://ambientcg.com/get?file=Tiles109_2K-JPG.zip,对得上,
 D34,发黑的砖缝,P0,贴花,ambientCG,Tiles087,材质,https://ambientcg.com/view?id=Tiles087,https://ambientcg.com/get?file=Tiles087_2K-JPG.zip,凑合,当脏砖用，不是单独的砖缝
 D35,油浸水泥地,P0,平铺,ambientCG,Concrete033,材质,https://ambientcg.com/view?id=Concrete033,https://ambientcg.com/get?file=Concrete033_2K-JPG.zip,对得上,
 D36,木踢脚线和橡胶踢脚线,P0,饰条,ambientCG,WoodFloor047,材质,https://ambientcg.com/view?id=WoodFloor047,https://ambientcg.com/get?file=WoodFloor047_2K-JPG.zip,凑合,木质底材，橡胶款没有
+D37,门框和门套,P0,饰条,ambientCG,PaintedWood009C,材质,https://ambientcg.com/view?id=PaintedWood009C,https://ambientcg.com/get?file=PaintedWood009C_2K-JPG.zip,凑合,白漆旧木底材
+D38,仿木纹空心门,P0,物件,Poly Haven,oak_veneer_01,材质,https://polyhaven.com/a/oak_veneer_01,https://polyhaven.com/a/oak_veneer_01,凑合,木纹贴面底材
+D40,室内镶板门,P1,物件,Poly Haven,rough_pine_door,材质,https://polyhaven.com/a/rough_pine_door,https://polyhaven.com/a/rough_pine_door,凑合,木门贴图，样式偏粗
+D41,百叶折叠壁柜门,P1,物件,Poly Haven,wood_shutter,材质,https://polyhaven.com/a/wood_shutter,https://polyhaven.com/a/wood_shutter,凑合,木百叶贴图
+D42,楼梯踏板和地毯条,P1,物件,Poly Haven,stair_planks,材质,https://polyhaven.com/a/stair_planks,https://polyhaven.com/a/stair_planks,凑合,木踏板；地毯条没有
 D46,发黄的插座和开关面板,P0,图集,ambientCG,Plastic010,材质,https://ambientcg.com/view?id=Plastic010,https://ambientcg.com/get?file=Plastic010_2K-JPG.zip,凑合,白塑料，发黄要改色
+D49,吊扇,P1,物件,Poly Haven,ceiling_fan,三维模型,https://polyhaven.com/a/ceiling_fan,https://polyhaven.com/a/ceiling_fan,对得上,现成模型
+D50,乳白玻璃吸顶灯,P1,发光,Poly Haven,modern_ceiling_lamp_01,三维模型,https://polyhaven.com/a/modern_ceiling_lamp_01,https://polyhaven.com/a/modern_ceiling_lamp_01,凑合,是球形吊灯模型
+D51,格栅日光灯盘,P0,发光,Poly Haven,mounted_fluorescent_lights,三维模型,https://polyhaven.com/a/mounted_fluorescent_lights,https://polyhaven.com/a/mounted_fluorescent_lights,对得上,现成模型；替换原来扔掉的灯泡
+D52,裸灯泡和拉绳,P1,发光,Poly Haven,pull_chain_light_socket,三维模型,https://polyhaven.com/a/pull_chain_light_socket,https://polyhaven.com/a/pull_chain_light_socket,对得上,现成模型，灯泡另配 lightbulb_01
+D54,厚窗帘和蕾丝窗帘,P1,平铺,Poly Haven,velour_velvet,材质,https://polyhaven.com/a/velour_velvet,https://polyhaven.com/a/velour_velvet,凑合,只有厚绒布，蕾丝没有
+D57,通风口格栅,P1,物件,Poly Haven,modular_airduct_rectangular_01,三维模型,https://polyhaven.com/a/modular_airduct_rectangular_01,https://polyhaven.com/a/modular_airduct_rectangular_01,凑合,方风管套件模型
+D58,室内配电箱,P1,物件,Poly Haven,power_box_01,三维模型,https://polyhaven.com/a/power_box_01,https://polyhaven.com/a/power_box_01,对得上,现成模型
+D61,管道,P1,饰条,Poly Haven,modular_industrial_pipes_01,三维模型,https://polyhaven.com/a/modular_industrial_pipes_01,https://polyhaven.com/a/modular_industrial_pipes_01,对得上,管道套件模型
 E01,加油棚立柱,P0,物件,ambientCG,Metal059C,材质,https://ambientcg.com/view?id=Metal059C,https://ambientcg.com/get?file=Metal059C_2K-JPG.zip,凑合,通用金属底材
+E02,加油棚底板,P0,平铺,ambientCG,CorrugatedSteel003,材质,https://ambientcg.com/view?id=CorrugatedSteel003,https://ambientcg.com/get?file=CorrugatedSteel003_2K-JPG.zip,凑合,白色旧波纹板
 E04,加油岛基座和防撞柱,P0,物件,Poly Haven,patterned_concrete_wall,材质,https://polyhaven.com/a/patterned_concrete_wall,https://polyhaven.com/a/patterned_concrete_wall,凑合,混凝土底材
 E05,加油站地坪,P0,平铺,ambientCG,Concrete033,材质,https://ambientcg.com/view?id=Concrete033,https://ambientcg.com/get?file=Concrete033_2K-JPG.zip,对得上,
+E11,擦手纸盒和岛上垃圾桶,P2,物件,Poly Haven,metal_trash_can,三维模型,https://polyhaven.com/a/metal_trash_can,https://polyhaven.com/a/metal_trash_can,凑合,只有垃圾桶
+E20,丙烷罐笼,P2,物件,Poly Haven,propane_tank,三维模型,https://polyhaven.com/a/propane_tank,https://polyhaven.com/a/propane_tank,凑合,只有罐，没有笼
+E23,门口脚垫,P2,物件,Poly Haven,rubber_tiles,材质,https://polyhaven.com/a/rubber_tiles,https://polyhaven.com/a/rubber_tiles,凑合,橡胶垫底材
 E24,金属货架,P0,饰条,Poly Haven,Shelf_01,三维模型,https://polyhaven.com/a/Shelf_01,https://polyhaven.com/a/Shelf_01,对得上,现成模型
 E36,立式玻璃门冷柜,P0,物件,ambientCG,PaintedMetal012,材质,https://ambientcg.com/view?id=PaintedMetal012,https://ambientcg.com/get?file=PaintedMetal012_2K-JPG.zip,对得上,只有外壳漆面，玻璃门没有
+E40,咖啡台,P1,物件,Poly Haven,CoffeeCart_01,三维模型,https://polyhaven.com/a/CoffeeCart_01,https://polyhaven.com/a/CoffeeCart_01,凑合,是咖啡推车模型
+E41,咖啡壶和加热板,P0,物件,Poly Haven,vintage_electric_kettle,三维模型,https://polyhaven.com/a/vintage_electric_kettle,https://polyhaven.com/a/vintage_electric_kettle,凑合,是老式电水壶模型
+E44,微波炉,P1,物件,Poly Haven,vintage_microwave,三维模型,https://polyhaven.com/a/vintage_microwave,https://polyhaven.com/a/vintage_microwave,对得上,现成模型
+E47,收银机和刷卡机,P1,物件,Poly Haven,CashRegister_01,三维模型,https://polyhaven.com/a/CashRegister_01,https://polyhaven.com/a/CashRegister_01,对得上,现成模型；刷卡机没有
+E49,头顶香烟架,P2,物件,Poly Haven,cigarette_pack,三维模型,https://polyhaven.com/a/cigarette_pack,https://polyhaven.com/a/cigarette_pack,凑合,只有烟盒模型（虚构牌子）
+E53,折叠桌椅,P2,物件,Poly Haven,plastic_monobloc_chair_01,三维模型,https://polyhaven.com/a/plastic_monobloc_chair_01,https://polyhaven.com/a/plastic_monobloc_chair_01,凑合,只有塑料椅
+E57,拖把桶和小心地滑牌,P1,物件,Poly Haven,WetFloorSign_01,三维模型,https://polyhaven.com/a/WetFloorSign_01,https://polyhaven.com/a/WetFloorSign_01,凑合,只有小心地滑牌
+E63,后巷垃圾站围墙,P1,平铺,Poly Haven,concrete_block_wall_02,材质,https://polyhaven.com/a/concrete_block_wall_02,https://polyhaven.com/a/concrete_block_wall_02,凑合,砌块墙底材
 E64,大垃圾箱,P0,物件,ambientCG,PaintedMetal013,材质,https://ambientcg.com/view?id=PaintedMetal013,https://ambientcg.com/get?file=PaintedMetal013_2K-JPG.zip,对得上,
+E65,垃圾站油腻地面,P1,平铺,Poly Haven,dirty_concrete,材质,https://polyhaven.com/a/dirty_concrete,https://polyhaven.com/a/dirty_concrete,对得上,
+E66,压扁的纸箱堆,P1,物件,ambientCG,CardboardSet001,图集,https://ambientcg.com/view?id=CardboardSet001,https://ambientcg.com/get?file=CardboardSet001_2K-JPG.zip,对得上,带透明的碎纸板图集
+E67,废油桶,P2,物件,Poly Haven,barrel_03,三维模型,https://polyhaven.com/a/barrel_03,https://polyhaven.com/a/barrel_03,对得上,现成模型
 F07,天线,P2,物件,ambientCG,Metal059C,材质,https://ambientcg.com/view?id=Metal059C,https://ambientcg.com/get?file=Metal059C_2K-JPG.zip,凑合,通用金属底材
 F10,钢轮和轮毂盖,P0,物件,Poly Haven,rusted_wheel_rim_02,三维模型,https://polyhaven.com/a/rusted_wheel_rim_02,https://polyhaven.com/a/rusted_wheel_rim_02,对得上,现成模型，只有生锈款
 F11,轮毂螺母和螺栓,P0,物件,Poly Haven,rusted_wheel_rim_02,三维模型,https://polyhaven.com/a/rusted_wheel_rim_02,https://polyhaven.com/a/rusted_wheel_rim_02,凑合,模型上带螺栓孔，没有单独的螺母
+F12,备胎,P0,物件,Poly Haven,old_tyre,三维模型,https://polyhaven.com/a/old_tyre,https://polyhaven.com/a/old_tyre,对得上,现成模型
 F13,刹车盘和卡钳,P0,物件,Poly Haven,rusty_metal_04,材质,https://polyhaven.com/a/rusty_metal_04,https://polyhaven.com/a/rusty_metal_04,对得上,
+F14,轮拱内衬,P0,物件,ambientCG,Plastic012B,材质,https://ambientcg.com/view?id=Plastic012B,https://ambientcg.com/get?file=Plastic012B_2K-JPG.zip,凑合,黑色皮纹塑料底材
 F15,底盘和悬挂,P1,物件,Poly Haven,rusty_metal_04,材质,https://polyhaven.com/a/rusty_metal_04,https://polyhaven.com/a/rusty_metal_04,凑合,锈铁底材
 F23,发动机本体,P0,物件,ambientCG,Metal053B,材质,https://ambientcg.com/view?id=Metal053B,https://ambientcg.com/get?file=Metal053B_2K-JPG.zip,凑合,金属底材
 F24,气门室盖和空滤壳,P0,物件,ambientCG,Metal041B,材质,https://ambientcg.com/view?id=Metal041B,https://ambientcg.com/get?file=Metal041B_2K-JPG.zip,凑合,金属底材
+F30,橡胶水管和卡箍,P1,物件,ambientCG,Rubber004,材质,https://ambientcg.com/view?id=Rubber004,https://ambientcg.com/get?file=Rubber004_2K-JPG.zip,凑合,黑橡胶底材
 F31,电瓶托架,P0,物件,Poly Haven,rusty_metal_05,材质,https://polyhaven.com/a/rusty_metal_05,https://polyhaven.com/a/rusty_metal_05,对得上,
 F32,电瓶桩头夹,P0,物件,ambientCG,Metal057C,材质,https://ambientcg.com/view?id=Metal057C,https://ambientcg.com/get?file=Metal057C_2K-JPG.zip,凑合,铜色金属底材
+F37,仪表盘,P0,物件,ambientCG,Plastic012B,材质,https://ambientcg.com/view?id=Plastic012B,https://ambientcg.com/get?file=Plastic012B_2K-JPG.zip,凑合,黑色皮纹塑料底材
 F42,方向盘和转向柱,P0,物件,ambientCG,Leather028,材质,https://ambientcg.com/view?id=Leather028,https://ambientcg.com/get?file=Leather028_2K-JPG.zip,凑合,皮革底材，要改成黑色
+F44,座椅,P1,物件,Poly Haven,fabric_leather_01,材质,https://polyhaven.com/a/fabric_leather_01,https://polyhaven.com/a/fabric_leather_01,凑合,人造革底材
+F45,前后排隔离网,P1,物件,ambientCG,SheetMetal002,材质,https://ambientcg.com/view?id=SheetMetal002,https://ambientcg.com/get?file=SheetMetal002_2K-JPG.zip,凑合,冲孔钢板，当隔离网用
+F50,千斤顶存放位和扳手,P1,物件,Poly Haven,ratchet_wrench,三维模型,https://polyhaven.com/a/ratchet_wrench,https://polyhaven.com/a/ratchet_wrench,凑合,只有扳手模型
+F51,信号棒和三角牌,P2,物件,Poly Haven,signal_flashlight,三维模型,https://polyhaven.com/a/signal_flashlight,https://polyhaven.com/a/signal_flashlight,凑合,信号手电模型
+G04,油浸宽木地板,P0,平铺,Poly Haven,dark_planks,材质,https://polyhaven.com/a/dark_planks,https://polyhaven.com/a/dark_planks,对得上,
+G05,原木和角钢高货架,P0,物件,Poly Haven,steel_frame_shelves_03,三维模型,https://polyhaven.com/a/steel_frame_shelves_03,https://polyhaven.com/a/steel_frame_shelves_03,对得上,现成模型
+G06,洞洞板和挂钩,P0,平铺,ambientCG,SheetMetal002,材质,https://ambientcg.com/view?id=SheetMetal002,https://ambientcg.com/get?file=SheetMetal002_2K-JPG.zip,凑合,冲孔钢板，洞洞板要改成纤维板色
+G08,木柜台和玻璃展示柜,P1,物件,Poly Haven,wooden_display_shelves_01,三维模型,https://polyhaven.com/a/wooden_display_shelves_01,https://polyhaven.com/a/wooden_display_shelves_01,凑合,只有木展示架
+G09,黄铜老式收银机,P2,物件,Poly Haven,CashRegister_01,三维模型,https://polyhaven.com/a/CashRegister_01,https://polyhaven.com/a/CashRegister_01,凑合,不是黄铜的
+G15,链条和绳索卷轴,P2,物件,ambientCG,Rope001,材质,https://ambientcg.com/view?id=Rope001,https://ambientcg.com/get?file=Rope001_2K-JPG.zip,凑合,只有绳
+G17,钢管货架,P1,物件,Poly Haven,steel_frame_shelves_01,三维模型,https://polyhaven.com/a/steel_frame_shelves_01,https://polyhaven.com/a/steel_frame_shelves_01,对得上,现成模型
+G18,钉子桶和台秤,P2,物件,Poly Haven,wooden_bucket_01,三维模型,https://polyhaven.com/a/wooden_bucket_01,https://polyhaven.com/a/wooden_bucket_01,凑合,只有木桶
+G19,园艺工具,P2,物件,Poly Haven,rusted_spade_01,三维模型,https://polyhaven.com/a/rusted_spade_01,https://polyhaven.com/a/rusted_spade_01,对得上,现成模型，另有 trowel_01、watering_can_metal_01
+G22,铝梯和木梯,P2,物件,Poly Haven,wooden_ladder_02,三维模型,https://polyhaven.com/a/wooden_ladder_02,https://polyhaven.com/a/wooden_ladder_02,对得上,现成模型
+G29,劳保手套和灭火器,P2,物件,Poly Haven,garden_gloves_01,三维模型,https://polyhaven.com/a/garden_gloves_01,https://polyhaven.com/a/garden_gloves_01,凑合,只有手套
 G33,车间混凝土地面,P0,平铺,ambientCG,Concrete033,材质,https://ambientcg.com/view?id=Concrete033,https://ambientcg.com/get?file=Concrete033_2K-JPG.zip,对得上,
 G34,地沟壁,P0,平铺,Poly Haven,brick_pavement_02,材质,https://polyhaven.com/a/brick_pavement_02,https://polyhaven.com/a/brick_pavement_02,凑合,是铺地砖，当砖砌沟壁用
+G36,地沟防爆笼灯,P1,发光,Poly Haven,industrial_caged_sconce,三维模型,https://polyhaven.com/a/industrial_caged_sconce,https://polyhaven.com/a/industrial_caged_sconce,对得上,现成模型
+G37,地沟边钢包角,P0,饰条,ambientCG,PaintedMetal016,材质,https://ambientcg.com/view?id=PaintedMetal016,https://ambientcg.com/get?file=PaintedMetal016_2K-JPG.zip,对得上,黄黑警示条漆面
+G38,地沟盖板,P1,物件,ambientCG,DiamondPlate001,材质,https://ambientcg.com/view?id=DiamondPlate001,https://ambientcg.com/get?file=DiamondPlate001_2K-JPG.zip,对得上,
+G44,工作台和台钳,P1,物件,Poly Haven,bench_vice_01,三维模型,https://polyhaven.com/a/bench_vice_01,https://polyhaven.com/a/bench_vice_01,凑合,只有台钳
+G46,气泵和气管卷轴,P1,物件,Poly Haven,old_military_compressor,三维模型,https://polyhaven.com/a/old_military_compressor,https://polyhaven.com/a/old_military_compressor,对得上,现成模型
 G47,电焊机和气瓶,P2,物件,Poly Haven,portable_welding_cart,三维模型,https://polyhaven.com/a/portable_welding_cart,https://polyhaven.com/a/portable_welding_cart,对得上,现成模型
+G50,废轮胎堆,P1,物件,Poly Haven,old_tyre,三维模型,https://polyhaven.com/a/old_tyre,https://polyhaven.com/a/old_tyre,对得上,现成模型，自己堆
+G51,机油桶、漏斗和接油盆,P1,物件,Poly Haven,small_oil_can_01,三维模型,https://polyhaven.com/a/small_oil_can_01,https://polyhaven.com/a/small_oil_can_01,凑合,只有油壶
+G57,待修的车,P1,物件,Poly Haven,covered_car,三维模型,https://polyhaven.com/a/covered_car,https://polyhaven.com/a/covered_car,对得上,盖着车衣的车，现成模型
+G58,墙上的油手印,P1,贴花,ambientCG,Fingerprints004,材质,https://ambientcg.com/view?id=Fingerprints004,https://ambientcg.com/get?file=Fingerprints004_2K-JPG.zip,对得上,手印污迹层
+G60,车间挂钟和收音机,P1,物件,Poly Haven,wall_clock,三维模型,https://polyhaven.com/a/wall_clock,https://polyhaven.com/a/wall_clock,对得上,现成模型；收音机另配 boombox
+G61,客户等候椅,P2,物件,Poly Haven,SchoolChair_01,三维模型,https://polyhaven.com/a/SchoolChair_01,https://polyhaven.com/a/SchoolChair_01,凑合,是课椅模型
+G62,阁楼陡木梯和护栏,P1,物件,Poly Haven,wooden_ladder,三维模型,https://polyhaven.com/a/wooden_ladder,https://polyhaven.com/a/wooden_ladder,凑合,木梯模型
+G63,绿漆钢办公桌和转椅,P1,物件,Poly Haven,metal_office_desk,三维模型,https://polyhaven.com/a/metal_office_desk,https://polyhaven.com/a/metal_office_desk,凑合,灰色钢办公桌，要改绿
+G64,文件柜,P2,物件,Poly Haven,drawer_cabinet,三维模型,https://polyhaven.com/a/drawer_cabinet,https://polyhaven.com/a/drawer_cabinet,凑合,抽屉柜模型
+G66,绿罩台灯,P2,发光,Poly Haven,desk_lamp_arm_01,三维模型,https://polyhaven.com/a/desk_lamp_arm_01,https://polyhaven.com/a/desk_lamp_arm_01,凑合,是橙色摇臂台灯
+G68,遮雨棚顶面,P1,平铺,Poly Haven,rusty_corrugated_iron,材质,https://polyhaven.com/a/rusty_corrugated_iron,https://polyhaven.com/a/rusty_corrugated_iron,对得上,
+H03,厚木门,P1,物件,Poly Haven,wooden_garage_door,材质,https://polyhaven.com/a/wooden_garage_door,https://polyhaven.com/a/wooden_garage_door,凑合,带铁钉的厚木门板贴图
+H04,磨损的木地板,P1,平铺,Poly Haven,wood_floor_worn,材质,https://polyhaven.com/a/wood_floor_worn,https://polyhaven.com/a/wood_floor_worn,对得上,
+H05,吧台台面,P0,物件,Poly Haven,wood_table_worn,材质,https://polyhaven.com/a/wood_table_worn,https://polyhaven.com/a/wood_table_worn,对得上,
+H06,吧台前缘软包和铜脚踏杆,P1,饰条,Poly Haven,brown_leather,材质,https://polyhaven.com/a/brown_leather,https://polyhaven.com/a/brown_leather,凑合,只有软包皮革
+H07,吧凳,P1,物件,Poly Haven,bar_chair_round_01,三维模型,https://polyhaven.com/a/bar_chair_round_01,https://polyhaven.com/a/bar_chair_round_01,对得上,现成模型
+H08,背吧木架,P1,物件,Poly Haven,wooden_bookshelf_worn,三维模型,https://polyhaven.com/a/wooden_bookshelf_worn,https://polyhaven.com/a/wooden_bookshelf_worn,凑合,旧木书架模型
+H15,挂角的显像管电视,P1,物件,Poly Haven,Television_01,三维模型,https://polyhaven.com/a/Television_01,https://polyhaven.com/a/Television_01,对得上,现成模型
+H22,高背木卡座,P1,物件,Poly Haven,painted_wooden_bench,三维模型,https://polyhaven.com/a/painted_wooden_bench,https://polyhaven.com/a/painted_wooden_bench,凑合,是漆面木长椅
 H31,后厨防滑地砖,P2,平铺,ambientCG,Tiles087,材质,https://ambientcg.com/view?id=Tiles087,https://ambientcg.com/get?file=Tiles087_2K-JPG.zip,凑合,深色石砖，不是防滑砖
 I03,洗衣房方砖地面,P0,平铺,ambientCG,Tiles109,材质,https://ambientcg.com/view?id=Tiles109,https://ambientcg.com/get?file=Tiles109_2K-JPG.zip,对得上,
+I04,半墙瓷砖,P1,平铺,Poly Haven,long_white_tiles,材质,https://polyhaven.com/a/long_white_tiles,https://polyhaven.com/a/long_white_tiles,对得上,白色长条砖
 I05,滚筒洗衣机机身,P0,物件,ambientCG,Porcelain002,材质,https://ambientcg.com/view?id=Porcelain002,https://ambientcg.com/get?file=Porcelain002_2K-JPG.zip,对得上,
+I11,滚筒内壁,P1,物件,ambientCG,SheetMetal002,材质,https://ambientcg.com/view?id=SheetMetal002,https://ambientcg.com/get?file=SheetMetal002_2K-JPG.zip,对得上,冲孔钢板
 I12,上开式洗衣机,P1,物件,ambientCG,Porcelain002,材质,https://ambientcg.com/view?id=Porcelain002,https://ambientcg.com/get?file=Porcelain002_2K-JPG.zip,凑合,白瓷底材
 I13,叠式烘干机,P1,物件,ambientCG,Porcelain002,材质,https://ambientcg.com/view?id=Porcelain002,https://ambientcg.com/get?file=Porcelain002_2K-JPG.zip,凑合,白瓷底材
+I19,模压塑料排椅,P1,物件,Poly Haven,plastic_monobloc_chair_01,三维模型,https://polyhaven.com/a/plastic_monobloc_chair_01,https://polyhaven.com/a/plastic_monobloc_chair_01,凑合,单把塑料椅，不是连排
+I26,肥皂水渍,P1,贴花,ambientCG,SurfaceImperfections005,材质,https://ambientcg.com/view?id=SurfaceImperfections005,https://ambientcg.com/get?file=SurfaceImperfections005_2K-JPG.zip,凑合,水渍圈遮罩
 I27,污水槽,P2,物件,ambientCG,Porcelain002,材质,https://ambientcg.com/view?id=Porcelain002,https://ambientcg.com/get?file=Porcelain002_2K-JPG.zip,对得上,白瓷底材
+J03,混凝土车道,P1,平铺,Poly Haven,grooved_concrete_driveway,材质,https://polyhaven.com/a/grooved_concrete_driveway,https://polyhaven.com/a/grooved_concrete_driveway,对得上,
+J06,门厅镜子和钥匙碗,P2,物件,Poly Haven,ornate_mirror_01,三维模型,https://polyhaven.com/a/ornate_mirror_01,https://polyhaven.com/a/ornate_mirror_01,凑合,只有镜子
+J07,客厅沙发,P1,物件,Poly Haven,Sofa_01,三维模型,https://polyhaven.com/a/Sofa_01,https://polyhaven.com/a/Sofa_01,凑合,素色沙发，格子呢要换布料
+J08,人造革躺椅,P1,物件,Poly Haven,mid_century_lounge_chair,三维模型,https://polyhaven.com/a/mid_century_lounge_chair,https://polyhaven.com/a/mid_century_lounge_chair,对得上,现成模型
+J13,音响和唱机,P2,物件,Poly Haven,boombox,三维模型,https://polyhaven.com/a/boombox,https://polyhaven.com/a/boombox,凑合,是手提录音机
+J17,餐桌椅,P1,物件,Poly Haven,dining_table,三维模型,https://polyhaven.com/a/dining_table,https://polyhaven.com/a/dining_table,对得上,现成模型，椅子另配 dining_chair_02
+J24,电炉灶台和抽油烟机,P1,物件,Poly Haven,electric_stove,三维模型,https://polyhaven.com/a/electric_stove,https://polyhaven.com/a/electric_stove,对得上,现成模型；抽油烟机没有
 J40,梳妆台和首饰盒,P2,物件,Poly Haven,vintage_wooden_drawer_01,三维模型,https://polyhaven.com/a/vintage_wooden_drawer_01,https://polyhaven.com/a/vintage_wooden_drawer_01,凑合,抽屉柜模型，当梳妆台用
+J48,车库地面,P1,平铺,Poly Haven,garage_floor,材质,https://polyhaven.com/a/garage_floor,https://polyhaven.com/a/garage_floor,对得上,
+J49,车库未刷漆的石膏板,P1,平铺,ambientCG,Plaster003,材质,https://ambientcg.com/view?id=Plaster003,https://ambientcg.com/get?file=Plaster003_2K-JPG.zip,凑合,白灰泥，当未刷漆石膏板用
+J50,车库工具墙和工作台,P2,物件,Poly Haven,metal_tool_chest,三维模型,https://polyhaven.com/a/metal_tool_chest,https://polyhaven.com/a/metal_tool_chest,凑合,只有工具柜
+J54,红色汽油桶和油漆罐,P2,物件,Poly Haven,metal_jerrycan,三维模型,https://polyhaven.com/a/metal_jerrycan,https://polyhaven.com/a/metal_jerrycan,对得上,现成模型；油漆罐另配 spray_paint_bottles
 K01,白色搪瓷钢板,P0,平铺,ambientCG,PaintedMetal012,材质,https://ambientcg.com/view?id=PaintedMetal012,https://ambientcg.com/get?file=PaintedMetal012_2K-JPG.zip,对得上,
-K02,杏色和牛油果绿搪瓷,P1,平铺,ambientCG,PaintedMetal012,材质,https://ambientcg.com/view?id=PaintedMetal012,https://ambientcg.com/get?file=PaintedMetal012_2K-JPG.zip,凑合,白色搪瓷，杏色和牛油果绿要改色
+K02,杏色和牛油果绿搪瓷,P1,平铺,ambientCG,PaintedMetal006,材质,https://ambientcg.com/view?id=PaintedMetal006,https://ambientcg.com/get?file=PaintedMetal006_2K-JPG.zip,对得上,带锈的绿色搪瓷感漆面；替换原来凑合的白色
 K03,木纹贴皮塑料,P0,平铺,Poly Haven,synthetic_wood,材质,https://polyhaven.com/a/synthetic_wood,https://polyhaven.com/a/synthetic_wood,对得上,
 K04,发黄的米色塑料,P0,平铺,ambientCG,Plastic010,材质,https://ambientcg.com/view?id=Plastic010,https://ambientcg.com/get?file=Plastic010_2K-JPG.zip,凑合,白塑料，发黄要改色
+K05,黑色皮纹塑料,P1,平铺,ambientCG,Plastic012B,材质,https://ambientcg.com/view?id=Plastic012B,https://ambientcg.com/get?file=Plastic012B_2K-JPG.zip,对得上,
 K06,拉丝不锈钢和镀铬,P0,平铺,ambientCG,Metal059C,材质,https://ambientcg.com/view?id=Metal059C,https://ambientcg.com/get?file=Metal059C_2K-JPG.zip,凑合,是划痕金属，不是拉丝
 K18,售货机喷漆钢板,P0,平铺,ambientCG,PaintedMetal013,材质,https://ambientcg.com/view?id=PaintedMetal013,https://ambientcg.com/get?file=PaintedMetal013_2K-JPG.zip,对得上,
 K22,冰柜外壳和霜,P1,物件,ambientCG,PaintedMetal012,材质,https://ambientcg.com/view?id=PaintedMetal012,https://ambientcg.com/get?file=PaintedMetal012_2K-JPG.zip,凑合,漆面底材，霜没有
 K23,消防栓铸铁漆面,P0,物件,Poly Haven,fire_hydrant,三维模型,https://polyhaven.com/a/fire_hydrant,https://polyhaven.com/a/fire_hydrant,对得上,用消防栓模型自带的贴图
+K34,电钻机身和钻头,P0,物件,Poly Haven,Drill_01,三维模型,https://polyhaven.com/a/Drill_01,https://polyhaven.com/a/Drill_01,凑合,是新式充电钻模型
+K37,电源线和插头,P0,物件,Poly Haven,modular_electric_cables,三维模型,https://polyhaven.com/a/modular_electric_cables,https://polyhaven.com/a/modular_electric_cables,凑合,电缆套件
+K41,搪瓷崩瓷,P0,贴花,Poly Haven,pot_enamel_01,三维模型,https://polyhaven.com/a/pot_enamel_01,https://polyhaven.com/a/pot_enamel_01,凑合,搪瓷锅模型，可取它的崩瓷贴图
 M01,竖向水渍流痕,P0,贴花,ambientCG,Leaking005,贴花,https://ambientcg.com/view?id=Leaking005,https://ambientcg.com/get?file=Leaking005_2K-JPG.zip,对得上,
 M02,窗台下的流痕,P0,贴花,ambientCG,Leaking012A,贴花,https://ambientcg.com/view?id=Leaking012A,https://ambientcg.com/get?file=Leaking012A_2K-JPG.zip,对得上,
+M03,墙根雨水溅泥,P1,贴花,ambientCG,Leaking007,贴花,https://ambientcg.com/view?id=Leaking007,https://ambientcg.com/get?file=Leaking007_2K-JPG.zip,对得上,
+M04,墙角霉斑,P0,贴花,ambientCG,Leaking013C,贴花,https://ambientcg.com/view?id=Leaking013C,https://ambientcg.com/get?file=Leaking013C_2K-JPG.zip,凑合,黑色霉点流痕
 M05,天花角落黑霉,P0,贴花,ambientCG,Leaking015C,贴花,https://ambientcg.com/view?id=Leaking015C,https://ambientcg.com/get?file=Leaking015C_2K-JPG.zip,凑合,是流痕，不是霉斑
+M06,外墙青苔和藻,P1,贴花,ambientCG,Moss001,材质,https://ambientcg.com/view?id=Moss001,https://ambientcg.com/get?file=Moss001_2K-JPG.zip,凑合,整面苔藓，要配遮罩
 M07,锈流痕,P0,贴花,ambientCG,Metal020,材质,https://ambientcg.com/view?id=Metal020,https://ambientcg.com/get?file=Metal020_2K-JPG.zip,凑合,是整面锈铁皮，流痕要从里面抠
+M08,锈斑和锈穿孔,P0,贴花,ambientCG,Rust001,材质,https://ambientcg.com/view?id=Rust001,https://ambientcg.com/get?file=Rust001_2K-JPG.zip,对得上,带透明的锈斑贴花
+M09,泛碱白霜,P1,贴花,ambientCG,Leaking002,贴花,https://ambientcg.com/view?id=Leaking002,https://ambientcg.com/get?file=Leaking002_2K-JPG.zip,凑合,白色流痕，当泛碱用
+M10,多层漆面剥落,P0,贴花,ambientCG,PaintedPlaster006,材质,https://ambientcg.com/view?id=PaintedPlaster006,https://ambientcg.com/get?file=PaintedPlaster006_2K-JPG.zip,凑合,整面开裂剥落的漆面
+M11,灰泥脱落露出砖,P1,贴花,ambientCG,PaintedPlaster014,材质,https://ambientcg.com/view?id=PaintedPlaster014,https://ambientcg.com/get?file=PaintedPlaster014_2K-JPG.zip,凑合,整面灰泥脱落露砖
+M12,混凝土剥落露出钢筋,P1,贴花,Poly Haven,rebar_reinforced_concrete,材质,https://polyhaven.com/a/rebar_reinforced_concrete,https://polyhaven.com/a/rebar_reinforced_concrete,凑合,整面露钢筋的混凝土
 M13,墙面裂缝,P0,贴花,Poly Haven,damaged_plaster,材质,https://polyhaven.com/a/damaged_plaster,https://polyhaven.com/a/damaged_plaster,凑合,只能取破损边缘
 M14,地面裂缝,P0,贴花,ambientCG,AsphaltDamageSet001,图集,https://ambientcg.com/view?id=AsphaltDamageSet001,https://ambientcg.com/get?file=AsphaltDamageSet001_2K-JPG.zip,对得上,
+M16,胶带残痕和海报撕痕,P1,贴花,ambientCG,Tape004,图集,https://ambientcg.com/view?id=Tape004,https://ambientcg.com/get?file=Tape004_2K-JPG.zip,凑合,胶带条图集；海报撕痕没有
+M18,脏手印和油手印,P1,贴花,ambientCG,Fingerprints004,材质,https://ambientcg.com/view?id=Fingerprints004,https://ambientcg.com/get?file=Fingerprints004_2K-JPG.zip,对得上,手印污迹层
+M20,踢痕和鞋印,P1,贴花,ambientCG,Footsteps004,材质,https://ambientcg.com/view?id=Footsteps004,https://ambientcg.com/get?file=Footsteps004_2K-JPG.zip,凑合,鞋印的凹凸材质
+M22,泥地轮胎印,P2,贴花,ambientCG,TireTracks001,贴花,https://ambientcg.com/view?id=TireTracks001,https://ambientcg.com/get?file=TireTracks001_2K-JPG.zip,对得上,轮胎印的凹凸材质
+M30,人行道口香糖斑,P2,图集,ambientCG,ChewingGum001,贴花,https://ambientcg.com/view?id=ChewingGum001,https://ambientcg.com/get?file=ChewingGum001_2K-JPG.zip,对得上,
+M32,散落的落叶,P1,图集,ambientCG,ScatteredLeaves004,材质,https://ambientcg.com/view?id=ScatteredLeaves004,https://ambientcg.com/get?file=ScatteredLeaves004_2K-JPG.zip,对得上,带透明的散落落叶
+M39,灰尘堆和棉絮,P2,贴花,ambientCG,SurfaceImperfections014,材质,https://ambientcg.com/view?id=SurfaceImperfections014,https://ambientcg.com/get?file=SurfaceImperfections014_2K-JPG.zip,凑合,灰尘遮罩
 M41,屋檐滴水线,P1,贴花,ambientCG,Leaking012A,贴花,https://ambientcg.com/view?id=Leaking012A,https://ambientcg.com/get?file=Leaking012A_2K-JPG.zip,对得上,
+O01,阴云夜空,P0,全景,Poly Haven,qwantani_night_puresky,全景,https://polyhaven.com/a/qwantani_night_puresky,https://polyhaven.com/a/qwantani_night_puresky,凑合,多云夜空全景，要压暗
+O13,镜头脏污和光晕,P2,遮罩,ambientCG,SurfaceImperfections004,材质,https://ambientcg.com/view?id=SurfaceImperfections004,https://ambientcg.com/get?file=SurfaceImperfections004_2K-JPG.zip,凑合,水滴和污点遮罩
 P13,警靴,P1,物件,ambientCG,Leather028,材质,https://ambientcg.com/view?id=Leather028,https://ambientcg.com/get?file=Leather028_2K-JPG.zip,凑合,皮革底材，要改成黑色
+P15,警用腰带,P0,物件,Poly Haven,brown_leather,材质,https://polyhaven.com/a/brown_leather,https://polyhaven.com/a/brown_leather,凑合,皮革底材，要改成黑色
 P16,枪套和弹匣套,P0,物件,ambientCG,Leather028,材质,https://ambientcg.com/view?id=Leather028,https://ambientcg.com/get?file=Leather028_2K-JPG.zip,凑合,皮革底材，要改成黑色
 P17,电击枪套和手电套,P1,物件,ambientCG,Leather028,材质,https://ambientcg.com/view?id=Leather028,https://ambientcg.com/get?file=Leather028_2K-JPG.zip,凑合,皮革底材，要改成黑色
 P30,霰弹枪背带和侧挂弹夹,P1,物件,ambientCG,Leather028,材质,https://ambientcg.com/view?id=Leather028,https://ambientcg.com/get?file=Leather028_2K-JPG.zip,凑合,皮革底材

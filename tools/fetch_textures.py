@@ -7,6 +7,7 @@ imported or shipped until it is copied into fps/ on purpose).
   tools/fetch_textures.py --res 2K        at another resolution (1K is the default)
   tools/fetch_textures.py --only Asphalt015,red_brick
   tools/fetch_textures.py --force         download again even if present
+  tools/fetch_textures.py --prune         also delete assets the list no longer names
 
 What ends up on disk, per asset:
 
@@ -14,6 +15,7 @@ What ends up on disk, per asset:
   textures/materials/<Asset>/<Asset>_Normal.jpg   normal map, OpenGL convention (green up)
   textures/materials/<Asset>/<Asset>_ORM.jpg      red = occlusion, green = roughness, blue = metalness
   textures/models/<Asset>/...                     glTF model with its own textures, as published
+  textures/panoramas/<Asset>/<Asset>_Panorama.hdr sky panorama, 2K HDR whatever --res says
   textures/fonts/...
   textures/sources.csv                            one line per asset: where it came from, licence, who uses it
 
@@ -136,6 +138,13 @@ def fetch_polyhaven_model(asset, res, folder):
     return files, None
 
 
+def fetch_polyhaven_panorama(asset, folder):
+    info = json.loads(get(f"https://api.polyhaven.com/files/{asset}"))
+    os.makedirs(folder, exist_ok=True)
+    open(os.path.join(folder, f"{asset}_Panorama.hdr"), "wb").write(get(info["hdri"]["2k"]["hdr"]["url"]))
+    return [f"{asset}_Panorama.hdr"], (2048, 1024)
+
+
 def fetch_font(folder):
     os.makedirs(folder, exist_ok=True)
     base = "https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/"
@@ -151,6 +160,7 @@ def main():
     ap.add_argument("--res", default="1K", choices=["1K", "2K", "4K"])
     ap.add_argument("--only", default="")
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--prune", action="store_true")
     args = ap.parse_args()
     only = {x for x in args.only.split(",") if x}
 
@@ -172,9 +182,11 @@ def main():
             sub, folder = "fonts", os.path.join(OUT, "fonts")
         elif a["kind"] == "三维模型":
             sub, folder = "models", os.path.join(OUT, "models", asset)
+        elif a["kind"] == "全景":
+            sub, folder = "panoramas", os.path.join(OUT, "panoramas", asset)
         else:
             sub, folder = "materials", os.path.join(OUT, "materials", asset)
-        have = asset in records and os.path.isdir(folder) and records[asset]["resolution"] in (args.res, "")
+        have = asset in records and os.path.isdir(folder) and (records[asset]["resolution"] in (args.res, "") or a["kind"] == "全景")
         if have and not args.force:
             records[asset]["used_by"] = " ".join(sorted(a["ids"]))
             continue
@@ -188,6 +200,9 @@ def main():
             elif a["kind"] == "三维模型":
                 files, size = fetch_polyhaven_model(asset, args.res, folder)
                 licence, url = "CC0", f"https://api.polyhaven.com/files/{asset}"
+            elif a["kind"] == "全景":
+                files, size = fetch_polyhaven_panorama(asset, folder)
+                licence, url = "CC0", f"https://api.polyhaven.com/files/{asset}"
             else:
                 files, size = fetch_polyhaven_texture(asset, args.res, folder)
                 licence, url = "CC0", f"https://api.polyhaven.com/files/{asset}"
@@ -197,11 +212,19 @@ def main():
             continue
         records[asset] = {
             "asset": asset, "library": a["library"], "kind": a["kind"], "licence": licence, "page": a["page"], "download": url,
-            "resolution": "" if a["kind"] == "字体" else args.res, "size": f"{size[0]}x{size[1]}" if size else "",
+            "resolution": "" if a["kind"] == "字体" else ("2K" if a["kind"] == "全景" else args.res), "size": f"{size[0]}x{size[1]}" if size else "",
             "folder": f"textures/{sub}" + ("" if sub == "fonts" else f"/{asset}"), "files": " ".join(files),
             "fetched": time.strftime("%Y-%m-%d"), "used_by": " ".join(sorted(a["ids"])),
         }
         print(f"ok {asset}: {len(files)} files")
+    if args.prune and not only:
+        import shutil
+        for asset in [x for x in records if x not in assets]:
+            folder = os.path.join(ROOT, records[asset]["folder"])
+            if os.path.isdir(folder) and os.path.basename(folder) == asset:
+                shutil.rmtree(folder)
+            del records[asset]
+            print(f"pruned {asset}")
     os.makedirs(OUT, exist_ok=True)
     cols = ["asset", "library", "kind", "licence", "page", "download", "resolution", "size", "folder", "files", "fetched", "used_by"]
     with open(record_path, "w", newline="", encoding="utf-8-sig") as f:
