@@ -1,0 +1,29 @@
+set,source,asset,url,license,note
+A04_TarCrackSealant,procedural,art/textures/gen_decals.py,,original,meandering tar lines; alpha is the tar
+A36_PuddleMudRim,procedural,art/textures/gen_decals.py,,original,4 variants; mud left where a puddle dried from the edge inwards
+A38_OilRainbowSheen,procedural,art/textures/gen_decals.py,,original,"4 variants; iridescent film, meant for wet asphalt, keep it glossy"
+A39_OilDripSpots,procedural,art/textures/gen_decals.py,,original,4 variants; a cluster of drips under a parked engine
+A40_SkidMarks,procedural,art/textures/gen_decals.py,,original,"3 pairs of tyre streaks, left to right, fading out"
+A42_BrokenGlass,procedural,art/textures/gen_decals.py,,original,"4 scatters of shards; bright edges, greenish body; give it low roughness"
+A43_LooseGrit,procedural,art/textures/gen_decals.py,,original,4 scatters of small stones
+C31_RoofFeltPatches,procedural,art/textures/gen_decals.py,,original,patches with tarred edges and two long seams
+D12_WallHoleInsulation,procedural,art/textures/gen_decals.py,,original,"ragged hole: plaster rim, fibreglass, two cables"
+D18_CeilingCollapse,procedural,art/textures/gen_decals.py,,original,"broken tile edge, dark void, bare grid runners"
+D28_CarpetStainsAndBurns,procedural,art/textures/gen_decals.py,,original,"2 spill stains, 2 groups of cigarette burns"
+E39_CoolerDripScale,procedural,art/textures/gen_decals.py,,original,4 variants; pale mineral tide lines where water kept drying
+I25_LintClumps,procedural,art/textures/gen_decals.py,,original,4 grey clumps with stray fibres
+K40_CasingDents,procedural,art/textures/gen_decals.py,,original,11 dents and 4 creases; OpenGL normal
+L06_SkinMetalTransition,procedural,art/textures/gen_decals.py,,original,"left = metal, right = skin; fingers of skin reach along thin veins"
+L17_BlackOilDragTrail,procedural,art/textures/gen_decals.py,,original,runs top to bottom and tiles vertically in feel (not exactly); glossy black
+L21_BloodDrops,procedural,art/textures/gen_decals.py,,original,"4 variants: drops, a walking trail, a pool, cast-off"
+L35_GrowthEdgeFalloff,procedural,art/textures/gen_decals.py,,original,"white core, ragged tendrils fading out; multiply over the growth material"
+L37_BlackOilSeep,procedural,art/textures/gen_decals.py,,original,a seam near the top bleeding runs of different lengths; glossy black
+M15_SteppedBrickCrack,procedural,art/textures/gen_decals.py,,original,2 cracks stepping down the mortar joints; scale one step to one brick course
+M17_PinHolesAndPaperCorners,procedural,art/textures/gen_decals.py,,original,"2 cells of torn paper corners with pin holes, 2 of bare holes"
+M24_CableDragMarks,procedural,art/textures/gen_decals.py,,original,"5 wandering double scuffs, left to right"
+M25_SootAndScorch,procedural,art/textures/gen_decals.py,,original,4 variants; charred base with soot climbing the wall
+M26_SocketArcScorch,procedural,art/textures/gen_decals.py,,original,4 variants; starburst of soot with a clean rectangle where the plate was
+M27_EngineOilStains,procedural,art/textures/gen_decals.py,,original,"4 variants: two soaked patches, a splatter, a hand-wiped smear"
+M28_DrinkSpills,procedural,art/textures/gen_decals.py,,original,"4 variants (cola, cherry, coffee, beer): splash, droplets and runs; for walls, runs point down"
+M29_BirdDroppings,procedural,art/textures/gen_decals.py,,original,"4 splats, white with dark flecks"
+M31_LitterAtlas,procedural,art/textures/gen_decals.py,,original,"4 x 4 cells: 6 cigarette butts, 5 bottle caps (no brands), 5 paper scraps"
