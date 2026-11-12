@@ -11,7 +11,7 @@
 
 - 玩家控制器、三把武器（手枪、霰弹枪、钢管）、部位负伤、电网噪音、电视怪、氛围系统，各自有自测
 - 贴图库和材质（`fps/assets/textures/`、`fps/assets/materials/`），77 个现成模型（`textures/models/`）
-- Windows 导出：`tools/export_windows.sh`（GitHub 上的自动打包第 34 到 36 次运行都是一启动就失败，原因没查，可能是账号的 Actions 额度）
+- Windows 导出：`tools/export_windows.sh`；GitHub 上的自动打包也恢复了（之前失败是工作流文件里一个步骤名带冒号、YAML 解析不了，已修；第 39、40 次运行成功。不是账号额度的问题）
 
 ## 作废的
 
