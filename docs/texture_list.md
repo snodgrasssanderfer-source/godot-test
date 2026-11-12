@@ -24,6 +24,7 @@
 
 还剩 93 项"待找"，两个素材库里都没有合适的现成素材，名单和原因在 `docs/texture_check/still_missing.md`。
 这些项和需要重做的项，给出图工具用的提示词在 `docs/texture_prompts.md`。
+小鱼按这些提示词出的第一批 147 张在分支 `xiaoyu/textures-20261112`，核对结论在 `docs/texture_check/xiaoyu_gpt_batch.md`（合格 65、重导 70、重出 8、我来修 4）；**下面各项的"素材"栏还没有按这批图更新**，等图接收进 `textures/` 时再改。
 
 交付规范见 `docs/texture_delivery.md`，验收用 `tools/check_textures.py`。
 
