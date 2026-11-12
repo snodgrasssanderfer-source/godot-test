@@ -91,6 +91,8 @@ godot --headless --fixed-fps 60 --path fps -- --selftest
 godot --headless --fixed-fps 60 --path fps res://world/town/town.tscn -- --selftest
 ```
 
+小镇要在 Blender 里重做：怎么导出、怎么读回来、哪些尺寸不能动，见 `docs/blender_town_workflow.md`。
+
 **氛围测试场景**（`fps/test/tone_street.tscn`）：WASD + 鼠标飞行，`[` `]` 调时间，
 `T` 让时间流动，`P` 开关电力，`F` 手电，`F1` 隐藏左上角的帧率和帧时间。
 

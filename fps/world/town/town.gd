@@ -87,6 +87,12 @@ func _ready() -> void:
 		elif arg.begins_with("--dump="):
 			auto_mode = "dump"
 			auto_arg = arg.trim_prefix("--dump=")
+		elif arg.begins_with("--export-gltf="):
+			auto_mode = "gltf"
+			auto_arg = arg.trim_prefix("--export-gltf=")
+		elif arg.begins_with("--check-model="):
+			auto_mode = "model"
+			auto_arg = arg.trim_prefix("--check-model=")
 	_automated = auto_mode != ""
 
 	builder = TownBuilder.new()
@@ -97,6 +103,15 @@ func _ready() -> void:
 		file.close()
 		print("DUMP ", auto_arg)
 		get_tree().quit()
+		return
+
+	if auto_mode == "gltf":
+		_export_gltf(auto_arg)
+		get_tree().quit()
+		return
+	if auto_mode == "model":
+		var ok := await _check_model(auto_arg)
+		get_tree().quit(0 if ok else 1)
 		return
 
 	var window := get_window()
@@ -153,6 +168,81 @@ func _ready() -> void:
 		var auto := TownAuto.new()
 		add_child(auto)
 		auto.start(self, auto_mode, auto_arg)
+
+
+## The greybox as a .glb for Blender: one object per lot and material tag (flat
+## colours, materials named after the tags), plus an empty for every marker.
+## See docs/blender_town_workflow.md.
+func _export_gltf(path: String) -> void:
+	TownBuilder.use_textures = false
+	var root := Node3D.new()
+	root.name = "Town"
+	add_child(root)
+	builder.commit(root)
+	for lot in builder.lots:
+		for child in lot.node.get_children():
+			if child is MeshInstance3D:
+				child.name = "%s__%s" % [lot.name, child.name]
+			else:
+				child.free()                        # collision bodies are rebuilt from the Blender model
+		for m in lot.markers:
+			var empty := Node3D.new()
+			empty.name = "marker_%s" % m.id
+			lot.node.add_child(empty)
+			empty.position = m.position
+	var doc := GLTFDocument.new()
+	var state := GLTFState.new()
+	var err := doc.append_from_scene(root, state)
+	if err == OK:
+		err = doc.write_to_filesystem(state, path)
+	print("GLTF %s %s" % [path, "ok" if err == OK else "FAILED %d" % err])
+
+
+## Loads a town model that came back from Blender and checks it against the
+## greybox it started from: is everything where the layout says it is?
+func _check_model(path: String) -> bool:
+	var model := TownModel.load_file(path, self)
+	if model == null:
+		print("MODEL cannot load ", path)
+		return false
+	print("MODEL ", model.summary())
+	var failed := 0
+	var worst := 0.0
+	var missing: Array[String] = []
+	for lot in builder.lots:
+		for m in lot.markers:
+			if not model.markers.has(m.id):
+				missing.append(String(m.id))
+				continue
+			var moved := (model.markers[m.id] as Vector3).distance_to(lot.to_world(m.position))
+			worst = maxf(worst, moved)
+			if moved >= 0.01:
+				print("NOTE  model: marker %s is %.2f m from where the greybox layout has it" % [m.id, moved])
+	# Moved markers are reported above but are not a failure: rooms may be rearranged on purpose.
+	print("NOTE  model: the furthest any marker has moved is %.3f m" % worst)
+	var checks := [
+		["every marker of the layout is in the model", missing.is_empty(), ", ".join(missing)],
+		["the model has meshes and every one got a collider", model.mesh_count > 50 and model.collider_count == model.mesh_count, ""],
+	]
+	# physics: there is ground to stand on beside the police car (ray from under the canopy)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var space := get_world_3d().direct_space_state
+	var car: Vector3 = builder.marker_position(&"police_car")
+	var down := space.intersect_ray(PhysicsRayQueryParameters3D.create(car + Vector3(3, 1.5, 0), car + Vector3(3, -6, 0), 1))
+	checks.append(["a ray down beside the police car lands on the forecourt", not down.is_empty() and absf(down.position.y) < 0.3,
+			"hit %s" % (str(down.position) if not down.is_empty() else "nothing")])
+	var textured := 0
+	for key: String in model.materials:
+		if model.materials[key][1] != "kept":
+			textured += 1
+	checks.append(["greybox tags found their material sets", textured >= 10, "%d of %d materials" % [textured, model.materials.size()]])
+	for c: Array in checks:
+		print("%s  model: %s%s" % ["PASS" if c[1] else "FAIL", c[0], ("   [" + c[2] + "]") if c[2] != "" else ""])
+		if not c[1]:
+			failed += 1
+	print("MODEL CHECK %d passed, %d failed" % [checks.size() - failed, failed])
+	return failed == 0
 
 
 func _label(layer: CanvasLayer) -> Label:

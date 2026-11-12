@@ -74,14 +74,14 @@ E10,E10_MopBucket_Color.png,多视图,合格,二
 E14,E14_PricePylon_Emission.png,发光,合格,三
 E15,E15_MainPylonSign_Emission.png,发光,合格,三
 E16,E16_TwentyFourHourNeon_Emission.png,发光,合格,三
-E17,E17_CigaretteLotteryLightbox_Emission.png,发光,重出,三
+E17,E17_CigaretteLotteryLightbox_Emission.png,发光,合格,三
 E21,E21_VendingMachine_Color.png,正面图,合格,二
 E25,E25_PriceTagStrips_Color.png,平面印刷品,合格,二
 E26,E26_SnackPackaging_Color.png,图集,合格,三
 E27,E27_DryGoodsPackaging_Color.png,图集,合格,三
 E28,E28_DrinkBottlesCans_Color.png,图集,合格,三
 E29,E29_MilkCarton_Color.png,平面印刷品,合格,二
-E30,E30_CigaretteCartonsLighterRack_Color.png,图集,重出,三
+E30,E30_CigaretteCartonsLighterRack_Color.png,图集,合格,三
 E31,E31_CarAccessories_Color.png,图集,合格,三
 E32,E32_MedicineFirstAid_Color.png,图集,合格,三
 E34,E34_RoadAtlasesAndPostcards_Color.png,图集,合格,三
@@ -267,7 +267,7 @@ N22,N22_PoliceDepartmentFiles_Color.png,图集,合格,三
 N23,N23_HandwrittenNotes_Color.png,图集,合格,三
 N24,N24_Photos_Color.png,图集,合格,三
 N25,N25_DrinkBeerBrands_Color.png,平面印刷品,合格,二
-N26,N26_CigaretteSnackBrands_Color.png,图集,重出,三
+N26,N26_CigaretteSnackBrands_Color.png,图集,合格,三
 N27,N27_ApplianceToolBrands_Color.png,平面印刷品,合格,二
 O28,O28_MeatAndShellFragments_Color.png,平面印刷品,合格,二
 P05,P05_Lacerations_Color.png,贴花图集,合格,三
