@@ -58,6 +58,21 @@
 
 米勒父子五金与汽修行、锈锚小酒馆、克拉克家是 GDD 自己起的名字，不涉及商标，照用。
 
+**用户 2026-11-12 认可的设定名**（都是占位，同样没查过商标；它们已经印进贴图，改名就要重出图）
+
+| 用在哪 | 名字 |
+| --- | --- |
+| 故事所在的州 | MICHIWA，口号 THE LAKESHORE STATE |
+| 主角所属的警局 | MICHIWA STATE PATROL，车号 217 |
+| 便利店的英文店名 | NIGHT SHIFT FOOD MART |
+| 电力公司、报纸 | LAKE COUNTY POWER & LIGHT、THE COUNTY LEDGER |
+| 克拉克家的两个孩子、狗 | EMMA、TOBY、BUSTER |
+| 便利店店员 | DEB、RAY、TINA、MARCUS、LOU（酒馆的 Lou 手里有汽修行库房的备用钥匙） |
+| 时间线 | 报纸三期是 1996 年 10 月 14、15、16 日；停电通知是 10 月 15 日 23 点到 16 日 3 点；最后一张小票是 16 日 02:57 |
+
+饮料、酒、家电、工具、零食、香烟等虚构品牌的完整名单在 `docs/texture_prompts_redo.md` 开头和 `docs/texture_prompts.md` 的 N25、N27 两条里。
+前两轮查出撞名并已换掉的：Polar Pop → Frostbelt Fizz，Lakehead Pilsner → Millrace Pilsner，Clean Harbor → Tidewash；Big Cedar Cola 改成深绿加奶油色。
+
 ---
 
 ## 一、无 UI 状态与部位负伤
@@ -679,6 +694,7 @@ GDD 第六节那张 250 × 250 米地图的灰盒，2026-11-12 搭完并跑通�
 
 | 2026-11-12 | 五之三 | 小镇灰盒搭完并跑通，新增"五之三"，记了 8 处实现偏差和尚未实现的部分 |
 | 2026-11-12 | 五之三 | 用户确认四栋楼的内部布局；电网和电视怪接进小镇，记了 3 处实现偏差 |
+| 2026-11-12 | 〇 | 用户认可了贴图里用到的一批设定名（州、警局、孩子、店员、时间线），记在"已经定下来的事"后面 |
 
 **实现偏差汇总**
 
