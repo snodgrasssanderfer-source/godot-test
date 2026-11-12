@@ -51,6 +51,7 @@ Rules: no real brand names, logos or trademarks; no people and no faces; no lett
 | 遮罩 | 玻璃裂纹 | 黑底白纹 |
 
 所有虚构品牌名（NORTHLINE、Big Cedar Cola、Ironwood Lager 等）都是我起的，**没有查过商标**，上架前要逐个检索，撞了就换。
+（2026-11-12 补：粗查后发现 Polar Pop、Lakehead Pilsner、Clean Harbor 三个撞了真实品牌，Big Cedar Cola 出图像可口可乐。下面第一、二节里的原提示词没有改，**要用第四节的新版**。）
 
 ---
 
@@ -992,4 +993,64 @@ Flat print artwork, straight-on with no perspective, as if scanned: an atlas of 
 
 ```text
 You are making texture source images for a first-person survival horror game set in a small American Rust Belt highway town in the 1990s, abandoned in one night; it is 3 a.m. and raining. The look is photo-sourced and dirty: real, cheap, worn-out materials rather than clean or stylised art. Every image must work as a game texture, which means: straight-on orthographic views only, flat shadowless lighting, no perspective, no scene around the subject, exactly one subject per image, 1024 x 1024. Never include real brands, real people, recognisable faces, or any text I did not spell out. Never add captions, labels or watermarks. When I ask for transparency, give a real transparent PNG, never a painted checkerboard.
+```
+
+---
+
+## 四、第二轮：第一批核对后要重出的 8 条（2026-11-12）
+
+第一批 147 张的核对结论在 `docs/texture_check/xiaoyu_gpt_batch.md`：合格 66、重导 70、重出 8、我来修 3。
+
+**先做重导**（不用重新出图）：除平铺以外的类型，从原图**等比缩小放进 1024 画布，不要裁**（贴花那一批就是这样做的，是对的）；
+空出来的边，多视图、正面图、印刷品填中灰 `#808080`，发光和遮罩填纯黑。多视图直接交原始尺寸也可以。要重导的 70 个编号在核对文档的逐项表里。
+另外 B10、B43、F04、F06、F17、F18、H16、I15 这 8 个文件名的通道从 `Emission` 改成 `Color`。
+
+**再出下面 8 条**。和第一轮比，每条多了一句"整个东西必须完整地在画面里，四边留空"。Frostbelt Fizz、Millrace、Tidewash 是替换撞名牌子的新名字，**同样没有查过商标**。
+
+**E21　自动售货机**　——　换配色，去掉飘带
+
+```text
+Straight-on orthographic front view of a 1990s outdoor soft-drink vending machine, the whole machine from top to bottom: tall steel cabinet with a large front panel in dark forest green showing a row of cream-coloured cedar tree silhouettes and the fictional brand name 'BIG CEDAR COLA' in cream slab-serif capital letters; no red, no wave, no ribbon, no swoosh, no glass of cola; a column of eight blank selection buttons, coin slot, bill slot and a delivery hatch at the bottom; sun-faded, scratched, rust at the base, unlit. On a plain flat mid-grey (#808080) background. Perfectly head-on, no perspective, no tilt. Everything must fit completely inside the frame with clear empty margin on all four sides; nothing may be cut off by the edge of the image. Flat, even, shadowless overcast lighting (this is an albedo map): no cast shadows, no specular highlights, no reflections, no vignette, no depth of field. Setting: a small American Rust Belt highway town of the 1990s, abandoned in a single night; it is 3 a.m. and raining. Everything is old, cheap, heavily used and dirty: water stains, rust bleeding from fixings, grease, nicotine yellowing, peeling paint, sun-faded colour, dust in the corners. Muted, desaturated, slightly cold palette. Photorealistic, like a photo-scanned game texture; not illustrated, not painted, not stylised, not clean, not new. Rules: no real brand names, logos or trademarks; no people and no faces; no letters or numbers unless this prompt gives the exact text; no labels, captions, ID codes, arrows or watermark; no fake checkerboard transparency.
+```
+
+**K19　售货机发光面板**　——　换配色和牌子
+
+```text
+Emissive texture on a pure black (#000000) background, straight-on orthographic: the lit front panels of two soft-drink vending machines, side by side and both complete: one with the fictional brand 'BIG CEDAR COLA' in cream slab-serif letters on dark forest green with cedar tree silhouettes; one with the fictional brand 'FROSTBELT FIZZ' in dark blue block letters on pale yellow with a single large snowflake; no red, no wave, no ribbon, no animals; uneven fluorescent backlight with a dead tube leaving one dark band. Only the light-emitting parts are bright. Everything must fit completely inside the frame with clear empty margin on all four sides; nothing may be cut off by the edge of the image. Setting: a small American Rust Belt highway town of the 1990s, abandoned in a single night; it is 3 a.m. and raining. Everything is old, cheap, heavily used and dirty: water stains, rust bleeding from fixings, grease, nicotine yellowing, peeling paint, sun-faded colour, dust in the corners. Muted, desaturated, slightly cold palette. Photorealistic, like a photo-scanned game texture; not illustrated, not painted, not stylised, not clean, not new. Rules: no real brand names, logos or trademarks; no people and no faces; no letters or numbers unless this prompt gives the exact text; no labels, captions, ID codes, arrows or watermark; no fake checkerboard transparency.
+```
+
+**N25　虚构饮料品牌**　——　换掉两个撞名的牌子
+
+```text
+Flat print artwork, straight-on with no perspective, as if scanned: a sheet of thirteen fictional 1990s drink brand logos as flat artwork on plain off-white paper, in a neat grid: sodas 'Frostbelt Fizz', 'Sunvale Orange', 'Kettle Root Beer', 'Lime Rally', 'Big Cedar Cola' (dark green and cream, with a cedar tree; not red), 'Grapeline'; beers 'Ironwood Lager', 'Millrace Pilsner', 'Old Foundry', 'Tamarack Light'; whiskeys 'Three Smokestacks', 'Pine Hollow Rye', 'Judge Abbott'; each in its own style of the period. None may resemble any real brand. Everything must fit completely inside the frame with clear empty margin on all four sides; nothing may be cut off by the edge of the image. Flat, even, shadowless overcast lighting (this is an albedo map): no cast shadows, no specular highlights, no reflections, no vignette, no depth of field. Setting: a small American Rust Belt highway town of the 1990s, abandoned in a single night; it is 3 a.m. and raining. Everything is old, cheap, heavily used and dirty: water stains, rust bleeding from fixings, grease, nicotine yellowing, peeling paint, sun-faded colour, dust in the corners. Muted, desaturated, slightly cold palette. Photorealistic, like a photo-scanned game texture; not illustrated, not painted, not stylised, not clean, not new. Rules: no real brand names, logos or trademarks; no people and no faces; no letters or numbers unless this prompt gives the exact text; no labels, captions, ID codes, arrows or watermark; no fake checkerboard transparency.
+```
+
+**N27　虚构家电 / 工具品牌**　——　换掉一个撞名的牌子
+
+```text
+Flat print artwork, straight-on with no perspective, as if scanned: a sheet of thirteen fictional 1980s and 1990s product brand logos as flat artwork on plain off-white paper, in a neat grid: appliances 'Halvern', 'Norvane', 'Emberly', 'Wexford Electric', 'Coldmoor'; tools 'Ridgeback', 'Stoutman', 'Anvil & Oak'; batteries 'Voltree', 'Amberlite'; laundry detergents 'Brightwell', 'Suds-O', 'Tidewash'; each also repeated as a small one-colour metal badge. None may resemble any real brand. Everything must fit completely inside the frame with clear empty margin on all four sides; nothing may be cut off by the edge of the image. Flat, even, shadowless overcast lighting (this is an albedo map): no cast shadows, no specular highlights, no reflections, no vignette, no depth of field. Setting: a small American Rust Belt highway town of the 1990s, abandoned in a single night; it is 3 a.m. and raining. Everything is old, cheap, heavily used and dirty: water stains, rust bleeding from fixings, grease, nicotine yellowing, peeling paint, sun-faded colour, dust in the corners. Muted, desaturated, slightly cold palette. Photorealistic, like a photo-scanned game texture; not illustrated, not painted, not stylised, not clean, not new. Rules: no real brand names, logos or trademarks; no people and no faces; no letters or numbers unless this prompt gives the exact text; no labels, captions, ID codes, arrows or watermark; no fake checkerboard transparency.
+```
+
+**H02　窗内啤酒霓虹**　——　换掉一个撞名的牌子，四块都要完整
+
+```text
+Emissive texture on a pure black (#000000) background, straight-on orthographic: four neon beer window signs, glowing, in a 2 x 2 grid, each one complete and separate: 'Ironwood Lager' in red script with a pine-tree outline, 'Millrace' in blue with a water wheel, 'Old Foundry' in amber with a gear, 'Tamarack Light' in green; visible glass tubes with black-painted joins and a couple of dead sections. Only the light-emitting parts are bright. Everything must fit completely inside the frame with clear empty margin on all four sides; nothing may be cut off by the edge of the image. Setting: a small American Rust Belt highway town of the 1990s, abandoned in a single night; it is 3 a.m. and raining. Everything is old, cheap, heavily used and dirty: water stains, rust bleeding from fixings, grease, nicotine yellowing, peeling paint, sun-faded colour, dust in the corners. Muted, desaturated, slightly cold palette. Photorealistic, like a photo-scanned game texture; not illustrated, not painted, not stylised, not clean, not new. Rules: no real brand names, logos or trademarks; no people and no faces; no letters or numbers unless this prompt gives the exact text; no labels, captions, ID codes, arrows or watermark; no fake checkerboard transparency.
+```
+
+**L29　警察钱包和证件**　——　背景要纯灰，不要场景
+
+```text
+Flat print artwork, straight-on with no perspective, as if scanned from directly above: a worn brown leather wallet opened flat, and beside it a complete driver's licence card; the licence is a fictional generic design headed 'DRIVER LICENSE' with a blue header band, and its small photo is scratched and water-damaged so that only a silhouette of head and shoulders remains; all other fields are illegible smudged lines; a few faded banknote edges and a blank receipt in the wallet. On a plain flat mid-grey (#808080) background and nothing else: no street, no table, no scene. Everything must fit completely inside the frame with clear empty margin on all four sides; nothing may be cut off by the edge of the image. Flat, even, shadowless overcast lighting (this is an albedo map): no cast shadows, no specular highlights, no reflections, no vignette, no depth of field. Setting: a small American Rust Belt highway town of the 1990s, abandoned in a single night; it is 3 a.m. and raining. Everything is old, cheap, heavily used and dirty: water stains, rust bleeding from fixings, grease, nicotine yellowing, peeling paint, sun-faded colour, dust in the corners. Muted, desaturated, slightly cold palette. Photorealistic, like a photo-scanned game texture; not illustrated, not painted, not stylised, not clean, not new. Rules: no real brand names, logos or trademarks; no real or recognisable person, and no sharp or detailed face: any face must be as degraded, small or blurred as described above; no letters or numbers unless this prompt gives the exact text; no labels, captions, ID codes, arrows or watermark; no fake checkerboard transparency.
+```
+
+**F21　车窗（雨滴、脏手印）**　——　要真透明
+
+```text
+A single decal on a fully transparent background (PNG with alpha), straight-on orthographic view, centred: what is on a car side window, without the glass itself: rain droplets, a greasy smeared handprint dragged downwards, and dried dirty water runs. Only the marks themselves; no grey background, no glass, no surface behind them, no drop shadow. Soft, irregular, natural edges that fade into transparency. Everything must fit completely inside the frame with clear empty margin on all four sides; nothing may be cut off by the edge of the image. Flat, even, shadowless overcast lighting (this is an albedo map): no cast shadows, no specular highlights, no reflections, no vignette, no depth of field. Setting: a small American Rust Belt highway town of the 1990s, abandoned in a single night; it is 3 a.m. and raining. Everything is old, cheap, heavily used and dirty: water stains, rust bleeding from fixings, grease, nicotine yellowing, peeling paint, sun-faded colour, dust in the corners. Muted, desaturated, slightly cold palette. Photorealistic, like a photo-scanned game texture; not illustrated, not painted, not stylised, not clean, not new. Rules: no real brand names, logos or trademarks; no people and no faces; no letters or numbers unless this prompt gives the exact text; no labels, captions, ID codes, arrows or watermark; no fake checkerboard transparency.
+```
+
+**O28　怪物碎片**　——　要真透明
+
+```text
+An atlas of sixteen pieces of debris in a 4 x 4 grid on a fully transparent background (PNG with alpha), each piece separate and not touching another: what flies off when a creature made of household appliance and flesh is shot: torn enamelled sheet-metal shards with chipped paint and rust, cracked beige plastic fragments, glass shards, and wet red chunks of meat, some of them still stuck to a piece of metal. No grey background, no surface behind them, no drop shadows. Straight-on orthographic. Everything must fit completely inside the frame with clear empty margin on all four sides; nothing may be cut off by the edge of the image. Flat, even, shadowless overcast lighting (this is an albedo map): no cast shadows, no specular highlights, no reflections, no vignette, no depth of field. Setting: a small American Rust Belt highway town of the 1990s, abandoned in a single night; it is 3 a.m. and raining. Everything is old, cheap, heavily used and dirty: water stains, rust bleeding from fixings, grease, nicotine yellowing, peeling paint, sun-faded colour, dust in the corners. Muted, desaturated, slightly cold palette. Photorealistic, like a photo-scanned game texture; not illustrated, not painted, not stylised, not clean, not new. Rules: no real brand names, logos or trademarks; no people and no faces; no letters or numbers unless this prompt gives the exact text; no labels, captions, ID codes, arrows or watermark; no fake checkerboard transparency.
 ```

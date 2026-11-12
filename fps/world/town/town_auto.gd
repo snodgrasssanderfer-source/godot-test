@@ -10,12 +10,6 @@ extends Node
 ##   godot --headless --fixed-fps 60 --path fps res://world/town/town.tscn -- --selftest
 
 const TICKS := 120.0
-## What the navigation mesh covers: the whole walkable town, pit to upper floors.
-const NAV_BOUNDS := AABB(Vector3(-78.0, -2.0, -116.0), Vector3(176.0, 9.0, 238.0))
-## The town is laid out at an angle to the grid and has 1 m doors: on the
-## range's 0.25 m cells a door can close up, so the town bakes at half that.
-const NAV_RADIUS := 0.25
-const NAV_CELL := 0.125
 
 var scene: Node3D
 var player: Player
@@ -167,6 +161,7 @@ func _selftest() -> void:
 	_test_layout()
 	await _test_navigation()
 	await _test_walks()
+	await _test_grid()
 
 
 func _test_layout() -> void:
@@ -233,17 +228,9 @@ func _destinations() -> Array:
 
 
 func _test_navigation() -> void:
-	var town: Node3D = scene.get_node("Town")
 	var started := Time.get_ticks_msec()
-	scene.nav_region = Nav.bake(town, NAV_BOUNDS, 1, NAV_RADIUS, NAV_CELL)
+	await scene.bake_nav()
 	var took := (Time.get_ticks_msec() - started) / 1000.0
-	# The map takes the new region in on its own time (asynchronously): wait until it has.
-	var map := scene.get_world_3d().navigation_map
-	for i in 1200:
-		await get_tree().physics_frame
-		if NavigationServer3D.map_get_iteration_id(map) > 0 and not NavigationServer3D.map_get_path(
-				map, scene.extras["spawn"].origin, scene.extras["spawn"].origin + Vector3(3, 0, 0), true).is_empty():
-			break
 	var polygons: int = scene.nav_region.navigation_mesh.get_polygon_count()
 	_check("navigation: the mesh bakes from the town's collision", polygons > 300, "%d polygons in %.1f s" % [polygons, took])
 	var from: Vector3 = scene.extras["spawn"].origin
@@ -338,6 +325,88 @@ func _test_walks() -> void:
 	_check("walk: the south end is closed", player.global_position.z < 119.5, _pos())
 
 
+# --- the power grid and what sleeps on it --------------------------------------------
+
+func _test_grid() -> void:
+	var S := Creature.State
+	_place(scene.extras["spawn"].origin)
+	scene.build_grid(true)
+	await _secs(1.0)                                  # the sets drop onto their floors
+	var sim: GridSim = Grid.sim
+	var poles: int = scene.lights_by_lot["street"].size()
+	_check("grid: a cell under every street lamp and a circuit for each of the four buildings",
+			poles >= 8 and sim.cells.size() == poles + 4 and scene.circuit_nodes.size() == 4,
+			"%d lamps, %d cells, %d circuits" % [poles, sim.cells.size(), scene.circuit_nodes.size()])
+	var seen := {0: true}
+	var queue: Array[int] = [0]
+	while not queue.is_empty():
+		var at: int = queue.pop_back()
+		for other: int in sim.cells[at].links:
+			if not seen.has(other):
+				seen[other] = true
+				queue.append(other)
+	_check("grid: the wires join every cell to every other", seen.size() == sim.cells.size(),
+			"%d of %d reached" % [seen.size(), sim.cells.size()])
+	var lit := true
+	for lot_name: String in scene.CIRCUITS:
+		var node: GridNode = scene.circuit_nodes[lot_name]
+		if node.lamps.size() < 3:
+			lit = false
+	_check("grid: every building's lights hang on its circuit", lit)
+
+	var asleep := true
+	var misplaced: Array[String] = []
+	for i in scene.creatures.size():
+		var c: Creature = scene.creatures[i]
+		var want := _at(scene.SLEEPERS[i][0], scene.SLEEPERS[i][1])
+		if c.state != S.DORMANT:
+			asleep = false
+		if _flat(c.global_position, want) > 1.6 or absf(c.global_position.y - want.y) > 0.6:
+			misplaced.append("%s #%d is %.1f m off and %.1f m higher" % [scene.SLEEPERS[i][0], i,
+					_flat(c.global_position, want), c.global_position.y - want.y])
+	_check("creatures: nine sets asleep, each on the floor of its own room",
+			scene.creatures.size() == scene.SLEEPERS.size() and scene.creatures.size() == 9 and asleep and misplaced.is_empty(),
+			"%d sets; %s" % [scene.creatures.size(), "; ".join(misplaced)])
+
+	# One pistol shot under the canopy: the station feels it, the far end of the street does not.
+	var station: GridNode = scene.circuit_nodes["gas_station"]
+	var clark: GridNode = scene.circuit_nodes["clark"]
+	NoiseBus.emit(scene.extras["spawn"].origin, 70.0, 6.0, &"pistol")
+	await _secs(0.2)
+	_check("grid: a pistol shot at the police car stirs the station's circuit and not the Clarks'",
+			station.charge() > 1.0 and clark.charge() < 0.01 and sim.count(true) == 0,
+			"station %.1f, Clark house %.1f" % [station.charge(), clark.charge()])
+
+	# The Clark house: three sets on one circuit come up in two steps.
+	sim.inject_node(clark.id, 74.0 - clark.charge())
+	await _secs(0.3)
+	var first := sim.count(true)
+	sim.inject_node(clark.id, 86.0 - clark.charge())
+	await _secs(0.3)
+	_check("creatures: the Clark circuit at 74 wakes two of its three sets, at 86 the third",
+			first == 2 and sim.count(true) == 3, "%d awake, then %d" % [first, sim.count(true)])
+
+	# The set behind the laundromat hears something out on the pavement and goes to look.
+	scene.build_grid(true)
+	await _secs(1.0)
+	var row: GridNode = scene.circuit_nodes["brick_row"]
+	var set_: Creature = scene.creatures[4]
+	var door: Vector3 = scene.stop_at(&"laundry_door", 2.0).origin
+	var started := set_.global_position
+	NoiseBus.emit(door, 40.0, 0.0, &"test")
+	var t := 0.0
+	while _flat(set_.global_position, door) > 1.5 and t < 45.0:
+		Grid.sim.inject_node(row.id, 74.0 - row.charge())      # or the circuit cools and it dozes off on the way
+		await _secs(0.25)
+		t += 0.25
+	_check("creatures: the laundromat's set wakes, finds its way out of the back room and through the front door to a noise on the pavement",
+			_flat(set_.global_position, door) <= 1.5 and set_.state == S.INVESTIGATE,
+			"%.1f m from the noise after %.1f s, started %.1f m away, state %d" % [
+			_flat(set_.global_position, door), t, _flat(started, door), set_.state])
+	_check("creatures: and the set at the bar (80) slept through it", scene.creatures[5].state == S.DORMANT)
+	scene.build_grid(false)
+
+
 # --- screenshots ---------------------------------------------------------------
 
 func _snap(dir: String, shot: String, settle := 8) -> void:
@@ -356,6 +425,8 @@ func _shoot(dir: String) -> void:
 			only = arg.trim_prefix("--shots=").split(",")
 	scene.hud.visible = false
 	scene._overlay.visible = false
+	await scene.bake_nav()
+	scene.build_grid(true)                           # the sleeping sets belong in the pictures
 	var shop := TownLayout.SHOP_FLOOR
 	var house := TownLayout.HOUSE_FLOOR
 	var up := house + TownLayout.STOREY

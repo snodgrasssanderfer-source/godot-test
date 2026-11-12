@@ -38,7 +38,8 @@ OK_LICENSES = ("cc0", "original", "self-shot", "n/a")
 def read_list(path):
     items = {}
     for line in open(path, encoding="utf-8"):
-        m = re.match(r"^\| ([A-R]\d\d) \| (.+?) \| .* \| (\S+) \| (P[012]) \| (\S) \|$", line.strip())
+        # id | name | notes | type | priority | source, then (since the list gained one) an asset column
+        m = re.match(r"^\| ([A-R]\d\d) \| (.+?) \| .* \| (\S+) \| (P[012]) \| (\S) \|(?: [^|]* \|)?$", line.strip())
         if m:
             items[m.group(1)] = {"name": m.group(2), "type": m.group(3), "prio": m.group(4), "src": m.group(5)}
     return items

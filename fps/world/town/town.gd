@@ -1,14 +1,16 @@
 extends Node3D
 ## The demo town as a greybox you can walk: the 250 x 250 m map of the design
 ## document built from TownLayout, at three in the morning with the power on.
-## Nothing lives here yet (no creatures, no pickups); it is for judging the
-## layout, distances and sight lines. Markers show where things will go.
+## The power grid runs through it (a cell under every street lamp, one circuit
+## per building) and television sets sleep in the four buildings; there are no
+## pickups yet. Markers show where things will go.
 ##
 ##   WASD move    Shift sprint    Ctrl / C crouch    Space jump, climb, vault
 ##   Q / E lean   F flashlight    LMB fire    RMB aim    R reload    1 2 3 weapons
 ##
 ##   F6 F7 F8 F9  jump to: gas station / Miller's / tavern + laundromat / Clark house
 ##   L    marker labels on / off      P  power on / off       [ ]  time -/+ half an hour
+##   N    jolt the nearest grid cell (+25)      M  creatures on / off
 ##   F1   help    F2  numbers     F3  back to the shooting range     F5  back to the start
 ##   F11  fullscreen     Esc  free the mouse     F10 quit
 ##
@@ -21,8 +23,32 @@ extends Node3D
 const RANGE_SCENE := "res://test/range_street.tscn"
 const HELP := """WASD move   Shift sprint   Ctrl/C crouch   Space jump / climb   Q E lean   F flashlight   LMB fire   RMB aim
 F6 gas station   F7 Miller's   F8 tavern + laundromat   F9 Clark house   L labels   P power   [ ] time
+N jolt the power grid here (+25)   M creatures on / off
 F1 help   F2 numbers   F3 shooting range   F5 back to start   F11 fullscreen   Esc mouse   F10 quit"""
 ## Where the F-keys put you: marker, metres back from it towards the street.
+const CRT: CreatureData = preload("res://creatures/data/crt.tres")
+## What the navigation mesh covers: the whole walkable town, pit to upper floors.
+const NAV_BOUNDS := AABB(Vector3(-78.0, -2.0, -116.0), Vector3(176.0, 9.0, 238.0))
+## The town is laid out at an angle to the grid and has 1 m doors: on the
+## range's 0.25 m cells a door can close up, so the town bakes at half that.
+const NAV_RADIUS := 0.25
+const NAV_CELL := 0.125
+## The buildings with a circuit of their own, north to south.
+const CIRCUITS: Array[String] = ["gas_station", "miller", "brick_row", "clark"]
+## Where the television sets sleep: lot, spot on the floor (lot space). Each is
+## moved to the nearest point of the navigation mesh, so it can always walk off.
+## Only the CRT exists so far; it stands in for everything the design puts here.
+static var SLEEPERS: Array = [
+	["gas_station", Vector3(29.0, TownLayout.SHOP_FLOOR, 28.0)],           # staff room
+	["gas_station", Vector3(18.0, 0.03, 34.5)],                            # by the bins (the tutorial fight)
+	["miller", Vector3(8.0, TownLayout.SHOP_FLOOR, 12.6)],                 # behind the shop counter
+	["miller", Vector3(3.6, TownLayout.SHOP_FLOOR + 2.73, 19.0)],          # loft office
+	["brick_row", Vector3(24.0, TownLayout.SHOP_FLOOR, 15.0)],             # room behind the laundromat
+	["brick_row", Vector3(38.5, TownLayout.SHOP_FLOOR, 8.3)],              # inside the U of the bar
+	["clark", Vector3(6.5, TownLayout.HOUSE_FLOOR, 9.5)],                  # living room
+	["clark", Vector3(8.6, TownLayout.HOUSE_FLOOR + TownLayout.STOREY, 8.6)],    # the nest
+	["clark", Vector3(8.7, TownLayout.HOUSE_FLOOR + TownLayout.STOREY, 11.7)],   # the nest
+]
 const STOPS := {KEY_F7: &"miller_door", KEY_F8: &"tavern_door", KEY_F9: &"clark_door"}
 
 var builder: TownBuilder
@@ -32,6 +58,11 @@ var player: Player
 var hud: Hud
 var nav_region: NavigationRegion3D
 var labels: Array[Label3D] = []
+## The power grid: street-lamp cells north to south, then one per circuit.
+var grid_nodes: Array[GridNode] = []
+var circuit_nodes := {}                  # lot name -> GridNode
+var creatures: Array[Creature] = []
+var lights_by_lot := {}                  # lot name -> Array[Light3D]
 
 var _overlay: Label
 var _help: Label
@@ -87,13 +118,14 @@ func _ready() -> void:
 	builder.commit(town)
 	_make_lights()
 	_make_labels()
-	Grid.reset()
+	build_grid(false)
 
 	player = Player.new()
 	player.name = "Player"
 	add_child(player)
 	player.rig.infinite_reserve = true
 	respawn()
+	player.body.died.connect(_on_player_died)
 
 	hud = Hud.new()
 	add_child(hud)
@@ -113,6 +145,9 @@ func _ready() -> void:
 
 	if not _automated:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		# The sets need the navigation mesh to stand on: a few seconds, once.
+		await bake_nav()
+		build_grid(true)
 	else:
 		_help.visible = false
 		var auto := TownAuto.new()
@@ -164,6 +199,93 @@ func _make_lights() -> void:
 		light.position = l["at"]
 		light.add_to_group(&"street_lamp")
 		add_child(light)
+		if not lights_by_lot.has(l["lot"]):
+			lights_by_lot[l["lot"]] = []
+		lights_by_lot[l["lot"]].append(light)
+
+
+## Bakes the navigation mesh from the town's collision and waits until the
+## navigation map has taken it in (it does that on its own time). Does nothing
+## the second time.
+func bake_nav() -> void:
+	if nav_region != null:
+		return
+	nav_region = Nav.bake(get_node("Town"), NAV_BOUNDS, 1, NAV_RADIUS, NAV_CELL)
+	var map := get_world_3d().navigation_map
+	var from: Vector3 = extras["spawn"].origin
+	for i in 1200:
+		await get_tree().physics_frame
+		if NavigationServer3D.map_get_iteration_id(map) > 0 and not NavigationServer3D.map_get_path(
+				map, from, from + Vector3(3, 0, 0), true).is_empty():
+			return
+
+
+## (Re)builds the power grid from scratch. A cell under every street lamp,
+## wired in a line from north to south; one cell per building circuit, wired
+## to the nearest lamp and driving every light in that building. With
+## creatures (needs the navigation mesh), the sets of SLEEPERS hang on their
+## building's circuit; without, the grid is wires and lamps only.
+func build_grid(with_creatures := false) -> void:
+	for old in creatures:
+		old.queue_free()
+	creatures.clear()
+	for old in grid_nodes:
+		old.queue_free()
+	grid_nodes.clear()
+	circuit_nodes.clear()
+	Grid.reset()
+	var street: Array = lights_by_lot.get("street", []).duplicate()
+	street.sort_custom(func(a: Light3D, b: Light3D) -> bool: return a.position.z < b.position.z)
+	for lamp: Light3D in street:
+		var node := GridNode.new()
+		node.position = Vector3(lamp.position.x, 0.0, lamp.position.z)
+		node.lamp = lamp
+		node.roster = {}
+		add_child(node)
+		if not grid_nodes.is_empty():
+			node.link_to(grid_nodes.back())
+		grid_nodes.append(node)
+	var poles := grid_nodes.duplicate()
+	for lot_name in CIRCUITS:
+		var lamps: Array = lights_by_lot.get(lot_name, [])
+		var middle := Vector3.ZERO
+		for l: Light3D in lamps:
+			middle += l.position
+		middle /= maxf(lamps.size(), 1.0)
+		var sleepers := 0
+		for s: Array in SLEEPERS:
+			if s[0] == lot_name:
+				sleepers += 1
+		var node := GridNode.new()
+		node.position = Vector3(middle.x, 0.0, middle.z)
+		node.lamps.assign(lamps)
+		node.roster = {CRT.grid_kind: sleepers} if with_creatures else {}
+		add_child(node)
+		var best: GridNode = null
+		for pole: GridNode in poles:
+			if best == null or pole.position.distance_squared_to(node.position) < best.position.distance_squared_to(node.position):
+				best = pole
+		if best != null:
+			node.link_to(best)
+		grid_nodes.append(node)
+		circuit_nodes[lot_name] = node
+	if not with_creatures:
+		return
+	var map := get_world_3d().navigation_map
+	var entries := {}
+	for s: Array in SLEEPERS:
+		var lot := builder.find_lot(s[0])
+		var want: Vector3 = lot.xform * (s[1] as Vector3)
+		var at := NavigationServer3D.map_get_closest_point(map, want)
+		if at.distance_to(want) > 1.5:
+			push_warning("Town: no floor for a sleeper near %s in %s" % [s[1], s[0]])
+			at = want
+		var node: GridNode = circuit_nodes[s[0]]
+		var entry: int = entries.get(s[0], 0)
+		entries[s[0]] = entry + 1
+		# Facing the middle of the building, more or less: towards its circuit.
+		var to_middle := node.position - at
+		creatures.append(Creature.spawn(CRT, self, at + Vector3.UP * 0.3, atan2(-to_middle.x, -to_middle.z), node.id, entry))
 
 
 func _make_labels() -> void:
@@ -185,6 +307,15 @@ func _make_labels() -> void:
 
 func respawn() -> void:
 	place(extras["spawn"])
+
+
+## Nothing is at stake in the greybox: dying puts you back at the police car.
+func _on_player_died(_cause: StringName) -> void:
+	if _automated:
+		return
+	await get_tree().create_timer(5.0).timeout
+	if player.body.sim.dead:
+		respawn()
 
 
 ## Stands the player at a transform (its -Z is the way they face).
@@ -227,6 +358,10 @@ func _input(event: InputEvent) -> void:
 			KEY_L:
 				for label in labels:
 					label.visible = not label.visible
+			KEY_N: Grid.sim.inject_node(Grid.sim.nearest(player.global_position), 25.0)
+			KEY_M:
+				if nav_region != null:
+					build_grid(creatures.is_empty())
 			KEY_F1: _help.visible = not _help.visible
 			KEY_F2: _overlay.visible = not _overlay.visible
 			KEY_F3: get_tree().change_scene_to_file(RANGE_SCENE)
@@ -246,6 +381,13 @@ func _process(delta: float) -> void:
 	var p := player.global_position
 	var hour := int(atmosphere.time_of_day)
 	var minute := int(fposmod(atmosphere.time_of_day, 1.0) * 60.0)
-	_overlay.text = "%d fps   %.1f ms\n%02d:%02d   power %s\nx %.1f  z %.1f  height %.2f   %.1f m/s" % [
+	var grid_text := ""
+	for lot_name in CIRCUITS:
+		var node: GridNode = circuit_nodes.get(lot_name)
+		if node != null:
+			grid_text += ("  %s --" if Grid.sim.is_tripped(node.id) else "  %s %d") % [lot_name, int(node.charge())]
+	var here := Grid.sim.nearest(p)
+	_overlay.text = "%d fps   %.1f ms\n%02d:%02d   power %s\nx %.1f  z %.1f  height %.2f   %.1f m/s\ngrid here %d  %s   awake %d / %d%s" % [
 		Engine.get_frames_per_second(), _frame_ms, hour, minute, "on" if atmosphere.power_on else "OFF",
-		p.x, p.z, p.y, player.horizontal_speed()]
+		p.x, p.z, p.y, player.horizontal_speed(), int(Grid.sim.charge(here)) if here >= 0 else 0, grid_text,
+		Grid.sim.count(true), Grid.sim.count(), "" if not creatures.is_empty() else "   (no creatures)"]

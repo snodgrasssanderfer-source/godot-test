@@ -78,6 +78,7 @@ static func lot_frame(side: float, s0: float, s1: float) -> Transform3D:
 # --- the whole town --------------------------------------------------------------
 
 ## Fills the builder. Returns what is not boxes: {lights: [...], spawn: Transform3D}.
+## Each light: {kind, at, energy, color, range, lot}.
 static func build(b: TownBuilder) -> Dictionary:
 	var lights: Array[Dictionary] = []
 	_street(b, lights)
@@ -115,7 +116,7 @@ static func build(b: TownBuilder) -> Dictionary:
 
 static func _light(lights: Array[Dictionary], lot: TownBuilder.Lot, at: Vector3, kind: StringName, energy: float,
 		color: Color, reach: float) -> void:
-	lights.append({"kind": kind, "at": lot.to_world(at), "energy": energy, "color": color, "range": reach})
+	lights.append({"kind": kind, "at": lot.to_world(at), "energy": energy, "color": color, "range": reach, "lot": lot.name})
 
 
 # --- street ----------------------------------------------------------------------
@@ -180,7 +181,7 @@ static func _street(b: TownBuilder, lights: Array[Dictionary]) -> void:
 			var over := beside(ps, side * (ROAD_HALF - 1.5), 7.0)
 			lot.rbox(&"metal", (foot + Vector3.UP * 7.1 + over) * 0.5 + Vector3.UP * 0.05,
 					Vector3(2.0, 0.07, 0.07), Vector3(0, yaw, 0), false).plan = false
-			lights.append({"kind": &"street", "at": over, "energy": 18.0, "color": Color(1.0, 0.50, 0.14), "range": 24.0})
+			lights.append({"kind": &"street", "at": over, "energy": 18.0, "color": Color(1.0, 0.50, 0.14), "range": 24.0, "lot": "street"})
 			lot.marker(StringName("lamp_%d" % int(ps)), foot + Vector3.UP * 0.2, "street lamp", "路灯")
 
 

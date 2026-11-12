@@ -9,6 +9,8 @@ extends Node3D
 @export var roster := {&"small": 3, &"medium": 2, &"large": 1}
 ## Optional light that shows the state of the cell.
 @export var lamp: Light3D
+## More lights on the same cell (every lamp in a building); they flicker together.
+var lamps: Array[Light3D] = []
 
 var id := -1
 var _flicker := 1.0
@@ -39,12 +41,8 @@ func charge() -> float:
 
 
 func _process(delta: float) -> void:
-	if lamp == null or id < 0:
+	if id < 0 or (lamp == null and lamps.is_empty()):
 		return
-	# The atmosphere sets the lamp for the time of day and remembers that value.
-	if not lamp.has_meta(&"powered_energy"):
-		return
-	var base: float = lamp.get_meta(&"powered_energy")
 	var c := Grid.sim.charge(id)
 	var scale := 1.0
 	if Grid.sim.is_tripped(id):
@@ -57,5 +55,15 @@ func _process(delta: float) -> void:
 			_flicker = randf_range(0.15, 0.6) if randf() < 0.25 + k * 0.4 else 1.0
 			_next = _t + randf_range(0.03, lerpf(0.9, 0.12, k))
 		scale = _flicker * (1.6 if c >= GridSim.LEVELS[4] else 1.0)
-	lamp.light_energy = base * scale
-	lamp.visible = lamp.light_energy > 0.001
+	if lamp != null:
+		_drive(lamp, scale)
+	for l in lamps:
+		_drive(l, scale)
+
+
+func _drive(l: Light3D, scale: float) -> void:
+	# The atmosphere sets each lamp for the time of day and remembers that value.
+	if not l.has_meta(&"powered_energy"):
+		return
+	l.light_energy = float(l.get_meta(&"powered_energy")) * scale
+	l.visible = l.light_energy > 0.001
