@@ -1,6 +1,6 @@
 # godot-test
 
-> **接手这个项目？先读 [HANDOFF.md](HANDOFF.md)。** 里面有已定的方向、当前进度、哪些代码还没验证过，以及下一步做什么。
+> **接手这个项目？先读 [CLAUDE.md](CLAUDE.md) 和 [STATUS.md](STATUS.md)。** 方向见 [docs/DIRECTION.md](docs/DIRECTION.md)，旧交接已归档到 `docs/archive/`。
 
 用"手机 + 云端（Claude Code 云会话）"做 Godot 网页小游戏的试跑项目。
 
