@@ -1,6 +1,16 @@
 # 贴图批次 2026-11-12
 
-《凌晨三点公路镇》按 `texture_prompts-1.md` / `texture_prompts-2.md` 生成的贴图，共 147 张，文件名 `{编号}_{英文名}_{Color|Emission|Mask}.png`，子目录按编号首字母分。
+《凌晨三点公路镇》按 `texture_prompts-1.md` / `texture_prompts-2.md` 生成的贴图，共 289 张，文件名 `{编号}_{英文名}_{Color|Emission|Mask}.png`，子目录按编号首字母分。
+
+## 第三轮（2026-11-12，按 texture_prompts_redo.md）
+
+- 145 张，对应 125 个编号，含变体字母（N14a-c、C70a-f、J47a-f、L16a/b、L18a/b、M33a/b、Q07a-f）
+- 平铺、全景撑满画面（居中裁方）；贴花、卡片、透明图集做真透明，等比放进 1024 画布；发光招牌和遮罩黑底等比放入
+- 带灯的物件正面图（F38 仪表、F40 电台、F41 终端、J39 钟、K27 灯头、K31 调谐盘、P21 手表、P23 肩灯、P25 手机、H19 弹珠机）按规矩用 `_Color` 中灰底
+- Q02 主菜单背景保留 16:9 横幅（1672x941），不放进方画布
+- N14 拆成 N14a/b/c，旧 N14 删除；Q06 重出后旧名 ButtonGlyphs 删除
+- E61（上游按 sexual 拒）、N24（连接被断开）改提示词重出：E61 把 toilet cubicle 改成 restroom stall，N24 把人换成空景加远景小人
+- 新起的牌子名（MICHIWA、NIGHT SHIFT FOOD MART、HARLAN REDS、CRUNCHLEY'S 等）都没有查过商标
 
 ## 第二轮（2026-11-12，按 prompts-2 第四节）
 
