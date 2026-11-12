@@ -49,7 +49,7 @@ jobs:
       - name: Self-test (movement and weapons, headless)
         run: godot --headless --path fps -- --selftest
 
-      - name: Self-test (the town: layout, navigation, walking every building)
+      - name: "Self-test (the town: layout, navigation, walking every building)"
         run: godot --headless --path fps res://world/town/town.tscn -- --selftest
 
       - name: Export
