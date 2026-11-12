@@ -37,6 +37,29 @@ const COLORS := {
 	&"bark": Color(0.07, 0.06, 0.05), &"oil": Color(0.02, 0.02, 0.022),
 }
 ## Tags that reflect a little (wet-looking), the rest are matt.
+## Tags that wear a real material: [set in res://assets/materials (put there by
+## tools/install_texture.py), metres one repeat of the texture covers, tint].
+## Tags not listed here, or whose set is not installed, stay a flat colour.
+const TEXTURED := {
+	&"asphalt": ["Asphalt015", 3.0, Color(0.62, 0.62, 0.64)],
+	&"sidewalk": ["Concrete040", 2.5, Color(0.9, 0.9, 0.88)],
+	&"concrete": ["Concrete033", 3.0, Color(0.85, 0.85, 0.83)],
+	&"grass": ["grass_path_3", 3.0, Color(0.75, 0.8, 0.7)],
+	&"terrain": ["grass_path_3", 4.0, Color(0.5, 0.55, 0.48)],
+	&"brick": ["red_brick", 2.0, Color(0.9, 0.82, 0.8)],
+	&"block": ["concrete_block_wall_02", 2.0, Color(0.9, 0.9, 0.88)],
+	&"siding": ["C14_PeelingClapboard", 2.0, Color(0.95, 0.95, 0.92)],
+	&"siding_b": ["WoodSiding009", 2.0, Color(0.72, 0.8, 0.84)],
+	&"siding_c": ["WoodSiding009", 2.0, Color(0.92, 0.82, 0.66)],
+	&"roof": ["grey_roof_01", 2.0, Color(0.7, 0.7, 0.72)],
+	&"wall_in": ["D10_LatexDrywall", 2.8, Color(0.95, 0.92, 0.84)],
+	&"floor": ["WoodFloor051", 2.0, Color(0.8, 0.74, 0.66)],
+	&"floor_tile": ["D24_VCTFloorTiles", 2.0, Color(0.9, 0.9, 0.88)],
+	&"ceiling": ["OfficeCeiling001", 2.4, Color(0.85, 0.84, 0.8)],
+	&"wood": ["worn_planks", 2.0, Color(0.8, 0.72, 0.62)],
+}
+## Set false to see the plain greybox colours again.
+static var use_textures := true
 const SMOOTH := [&"asphalt", &"glass", &"car", &"car_white", &"appliance", &"oil", &"metal"]
 
 
@@ -237,7 +260,17 @@ func marker_position(id: StringName) -> Vector3:
 	return Vector3.INF
 
 
-func material(tag: StringName) -> StandardMaterial3D:
+func material(tag: StringName) -> BaseMaterial3D:
+	if not _materials.has(tag) and use_textures and TEXTURED.has(tag):
+		var entry: Array = TEXTURED[tag]
+		var path := "res://assets/materials/%s.tres" % entry[0]
+		if ResourceLoader.exists(path):
+			var textured: BaseMaterial3D = load(path).duplicate()
+			# box UVs are in metres (see _add_box), so the scale is repeats per metre
+			textured.uv1_scale = Vector3(1.0 / float(entry[1]), 1.0 / float(entry[1]), 1.0)
+			textured.albedo_color = entry[2]
+			textured.resource_name = String(tag)
+			_materials[tag] = textured
 	if not _materials.has(tag):
 		var mat := StandardMaterial3D.new()
 		var color: Color = COLORS.get(tag, Color.MAGENTA)
@@ -272,6 +305,7 @@ func commit(parent: Node3D) -> void:
 		for tag: StringName in by_tag:
 			var mi := MeshInstance3D.new()
 			mi.name = String(tag)
+			(by_tag[tag] as SurfaceTool).generate_tangents()        # normal maps need them
 			mi.mesh = (by_tag[tag] as SurfaceTool).commit()
 			mi.material_override = material(tag)
 			if tag == &"glass":
@@ -310,8 +344,15 @@ static func _add_box(st: SurfaceTool, piece: Box) -> void:
 		var hv := absf(v.dot(h))
 		var centre := n * absf(n.dot(h))
 		var corners := [centre - u * hu - v * hv, centre + u * hu - v * hv, centre + u * hu + v * hv, centre - u * hu + v * hv]
-		var uvs := [Vector2(0, hv * 2.0), Vector2(hu * 2.0, hv * 2.0), Vector2(hu * 2.0, 0), Vector2(0, 0)]
 		var world_n := (piece.xform.basis * n).normalized()
+		# UVs are the corner's position in the lot, in metres, measured along the
+		# face: a texture then runs unbroken across the separate boxes of one wall.
+		var lot_u := (piece.xform.basis * u).normalized()
+		var lot_v := (piece.xform.basis * v).normalized()
+		var uvs := []
+		for c: Vector3 in corners:
+			var at := piece.xform * c
+			uvs.append(Vector2(at.dot(lot_u), -at.dot(lot_v)))
 		# Godot's front faces wind clockwise seen from outside.
 		var order := [0, 2, 1, 0, 3, 2]
 		if (corners[2] - corners[0]).cross(corners[1] - corners[0]).dot(n) > 0.0:
