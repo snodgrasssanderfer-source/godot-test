@@ -23,6 +23,7 @@
 这些素材分两轮选出：先核对用户整理的三份表格留下 111 项，再直接翻 ambientCG 和 Poly Haven 的完整目录逐项挑选补到现在的数。
 
 还剩 93 项"待找"，两个素材库里都没有合适的现成素材，名单和原因在 `docs/texture_check/still_missing.md`。
+这些项和需要重做的项，给出图工具用的提示词在 `docs/texture_prompts.md`。
 
 交付规范见 `docs/texture_delivery.md`，验收用 `tools/check_textures.py`。
 
