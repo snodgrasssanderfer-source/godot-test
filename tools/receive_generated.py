@@ -14,6 +14,9 @@ is and whether it passed. What is written, under textures/generated/<set>/:
   decals               <set>_Color.png with its alpha; a sheet of four variants is
                        cut into <id>a.. <id>d, 512 x 512 each (a Godot Decal takes
                        a whole texture, not a region of one)
+  decal sheets         (贴花图集) several decals on one image, in a loose grid
+                       (two by two unless GRID says otherwise): cut apart into
+                       <id>a, <id>b, ...
   masks                <set>_Mask.png, greyscale; four-up sheets cut the same way
   emission             <set>_Emission.jpg
   faces, print sheets,
@@ -66,6 +69,19 @@ SURFACE = {
     "K04": (0.5, 0.5, 0.0),     # ABS plastic
     "K06": (0.5, 0.35, 1.0),    # brushed stainless steel
     "L05": (0.9, 0.6, 0.0),
+    # third round
+    "C19": (1.0, 0.9, 0.0), "C48": (0.6, 0.9, 0.0), "D06": (0.25, 0.86, 0.0), "D27": (0.5, 0.97, 0.0),
+    "E61": (0.5, 0.6, 0.0), "G45": (0.6, 0.85, 0.0), "H29": (1.0, 0.6, 0.0),
+    "J19": (0.3, 0.5, 0.0), "J20": (0.3, 0.45, 0.0), "J21": (0.2, 0.4, 0.0),                # vinyl cloth, laminates
+    "L01": (1.2, 0.3, 0.0), "L02": (1.3, 0.85, 0.0), "L03": (1.2, 0.45, 0.0), "L04": (1.0, 0.4, 0.0),
+    "L33": (1.4, 0.5, 0.0), "L34": (1.4, 0.5, 0.0),                                         # flesh: wet is smooth
+}
+# Decal sheets (贴花图集) that are not two by two: id -> (columns, rows).
+GRID = {"A09": (1, 2), "P05": (3, 1), "P06": (3, 1), "P07": (3, 1), "P09": (3, 1), "M33a": (4, 4), "M33b": (4, 4)}
+# Parts of an accepted sheet that must not be used, blanked on the way in:
+# id -> boxes (x0, y0, x1, y1) in the 1024 image. See the audit for why.
+BLANK = {
+    "N10": [(261, 445, 514, 653), (514, 445, 787, 653)],    # two payment-card stickers too close to real card marks
 }
 
 
@@ -141,6 +157,53 @@ def quarters(im):
         yield "abcd"[k], im.crop((x, y, x + w // 2, y + h // 2))
 
 
+def pieces(im, cols, rows):
+    """Cuts a sheet of several decals on transparency into its items. The sheet
+    is a loose grid (GRID says how many columns and rows); each cut is put on
+    the emptiest line near where an even grid would have it, rows first and
+    then the columns of each row on their own, since the items are not lined
+    up. Returns the items cropped tight with a small margin, row by row."""
+    alpha = (np.asarray(im)[..., 3] > 16)
+
+    def cuts(profile, n):
+        size = len(profile)
+        marks = [0]
+        for k in range(1, n):
+            nominal = size * k // n
+            reach = int(size * 0.18)
+            lo, hi = max(nominal - reach, 1), min(nominal + reach, size - 1)
+            window = profile[lo:hi]
+            least = window.min()
+            # the middle of the widest run of emptiest lines
+            best_len, best_mid, start = 0, nominal, None
+            for i, v in enumerate(list(window <= least) + [False]):
+                if v and start is None:
+                    start = i
+                elif not v and start is not None:
+                    if i - start > best_len:
+                        best_len, best_mid = i - start, lo + (start + i) // 2
+                    start = None
+            marks.append(best_mid)
+        return marks + [size]
+
+    out = []
+    ys = cuts(alpha.sum(axis=1), rows)
+    for r in range(rows):
+        band = alpha[ys[r]:ys[r + 1]]
+        xs = cuts(band.sum(axis=0), cols)
+        for c in range(cols):
+            cell = band[:, xs[c]:xs[c + 1]]
+            yy = np.flatnonzero(cell.any(axis=1))
+            xx = np.flatnonzero(cell.any(axis=0))
+            if yy.size < 24 or xx.size < 24:
+                continue
+            m = 6
+            box = (max(xs[c] + xx[0] - m, 0), max(ys[r] + yy[0] - m, 0),
+                   min(xs[c] + xx[-1] + 1 + m, im.size[0]), min(ys[r] + yy[-1] + 1 + m, im.size[1]))
+            out.append(im.crop(box))
+    return out
+
+
 def save_jpg(im, path, channel):
     im.convert("RGB").save(path, quality=QUALITY[channel], optimize=True)
 
@@ -168,6 +231,10 @@ def main():
         title = stem.split("_", 1)[1]
         im = Image.open(find(args.src, name))
         im.load()
+        if lid in BLANK:
+            im = im.convert("RGBA")
+            for box in BLANK[lid]:
+                im.paste((0, 0, 0, 0), box)
         folder = os.path.join(OUT, stem)
         os.makedirs(folder, exist_ok=True)
         for old in os.listdir(folder):
@@ -194,6 +261,16 @@ def main():
                 part.save(os.path.join(folder, f), optimize=True)
                 files.append(f)
             note = "cut into four single decals"
+        elif layout == "贴花图集":
+            cols, rows = GRID.get(lid, (2, 2))
+            for k, part in enumerate(pieces(im.convert("RGBA"), cols, rows)):
+                f = "%s%s_%s_Color.png" % (lid, "abcdefghijklmnopqrstuvwxyz"[k], title)
+                part.save(os.path.join(folder, f), optimize=True)
+                files.append(f)
+            note = "cut into %d single decals" % len(files)
+        elif layout == "遮罩单张":
+            im.convert("L").save(os.path.join(folder, stem + "_Mask.png"), optimize=True)
+            files = [stem + "_Mask.png"]
         elif layout == "遮罩":
             for letter, part in quarters(im.convert("L")):
                 f = "%s%s_%s_Mask.png" % (lid, letter, title)
@@ -215,6 +292,8 @@ def main():
             files = [stem + "_Color.jpg"]
             if layout == "多视图":
                 note = "modelling reference, not a texture"
+        if lid in BLANK:
+            note = (note + "; " if note else "") + "%d parts blanked (see the audit)" % len(BLANK[lid])
         records[stem] = {"set": stem, "id": lid, "layout": layout, "files": " ".join(files), "made_with": TOOL,
                          "origin": args.origin, "licence": "generated", "received": time.strftime("%Y-%m-%d"), "note": note}
         done += 1
