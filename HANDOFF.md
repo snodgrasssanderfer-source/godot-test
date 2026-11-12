@@ -16,7 +16,7 @@
 
 - **第三轮**：小鱼按 `docs/texture_prompts_redo.md` 出的 145 张（提交 `873d8f6`）到齐了，一张不缺。**合格 141、我来修 1、重出 3**。
   结论、原因、用的时候要留意的几张都在 `docs/texture_check/xiaoyu_gpt_batch.md` 新增的"第三轮"一节，总览图 `xiaoyu_gpt_round3_01..10.jpg`，
-  逐项结论进了 `xiaoyu_gpt_verdicts.csv`（轮次"三"，现在共 288 行）。
+  逐项结论进了 `xiaoyu_gpt_verdicts.csv`（轮次"三"，现在共 289 行）。
 - **重出的 3 张都是商标问题**：E17、E30（HARLAN REDS 的烟盒画成了万宝路的路数）、N26（同一个烟盒，外加 CRUNCHLEY'S 的标志像乐事）。
   新提示词在 `docs/texture_prompts_redo.md` 第四节，**可以直接转给小鱼**。用户还不知道这件事，我在最后的答复里说了。
 - **修的 1 张**：N10 门窗贴纸里两张支付卡标志（像万事达和维萨）在接收时抹成了透明。
