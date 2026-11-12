@@ -82,6 +82,7 @@ const MODEL_LIGHTS := {
 	&"bulb": ["omni", 0.8, Color(1.0, 0.82, 0.6), 5.0, true],
 	&"door": ["omni", 0.7, Color(1.0, 0.8, 0.55), 5.0, false],
 	&"wallpack": ["omni", 1.1, Color(1.0, 0.68, 0.38), 8.0, true],
+	&"yard": ["omni", 1.3, Color(1.0, 0.68, 0.38), 10.0, false],          # the same lamp where a shadow is not worth its cost
 	&"cooler": ["omni", 0.45, Color(0.75, 0.9, 1.0), 4.5, false],
 	&"vending": ["omni", 0.6, Color(0.95, 0.75, 0.6), 4.0, false],
 	&"neon": ["omni", 0.5, Color(1.0, 0.25, 0.3), 4.0, false],

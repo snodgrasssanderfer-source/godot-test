@@ -19,7 +19,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import lotkit  # noqa: E402
-from lotkit import Part, flat, frame, light, texture_set, turn  # noqa: E402
+from lotkit import QUARTERS, Part, decal_set, flat, frame, light, texture_set, turn  # noqa: E402
 
 random.seed(1996)
 lotkit.reset_scene()
@@ -67,6 +67,18 @@ flat("display", (0.02, 0.035, 0.03), rough=0.12)
 flat("screen", (0.25, 0.3, 0.3), rough=0.2, emit=(0.5, 0.62, 0.66), strength=0.9)
 flat("led_red", (0.9, 0.1, 0.05), emit=(1.0, 0.12, 0.05), strength=6.0)
 flat("coffee", (0.07, 0.03, 0.01), rough=0.1, alpha=0.9)
+flat("clean_patch", (0.42, 0.41, 0.38), rough=0.85)
+flat("rust_ring", (0.24, 0.10, 0.04), rough=0.9)
+flat("ash_can", (0.5, 0.12, 0.1), rough=0.5, metal=0.4)
+
+# Stains, cracks and painted marks: see-through panels a few millimetres off the surface.
+decal_set("M27_EngineOilStains", "A39_OilDripSpots", "A40_SkidMarks", "A36_PuddleMudRim", "M28_DrinkSpills", "M31_LitterAtlas",
+		"L16ba_BlackOilDrips", "L16bb_BlackOilDrips", "L16bc_BlackOilDrips", "L16bd_BlackOilDrips", "L16ab_BlackOilDrips",
+		"M07a_RustStreaks", "M07b_RustStreaks", "M07c_RustStreaks", "M07d_RustStreaks", "M23d_ApplianceDragMarks",
+		"M35a_Graffiti", "M37a_UtilitySprayPaintMarks", "M37b_UtilitySprayPaintMarks", "M37d_UtilitySprayPaintMarks",
+		"A12c_ParkingBaysAndAccessibleBay", "A12d_ParkingBaysAndAccessibleBay", "M05a_CeilingMould", "M05c_CeilingMould",
+		"M13a_WallCracks", "M13d_WallCracks", "Leaking002", "Leaking005", "Leaking007",
+		"F02_DoorBadgeAndUnitNumber", "N10_DoorWindowStickers")
 
 WHITE = "PaintedMetal012"
 GREEN = "PaintedMetal006"
@@ -102,6 +114,29 @@ def shrink(r, by=0.05):
 	h = (r[3] - r[1]) * by
 	return (r[0] + w, r[1] + h, r[2] - w, r[3] - h)
 
+
+# The printed sheets, cell by cell.
+NOTES = [(x0, y0, x0 + 0.185, y0 + 0.2) for y0 in (0.292, 0.52) for x0 in (0.012, 0.212, 0.412, 0.61, 0.805)]
+ROTA = (0.06, 0.2, 0.59, 0.57)
+RIGHTS = (0.61, 0.18, 0.94, 0.59)
+WASH_HANDS = (0.07, 0.6, 0.48, 0.81)
+CUSTOMER_FIRST = (0.51, 0.61, 0.93, 0.81)
+CALENDAR = (0.10, 0.03, 0.48, 0.48)
+FLYERS = [(x0, 0.37, x0 + 0.185, 0.63) for x0 in (0.012, 0.21, 0.405, 0.6, 0.805)]       # bake sale, yard sale, football, bingo, outage
+RECEIPTS = [(x0, 0.33, x0 + 0.18, 0.67) for x0 in (0.02, 0.21, 0.405, 0.6, 0.795)]
+SIGNS = {"voltage": (0.02, 0.27, 0.29, 0.5), "flammable": (0.3, 0.27, 0.52, 0.5), "extinguisher": (0.53, 0.27, 0.73, 0.5),
+		"no_smoking": (0.74, 0.27, 0.98, 0.5), "wet_floor": (0.02, 0.51, 0.26, 0.73), "employees": (0.27, 0.51, 0.5, 0.73),
+		"keep_out": (0.74, 0.51, 0.98, 0.73)}
+STICKERS = {"open": (0.02, 0.2, 0.25, 0.42), "hours": (0.52, 0.18, 0.74, 0.42), "push": (0.76, 0.22, 0.99, 0.4),
+		"pull": (0.03, 0.45, 0.25, 0.62), "no_smoking": (0.78, 0.45, 0.98, 0.63), "camera": (0.02, 0.66, 0.24, 0.83),
+		"no_shirt": (0.26, 0.66, 0.49, 0.82), "we_id": (0.51, 0.66, 0.74, 0.82), "no_restroom": (0.76, 0.66, 0.98, 0.82)}
+BADGE = (0.028, 0.192, 0.981, 0.801)
+PLATE = (0.08, 0.06, 0.49, 0.235)
+GRILLE = (0.0, 0.348, 1.0, 0.651)
+HEADLAMP_L = (0.0, 0.337, 0.5, 0.661)
+HEADLAMP_R = (0.5, 0.337, 1.0, 0.661)
+TAIL = (0.003, 0.339, 0.997, 0.66)
+IT_HUMS = (0.04, 0.76, 0.97, 0.985)
 
 # Goods: (image, rectangle, width in metres, depth). The height follows from the picture.
 SNACKS = [("E26_SnackPackaging", shrink(r), w, d) for r, w, d in [
@@ -395,7 +430,7 @@ def gondola(x0, z0, z1, left, right):
 		m = frame((x0 + 0.45, 0, z1 if side == 90 else z0), side)
 		for i, y in enumerate((F + 0.16, F + 0.5, F + 0.84, F + 1.18)):
 			if i > 0:
-				fit.box(STEEL, (0.03, y - 0.025, 0.02), (length - 0.03, y, 0.42), m=m)
+				fit.box(WHITE, (0.03, y - 0.025, 0.02), (length - 0.03, y, 0.42), m=m)
 				fit.box("paper", (0.03, y - 0.03, 0.42), (length - 0.03, y + 0.005, 0.424), m=m)
 			stock(fit, m, 0.04, length - 0.04, y, 0.41, goods[i % len(goods)], gaps=0.1 + 0.08 * i)
 
@@ -525,8 +560,9 @@ for a, b in (((31.15, F, 29.1), (31.75, F + 0.42, 29.7)), ((31.2, F + 0.42, 29.1
 	fit.box("cardboard", a, b, bevel=0.006)
 solid((31.15, F, 29.1), (31.75, F + 0.8, 29.7))
 fit.quad("cork", (31.795, F + 1.5, 28.2), (-1, 0, 0), 1.2, 0.8)
-for dz, dy, yaw in ((-0.35, 0.15, 4), (0.05, 0.2, -6), (0.35, -0.1, 3), (-0.1, -0.2, -2)):
-	fit.quad("paper", (31.79, F + 1.5 + dy, 28.2 + dz), (-1, 0, 0), 0.21, 0.28, m=turn("x", yaw, (31.79, F + 1.5 + dy, 28.2 + dz)))
+for (dz, dy, yaw), note in zip(((-0.38, 0.17, 4), (0.02, 0.2, -6), (0.38, 0.14, 3), (-0.2, -0.17, -2), (0.22, -0.2, 5)), (2, 3, 6, 7, 9)):
+	fit.quad("N23_HandwrittenNotes", (31.79, F + 1.5 + dy, 28.2 + dz), (-1, 0, 0), 0.26, 0.27, rect=NOTES[note],
+			m=turn("x", yaw, (31.79, F + 1.5 + dy, 28.2 + dz)))
 fit.cyl("paint_yellow", (26.55, F, 26.55), (26.55, F + 0.32, 26.55), 0.17, seg=10, r2=0.2)
 fit.cyl("worn_planks", (26.55, F + 0.1, 26.55), (26.2, F + 1.5, 26.3), 0.016, seg=6)
 
@@ -661,10 +697,19 @@ car.box("lens_blue", (15.94, 1.5, 10.6), (16.26, 1.62, 11.15), bevel=0.02)
 car.box("chrome", (15.98, 1.51, 10.5), (16.22, 1.6, 10.6))
 car.box("chrome", (18.34, 0.38, ZL - 0.02), (18.46, 0.55, ZR + 0.02), bevel=0.02)       # bumpers
 car.box("chrome", (13.54, 0.4, ZL - 0.02), (13.66, 0.57, ZR + 0.02), bevel=0.02)
-car.quad("black", (18.405, 0.69, 10.55), (1, 0, 0), 1.0, 0.16)
-for z in (9.87, 11.23):
-	car.quad("headlight", (18.407, 0.69, z), (1, 0, 0), 0.3, 0.15)
-	car.quad("lens_red", (13.612, 0.74, z), (-1, 0, 0), 0.36, 0.14)
+car.quad("F16_FrontGrille", (18.405, 0.69, 10.55), (1, 0, 0), 0.94, 0.27, rect=GRILLE)
+# seen from in front, the picture's left lamp is the one towards +z
+car.quad("F17_Headlight", (18.407, 0.69, 11.2), (1, 0, 0), 0.4, 0.26, rect=HEADLAMP_L)
+car.quad("F17_Headlight", (18.407, 0.69, 9.9), (1, 0, 0), 0.4, 0.26, rect=HEADLAMP_R)
+car.quad("F18_TailLight", (13.61, 0.77, 10.55), (-1, 0, 0), 1.72, 0.2, rect=TAIL)
+car.quad("B44_LicensePlates", (13.535, 0.485, 10.55), (-1, 0, 0), 0.3, 0.15, rect=PLATE)
+car.decal("F02_DoorBadgeAndUnitNumber", (16.06, 0.72, ZL - 0.012), (0, 0, -1), 0.72, 0.46, rect=BADGE, lift=0.003)
+car.decal("F02_DoorBadgeAndUnitNumber", (16.06, 0.72, ZR + 0.012), (0, 0, 1), 0.72, 0.46, rect=BADGE, lift=0.003)
+for z in (ZL - 0.06, ZR + 0.06):                                                       # wing mirrors
+	car.box("car_black", (17.0, 1.0, z - 0.07), (17.1, 1.1, z + 0.07), bevel=0.015)
+for z in (ZL + 0.25, ZR - 0.25):                                                       # push bar
+	car.box("black", (18.46, 0.34, z - 0.03), (18.52, 0.92, z + 0.03), bevel=0.01)
+car.box("black", (18.47, 0.72, ZL + 0.25), (18.51, 0.78, ZR - 0.25))
 car.cyl("black", (13.95, 0.965, 11.1), (13.9, 1.75, 11.12), 0.006, seg=4)                # aerial
 car.cyl("chrome", (17.22, 1.05, ZL - 0.05), (17.32, 1.05, ZL - 0.05), 0.06, seg=8)        # spot lamp
 for cx in (14.55, 17.45):
@@ -678,7 +723,180 @@ for cx in (14.55, 17.45):
 
 # =============================================================================
 
-for part in (ground, canopy, pumps, pylon, shell, fit, alley, car, col):
+
+# =============================================================================
+# Dirt, wear and the traces of the last half hour
+# =============================================================================
+# Laid on last, largest things first. Three small scenes carry the story:
+#   1. the vending machine that used to stand out front is not there: a clean
+#      rectangle, a cord torn out of the wall, and drag marks round the south
+#      side of the store, through the gate, to where it now stands glowing;
+#   2. the clerk's smoking spot by the back door, left mid-cigarette;
+#   3. the staff room, where somebody unplugged everything and wrote it down.
+
+dirt = Part("dirt-nocol")
+PAD = G + 0.015
+UP = (0, 1, 0)
+
+
+def trail(mat, points, w, h, y, rect=None):
+	"""A decal on the ground at the middle of every leg of a path, turned along it."""
+	for (ax, az), (bx, bz) in zip(points, points[1:]):
+		dirt.decal(mat, ((ax + bx) / 2, y, (az + bz) / 2), UP, w, h, turn_deg=math.degrees(math.atan2(bx - ax, bz - az)), rect=rect)
+
+
+# --- forecourt: years of cars ---------------------------------------------------
+for (x, z, size, yaw), q in zip(((16.9, 10.5, 1.5, 20), (16.0, 6.4, 1.7, 100), (13.0, 14.6, 1.4, 200), (19.0, 14.5, 1.6, 310)), (0, 1, 2, 3)):
+	dirt.decal("M27_EngineOilStains", (x, PAD, z), UP, size, size, yaw, QUARTERS[q])
+for (x, z, yaw), q in zip(((15.2, 6.1, 0), (17.9, 14.9, 90), (12.6, 10.3, 180), (20.6, 6.6, 45)), (0, 1, 2, 3)):
+	dirt.decal("A39_OilDripSpots", (x, PAD, z), UP, 0.9, 0.9, yaw, QUARTERS[q], lift=0.005)
+dirt.decal("A40_SkidMarks", (4.6, G, 10.6), UP, 2.4, 5.0, 96)
+dirt.decal("A40_SkidMarks", (28.5, G, 11.8), UP, 2.0, 4.2, 72)
+for (x, z, size, yaw), q in zip(((6.0, 17.2, 2.6, 0), (27.2, 16.6, 3.2, 70), (39.0, 12.0, 3.0, 160), (29.5, 34.6, 2.4, 30),
+		(22.0, 34.0, 2.0, 250), (8.0, 28.0, 3.4, 110)), (0, 1, 2, 3, 1, 2)):
+	dirt.decal("A36_PuddleMudRim", (x, G, z), UP, size, size, yaw, QUARTERS[q])
+dirt.decal("A12c_ParkingBaysAndAccessibleBay", (37.35, G, 22.3), UP, 1.5, 1.5, 180)
+dirt.decal("A12d_ParkingBaysAndAccessibleBay", (34.4, G, 23.4), UP, 1.4, 3.6, 0)
+dirt.decal("M37a_UtilitySprayPaintMarks", (3.6, G, 4.2), UP, 0.8, 0.8, 60)
+dirt.decal("M37b_UtilitySprayPaintMarks", (6.4, G, 2.4), UP, 0.6, 0.6, 85)
+dirt.decal("M37d_UtilitySprayPaintMarks", (1.5, G, 6.2), UP, 0.6, 0.6, 5)
+# rust weeping down the canopy columns from the brackets
+for (cx, cz), (nx, nz), mat in zip(((10, 7), (22, 7), (10, 14), (22, 14)), ((0, -1), (1, 0), (-1, 0), (0, 1)),
+		("M07a_RustStreaks", "M07b_RustStreaks", "M07d_RustStreaks", "M07c_RustStreaks")):
+	dirt.decal(mat, (cx + nx * 0.2, 3.7, cz + nz * 0.2), (nx, 0, nz), 0.36, 1.5)
+	dirt.decal("M07c_RustStreaks", (cx - nz * 0.2, 0.75, cz + nx * 0.2), (-nz, 0, nx), 0.3, 1.1)
+# the car is bleeding something that is not motor oil (the last scene of the game comes back to this)
+dirt.decal("L16bc_BlackOilDrips", (18.9, PAD, 10.9), UP, 1.3, 1.3, 135, lift=0.006)
+dirt.decal("L16bb_BlackOilDrips", (17.8, PAD, 10.75), UP, 0.7, 0.7, 40, lift=0.007)
+
+# --- the walls weather --------------------------------------------------------
+dirt.decal("Leaking002", (32.0, 3.1, 26.5), (1, 0, 0), 3.2, 1.6)
+dirt.decal("Leaking007", (32.0, 3.2, 21.3), (1, 0, 0), 2.4, 0.8)
+dirt.decal("Leaking005", (14.0, 3.05, 25.2), (-1, 0, 0), 3.4, 1.7)
+dirt.decal("Leaking002", (19.4, 3.1, 30.0), (0, 0, 1), 3.2, 1.6)
+dirt.decal("Leaking005", (26.0, 3.0, 30.0), (0, 0, 1), 3.0, 1.5)
+dirt.decal("M13a_WallCracks", (25.4, 1.7, 30.0), (0, 0, 1), 1.5, 1.5)
+dirt.decal("M13d_WallCracks", (32.0, 1.2, 28.4), (1, 0, 0), 1.2, 1.2)
+dirt.decal("M05a_CeilingMould", (18.9, 0.5, 30.0), (0, 0, 1), 1.0, 1.0, 180)
+dirt.decal("M05c_CeilingMould", (30.6, 0.45, 30.0), (0, 0, 1), 0.9, 0.9, 180)
+dirt.decal("M35a_Graffiti", (19.75, 1.45, 30.0), (0, 0, 1), 1.55, 0.37, rect=IT_HUMS)      # the arrow points at the machine
+
+# --- 1. the machine that walked ------------------------------------------------
+# What is missing has to be seen: a soffit lamp over the empty place, a wall lamp along the way it went.
+shell.cyl("lamp_warm", (31.3, 2.83, 19.6), (31.3, 2.85, 19.6), 0.1, seg=10)
+light("door", (31.3, 2.6, 19.45))
+shell.box(STEEL, (32.0, 3.0, 26.35), (32.16, 3.2, 26.65), bevel=0.01)
+shell.quad("lamp_warm", (32.09, 2.995, 26.5), (0, -1, 0), 0.12, 0.24, up=(0, 0, 1))
+light("yard", (32.55, 2.85, 26.5))
+dirt.quad("clean_patch", (31.45, F + 0.003, 19.58), UP, 1.0, 0.8, up=(0, 0, 1))
+for x in (31.03, 31.87):
+	for z in (19.26, 19.9):
+		dirt.cyl("rust_ring", (x, F + 0.004, z), (x, F + 0.006, z), 0.045, seg=8)
+shell.box("Plastic010", (31.6, F + 0.32, 19.985), (31.72, F + 0.44, 20.0))                   # the outlet it was plugged into
+shell.tube("black", [(31.66, F + 0.38, 19.98), (31.7, F + 0.12, 19.9), (31.95, F + 0.02, 19.75), (32.3, F + 0.015, 19.55),
+		(32.72, F + 0.015, 19.62)], 0.012, seg=5)
+shell.box("black", (32.7, F + 0.005, 19.59), (32.78, F + 0.035, 19.65))                       # the plug, pins bent
+route = [(31.6, 19.55), (32.9, 19.5), (33.45, 21.4), (33.5, 24.2), (33.6, 27.0), (34.7, 29.6), (34.6, 31.9), (32.2, 32.2),
+		(29.2, 31.9), (26.2, 31.5), (23.6, 31.1), (22.0, 30.95)]
+trail("M23d_ApplianceDragMarks", route[:2], 1.2, 1.5, F)
+trail("M23d_ApplianceDragMarks", route[1:], 1.2, 2.4, G)
+for (x, z, yaw) in ((33.5, 25.5, 10), (34.7, 30.8, 80), (30.6, 32.1, 200), (25.0, 31.3, 260)):
+	dirt.decal("L16bc_BlackOilDrips", (x, G, z), UP, 1.1, 1.1, yaw, lift=0.007)
+dirt.decal("L16ba_BlackOilDrips", (21.6, G, 31.35), UP, 1.25, 1.25, 15, lift=0.007)
+dirt.decal("L16ab_BlackOilDrips", (21.6, 0.62, 30.892), (0, 0, 1), 0.7, 0.7, lift=0.003)     # it leaks down its own front
+
+# --- 2. the clerk's smoking spot -----------------------------------------------
+alley.box("crate_blue", (30.2, G, 30.45), (30.56, G + 0.3, 30.78), m=turn("y", -12, (30.38, 0, 30.6)), skip="-y")
+alley.cyl("ash_can", (30.9, G, 30.5), (30.9, G + 0.17, 30.5), 0.08, seg=10)
+alley.cyl("paper", (30.72, G, 30.82), (30.72, G + 0.11, 30.82), 0.04, seg=8, r2=0.045)       # coffee, gone cold
+alley.cyl("paper", (30.6, G + 0.305, 30.62), (30.69, G + 0.31, 30.6), 0.004, seg=4)          # one left burning on the crate
+dirt.decal("M31_LitterAtlas", (30.75, G, 30.75), UP, 0.9, 0.9, 30)
+alley.box(STEEL, (29.3, 2.32, 30.0), (29.6, 2.5, 30.14), bevel=0.01)                         # bulkhead lamp over the back door
+alley.quad("lamp_warm", (29.45, 2.315, 30.07), (0, -1, 0), 0.22, 0.1, up=(0, 0, 1))
+light("door", (29.45, 2.2, 30.45))
+
+# --- the bins end of the alley: enough light to find the pipe by ---------------------
+alley.box(STEEL, (17.85, 3.0, 30.0), (18.15, 3.2, 30.16), bevel=0.01)
+alley.quad("lamp_warm", (18.0, 2.995, 30.09), (0, -1, 0), 0.24, 0.12, up=(0, 0, 1))
+light("yard", (18.0, 2.85, 30.5))
+# a yard lamp on a pole in the fence corner: the wall lamps do not reach the bins
+alley.cyl(STEEL, (12.25, G, 37.75), (12.25, 3.5, 37.75), 0.045, seg=8)
+alley.tube(STEEL, [(12.25, 3.5, 37.75), (12.4, 3.62, 37.6), (12.8, 3.55, 37.25)], 0.03, seg=6, steps=3)
+alley.box(STEEL, (12.7, 3.42, 37.1), (13.0, 3.54, 37.4), bevel=0.02, m=turn("y", 45, (12.85, 0, 37.25)))
+alley.quad("lamp_warm", (12.85, 3.415, 37.25), (0, -1, 0), 0.2, 0.2, up=(0, 0, 1))
+light("yard", (13.1, 3.2, 37.0))
+for x, z, length, yaw, tilt in ((15.4, 35.3, 1.9, 8, 0), (15.9, 35.55, 1.5, -14, 0), (16.5, 35.2, 2.1, 30, 0), (16.2, 35.8, 1.2, 75, 0)):
+	m = turn("y", yaw, (x, 0, z))
+	alley.cyl("PaintedMetal016", (x, G + 0.03, z), (x + length, G + 0.03, z), 0.024, seg=6, m=m)
+alley.cyl("PaintedMetal016", (16.85, G + 0.02, 36.3), (16.95, 1.3, 36.38), 0.024, seg=6)       # one leaning on the bin
+alley.cyl(DARK, (22.9, G, 37.2), (22.9, G + 0.88, 37.2), 0.29, seg=14)                       # waste-oil drum
+alley.cyl("black", (22.9, G + 0.88, 37.2), (22.9, G + 0.9, 37.2), 0.3, seg=14)
+dirt.decal("M07b_RustStreaks", (22.9, G + 0.45, 36.91), (0, 0, -1), 0.3, 0.8, lift=0.003)
+solid((22.6, G, 36.9), (23.2, G + 0.9, 37.5))
+dirt.decal("L16bd_BlackOilDrips", (22.75, G, 36.5), UP, 1.2, 1.2, 200)
+for i, (dx, dz, yaw) in enumerate(((0.0, 0.0, 3), (0.05, -0.04, -6), (-0.03, 0.03, 9))):       # flattened cartons by the gate
+	alley.box("cardboard", (31.0 + dx, G + i * 0.03, 36.5 + dz), (32.3 + dx, G + 0.028 + i * 0.03, 37.6 + dz),
+			m=turn("y", yaw, (31.6, 0, 37.0)))
+dirt.decal("M28_DrinkSpills", (19.0, G, 36.0), UP, 1.0, 1.0, 0, QUARTERS[3])
+
+# --- shop front: what a store sticks on its door ---------------------------------
+for key, x, y, w, h in (("no_restroom", 21.5, F + 1.72, 0.3, 0.2), ("camera", 21.5, F + 1.48, 0.3, 0.22), ("we_id", 21.5, F + 1.24, 0.3, 0.2),
+		("hours", 24.0, F + 1.95, 0.3, 0.33)):
+	dirt.decal("N10_DoorWindowStickers", (x, y, 20.0), (0, 0, -1), w, h, rect=STICKERS[key], lift=0.003)
+dirt.quad("N19_CommunityFlyersYardSale", (24.02, F + 1.5, 19.996), (0, 0, -1), 0.3, 0.42, rect=FLYERS[4])     # the power company's notice
+dirt.quad("N19_CommunityFlyersYardSale", (23.74, F + 1.47, 19.996), (0, 0, -1), 0.24, 0.34, rect=FLYERS[2],
+		m=turn("z", 4, (23.74, F + 1.47, 19.996)))
+dirt.decal("M28_DrinkSpills", (17.2, F, 18.95), UP, 0.8, 0.8, 0, QUARTERS[0])
+dirt.decal("M31_LitterAtlas", (24.5, F, 19.1), UP, 0.9, 0.9, 200)
+dirt.decal("M28_DrinkSpills", (18.45, F, 25.6), UP, 1.0, 1.0, 90, QUARTERS[2])               # among what fell off the shelves
+dirt.quad("N12_SafetySigns", (27.5, F + 2.3, 25.935), (0, 0, -1), 0.34, 0.3, rect=SIGNS["employees"])    # over the staff-room door
+dirt.quad("N12_SafetySigns", (32.004, 1.9, 23.0), (1, 0, 0), 0.4, 0.34, rect=SIGNS["flammable"])         # on the propane cage wall
+dirt.quad("N12_SafetySigns", (10.205, 2.0, 7.0), (1, 0, 0), 0.36, 0.3, rect=SIGNS["no_smoking"])         # on a canopy column
+
+# --- 3. the staff room -------------------------------------------------------------
+# shelving on the back wall, clear of the back door
+for x in (27.0, 28.76):
+	fit.box(WHITE, (x, F, 29.32), (x + 0.04, F + 1.9, 29.78))
+for y in (0.12, 0.62, 1.12, 1.62):
+	fit.box(WHITE, (27.0, F + y, 29.32), (28.8, F + y + 0.025, 29.78))
+for (x, y, w, h), mat in zip(((27.08, 0.145, 0.5, 0.36), (27.65, 0.145, 0.42, 0.3), (28.15, 0.145, 0.55, 0.4), (27.1, 0.645, 0.6, 0.3),
+		(27.85, 0.645, 0.36, 0.28), (28.3, 0.645, 0.4, 0.38), (27.2, 1.145, 0.45, 0.32), (28.0, 1.145, 0.7, 0.26), (27.4, 1.645, 0.5, 0.22)),
+		("cardboard", "crate_red", "cardboard", "cardboard", "crate_blue", "cardboard", "paper", "cardboard", "cardboard")):
+	fit.box(mat, (x, F + y, 29.38), (x + w, F + y + h, 29.74), bevel=0.004)
+solid((27.0, F, 29.32), (28.8, F + 1.9, 29.78))
+# the fridge and the microwave on it: both pulled out of the wall, with a note
+fit.box(WHITE, (31.28, F, 27.22), (31.76, F + 0.85, 27.74), bevel=0.012)
+fit.box("Plastic010", (31.3, F + 0.85, 27.26), (31.76, F + 1.13, 27.72), bevel=0.01)
+fit.box("glass_dark", (31.295, F + 0.89, 27.3), (31.3, F + 1.1, 27.58))
+fit.box("display", (31.295, F + 0.93, 27.61), (31.3, F + 1.07, 27.7))
+fit.quad("N23_HandwrittenNotes", (31.292, F + 1.0, 27.44), (-1, 0, 0), 0.2, 0.21, rect=NOTES[0], m=turn("x", -5, (31.292, F + 1.0, 27.44)))
+fit.tube("black", [(31.74, F + 0.95, 27.74), (31.7, F + 0.5, 27.82), (31.5, F + 0.03, 27.9), (31.1, F + 0.02, 28.0)], 0.008, seg=5)
+fit.tube("black", [(31.74, F + 0.3, 27.74), (31.72, F + 0.05, 27.84), (31.45, F + 0.02, 27.95), (31.0, F + 0.02, 27.86)], 0.008, seg=5)
+fit.box("Plastic010", (31.78, F + 0.3, 27.9), (31.795, F + 0.42, 27.98))                       # the empty socket
+solid((31.28, F, 27.22), (31.76, F + 1.13, 27.74))
+# the security monitor on the desk, still on, showing nothing
+fit.box("Plastic010", (31.22, F + 0.75, 26.36), (31.64, F + 1.08, 26.74), bevel=0.015)
+fit.quad("screen", (31.215, F + 0.93, 26.55), (-1, 0, 0), 0.3, 0.24)
+fit.box(DARK, (30.86, F + 0.75, 26.38), (31.2, F + 0.83, 26.66), bevel=0.006)                  # recorder
+fit.quad("led_red", (30.9, F + 0.79, 26.661), (0, 0, 1), 0.012, 0.012)
+light("cooler", (30.7, F + 1.0, 26.6))
+# time clock and card rack by the door, what the walls say
+fit.box(DARK, (28.45, F + 1.3, 26.07), (28.7, F + 1.62, 26.17), bevel=0.01)
+fit.quad("display", (28.575, F + 1.52, 26.172), (0, 0, 1), 0.14, 0.06)
+fit.box(STEEL, (28.8, F + 1.2, 26.07), (29.25, F + 1.7, 26.1))
+for i in range(5):
+	for j in range(2):
+		fit.quad("paper", (28.89 + j * 0.22, F + 1.27 + i * 0.09, 26.102), (0, 0, 1), 0.16, 0.07)
+fit.quad("E54_RotaAndLabourPoster", (30.95, F + 1.55, 26.07), (0, 0, 1), 0.66, 0.46, rect=ROTA, m=turn("z", -2, (30.95, F + 1.55, 26.07)))
+fit.quad("E54_RotaAndLabourPoster", (30.05, F + 1.6, 26.07), (0, 0, 1), 0.44, 0.54, rect=RIGHTS)
+fit.quad("E54_RotaAndLabourPoster", (29.6, F + 2.2, 26.07), (0, 0, 1), 0.5, 0.26, rect=CUSTOMER_FIRST)
+fit.quad("E54_RotaAndLabourPoster", (26.07, F + 1.6, 27.4), (1, 0, 0), 0.5, 0.26, rect=WASH_HANDS)
+fit.quad("N16_Calendars", (31.795, F + 1.62, 26.75), (-1, 0, 0), 0.36, 0.43, rect=CALENDAR)
+for k, (x, z, yaw) in enumerate(((30.62, 26.95, 20), (30.9, 26.98, -12))):
+	fit.quad("N13_ReceiptsTickets", (x, F + 0.754, z), UP, 0.08, 0.15, rect=RECEIPTS[3 + k], up=(math.sin(math.radians(yaw)), 0, math.cos(math.radians(yaw))))
+dirt.decal("M28_DrinkSpills", (30.2, F, 27.6), UP, 0.7, 0.7, 40, QUARTERS[2])                # coffee went over when the chair went back
+
+for part in (ground, canopy, pumps, pylon, shell, fit, alley, car, col, dirt):
 	part.finish()
 
 HERE = os.path.dirname(os.path.abspath(__file__))

@@ -6,7 +6,12 @@
 
 A set with a single image (a sign, a lightbox, a printed face: just <name>_Color
 or <name>_Emission) becomes a plain StandardMaterial3D; an _Emission image also
-glows, and so does a _Color image asked for as <name>+glow (a lit machine front). For every full set (a folder under textures/materials or
+glows, and so does a _Color image asked for as <name>+glow (a lit machine front).
+<name>+alpha makes the material see-through where the image is: that is how
+stains, cracks and painted lines are laid on (as flat panels a few millimetres
+off the surface). A single decal out of a set of variants is asked for by its
+own file name without the channel (M07a_RustStreaks, A39_OilDripSpots).
+For every full set (a folder under textures/materials or
 textures/generated holding <name>_Color, <name>_Normal and <name>_ORM) it
 
   * copies the three maps to fps/assets/textures/<name>/
@@ -74,7 +79,7 @@ orm_texture = ExtResource("3")
 normal_enabled = true
 normal_texture = ExtResource("2")
 texture_filter = 5
-"""
+{extra}"""
 
 
 SINGLE = """[gd_resource type="StandardMaterial3D" load_steps=2 format=3]
@@ -94,11 +99,21 @@ emission_energy_multiplier = 1.8
 """
 
 
+ALPHA = """transparency = 1
+"""
+
+
 def find(name):
     for lib in LIBRARY:
         d = os.path.join(lib, name)
         if os.path.isdir(d):
             return d
+    # one image of a set of variants (generated/M07_RustStreaks/M07a_RustStreaks_Color.png),
+    # or one of the script-made decals (procedural/A39_OilDripSpots_Color.png)
+    for lib in LIBRARY + [os.path.join(ROOT, "textures", "procedural")]:
+        for d, _, files in os.walk(lib):
+            if name + "_Color.png" in files:
+                return d
     return None
 
 
@@ -110,7 +125,7 @@ def channel(folder, name, ch):
     return None
 
 
-def install(name, force_glow=False):
+def install(name, force_glow=False, alpha=False):
     src = find(name)
     if src is None:
         print("%s: not in the library" % name)
@@ -133,8 +148,8 @@ def install(name, force_glow=False):
                 fh.write(IMPORT.format(res=res_path, normal=0))
         with open(os.path.join(MAT_OUT, name + ".tres"), "w", newline="\n") as fh:
             glows = force_glow or "_Emission" in single
-            fh.write(SINGLE.format(name=name, image=res_path, glow=GLOW if glows else ""))
-        print("%s: installed as a single-image material%s" % (name, " (glowing)" if glows else ""))
+            fh.write(SINGLE.format(name=name, image=res_path, glow=(GLOW if glows else "") + (ALPHA if alpha else "")))
+        print("%s: installed as a single-image material%s%s" % (name, " (glowing)" if glows else "", " (see-through)" if alpha else ""))
         return True
     os.makedirs(out, exist_ok=True)
     os.makedirs(MAT_OUT, exist_ok=True)
@@ -148,7 +163,7 @@ def install(name, force_glow=False):
             with open(imp, "w", newline="\n") as fh:
                 fh.write(IMPORT.format(res=res[ch], normal=1 if ch == "Normal" else 0))
     with open(os.path.join(MAT_OUT, name + ".tres"), "w", newline="\n") as fh:
-        fh.write(MATERIAL.format(name=name, color=res["Color"], normal=res["Normal"], orm=res["ORM"]))
+        fh.write(MATERIAL.format(name=name, color=res["Color"], normal=res["Normal"], orm=res["ORM"], extra=ALPHA if alpha else ""))
     print("%s: installed from %s" % (name, os.path.relpath(src, ROOT)))
     return True
 
@@ -179,7 +194,7 @@ def main():
     if args[0] == "--list":
         listing()
         return 0
-    ok = all([install(a.split("+")[0], a.endswith("+glow")) for a in args])
+    ok = all([install(a.split("+")[0], "+glow" in a, "+alpha" in a) for a in args])
     print("now run: godot --headless --path fps --import")
     return 0 if ok else 1
 

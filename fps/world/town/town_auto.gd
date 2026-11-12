@@ -477,6 +477,14 @@ func _shoot(dir: String) -> void:
 		["g7_alley", "gas_station", Vector3(27.5, 0.05, 33.6), Vector3(19.5, 0.9, 32.5)],
 		["g8_pylon", "gas_station", Vector3(9.5, 0.05, 3.2), Vector3(3.05, 4.6, 1.65)],
 		["g9_pump", "gas_station", Vector3(16.2, 0.05, 6.0), Vector3(14.0, 1.2, 7.6)],
+		# its dirt and the three small scenes (--shots=ga,gb,...)
+		["ga_where_the_machine_stood", "gas_station", Vector3(30.2, 0.05, 16.8), Vector3(31.7, 0.45, 19.7)],
+		["gb_drag_marks_round_the_side", "gas_station", Vector3(36.4, 0.05, 23.0), Vector3(34.2, 0.1, 30.5)],
+		["gc_smoking_spot", "gas_station", Vector3(32.3, 0.05, 32.9), Vector3(30.3, 0.6, 30.4)],
+		["gd_bins_and_pipes", "gas_station", Vector3(21.0, 0.05, 33.2), Vector3(16.6, 0.5, 36.4)],
+		["ge_staff_room_corner", "gas_station", Vector3(28.9, shop, 28.7), Vector3(31.4, 1.15, 27.0)],
+		["gf_staff_room_door_wall", "gas_station", Vector3(29.6, shop, 28.9), Vector3(29.4, 1.6, 26.0)],
+		["gg_car_from_behind", "gas_station", Vector3(11.4, 0.05, 12.4), Vector3(14.6, 0.75, 10.6)],
 	]
 	for shot: Array in shots:
 		if not only.is_empty() and not only.has(String(shot[0]).left(2)):

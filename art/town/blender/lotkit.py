@@ -27,6 +27,8 @@ LIBRARY = [os.path.join(ROOT, "textures", "materials"), os.path.join(ROOT, "text
 		os.path.join(ROOT, "fps", "assets", "textures")]
 
 TILE = {}        # material name -> metres one repeat covers
+DECALS = set()   # materials that are see-through where their image is (stains, cracks, painted lines)
+QUARTERS = [(0.0, 0.0, 0.5, 0.5), (0.5, 0.0, 1.0, 0.5), (0.0, 0.5, 0.5, 1.0), (0.5, 0.5, 1.0, 1.0)]   # of a sheet of four variants
 FLAT = {}        # material name -> settings
 _light_count = {}
 
@@ -39,6 +41,11 @@ BOX_FACES = {"-x": (0, 4, 6, 2), "+x": (1, 3, 7, 5), "-y": (0, 1, 5, 4),
 
 def texture_set(name, metres=2.0):
 	TILE[name] = metres
+
+
+def decal_set(*names):
+	"""Images laid on as see-through panels. Installed with tools/install_texture.py <name>+alpha."""
+	DECALS.update(names)
 
 
 def flat(name, color, rough=0.6, metal=0.0, emit=None, strength=0.0, alpha=1.0):
@@ -69,6 +76,11 @@ def _image(name):
 				p = os.path.join(lib, name, "%s_%s%s" % (name, ch, ext))
 				if os.path.exists(p):
 					return p
+	# one decal out of a set of variants, or a script-made one
+	for lib in LIBRARY + [os.path.join(ROOT, "textures", "procedural")]:
+		for d, _, files in os.walk(lib):
+			if name + "_Color.png" in files:
+				return os.path.join(d, name + "_Color.png")
 	return None
 
 
@@ -102,6 +114,9 @@ def material(name):
 			tex.image = bpy.data.images.load(path, check_existing=True)
 			tex.location = (-360, 300)
 			mat.node_tree.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
+			if name in DECALS:
+				mat.node_tree.links.new(tex.outputs["Alpha"], bsdf.inputs["Alpha"])
+				mat.surface_render_method = "BLENDED"
 			if "_Emission" in path:
 				mat.node_tree.links.new(tex.outputs["Color"], bsdf.inputs["Emission Color"])
 				bsdf.inputs["Emission Strength"].default_value = 1.5
@@ -224,6 +239,16 @@ class Part:
 				u = m.to_3x3() @ u
 			self.map_rect(f, c, r, u, w, h, rect)
 		return f
+
+	def decal(self, mat, at, normal, w, h, turn_deg=0.0, rect=None, lift=0.004):
+		"""A stain, crack or painted mark: a see-through panel lying `lift` off the
+		surface whose outward direction is `normal`, turned about that direction.
+		On a floor (normal up) the image's top points to +z before turning; on a
+		wall it points up."""
+		n = Vector(normal).normalized()
+		up = Vector((0, 0, 1)) if abs(n.y) > 0.9 else Vector((0, 1, 0))
+		up = Matrix.Rotation(math.radians(turn_deg), 3, n) @ up
+		return self.quad(mat, Vector(at) + n * lift, n, w, h, rect=rect or (0.0, 0.0, 1.0, 1.0), up=up)
 
 	def cyl(self, mat, a, b, r, seg=10, r2=None, m=None, cap_mat=None):
 		"""Cylinder (or cone, with r2) from point a to point b."""
