@@ -1,0 +1,70 @@
+﻿set,id,layout,files,made_with,origin,licence,received,note
+A07_DoubleYellowLine,A07,贴花,A07_DoubleYellowLine_Color.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+A08_WhiteEdgeLine,A08,贴花,A08_WhiteEdgeLine_Color.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+A23_ManholeCover,A23,正面图,A23_ManholeCover_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+B03_StaplesOnPole,B03,贴花四变体,B03a_StaplesOnPole_Color.png B03b_StaplesOnPole_Color.png B03c_StaplesOnPole_Color.png B03d_StaplesOnPole_Color.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,cut into four single decals
+B07_CobraHeadStreetLight,B07,多视图,B07_CobraHeadStreetLight_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+B10_YellowFlasher,B10,多视图,B10_YellowFlasher_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+B43_CarLampLenses,B43,正面图,B43_CarLampLenses_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+C08_GlassBlock,C08,平铺,C08_GlassBlock_Color.jpg C08_GlassBlock_Normal.jpg C08_GlassBlock_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 0.80, roughness 0.25, metal 0.0)"
+C14_PeelingClapboard,C14,平铺,C14_PeelingClapboard_Color.jpg C14_PeelingClapboard_Normal.jpg C14_PeelingClapboard_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 1.60, roughness 0.85, metal 0.0)"
+C20_DelaminatedPlywood,C20,平铺,C20_DelaminatedPlywood_Color.jpg C20_DelaminatedPlywood_Normal.jpg C20_DelaminatedPlywood_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 1.20, roughness 0.88, metal 0.0)"
+C42_DoorbellMailSlot,C42,正面图,C42_DoorbellMailSlot_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+C58_ScreenDoor,C58,正面图,C58_ScreenDoor_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+C62_AluminiumWindowTrim,C62,饰条,C62_AluminiumWindowTrim_Color.jpg C62_AluminiumWindowTrim_Normal.jpg C62_AluminiumWindowTrim_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"mirrored so it tiles left to right; normal and ORM derived from the colour (bump 0.80, roughness 0.45, metal 0.9)"
+C65_GlassCracks,C65,遮罩,C65a_GlassCracks_Mask.png C65b_GlassCracks_Mask.png C65c_GlassCracks_Mask.png C65d_GlassCracks_Mask.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,cut into four single masks
+C66_BrokenGlassEdges,C66,遮罩,C66a_BrokenGlassEdges_Mask.png C66b_BrokenGlassEdges_Mask.png C66c_BrokenGlassEdges_Mask.png C66d_BrokenGlassEdges_Mask.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,cut into four single masks
+C68_BentVenetianBlinds,C68,平铺,C68_BentVenetianBlinds_Color.jpg C68_BentVenetianBlinds_Normal.jpg C68_BentVenetianBlinds_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 1.30, roughness 0.55, metal 0.3)"
+D01_FloralWallpaperLarge,D01,平铺,D01_FloralWallpaperLarge_Color.jpg D01_FloralWallpaperLarge_Normal.jpg D01_FloralWallpaperLarge_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 0.25, roughness 0.86, metal 0.0)"
+D02_FloralWallpaperSmall,D02,平铺,D02_FloralWallpaperSmall_Color.jpg D02_FloralWallpaperSmall_Normal.jpg D02_FloralWallpaperSmall_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 0.25, roughness 0.86, metal 0.0)"
+D03_StripedWallpaper,D03,平铺,D03_StripedWallpaper_Color.jpg D03_StripedWallpaper_Normal.jpg D03_StripedWallpaper_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 0.25, roughness 0.86, metal 0.0)"
+D04_FruitKitchenWallpaper,D04,平铺,D04_FruitKitchenWallpaper_Color.jpg D04_FruitKitchenWallpaper_Normal.jpg D04_FruitKitchenWallpaper_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 0.25, roughness 0.84, metal 0.0)"
+D05_ToyWallpaper,D05,平铺,D05_ToyWallpaper_Color.jpg D05_ToyWallpaper_Normal.jpg D05_ToyWallpaper_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 0.25, roughness 0.86, metal 0.0)"
+D10_LatexDrywall,D10,平铺,D10_LatexDrywall_Color.jpg D10_LatexDrywall_Normal.jpg D10_LatexDrywall_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 0.60, roughness 0.80, metal 0.0)"
+D12_WallHoleInsulation,D12,贴花,D12_WallHoleInsulation_Color.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+D15_PopcornCeiling,D15,平铺,D15_PopcornCeiling_Color.jpg D15_PopcornCeiling_Normal.jpg D15_PopcornCeiling_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 1.50, roughness 0.92, metal 0.0)"
+D16_TinCeiling,D16,平铺,D16_TinCeiling_Color.jpg D16_TinCeiling_Normal.jpg D16_TinCeiling_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 1.40, roughness 0.70, metal 0.0)"
+D18_CollapsedCeiling,D18,贴花,D18_CollapsedCeiling_Color.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+D20_CheckerVinylFloor,D20,平铺,D20_CheckerVinylFloor_Color.jpg D20_CheckerVinylFloor_Normal.jpg D20_CheckerVinylFloor_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 0.30, roughness 0.55, metal 0.0)"
+D21_BrickVinylFloor,D21,平铺,D21_BrickVinylFloor_Color.jpg D21_BrickVinylFloor_Normal.jpg D21_BrickVinylFloor_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 0.40, roughness 0.60, metal 0.0)"
+D22_GeometricVinylFloor,D22,平铺,D22_GeometricVinylFloor_Color.jpg D22_GeometricVinylFloor_Normal.jpg D22_GeometricVinylFloor_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 0.30, roughness 0.55, metal 0.0)"
+D24_VCTFloorTiles,D24,平铺,D24_VCTFloorTiles_Color.jpg D24_VCTFloorTiles_Normal.jpg D24_VCTFloorTiles_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 0.40, roughness 0.60, metal 0.0)"
+D43_StairRailTrim,D43,饰条,D43_StairRailTrim_Color.jpg D43_StairRailTrim_Normal.jpg D43_StairRailTrim_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"mirrored so it tiles left to right; normal and ORM derived from the colour (bump 1.20, roughness 0.50, metal 0.0)"
+D47_RoundThermostat,D47,正面图,D47_RoundThermostat_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+D48_SmokeDetector,D48,正面图,D48_SmokeDetector_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+D55_MetalBlinds,D55,平铺,D55_MetalBlinds_Color.jpg D55_MetalBlinds_Normal.jpg D55_MetalBlinds_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 1.30, roughness 0.50, metal 0.3)"
+D56_RollerShade,D56,正面图,D56_RollerShade_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+E37_FreezerShelfTags,E37,正面图,E37_FreezerShelfTags_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+E51_ConvexMirror,E51,正面图,E51_ConvexMirror_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+E52_StaffLockers,E52,正面图,E52_StaffLockers_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+E62_HandDryer,E62,正面图,E62_HandDryer_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+F16_FrontGrille,F16,正面图,F16_FrontGrille_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+F17_Headlight,F17,正面图,F17_Headlight_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+F18_TailLight,F18,正面图,F18_TailLight_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+F26_PulleyBeltTensioner,F26,多视图,F26_PulleyBeltTensioner_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+F34_HoodLiner,F34,平铺,F34_HoodLiner_Color.jpg F34_HoodLiner_Normal.jpg F34_HoodLiner_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 1.20, roughness 0.95, metal 0.0)"
+F36_Firewall,F36,正面图,F36_Firewall_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+F43_IgnitionSwitchKeys,F43,正面图,F43_IgnitionSwitchKeys_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+F49_TrunkLiner,F49,平铺,F49_TrunkLiner_Color.jpg F49_TrunkLiner_Normal.jpg F49_TrunkLiner_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 0.90, roughness 0.95, metal 0.0)"
+G16_PipeBox,G16,平面印刷品,G16_PipeBox_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+H21_Payphone,H21,正面图,H21_Payphone_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+H23_BoothTabletop,H23,正面图,H23_BoothTabletop_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+H25_PhotoWall,H25,平面印刷品,H25_PhotoWall_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+H27_HolidayLights,H27,发光,H27_HolidayLights_Emission.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+I02_WindowDecal,I02,贴花,I02_WindowDecal_Color.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+I06_RoundPorthole,I06,正面图,I06_RoundPorthole_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+I14_SlideCoinSlot,I14,正面图,I14_SlideCoinSlot_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+I22_CorkBoard,I22,正面图,I22_CorkBoard_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+I24_StoppedWallClock,I24,正面图,I24_StoppedWallClock_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+J26_Dishwasher,J26,正面图,J26_Dishwasher_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+J27_WallPhone,J27,正面图,J27_WallPhone_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+J31_StairwellPhotos,J31,平面印刷品,J31_StairwellPhotos_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+K04_YellowedABSPlastic,K04,平铺,K04_YellowedABSPlastic_Color.jpg K04_YellowedABSPlastic_Normal.jpg K04_YellowedABSPlastic_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 0.50, roughness 0.50, metal 0.0)"
+K06_BrushedStainless,K06,平铺,K06_BrushedStainless_Color.jpg K06_BrushedStainless_Normal.jpg K06_BrushedStainless_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 0.50, roughness 0.35, metal 1.0)"
+L05_SkinFromSeam,L05,平铺,L05_SkinFromSeam_Color.jpg L05_SkinFromSeam_Normal.jpg L05_SkinFromSeam_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 0.90, roughness 0.60, metal 0.0)"
+L36_BulgingWallpaper,L36,贴花,L36_BulgingWallpaper_Color.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+M05_CeilingMould,M05,贴花四变体,M05a_CeilingMould_Color.png M05b_CeilingMould_Color.png M05c_CeilingMould_Color.png M05d_CeilingMould_Color.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,cut into four single decals
+M07_RustStreaks,M07,贴花四变体,M07a_RustStreaks_Color.png M07b_RustStreaks_Color.png M07c_RustStreaks_Color.png M07d_RustStreaks_Color.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,cut into four single decals
+M13_WallCracks,M13,贴花四变体,M13a_WallCracks_Color.png M13b_WallCracks_Color.png M13c_WallCracks_Color.png M13d_WallCracks_Color.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,cut into four single decals
+N17_MissingFlyers,N17,平面印刷品,N17_MissingFlyers_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+Q06_ButtonGlyphs,Q06,平面印刷品,Q06_ButtonGlyphs_Color.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,thresholded into clean white icons on transparency

@@ -999,7 +999,7 @@ You are making texture source images for a first-person survival horror game set
 
 ## 四、第二轮：第一批核对后要重出的 8 条（2026-11-12）
 
-第一批 147 张的核对结论在 `docs/texture_check/xiaoyu_gpt_batch.md`：合格 65、重导 70、重出 8、我来修 4。
+第一批 147 张的核对结论在 `docs/texture_check/xiaoyu_gpt_batch.md`：合格 66、重导 70、重出 8、我来修 3。
 
 **先做重导**（不用重新出图）：除平铺以外的类型，从原图**等比缩小放进 1024 画布，不要裁**（贴花那一批就是这样做的，是对的）；
 空出来的边，多视图、正面图、印刷品填中灰 `#808080`，发光和遮罩填纯黑。多视图直接交原始尺寸也可以。要重导的 70 个编号在核对文档的逐项表里。

@@ -24,7 +24,7 @@
 
 还剩 93 项"待找"，两个素材库里都没有合适的现成素材，名单和原因在 `docs/texture_check/still_missing.md`。
 这些项和需要重做的项，给出图工具用的提示词在 `docs/texture_prompts.md`。
-小鱼按这些提示词出的第一批 147 张在分支 `xiaoyu/textures-20261112`，核对结论在 `docs/texture_check/xiaoyu_gpt_batch.md`（合格 65、重导 70、重出 8、我来修 4）；**下面各项的"素材"栏还没有按这批图更新**，等图接收进 `textures/` 时再改。
+小鱼按这些提示词出的第一批 147 张在分支 `xiaoyu/textures-20261112`，核对结论在 `docs/texture_check/xiaoyu_gpt_batch.md`（合格 66、重导 70、重出 8、我来修 3）；其中合格的和我修过的共 69 项已经接收进 `textures/generated/`，下面这些项的"素材"栏以"**生成图**"开头；重导和重出的 78 项还没到。
 
 交付规范见 `docs/texture_delivery.md`，验收用 `tools/check_textures.py`。
 
@@ -109,8 +109,8 @@
 | A04 | 沥青封缝条 | 蛇形的黑色灌缝 | 贴花 | P0 | 拍 | 程序生成 |
 | A05 | 柏油裂缝 | 6 种走向 | 贴花 | P0 | 拍 | [AsphaltDamageSet001](https://ambientcg.com/view?id=AsphaltDamageSet001) |
 | A06 | 坑洼 | 带积水和碎石的破洞，3 种 | 贴花 | P1 | 拍 | [AsphaltDamageSet001](https://ambientcg.com/view?id=AsphaltDamageSet001)（凑合） |
-| A07 | 黄色双实线 | 路中线，磨损断续 | 贴花 | P0 | 画 | 有初稿 #1 |
-| A08 | 白色边线 | 路缘一侧 | 贴花 | P0 | 画 | 有初稿 #1 |
+| A07 | 黄色双实线 | 路中线，磨损断续 | 贴花 | P0 | 画 | **生成图** `A07_DoubleYellowLine`；原：有初稿 #1 |
+| A08 | 白色边线 | 路缘一侧 | 贴花 | P0 | 画 | **生成图** `A08_WhiteEdgeLine`；原：有初稿 #1 |
 | A09 | 停止线和地面 STOP 字 | 路口 | 贴花 | P1 | 画 | 有初稿 #19 |
 | A10 | 人行横道线 | 加油站对面 | 贴花 | P1 | 画 | 有初稿 #19 |
 | A11 | 地面箭头和限速数字 | 镇口 | 贴花 | P2 | 画 | 有初稿 #28 |
@@ -125,7 +125,7 @@
 | A20 | 路缘石红漆 | 消防栓旁 | 饰条 | P1 | 拍 | [gravel_concrete_03](https://polyhaven.com/a/gravel_concrete_03)（凑合） |
 | A21 | 残障坡道防滑砖 | 路口凸点砖 | 平铺 | P2 | 库 | [TactilePaving003](https://ambientcg.com/view?id=TactilePaving003) |
 | A22 | 雨水箅子 | 铸铁格栅 | 物件 | P0 | 拍 | [Grate002](https://ambientcg.com/view?id=Grate002) |
-| A23 | 圆形井盖 | 原创市政字样 | 物件 | P0 | 画 | 有初稿 #1 |
+| A23 | 圆形井盖 | 原创市政字样 | 物件 | P0 | 画 | **生成图** `A23_ManholeCover`；原：有初稿 #1 |
 | A24 | 方形检修盖 | 电信和燃气 | 物件 | P1 | 画 | 有初稿 #19 |
 | A25 | 碎石路肩 | 街道边缘 | 平铺 | P1 | 拍 | [Gravel029](https://ambientcg.com/view?id=Gravel029) |
 | A26 | 砂石停车场 | 酒馆后面 | 平铺 | P1 | 拍 | [Gravel029](https://ambientcg.com/view?id=Gravel029)（凑合） |
@@ -166,14 +166,14 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | B01 | 木电线杆 | 焦油浸渍，开裂 | 物件 | P0 | 拍 | [modular_electricity_poles](https://polyhaven.com/a/modular_electricity_poles) |
 | B02 | 电线杆编号牌 | 金属小牌 | 物件 | P2 | 画 | 有初稿 #28 |
-| B03 | 电线杆上的订书钉和传单残片 | 一圈锈钉和纸角 | 贴花 | P1 | 拍 | 待找 |
+| B03 | 电线杆上的订书钉和传单残片 | 一圈锈钉和纸角 | 贴花 | P1 | 拍 | **生成图** `B03_StaplesOnPole` |
 | B04 | 变压器桶 | 灰漆，漏油痕 | 物件 | P1 | 库 | 待找 |
 | B05 | 瓷绝缘子和横担 | 杆顶 | 物件 | P1 | 库 | [modular_electricity_poles](https://polyhaven.com/a/modular_electricity_poles)（凑合） |
 | B06 | 架空电线和电话线 | 黑橡胶，下垂 | 物件 | P0 | 程 | 已做 |
-| B07 | 路灯杆 | 镀锌钢，怪 | 物件 | P0 | 拍 | [street_lamp_01](https://polyhaven.com/a/street_lamp_01)（凑合） |
+| B07 | 路灯杆 | 镀锌钢，怪 | 物件 | P0 | 拍 | **生成图** `B07_CobraHeadStreetLight`（建模参考）；原：[street_lamp_01](https://polyhaven.com/a/street_lamp_01)（凑合） |
 | B08 | 路灯灯头 | 钠灯和水银灯两种灯罩 | 发光 | P0 | 库 | [street_lamp_02](https://polyhaven.com/a/street_lamp_02)（凑合） |
 | B09 | 路灯检修门 | 杆根小盖板 | 物件 | P2 | 库 | [rusty_metal_04](https://polyhaven.com/a/rusty_metal_04)（凑合） |
-| B10 | 悬挂的黄色闪灯 | 路口上空 | 发光 | P1 | 库 | 待找 |
+| B10 | 悬挂的黄色闪灯 | 路口上空 | 发光 | P1 | 库 | **生成图** `B10_YellowFlasher`（建模参考） |
 | B11 | 停车让行牌 | 八角红牌，弹孔 | 物件 | P1 | 画 | 有初稿 #19 |
 | B12 | 限速牌 | 白底黑字 | 物件 | P1 | 画 | 有初稿 #19 |
 | B13 | 街名牌 | 绿底白字，虚构街名 | 物件 | P1 | 画 | 有初稿 #19 |
@@ -206,7 +206,7 @@
 | B40 | 民用车漆面 | 街边停放的车，4 种颜色 | 物件 | P1 | 库 | [PaintedMetal002](https://ambientcg.com/view?id=PaintedMetal002)（凑合） |
 | B41 | 民用车玻璃和内饰剪影 | 车窗里看到的 | 物件 | P1 | 画 | 有初稿 #19 |
 | B42 | 民用车轮胎和轮毂 | 通用 | 物件 | P1 | 库 | [rusted_wheel_rim_02](https://polyhaven.com/a/rusted_wheel_rim_02)（凑合） |
-| B43 | 民用车灯 | 警报闪烁用 | 发光 | P1 | 库 | 待找 |
+| B43 | 民用车灯 | 警报闪烁用 | 发光 | P1 | 库 | **生成图** `B43_CarLampLenses` |
 | B44 | 车牌 | 虚构的州，10 个随机号 | 图集 | P1 | 画 | 有初稿 #19 |
 | B45 | 保险杠贴纸 | 原创，8 种 | 图集 | P2 | 画 | 有初稿 #28 |
 
@@ -223,19 +223,19 @@
 | C05 | 褪色的手绘墙体广告 | 侧墙上的老广告，原创 | 贴花 | P1 | 画 | 有初稿 #20 |
 | C06 | 砖拱窗楣和石窗台 | 窗洞上下 | 饰条 | P1 | 拍 | [factory_brick](https://polyhaven.com/a/factory_brick)（凑合） |
 | C07 | 砖檐口线脚 | 屋顶边缘 | 饰条 | P1 | 拍 | [factory_brick](https://polyhaven.com/a/factory_brick)（凑合） |
-| C08 | 玻璃砖 | 酒馆的小高窗 | 平铺 | P1 | 库 | 待找 |
+| C08 | 玻璃砖 | 酒馆的小高窗 | 平铺 | P1 | 库 | **生成图** `C08_GlassBlock` |
 | C09 | 混凝土砌块墙 | 加油站后墙、车间 | 平铺 | P0 | 拍 | [concrete_block_wall_02](https://polyhaven.com/a/concrete_block_wall_02) |
 | C10 | 刷漆的砌块墙 | 半截绿漆 | 平铺 | P1 | 拍 | [concrete_block_wall_02](https://polyhaven.com/a/concrete_block_wall_02)（凑合） |
 | C11 | 现浇混凝土 | 带模板纹，基础和挡墙 | 平铺 | P1 | 拍 | [wood_textured_concrete](https://polyhaven.com/a/wood_textured_concrete) |
 | C12 | 基础水线污渍 | 墙根一圈深色 | 贴花 | P0 | 拍 | [Leaking005](https://ambientcg.com/view?id=Leaking005) |
 | C13 | 开裂的灰泥墙 | 个别店铺 | 平铺 | P2 | 拍 | [worn_cracked_plaster](https://polyhaven.com/a/worn_cracked_plaster) |
-| C14 | 白漆剥落的木护墙板 | 民宅基础款 | 平铺 | P0 | 拍 | [WoodSiding009](https://ambientcg.com/view?id=WoodSiding009) |
+| C14 | 白漆剥落的木护墙板 | 民宅基础款 | 平铺 | P0 | 拍 | **生成图** `C14_PeelingClapboard`；原：[WoodSiding009](https://ambientcg.com/view?id=WoodSiding009) |
 | C15 | 褪色的彩色木护墙板 | 用染色做蓝、黄、绿变体 | 平铺 | P1 | 拍 | [WoodSiding006](https://ambientcg.com/view?id=WoodSiding006) |
 | C16 | 木瓦墙板 | 山墙尖 | 平铺 | P2 | 拍 | [WoodSiding012](https://ambientcg.com/view?id=WoodSiding012)（凑合） |
 | C17 | 乙烯基壁板 | 后来翻新的房子 | 平铺 | P1 | 库 | [exterior_wall_cladding](https://polyhaven.com/a/exterior_wall_cladding)（凑合） |
 | C18 | 石棉水泥墙板 | 铁锈带特征，波浪下缘 | 平铺 | P1 | 拍 | [asbestos_sheet](https://polyhaven.com/a/asbestos_sheet) |
 | C19 | 仿砖油毡墙面 | 铁锈带特征，接缝翘起 | 平铺 | P1 | 画 | 有初稿 #20 |
-| C20 | 受潮分层的胶合板 | 封窗板 | 平铺 | P0 | 拍 | [plywood](https://polyhaven.com/a/plywood) |
+| C20 | 受潮分层的胶合板 | 封窗板 | 平铺 | P0 | 拍 | **生成图** `C20_DelaminatedPlywood`；原：[plywood](https://polyhaven.com/a/plywood) |
 | C21 | 定向刨花板 | 临时封堵 | 平铺 | P2 | 库 | [oriented_strand_board](https://polyhaven.com/a/oriented_strand_board) |
 | C22 | 镀锌波纹铁皮 | 新旧两种 | 平铺 | P1 | 拍 | [corrugated_iron](https://polyhaven.com/a/corrugated_iron) |
 | C23 | 粉化的压型钢板 | 车间外墙 | 平铺 | P1 | 拍 | [box_profile_metal_sheet](https://polyhaven.com/a/box_profile_metal_sheet) |
@@ -257,7 +257,7 @@
 | C39 | 煤气表和电话接线盒 | 后墙 | 物件 | P2 | 拍 | [utility_box_02](https://polyhaven.com/a/utility_box_02)（凑合） |
 | C40 | 外墙灯 | 笼形和鹅颈两种 | 发光 | P1 | 库 | [industrial_wall_lamp](https://polyhaven.com/a/industrial_wall_lamp) |
 | C41 | 老式监控摄像头 | 加油站 | 物件 | P2 | 库 | [security_camera_02](https://polyhaven.com/a/security_camera_02) |
-| C42 | 门铃和投信口 | 民宅 | 物件 | P2 | 库 | 待找 |
+| C42 | 门铃和投信口 | 民宅 | 物件 | P2 | 库 | **生成图** `C42_DoorbellMailSlot` |
 | C43 | 门廊木地板 | 灰漆磨损 | 平铺 | P1 | 拍 | [wood_floor_deck](https://polyhaven.com/a/wood_floor_deck) |
 | C44 | 门廊立柱和栏杆 | 车木件，漆剥落 | 饰条 | P1 | 拍 | [PaintedWood009C](https://ambientcg.com/view?id=PaintedWood009C)（凑合） |
 | C45 | 门廊台阶 | 混凝土和木两种 | 物件 | P1 | 拍 | [stair_planks](https://polyhaven.com/a/stair_planks)（凑合） |
@@ -273,17 +273,17 @@
 | C55 | 工业卷帘门 | 钢条，汽修车间 | 平铺 | P1 | 库 | [rusty_metal_shutter](https://polyhaven.com/a/rusty_metal_shutter) |
 | C56 | 钢板后门 | 踢痕、锈 | 物件 | P0 | 拍 | [PaintedMetal007](https://ambientcg.com/view?id=PaintedMetal007)（凑合） |
 | C57 | 防盗铁栅门 | 酒馆后门 | 物件 | P2 | 库 | [large_iron_gate](https://polyhaven.com/a/large_iron_gate)（凑合） |
-| C58 | 纱门 | 铝框，纱网撕裂 | 物件 | P1 | 库 | 待找 |
+| C58 | 纱门 | 铝框，纱网撕裂 | 物件 | P1 | 库 | **生成图** `C58_ScreenDoor` |
 | C59 | 实木镶板前门 | 民宅 | 物件 | P0 | 拍 | [rough_pine_door](https://polyhaven.com/a/rough_pine_door) |
 | C60 | 门把手、锁具和合页 | 通用五金 | 图集 | P0 | 库 | [gate_latch_01](https://polyhaven.com/a/gate_latch_01)（凑合） |
 | C61 | 木双悬窗 | 漆剥落，窗框 | 饰条 | P0 | 拍 | [PaintedWood008C](https://ambientcg.com/view?id=PaintedWood008C)（凑合） |
-| C62 | 铝推拉窗 | 窗框 | 饰条 | P1 | 库 | 待找 |
+| C62 | 铝推拉窗 | 窗框 | 饰条 | P1 | 库 | **生成图** `C62_AluminiumWindowTrim` |
 | C63 | 脏玻璃 | 雨痕、手印、胶带残留 | 平铺 | P0 | 拍 | [Fingerprints007](https://ambientcg.com/view?id=Fingerprints007)（凑合） |
 | C64 | 结露起雾的玻璃 | 室内有热源的窗 | 遮罩 | P1 | 程 | 已做 |
-| C65 | 玻璃裂纹 | 4 种 | 遮罩 | P0 | 画 | 有初稿 #34 |
-| C66 | 破碎玻璃残片边缘 | 砸窗后留在框里的 | 遮罩 | P0 | 画 | 有初稿 #34 |
+| C65 | 玻璃裂纹 | 4 种 | 遮罩 | P0 | 画 | **生成图** `C65_GlassCracks`；原：有初稿 #34 |
+| C66 | 破碎玻璃残片边缘 | 砸窗后留在框里的 | 遮罩 | P0 | 画 | **生成图** `C66_BrokenGlassEdges`；原：有初稿 #34 |
 | C67 | 从外面看的窗帘 | 蕾丝和发黄厚帘 | 平铺 | P1 | 拍 | [velour_velvet](https://polyhaven.com/a/velour_velvet)（凑合） |
-| C68 | 弯折的百叶窗 | 从外面看 | 平铺 | P1 | 库 | 待找 |
+| C68 | 弯折的百叶窗 | 从外面看 | 平铺 | P1 | 库 | **生成图** `C68_BentVenetianBlinds` |
 | C69 | 钉窗木板 | 加固用，也是场景装饰 | 物件 | P1 | 拍 | [worn_planks](https://polyhaven.com/a/worn_planks) |
 | C70 | 窗内假室内 | 不可进入的房子用，6 种 | 全景 | P1 | 画 | 有初稿 #20 |
 | C71 | 窗内电视雪花光 | 电网惊扰的可见指示 | 发光 | P0 | 程 | 已做 |
@@ -295,30 +295,30 @@
 
 | 编号 | 名称 | 说明 | 类型 | 级 | 来源 | 素材 |
 | --- | --- | --- | --- | --- | --- | --- |
-| D01 | 大花碎花墙纸 | 客厅 | 平铺 | P0 | 画 | 有初稿 #3 |
-| D02 | 小碎花墙纸 | 卧室 | 平铺 | P1 | 画 | 有初稿 #21 |
-| D03 | 条纹墙纸 | 走廊 | 平铺 | P1 | 画 | 有初稿 #21 |
-| D04 | 厨房水果图案墙纸 | 厨房 | 平铺 | P1 | 画 | 有初稿 #21 |
-| D05 | 儿童房图案墙纸 | 原创图案 | 平铺 | P1 | 画 | 有初稿 #21 |
+| D01 | 大花碎花墙纸 | 客厅 | 平铺 | P0 | 画 | **生成图** `D01_FloralWallpaperLarge`；原：有初稿 #3 |
+| D02 | 小碎花墙纸 | 卧室 | 平铺 | P1 | 画 | **生成图** `D02_FloralWallpaperSmall`；原：有初稿 #21 |
+| D03 | 条纹墙纸 | 走廊 | 平铺 | P1 | 画 | **生成图** `D03_StripedWallpaper`；原：有初稿 #21 |
+| D04 | 厨房水果图案墙纸 | 厨房 | 平铺 | P1 | 画 | **生成图** `D04_FruitKitchenWallpaper`；原：有初稿 #21 |
+| D05 | 儿童房图案墙纸 | 原创图案 | 平铺 | P1 | 画 | **生成图** `D05_ToyWallpaper`；原：有初稿 #21 |
 | D06 | 浴室墙纸 | 受潮起泡 | 平铺 | P2 | 画 | 有初稿 #28 |
 | D07 | 墙纸翘边和撕裂 | 露出底下另一层旧墙纸 | 贴花 | P0 | 拍 | [decrepit_wallpaper](https://polyhaven.com/a/decrepit_wallpaper)（凑合） |
 | D08 | 深色胡桃木饰板 | 酒馆、客厅 | 平铺 | P1 | 拍 | [WoodFloor051](https://ambientcg.com/view?id=WoodFloor051)（凑合） |
 | D09 | 带节疤的松木饰板 | 阁楼、地下室风格 | 平铺 | P2 | 拍 | [Wood095](https://ambientcg.com/view?id=Wood095)（凑合） |
-| D10 | 乳胶漆石膏板 | 用染色做米黄、薄荷绿、烟熏黄 | 平铺 | P0 | 拍 | [blue_plaster_wall](https://polyhaven.com/a/blue_plaster_wall)（凑合） |
+| D10 | 乳胶漆石膏板 | 用染色做米黄、薄荷绿、烟熏黄 | 平铺 | P0 | 拍 | **生成图** `D10_LatexDrywall`；原：[blue_plaster_wall](https://polyhaven.com/a/blue_plaster_wall)（凑合） |
 | D11 | 破洞露出木板条的灰泥墙 | 老房子 | 贴花 | P1 | 拍 | [damaged_plaster](https://polyhaven.com/a/damaged_plaster)（凑合） |
-| D12 | 墙洞露出保温棉和电线 | 被家电撞穿的墙 | 贴花 | P1 | 拍 | 程序生成 |
+| D12 | 墙洞露出保温棉和电线 | 被家电撞穿的墙 | 贴花 | P1 | 拍 | **生成图** `D12_WallHoleInsulation`；原：程序生成 |
 | D13 | 矿棉吸音天花板 | 便利店、洗衣房 | 平铺 | P0 | 拍 | [OfficeCeiling001](https://ambientcg.com/view?id=OfficeCeiling001) |
 | D14 | 天花龙骨 | 吸音板之间的金属条 | 饰条 | P1 | 库 | [OfficeCeiling005](https://ambientcg.com/view?id=OfficeCeiling005)（凑合） |
-| D15 | 颗粒喷涂天花 | 民宅 | 平铺 | P1 | 库 | [Wallpaper002C](https://ambientcg.com/view?id=Wallpaper002C)（凑合） |
-| D16 | 压花锡天花板 | 酒馆、五金店 | 平铺 | P1 | 库 | 待找 |
+| D15 | 颗粒喷涂天花 | 民宅 | 平铺 | P1 | 库 | **生成图** `D15_PopcornCeiling`；原：[Wallpaper002C](https://ambientcg.com/view?id=Wallpaper002C)（凑合） |
+| D16 | 压花锡天花板 | 酒馆、五金店 | 平铺 | P1 | 库 | **生成图** `D16_TinCeiling` |
 | D17 | 天花水渍圈 | 6 种 | 贴花 | P0 | 拍 | [Leaking015C](https://ambientcg.com/view?id=Leaking015C) |
-| D18 | 塌陷露出龙骨的天花 | 局部 | 贴花 | P2 | 拍 | 程序生成 |
+| D18 | 塌陷露出龙骨的天花 | 局部 | 贴花 | P2 | 拍 | **生成图** `D18_CollapsedCeiling`；原：程序生成 |
 | D19 | 木梁 | 车间、阁楼 | 平铺 | P1 | 拍 | [dark_wood](https://polyhaven.com/a/dark_wood)（凑合） |
-| D20 | 黑白棋盘地板革 | 便利店、厨房 | 平铺 | P0 | 画 | 有初稿 #4 |
-| D21 | 仿红砖地板革 | 厨房 | 平铺 | P1 | 画 | 有初稿 #21 |
-| D22 | 几何图案黄褐地板革 | 70 年代遗留 | 平铺 | P1 | 画 | 有初稿 #21 |
+| D20 | 黑白棋盘地板革 | 便利店、厨房 | 平铺 | P0 | 画 | **生成图** `D20_CheckerVinylFloor`；原：有初稿 #4 |
+| D21 | 仿红砖地板革 | 厨房 | 平铺 | P1 | 画 | **生成图** `D21_BrickVinylFloor`；原：有初稿 #21 |
+| D22 | 几何图案黄褐地板革 | 70 年代遗留 | 平铺 | P1 | 画 | **生成图** `D22_GeometricVinylFloor`；原：有初稿 #21 |
 | D23 | 地板革翘边和破口 | 露出胶痕和垫底的旧报纸 | 贴花 | P1 | 拍 | [old_linoleum_flooring_01](https://polyhaven.com/a/old_linoleum_flooring_01)（凑合） |
-| D24 | 商用方块塑胶地板 | 米色斑点，走道磨损 | 平铺 | P0 | 拍 | [Terrazzo001](https://ambientcg.com/view?id=Terrazzo001)（凑合） |
+| D24 | 商用方块塑胶地板 | 米色斑点，走道磨损 | 平铺 | P0 | 拍 | **生成图** `D24_VCTFloorTiles`；原：[Terrazzo001](https://ambientcg.com/view?id=Terrazzo001)（凑合） |
 | D25 | 长绒地毯 | 橙和绿 | 平铺 | P1 | 库 | [dirty_carpet](https://polyhaven.com/a/dirty_carpet) |
 | D26 | 圈绒商用地毯 | 灰蓝，账房 | 平铺 | P1 | 库 | [Carpet001](https://ambientcg.com/view?id=Carpet001)（凑合） |
 | D27 | 花纹旧地毯 | 酒馆卡座区 | 平铺 | P2 | 画 | 有初稿 #28 |
@@ -337,20 +337,20 @@
 | D40 | 室内镶板门 | 民宅 | 物件 | P1 | 库 | [rough_pine_door](https://polyhaven.com/a/rough_pine_door)（凑合） |
 | D41 | 百叶折叠壁柜门 | 衣帽间 | 物件 | P1 | 库 | [wood_shutter](https://polyhaven.com/a/wood_shutter)（凑合） |
 | D42 | 楼梯踏板和地毯条 | 克拉克家 | 物件 | P1 | 拍 | [stair_planks](https://polyhaven.com/a/stair_planks)（凑合） |
-| D43 | 楼梯栏杆和扶手 | 车木件 | 饰条 | P1 | 库 | 待找 |
+| D43 | 楼梯栏杆和扶手 | 车木件 | 饰条 | P1 | 库 | **生成图** `D43_StairRailTrim` |
 | D44 | 铸铁暖气片 | 老房子 | 物件 | P1 | 拍 | 待找 |
 | D45 | 踢脚电暖器 | 翻新过的房间 | 物件 | P2 | 库 | 待找 |
 | D46 | 发黄的插座和开关面板 | 通用，周围有焦痕版本 | 图集 | P0 | 拍 | [Plastic010](https://ambientcg.com/view?id=Plastic010)（凑合） |
-| D47 | 圆形老式温控器 | 墙上 | 物件 | P2 | 库 | 待找 |
-| D48 | 烟雾报警器 | 天花，电量低时会叫 | 物件 | P1 | 库 | 待找 |
+| D47 | 圆形老式温控器 | 墙上 | 物件 | P2 | 库 | **生成图** `D47_RoundThermostat` |
+| D48 | 烟雾报警器 | 天花，电量低时会叫 | 物件 | P1 | 库 | **生成图** `D48_SmokeDetector` |
 | D49 | 吊扇 | 怪 | 物件 | P1 | 库 | [ceiling_fan](https://polyhaven.com/a/ceiling_fan) |
 | D50 | 乳白玻璃吸顶灯 | 里面有死虫 | 发光 | P1 | 拍 | [modern_ceiling_lamp_01](https://polyhaven.com/a/modern_ceiling_lamp_01)（凑合） |
 | D51 | 格栅日光灯盘 | 店铺 | 发光 | P0 | 库 | [mounted_fluorescent_lights](https://polyhaven.com/a/mounted_fluorescent_lights) |
 | D52 | 裸灯泡和拉绳 | 储藏室、地沟 | 发光 | P1 | 库 | [pull_chain_light_socket](https://polyhaven.com/a/pull_chain_light_socket) |
 | D53 | 布艺灯罩 | 落地灯和台灯 | 物件 | P1 | 库 | 待找 |
 | D54 | 厚窗帘和蕾丝窗帘 | 室内侧 | 平铺 | P1 | 拍 | [velour_velvet](https://polyhaven.com/a/velour_velvet)（凑合） |
-| D55 | 金属百叶帘 | 弯折、积灰 | 平铺 | P1 | 库 | 待找 |
-| D56 | 发黄撕裂的卷帘 | 民宅 | 物件 | P2 | 拍 | 待找 |
+| D55 | 金属百叶帘 | 弯折、积灰 | 平铺 | P1 | 库 | **生成图** `D55_MetalBlinds` |
+| D56 | 发黄撕裂的卷帘 | 民宅 | 物件 | P2 | 拍 | **生成图** `D56_RollerShade` |
 | D57 | 通风口格栅 | 墙和地面 | 物件 | P1 | 库 | [modular_airduct_rectangular_01](https://polyhaven.com/a/modular_airduct_rectangular_01)（凑合） |
 | D58 | 室内配电箱 | 员工室、车库 | 物件 | P1 | 拍 | [power_box_01](https://polyhaven.com/a/power_box_01) |
 | D59 | 热水器 | 圆筒，怪 | 物件 | P2 | 库 | 待找 |
@@ -401,7 +401,7 @@
 | E34 | 公路地图册和明信片 | 转架上 | 图集 | P2 | 画 | 有初稿 #29 |
 | E35 | 电池和小五金吊卡 | 收银台旁 | 图集 | P1 | 画 | 有初稿 #22 |
 | E36 | 立式玻璃门冷柜 | 白钢，玻璃结露，内灯 | 物件 | P0 | 拍 | [PaintedMetal012](https://ambientcg.com/view?id=PaintedMetal012) |
-| E37 | 冷柜内层架和价签 | 透过玻璃可见 | 物件 | P1 | 库 | 待找 |
+| E37 | 冷柜内层架和价签 | 透过玻璃可见 | 物件 | P1 | 库 | **生成图** `E37_FreezerShelfTags` |
 | E38 | 卧式冷柜 | 冰淇淋，怪 | 物件 | P1 | 库 | 待找 |
 | E39 | 冷柜下的滴水水渍 | 地面 | 贴花 | P1 | 拍 | 程序生成 |
 | E40 | 咖啡台 | 层压板和不锈钢 | 物件 | P1 | 库 | [CoffeeCart_01](https://polyhaven.com/a/CoffeeCart_01)（凑合） |
@@ -415,8 +415,8 @@
 | E48 | 彩票展示盒 | 原创 | 物件 | P2 | 画 | 有初稿 #29 |
 | E49 | 头顶香烟架 | 收银台上方 | 物件 | P2 | 库 | [cigarette_pack](https://polyhaven.com/a/cigarette_pack)（凑合） |
 | E50 | 监控显示器 | 显像管，雪花 | 发光 | P1 | 程 | 已做 |
-| E51 | 防盗凸面镜 | 能看到身后的过道 | 物件 | P1 | 库 | 待找 |
-| E52 | 员工储物柜 | 灰漆，贴着贴纸 | 物件 | P1 | 库 | 待找 |
+| E51 | 防盗凸面镜 | 能看到身后的过道 | 物件 | P1 | 库 | **生成图** `E51_ConvexMirror` |
+| E52 | 员工储物柜 | 灰漆，贴着贴纸 | 物件 | P1 | 库 | **生成图** `E52_StaffLockers` |
 | E53 | 折叠桌椅 | 员工室 | 物件 | P2 | 库 | [plastic_monobloc_chair_01](https://polyhaven.com/a/plastic_monobloc_chair_01)（凑合） |
 | E54 | 排班表和劳工法海报 | 原创 | 图集 | P1 | 画 | 有初稿 #22 |
 | E55 | 手绘宣传单地图 | 游戏里唯一的地图，关键道具 | 物件 | P0 | 画 | 有初稿 #8 |
@@ -426,7 +426,7 @@
 | E59 | 卫生间洁具 | 马桶、小便池、洗手盆，污渍 | 物件 | P1 | 拍 | 待找 |
 | E60 | 卫生间镜子 | 裂纹和起雾两种 | 物件 | P1 | 程 | 已做 |
 | E61 | 卫生间隔板 | 刻字和涂鸦 | 平铺 | P2 | 画 | 有初稿 #29 |
-| E62 | 干手机和纸巾盒 | 墙挂，怪 | 物件 | P2 | 库 | 待找 |
+| E62 | 干手机和纸巾盒 | 墙挂，怪 | 物件 | P2 | 库 | **生成图** `E62_HandDryer` |
 | E63 | 后巷垃圾站围墙 | 砌块和木门 | 平铺 | P1 | 拍 | [concrete_block_wall_02](https://polyhaven.com/a/concrete_block_wall_02)（凑合） |
 | E64 | 大垃圾箱 | 绿漆，凹痕，污流 | 物件 | P0 | 拍 | [PaintedMetal013](https://ambientcg.com/view?id=PaintedMetal013) |
 | E65 | 垃圾站油腻地面 | 混凝土 | 平铺 | P1 | 拍 | [dirty_concrete](https://polyhaven.com/a/dirty_concrete) |
@@ -454,9 +454,9 @@
 | F13 | 刹车盘和卡钳 | 卸下轮子后可见，锈 | 物件 | P0 | 拍 | [rusty_metal_04](https://polyhaven.com/a/rusty_metal_04) |
 | F14 | 轮拱内衬 | 泥和碎石 | 物件 | P0 | 拍 | [Plastic012B](https://ambientcg.com/view?id=Plastic012B)（凑合） |
 | F15 | 底盘和悬挂 | 顶起后可见 | 物件 | P1 | 拍 | [rusty_metal_04](https://polyhaven.com/a/rusty_metal_04)（凑合） |
-| F16 | 前格栅 | 镀铬和黑塑料 | 物件 | P1 | 库 | 待找 |
-| F17 | 大灯 | 透镜和反光碗，接通电瓶后亮 | 发光 | P0 | 库 | 待找 |
-| F18 | 尾灯和转向灯 | 红和琥珀色 | 发光 | P1 | 库 | 待找 |
+| F16 | 前格栅 | 镀铬和黑塑料 | 物件 | P1 | 库 | **生成图** `F16_FrontGrille` |
+| F17 | 大灯 | 透镜和反光碗，接通电瓶后亮 | 发光 | P0 | 库 | **生成图** `F17_Headlight` |
+| F18 | 尾灯和转向灯 | 红和琥珀色 | 发光 | P1 | 库 | **生成图** `F18_TailLight` |
 | F19 | 镀铬保险杠 | 划痕 | 物件 | P1 | 库 | 待找 |
 | F20 | 挡风玻璃 | 雨滴和雨刷扇形痕 | 遮罩 | P0 | 程 | 已做 |
 | F21 | 车窗玻璃 | 侧窗，会被怪拍打 | 物件 | P1 | 库 | 待找 |
@@ -464,7 +464,7 @@
 | F23 | 发动机本体 | 铸铁和铝，油泥 | 物件 | P0 | 拍 | [Metal053B](https://ambientcg.com/view?id=Metal053B)（凑合） |
 | F24 | 气门室盖和空滤壳 | 引擎舱上层 | 物件 | P0 | 拍 | [Metal041B](https://ambientcg.com/view?id=Metal041B)（凑合） |
 | F25 | 发电机 | 皮带的一端 | 物件 | P0 | 拍 | 待找 |
-| F26 | 皮带轮组和张紧器 | 曲轴、发电机、张紧轮 | 物件 | P0 | 拍 | 待找 |
+| F26 | 皮带轮组和张紧器 | 曲轴、发电机、张紧轮 | 物件 | P0 | 拍 | **生成图** `F26_PulleyBeltTensioner`（建模参考） |
 | F27 | 断裂的旧皮带 | 挂在轮上 | 物件 | P0 | 画 | 有初稿 #9 |
 | F28 | 新皮带 | 可拾取物，带纸套 | 物件 | P0 | 画 | 有初稿 #9 |
 | F29 | 散热器和风扇罩 | 引擎舱前部 | 物件 | P1 | 拍 | 待找 |
@@ -472,22 +472,22 @@
 | F31 | 电瓶托架 | 腐蚀的白色粉末 | 物件 | P0 | 拍 | [rusty_metal_05](https://polyhaven.com/a/rusty_metal_05) |
 | F32 | 电瓶桩头夹 | 红和黑，接线时逐个操作 | 物件 | P0 | 库 | [Metal057C](https://ambientcg.com/view?id=Metal057C)（凑合） |
 | F33 | 线束和保险丝盒 | 引擎舱侧面 | 物件 | P1 | 拍 | 待找 |
-| F34 | 引擎盖内衬 | 下垂的隔音棉 | 物件 | P0 | 拍 | 待找 |
+| F34 | 引擎盖内衬 | 下垂的隔音棉 | 物件 | P0 | 拍 | **生成图** `F34_HoodLiner` |
 | F35 | 引擎盖支撑杆和机油尺 | 小件 | 物件 | P1 | 库 | 待找 |
-| F36 | 防火墙 | 引擎舱后壁 | 物件 | P1 | 拍 | 待找 |
+| F36 | 防火墙 | 引擎舱后壁 | 物件 | P1 | 拍 | **生成图** `F36_Firewall` |
 | F37 | 仪表盘 | 塑料裂纹 | 物件 | P0 | 拍 | [Plastic012B](https://ambientcg.com/view?id=Plastic012B)（凑合） |
 | F38 | 仪表 | 指针和里程表 | 发光 | P0 | 画 | 有初稿 #9 |
 | F39 | 中控缝隙 | 结尾渗出黑油的地方 | 物件 | P0 | 画 | 有初稿 #9 |
 | F40 | 警用无线电 | 面板和指示灯，结尾的声源 | 发光 | P0 | 画 | 有初稿 #9 |
 | F41 | 车载终端支架 | 90 年代的单色屏 | 发光 | P2 | 画 | 有初稿 #29 |
 | F42 | 方向盘和转向柱 | 磨亮 | 物件 | P0 | 库 | [Leather028](https://ambientcg.com/view?id=Leather028)（凑合） |
-| F43 | 点火开关和钥匙 | 打火时的特写 | 物件 | P0 | 库 | 待找 |
+| F43 | 点火开关和钥匙 | 打火时的特写 | 物件 | P0 | 库 | **生成图** `F43_IgnitionSwitchKeys` |
 | F44 | 座椅 | 乙烯基，裂口用胶带补过 | 物件 | P1 | 拍 | [fabric_leather_01](https://polyhaven.com/a/fabric_leather_01)（凑合） |
 | F45 | 前后排隔离网 | 钢网和亚克力 | 物件 | P1 | 库 | [SheetMetal002](https://ambientcg.com/view?id=SheetMetal002)（凑合） |
 | F46 | 顶棚、遮阳板和地垫 | 地垫上有泥和咖啡杯 | 物件 | P1 | 库 | 待找 |
 | F47 | 手套箱里的证件 | 原创登记证 | 物件 | P2 | 画 | 有初稿 #29 |
 | F48 | 霰弹枪架 | 中控旁，空的 | 物件 | P1 | 库 | 待找 |
-| F49 | 后备箱衬垫 | 毛毡，油渍 | 物件 | P1 | 库 | 待找 |
+| F49 | 后备箱衬垫 | 毛毡，油渍 | 物件 | P1 | 库 | **生成图** `F49_TrunkLiner` |
 | F50 | 千斤顶存放位和扳手 | 后备箱侧壁 | 物件 | P1 | 库 | [ratchet_wrench](https://polyhaven.com/a/ratchet_wrench)（凑合） |
 | F51 | 信号棒和三角牌 | 后备箱里 | 物件 | P2 | 库 | [signal_flashlight](https://polyhaven.com/a/signal_flashlight)（凑合） |
 
@@ -512,7 +512,7 @@
 | G13 | 电钻和包装盒 | 小型怪的原型 | 物件 | P0 | 画 | 有初稿 #10 |
 | G14 | 台扇和包装盒 | 小型怪的原型 | 物件 | P0 | 画 | 有初稿 #10 |
 | G15 | 链条和绳索卷轴 | 货架端头 | 物件 | P2 | 库 | [Rope001](https://ambientcg.com/view?id=Rope001)（凑合） |
-| G16 | 管件箱 | 铜、镀锌、塑料 | 图集 | P1 | 库 | 待找 |
+| G16 | 管件箱 | 铜、镀锌、塑料 | 图集 | P1 | 库 | **生成图** `G16_PipeBox` |
 | G17 | 钢管货架 | 近战武器的来源 | 物件 | P1 | 拍 | [steel_frame_shelves_01](https://polyhaven.com/a/steel_frame_shelves_01) |
 | G18 | 钉子桶和台秤 | 柜台旁 | 物件 | P2 | 库 | [wooden_bucket_01](https://polyhaven.com/a/wooden_bucket_01)（凑合） |
 | G19 | 园艺工具 | 铲、耙 | 物件 | P2 | 库 | [rusted_spade_01](https://polyhaven.com/a/rusted_spade_01) |
@@ -592,13 +592,13 @@ U 型吧台加卡座的环形近战场地。背吧镜子可以做反光，让玩
 | H18 | 飞镖靶和记分黑板 | 粉笔字 | 物件 | P2 | 画 | 有初稿 #31 |
 | H19 | 弹珠机 | 发光，原创主题，怪 | 发光 | P2 | 画 | 有初稿 #31 |
 | H20 | 拉杆式香烟售卖机 | 怪 | 物件 | P2 | 画 | 有初稿 #31 |
-| H21 | 墙挂公用电话 | 旁边墙上写满号码 | 物件 | P1 | 画 | 待画 |
+| H21 | 墙挂公用电话 | 旁边墙上写满号码 | 物件 | P1 | 画 | **生成图** `H21_Payphone` |
 | H22 | 高背木卡座 | 人造革坐垫，裂口露海绵 | 物件 | P1 | 拍 | [painted_wooden_bench](https://polyhaven.com/a/painted_wooden_bench)（凑合） |
-| H23 | 卡座桌面 | 层压板，刻字 | 物件 | P1 | 画 | 待画 |
+| H23 | 卡座桌面 | 层压板，刻字 | 物件 | P1 | 画 | **生成图** `H23_BoothTabletop` |
 | H24 | 啤酒广告镜 | 原创 | 物件 | P2 | 画 | 有初稿 #31 |
-| H25 | 照片墙 | 本地球队和常客，原创人像，叙事 | 图集 | P1 | 画 | 待画 |
+| H25 | 照片墙 | 本地球队和常客，原创人像，叙事 | 图集 | P1 | 画 | **生成图** `H25_PhotoWall` |
 | H26 | 保龄球奖杯和鱼标本 | 架子上 | 物件 | P2 | 库 | 待找 |
-| H27 | 常年不摘的彩灯 | 发光 | 发光 | P2 | 库 | 待找 |
+| H27 | 常年不摘的彩灯 | 发光 | 发光 | P2 | 库 | **生成图** `H27_HolidayLights` |
 | H28 | 烟熏发黄的天花 | 渐变叠加 | 贴花 | P1 | 程 | 已做 |
 | H29 | 酒馆卫生间 | 涂鸦和破镜子 | 平铺 | P2 | 画 | 有初稿 #31 |
 | H30 | 后厨油炸锅和不锈钢台 | 油垢 | 物件 | P2 | 拍 | 待找 |
@@ -613,11 +613,11 @@ U 型吧台加卡座的环形近战场地。背吧镜子可以做反光，让玩
 | 编号 | 名称 | 说明 | 类型 | 级 | 来源 | 素材 |
 | --- | --- | --- | --- | --- | --- | --- |
 | I01 | 塑料字招牌 | 缺一个字母 | 发光 | P0 | 画 | 有初稿 #11 |
-| I02 | 窗贴 | 营业项目和价格，原创 | 贴花 | P1 | 画 | 待画 |
+| I02 | 窗贴 | 营业项目和价格，原创 | 贴花 | P1 | 画 | **生成图** `I02_WindowDecal` |
 | I03 | 洗衣房方砖地面 | 白砖黑缝，朝地漏找坡 | 平铺 | P0 | 拍 | [Tiles109](https://ambientcg.com/view?id=Tiles109) |
 | I04 | 半墙瓷砖 | 上半刷漆 | 平铺 | P1 | 拍 | [long_white_tiles](https://polyhaven.com/a/long_white_tiles) |
 | I05 | 滚筒洗衣机机身 | 搪瓷和不锈钢 | 物件 | P0 | 拍 | [Porcelain002](https://ambientcg.com/view?id=Porcelain002) |
-| I06 | 圆窗玻璃和门圈 | 厚玻璃，胶圈 | 物件 | P0 | 库 | 待找 |
+| I06 | 圆窗玻璃和门圈 | 厚玻璃，胶圈 | 物件 | P0 | 库 | **生成图** `I06_RoundPorthole` |
 | I07 | 圆窗内容：清水和泡沫 | 正常的那几台 | 着色器 | P0 | 程 | 已做 |
 | I08 | 圆窗内容：翻滚的衣物 | 正常的那几台 | 序列帧 | P0 | 画 | 有初稿 #11 |
 | I09 | 圆窗内容：血水 | 不正常的那几台 | 着色器 | P0 | 程 | 已做 |
@@ -625,7 +625,7 @@ U 型吧台加卡座的环形近战场地。背吧镜子可以做反光，让玩
 | I11 | 滚筒内壁 | 不锈钢冲孔 | 物件 | P1 | 库 | [SheetMetal002](https://ambientcg.com/view?id=SheetMetal002) |
 | I12 | 上开式洗衣机 | 靠墙一排 | 物件 | P1 | 库 | [Porcelain002](https://ambientcg.com/view?id=Porcelain002)（凑合） |
 | I13 | 叠式烘干机 | 大圆窗，怪 | 物件 | P1 | 库 | [Porcelain002](https://ambientcg.com/view?id=Porcelain002)（凑合） |
-| I14 | 滑槽式投币器 | 每台机器上 | 物件 | P1 | 库 | 待找 |
+| I14 | 滑槽式投币器 | 每台机器上 | 物件 | P1 | 库 | **生成图** `I14_SlideCoinSlot` |
 | I15 | 换币机 | 发光，怪 | 发光 | P1 | 画 | 待画 |
 | I16 | 洗衣粉售卖机 | 小盒装，原创品牌 | 物件 | P2 | 画 | 有初稿 #30 |
 | I17 | 折叠台 | 层压板 | 物件 | P1 | 库 | 待找 |
@@ -633,9 +633,9 @@ U 型吧台加卡座的环形近战场地。背吧镜子可以做反光，让玩
 | I19 | 模压塑料排椅 | 橙色和黄色 | 物件 | P1 | 库 | [plastic_monobloc_chair_01](https://polyhaven.com/a/plastic_monobloc_chair_01)（凑合） |
 | I20 | 旧杂志 | 原创封面，夹板材料 | 图集 | P1 | 画 | 待画 |
 | I21 | 失物篮 | 单只袜子和童装 | 物件 | P2 | 画 | 有初稿 #30 |
-| I22 | 软木布告板 | 寻人、寻狗、出租，叙事 | 物件 | P1 | 画 | 待画 |
+| I22 | 软木布告板 | 寻人、寻狗、出租，叙事 | 物件 | P1 | 画 | **生成图** `I22_CorkBoard` |
 | I23 | 店规牌 | 原创 | 物件 | P2 | 画 | 有初稿 #30 |
-| I24 | 停走的挂钟 | 停在三点 | 物件 | P1 | 画 | 待画 |
+| I24 | 停走的挂钟 | 停在三点 | 物件 | P1 | 画 | **生成图** `I24_StoppedWallClock` |
 | I25 | 毛絮堆 | 烘干机后面 | 贴花 | P2 | 拍 | 程序生成 |
 | I26 | 肥皂水渍 | 地面 | 贴花 | P1 | 拍 | [SurfaceImperfections005](https://ambientcg.com/view?id=SurfaceImperfections005)（凑合） |
 | I27 | 污水槽 | 角落 | 物件 | P2 | 拍 | [Porcelain002](https://ambientcg.com/view?id=Porcelain002) |
@@ -672,12 +672,12 @@ U 型吧台加卡座的环形近战场地。背吧镜子可以做反光，让玩
 | J23 | 厨房里的冰箱 | 贴着磁贴、儿童画、日历、购物清单 | 物件 | P0 | 画 | 有初稿 #12 |
 | J24 | 电炉灶台和抽油烟机 | 螺旋炉盘，怪 | 物件 | P1 | 库 | [electric_stove](https://polyhaven.com/a/electric_stove) |
 | J25 | 厨房小家电 | 烤面包机、搅拌机、电动开罐器、咖啡机，怪 | 图集 | P0 | 画 | 有初稿 #12 |
-| J26 | 洗碗机 | 怪 | 物件 | P2 | 库 | 待找 |
-| J27 | 墙挂电话 | 很长的卷线 | 物件 | P1 | 库 | 待找 |
+| J26 | 洗碗机 | 怪 | 物件 | P2 | 库 | **生成图** `J26_Dishwasher` |
+| J27 | 墙挂电话 | 很长的卷线 | 物件 | P1 | 库 | **生成图** `J27_WallPhone` |
 | J28 | 留言板和日历 | 最后一条留言，叙事 | 物件 | P1 | 画 | 有初稿 #24 |
 | J29 | 麦片盒、调料架和狗碗 | 台面杂物 | 图集 | P2 | 画 | 有初稿 #32 |
 | J30 | 地面的拖拽刮痕 | 从厨房通向楼梯，有引导功能 | 贴花 | P0 | 画 | 有初稿 #12 |
-| J31 | 楼梯间照片墙 | 逐年的全家福，原创人像，叙事 | 图集 | P1 | 画 | 有初稿 #24 |
+| J31 | 楼梯间照片墙 | 逐年的全家福，原创人像，叙事 | 图集 | P1 | 画 | **生成图** `J31_StairwellPhotos`；原：有初稿 #24 |
 | J32 | 门框上的身高刻度 | 孩子每年的身高，叙事 | 贴花 | P1 | 画 | 有初稿 #24 |
 | J33 | 立式吸尘器 | 怪 | 物件 | P1 | 库 | 待找 |
 | J34 | 浴缸和发霉的浴帘 | 浴室 | 物件 | P1 | 拍 | 待找 |
@@ -713,9 +713,9 @@ U 型吧台加卡座的环形近战场地。背吧镜子可以做反光，让玩
 | K01 | 白色搪瓷钢板 | 冰箱、洗衣机，边角生锈 | 平铺 | P0 | 拍 | [PaintedMetal012](https://ambientcg.com/view?id=PaintedMetal012) |
 | K02 | 杏色和牛油果绿搪瓷 | 老款冰箱灶台，用染色 | 平铺 | P1 | 拍 | [PaintedMetal006](https://ambientcg.com/view?id=PaintedMetal006) |
 | K03 | 木纹贴皮塑料 | 电视、收音机 | 平铺 | P0 | 拍 | [synthetic_wood](https://polyhaven.com/a/synthetic_wood) |
-| K04 | 发黄的米色塑料 | 微波炉、风扇、电话 | 平铺 | P0 | 拍 | [Plastic010](https://ambientcg.com/view?id=Plastic010)（凑合） |
+| K04 | 发黄的米色塑料 | 微波炉、风扇、电话 | 平铺 | P0 | 拍 | **生成图** `K04_YellowedABSPlastic`；原：[Plastic010](https://ambientcg.com/view?id=Plastic010)（凑合） |
 | K05 | 黑色皮纹塑料 | 录像机、音响 | 平铺 | P1 | 库 | [Plastic012B](https://ambientcg.com/view?id=Plastic012B) |
-| K06 | 拉丝不锈钢和镀铬 | 把手、饰条 | 平铺 | P0 | 库 | [Metal059C](https://ambientcg.com/view?id=Metal059C)（凑合） |
+| K06 | 拉丝不锈钢和镀铬 | 把手、饰条 | 平铺 | P0 | 库 | **生成图** `K06_BrushedStainless`；原：[Metal059C](https://ambientcg.com/view?id=Metal059C)（凑合） |
 | K07 | 电视屏幕 | 雪花、彩条、扭曲的人脸残影，4 段 | 序列帧 | P0 | 程 | 已做 |
 | K08 | 显像管玻璃和爆裂 | 厚玻璃断面 | 物件 | P0 | 画 | 有初稿 #13 |
 | K09 | 电视后盖 | 散热孔和原创警告标签 | 物件 | P1 | 画 | 有初稿 #25 |
@@ -766,7 +766,7 @@ U 型吧台加卡座的环形近战场地。背吧镜子可以做反光，让玩
 | L02 | 干结和坏死的肌肉 | 老巢穴、死去的怪 | 平铺 | P1 | 画 | 有初稿 #25 |
 | L03 | 筋膜和肉筋 | 和电线长在一起，透明 | 平铺 | P0 | 画 | 有初稿 #15 |
 | L04 | 脂肪层 | 断面上的黄色 | 平铺 | P1 | 画 | 有初稿 #25 |
-| L05 | 从缝里挤出的皮肤 | 苍白，带毛孔、痣、纹身残片 | 平铺 | P0 | 画 | 待画 |
+| L05 | 从缝里挤出的皮肤 | 苍白，带毛孔、痣、纹身残片 | 平铺 | P0 | 画 | **生成图** `L05_SkinFromSeam` |
 | L06 | 皮肤和金属的过渡带 | 融合边缘 | 遮罩 | P0 | 画 | 程序生成 |
 | L07 | 嵌在缝里的指甲、牙齿、头发 | 细节 | 图集 | P1 | 画 | 有初稿 #25 |
 | L08 | 骨、脊柱和肋 | 从铁皮缝里露出 | 物件 | P1 | 画 | 有初稿 #25 |
@@ -797,7 +797,7 @@ U 型吧台加卡座的环形近战场地。背吧镜子可以做反光，让玩
 | L33 | 巢穴墙面增生 | 3 种 | 平铺 | P0 | 画 | 有初稿 #15 |
 | L34 | 巢穴地面增生 | 肉质地毯 | 平铺 | P0 | 画 | 有初稿 #15 |
 | L35 | 增生边缘过渡 | 透明 | 遮罩 | P0 | 画 | 程序生成 |
-| L36 | 被顶起的墙纸 | 巢穴周围 | 贴花 | P1 | 画 | 待画 |
+| L36 | 被顶起的墙纸 | 巢穴周围 | 贴花 | P1 | 画 | **生成图** `L36_BulgingWallpaper` |
 | L37 | 墙面渗出的黑油 | 巢穴周围 | 贴花 | P1 | 画 | 程序生成 |
 | L38 | 搏动发光遮罩 | 通用 | 遮罩 | P0 | 程 | 已做 |
 | L39 | 呼出的白气 | 序列帧 | 序列帧 | P1 | 程 | 已做 |
@@ -812,15 +812,15 @@ U 型吧台加卡座的环形近战场地。背吧镜子可以做反光，让玩
 | M02 | 窗台下的流痕 | 4 种 | 贴花 | P0 | 拍 | [Leaking012A](https://ambientcg.com/view?id=Leaking012A) |
 | M03 | 墙根雨水溅泥 | 4 种 | 贴花 | P1 | 拍 | [Leaking007](https://ambientcg.com/view?id=Leaking007) |
 | M04 | 墙角霉斑 | 6 种 | 贴花 | P0 | 拍 | [Leaking013C](https://ambientcg.com/view?id=Leaking013C)（凑合） |
-| M05 | 天花角落黑霉 | 4 种 | 贴花 | P0 | 拍 | [Leaking015C](https://ambientcg.com/view?id=Leaking015C)（凑合） |
+| M05 | 天花角落黑霉 | 4 种 | 贴花 | P0 | 拍 | **生成图** `M05_CeilingMould`；原：[Leaking015C](https://ambientcg.com/view?id=Leaking015C)（凑合） |
 | M06 | 外墙青苔和藻 | 4 种 | 贴花 | P1 | 拍 | [Moss001](https://ambientcg.com/view?id=Moss001)（凑合） |
-| M07 | 锈流痕 | 6 种 | 贴花 | P0 | 拍 | [Metal020](https://ambientcg.com/view?id=Metal020)（凑合） |
+| M07 | 锈流痕 | 6 种 | 贴花 | P0 | 拍 | **生成图** `M07_RustStreaks`；原：[Metal020](https://ambientcg.com/view?id=Metal020)（凑合） |
 | M08 | 锈斑和锈穿孔 | 6 种 | 贴花 | P0 | 拍 | [Rust001](https://ambientcg.com/view?id=Rust001) |
 | M09 | 泛碱白霜 | 4 种 | 贴花 | P1 | 拍 | [Leaking002](https://ambientcg.com/view?id=Leaking002)（凑合） |
 | M10 | 多层漆面剥落 | 6 种，带高度 | 贴花 | P0 | 拍 | [PaintedPlaster006](https://ambientcg.com/view?id=PaintedPlaster006)（凑合） |
 | M11 | 灰泥脱落露出砖 | 4 种 | 贴花 | P1 | 拍 | [PaintedPlaster014](https://ambientcg.com/view?id=PaintedPlaster014)（凑合） |
 | M12 | 混凝土剥落露出钢筋 | 4 种 | 贴花 | P1 | 拍 | [rebar_reinforced_concrete](https://polyhaven.com/a/rebar_reinforced_concrete)（凑合） |
-| M13 | 墙面裂缝 | 6 种 | 贴花 | P0 | 拍 | [damaged_plaster](https://polyhaven.com/a/damaged_plaster)（凑合） |
+| M13 | 墙面裂缝 | 6 种 | 贴花 | P0 | 拍 | **生成图** `M13_WallCracks`；原：[damaged_plaster](https://polyhaven.com/a/damaged_plaster)（凑合） |
 | M14 | 地面裂缝 | 6 种 | 贴花 | P0 | 拍 | [AsphaltDamageSet001](https://ambientcg.com/view?id=AsphaltDamageSet001) |
 | M15 | 砖墙阶梯状沉降裂缝 | 3 种 | 贴花 | P1 | 拍 | 程序生成 |
 | M16 | 胶带残痕和海报撕痕 | 6 种 | 贴花 | P1 | 拍 | [Tape004](https://ambientcg.com/view?id=Tape004)（凑合） |
@@ -872,7 +872,7 @@ U 型吧台加卡座的环形近战场地。背吧镜子可以做反光，让玩
 | N14 | 报纸头版 | 3 期，日期递进，背景故事 | 图集 | P1 | 画 | 有初稿 #26 |
 | N15 | 杂志封面 | 8 种 | 图集 | P2 | 画 | 有初稿 #33 |
 | N16 | 日历 | 4 种，都停在同一天 | 图集 | P1 | 画 | 有初稿 #26 |
-| N17 | 寻人启事 | 6 张，原创人像 | 图集 | P1 | 画 | 有初稿 #26 |
+| N17 | 寻人启事 | 6 张，原创人像 | 图集 | P1 | 画 | **生成图** `N17_MissingFlyers`；原：有初稿 #26 |
 | N18 | 寻宠启事 | 3 张 | 图集 | P2 | 画 | 有初稿 #33 |
 | N19 | 社区活动传单和庭院售卖牌 | 电线杆和布告板上 | 图集 | P2 | 画 | 有初稿 #33 |
 | N20 | 家电安全召回通知 | 暗线 | 物件 | P1 | 画 | 有初稿 #26 |
@@ -984,7 +984,7 @@ U 型吧台加卡座的环形近战场地。背吧镜子可以做反光，让玩
 | Q03 | 菜单皮肤 | 警用表格和无线电面板的风格 | 图集 | P1 | 画 | 有初稿 #27 |
 | Q04 | 中英文字体 | 需要可商用授权 | 图集 | P0 | 库 | [Noto Sans SC](https://fonts.google.com/noto/specimen/Noto+Sans+SC) |
 | Q05 | 辅助状态图标 | 可选开启：人形部位、流血、失血、疼痛、弹药 | 图集 | P1 | 画 | 有初稿 #27 |
-| Q06 | 键位和手柄图标 | 设置菜单用 | 图集 | P1 | 库 | 待找 |
+| Q06 | 键位和手柄图标 | 设置菜单用 | 图集 | P1 | 库 | **生成图** `Q06_ButtonGlyphs` |
 | Q07 | 加载画面 | 证物照片风格，6 张 | 图集 | P1 | 画 | 有初稿 #27 |
 | Q08 | 字幕底板 | 电话和无线电的台词 | 图集 | P0 | 画 | 有初稿 #34 |
 | Q09 | 极简准星 | 可选开启的一个点 | 图集 | P1 | 画 | 有初稿 #27 |
