@@ -1,15 +1,22 @@
 ﻿set,id,layout,files,made_with,origin,licence,received,note
 A07_DoubleYellowLine,A07,贴花,A07_DoubleYellowLine_Color.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
 A08_WhiteEdgeLine,A08,贴花,A08_WhiteEdgeLine_Color.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+A13_RoadStud,A13,多视图,A13_RoadStud_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
 A23_ManholeCover,A23,正面图,A23_ManholeCover_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+A46_TrafficCone,A46,多视图,A46_TrafficCone_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
 B03_StaplesOnPole,B03,贴花四变体,B03a_StaplesOnPole_Color.png B03b_StaplesOnPole_Color.png B03c_StaplesOnPole_Color.png B03d_StaplesOnPole_Color.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,cut into four single decals
+B04_TransformerTank,B04,多视图,B04_TransformerTank_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
 B07_CobraHeadStreetLight,B07,多视图,B07_CobraHeadStreetLight_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
 B10_YellowFlasher,B10,多视图,B10_YellowFlasher_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+B32_ShoppingCart,B32,多视图,B32_ShoppingCart_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
 B43_CarLampLenses,B43,正面图,B43_CarLampLenses_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
 C08_GlassBlock,C08,平铺,C08_GlassBlock_Color.jpg C08_GlassBlock_Normal.jpg C08_GlassBlock_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 0.80, roughness 0.25, metal 0.0)"
 C14_PeelingClapboard,C14,平铺,C14_PeelingClapboard_Color.jpg C14_PeelingClapboard_Normal.jpg C14_PeelingClapboard_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 1.60, roughness 0.85, metal 0.0)"
 C20_DelaminatedPlywood,C20,平铺,C20_DelaminatedPlywood_Color.jpg C20_DelaminatedPlywood_Normal.jpg C20_DelaminatedPlywood_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 1.20, roughness 0.88, metal 0.0)"
+C32_BrickChimney,C32,多视图,C32_BrickChimney_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+C34_TVAntenna,C34,多视图,C34_TVAntenna_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
 C42_DoorbellMailSlot,C42,正面图,C42_DoorbellMailSlot_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+C46_BasementWindowWell,C46,多视图,C46_BasementWindowWell_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
 C58_ScreenDoor,C58,正面图,C58_ScreenDoor_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
 C62_AluminiumWindowTrim,C62,饰条,C62_AluminiumWindowTrim_Color.jpg C62_AluminiumWindowTrim_Normal.jpg C62_AluminiumWindowTrim_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"mirrored so it tiles left to right; normal and ORM derived from the colour (bump 0.80, roughness 0.45, metal 0.9)"
 C65_GlassCracks,C65,遮罩,C65a_GlassCracks_Mask.png C65b_GlassCracks_Mask.png C65c_GlassCracks_Mask.png C65d_GlassCracks_Mask.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,cut into four single masks
@@ -30,41 +37,110 @@ D21_BrickVinylFloor,D21,平铺,D21_BrickVinylFloor_Color.jpg D21_BrickVinylFloor
 D22_GeometricVinylFloor,D22,平铺,D22_GeometricVinylFloor_Color.jpg D22_GeometricVinylFloor_Normal.jpg D22_GeometricVinylFloor_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 0.30, roughness 0.55, metal 0.0)"
 D24_VCTFloorTiles,D24,平铺,D24_VCTFloorTiles_Color.jpg D24_VCTFloorTiles_Normal.jpg D24_VCTFloorTiles_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 0.40, roughness 0.60, metal 0.0)"
 D43_StairRailTrim,D43,饰条,D43_StairRailTrim_Color.jpg D43_StairRailTrim_Normal.jpg D43_StairRailTrim_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"mirrored so it tiles left to right; normal and ORM derived from the colour (bump 1.20, roughness 0.50, metal 0.0)"
+D44_CastIronRadiator,D44,多视图,D44_CastIronRadiator_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+D45_BaseboardHeater,D45,多视图,D45_BaseboardHeater_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+D46_AgedWallPlates,D46,平面印刷品,D46_AgedWallPlates_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
 D47_RoundThermostat,D47,正面图,D47_RoundThermostat_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
 D48_SmokeDetector,D48,正面图,D48_SmokeDetector_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+D53_FabricLampshade,D53,多视图,D53_FabricLampshade_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
 D55_MetalBlinds,D55,平铺,D55_MetalBlinds_Color.jpg D55_MetalBlinds_Normal.jpg D55_MetalBlinds_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 1.30, roughness 0.50, metal 0.3)"
 D56_RollerShade,D56,正面图,D56_RollerShade_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+D59_WaterHeater,D59,多视图,D59_WaterHeater_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+D60_Furnace,D60,多视图,D60_Furnace_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+E08_FuelNozzle,E08,多视图,E08_FuelNozzle_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+E10_MopBucket,E10,多视图,E10_MopBucket_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+E21_VendingMachine,E21,正面图,E21_VendingMachine_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+E25_PriceTagStrips,E25,平面印刷品,E25_PriceTagStrips_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+E29_MilkCarton,E29,平面印刷品,E29_MilkCarton_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
 E37_FreezerShelfTags,E37,正面图,E37_FreezerShelfTags_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+E38_ChestFreezer,E38,多视图,E38_ChestFreezer_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+E43_HotDogRoller,E43,多视图,E43_HotDogRoller_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+E46_CheckoutCounter,E46,多视图,E46_CheckoutCounter_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
 E51_ConvexMirror,E51,正面图,E51_ConvexMirror_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
 E52_StaffLockers,E52,正面图,E52_StaffLockers_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+E58_SmallSafe,E58,多视图,E58_SmallSafe_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+E59_RestroomFixtures,E59,多视图,E59_RestroomFixtures_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
 E62_HandDryer,E62,正面图,E62_HandDryer_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+F04_LightBar,F04,多视图,F04_LightBar_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+F05_PushBar,F05,多视图,F05_PushBar_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+F06_APillarSpotlight,F06,多视图,F06_APillarSpotlight_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
 F16_FrontGrille,F16,正面图,F16_FrontGrille_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
 F17_Headlight,F17,正面图,F17_Headlight_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
 F18_TailLight,F18,正面图,F18_TailLight_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+F19_ChromeBumper,F19,多视图,F19_ChromeBumper_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+F21_WindowGlass,F21,贴花,F21_WindowGlass_Color.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+F25_Generator,F25,多视图,F25_Generator_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
 F26_PulleyBeltTensioner,F26,多视图,F26_PulleyBeltTensioner_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+F29_RadiatorFanShroud,F29,多视图,F29_RadiatorFanShroud_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+F33_WiringHarnessFuseBox,F33,多视图,F33_WiringHarnessFuseBox_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
 F34_HoodLiner,F34,平铺,F34_HoodLiner_Color.jpg F34_HoodLiner_Normal.jpg F34_HoodLiner_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 1.20, roughness 0.95, metal 0.0)"
+F35_HoodPropDipstick,F35,多视图,F35_HoodPropDipstick_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
 F36_Firewall,F36,正面图,F36_Firewall_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
 F43_IgnitionSwitchKeys,F43,正面图,F43_IgnitionSwitchKeys_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+F46_HeadlinerVisors,F46,平面印刷品,F46_HeadlinerVisors_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+F48_ShotgunRack,F48,多视图,F48_ShotgunRack_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
 F49_TrunkLiner,F49,平铺,F49_TrunkLiner_Color.jpg F49_TrunkLiner_Normal.jpg F49_TrunkLiner_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 0.90, roughness 0.95, metal 0.0)"
+G10_KeyMachineBlankWall,G10,多视图,G10_KeyMachineBlankWall_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
 G16_PipeBox,G16,平面印刷品,G16_PipeBox_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+G21_LawnMower,G21,多视图,G21_LawnMower_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+G24_SuperGluePeg,G24,平面印刷品,G24_SuperGluePeg_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+G32_DeerHeadTrophy,G32,多视图,G32_DeerHeadTrophy_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+G39_VehicleLift,G39,多视图,G39_VehicleLift_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+G41_Sawhorse,G41,多视图,G41_Sawhorse_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+G49_TireRackChanger,G49,多视图,G49_TireRackChanger_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+G52_PartsWasher,G52,多视图,G52_PartsWasher_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+G55_ExhaustHangers,G55,多视图,G55_ExhaustHangers_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+G56_EngineHoist,G56,多视图,G56_EngineHoist_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+G67_AddingMachineTypewriter,G67,多视图,G67_AddingMachineTypewriter_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+H02_BeerNeon,H02,发光,H02_BeerNeon_Emission.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+H11_BeerTaps,H11,多视图,H11_BeerTaps_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+H12_Glassware,H12,多视图,H12_Glassware_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+H13_CoastersNapkinsAshtray,H13,平面印刷品,H13_CoastersNapkinsAshtray_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+H16_Jukebox,H16,正面图,H16_Jukebox_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+H17_PoolTable,H17,多视图,H17_PoolTable_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
 H21_Payphone,H21,正面图,H21_Payphone_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
 H23_BoothTabletop,H23,正面图,H23_BoothTabletop_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
 H25_PhotoWall,H25,平面印刷品,H25_PhotoWall_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+H26_BowlingTrophies,H26,多视图,H26_BowlingTrophies_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
 H27_HolidayLights,H27,发光,H27_HolidayLights_Emission.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+H30_DeepFryerPrepTable,H30,多视图,H30_DeepFryerPrepTable_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
 I02_WindowDecal,I02,贴花,I02_WindowDecal_Color.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
 I06_RoundPorthole,I06,正面图,I06_RoundPorthole_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
 I14_SlideCoinSlot,I14,正面图,I14_SlideCoinSlot_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+I15_ChangeMachine,I15,正面图,I15_ChangeMachine_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+I17_FoldingTable,I17,多视图,I17_FoldingTable_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+I18_LaundryCart,I18,多视图,I18_LaundryCart_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+I20_OldMagazines,I20,平面印刷品,I20_OldMagazines_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
 I22_CorkBoard,I22,正面图,I22_CorkBoard_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
 I24_StoppedWallClock,I24,正面图,I24_StoppedWallClock_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+J01_PorchSwingMat,J01,多视图,J01_PorchSwingMat_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+J05_ShoeRackHooks,J05,多视图,J05_ShoeRackHooks_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+J15_CuckooClock,J15,多视图,J15_CuckooClock_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+J22_SinkDirtyDishes,J22,多视图,J22_SinkDirtyDishes_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
 J26_Dishwasher,J26,正面图,J26_Dishwasher_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
 J27_WallPhone,J27,正面图,J27_WallPhone_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
 J31_StairwellPhotos,J31,平面印刷品,J31_StairwellPhotos_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+J33_UprightVacuum,J33,多视图,J33_UprightVacuum_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+J34_BathtubCurtain,J34,多视图,J34_BathtubCurtain_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+J35_VanityMedicineCabinet,J35,多视图,J35_VanityMedicineCabinet_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+J51_GarageFreezerFridge,J51,多视图,J51_GarageFreezerFridge_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+J53_GarageDoorOpener,J53,多视图,J53_GarageDoorOpener_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
 K04_YellowedABSPlastic,K04,平铺,K04_YellowedABSPlastic_Color.jpg K04_YellowedABSPlastic_Normal.jpg K04_YellowedABSPlastic_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 0.50, roughness 0.50, metal 0.0)"
 K06_BrushedStainless,K06,平铺,K06_BrushedStainless_Color.jpg K06_BrushedStainless_Normal.jpg K06_BrushedStainless_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 0.50, roughness 0.35, metal 1.0)"
+K11_KnobsButtonsAntenna,K11,平面印刷品,K11_KnobsButtonsAntenna_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+K33_FanGrilleBlades,K33,多视图,K33_FanGrilleBlades_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
 L05_SkinFromSeam,L05,平铺,L05_SkinFromSeam_Color.jpg L05_SkinFromSeam_Normal.jpg L05_SkinFromSeam_ORM.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"normal and ORM derived from the colour (bump 0.90, roughness 0.60, metal 0.0)"
+L14_CrossSection,L14,平面印刷品,L14_CrossSection_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+L29_WalletAndLicense,L29,平面印刷品,L29_WalletAndLicense_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
 L36_BulgingWallpaper,L36,贴花,L36_BulgingWallpaper_Color.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
 M05_CeilingMould,M05,贴花四变体,M05a_CeilingMould_Color.png M05b_CeilingMould_Color.png M05c_CeilingMould_Color.png M05d_CeilingMould_Color.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,cut into four single decals
 M07_RustStreaks,M07,贴花四变体,M07a_RustStreaks_Color.png M07b_RustStreaks_Color.png M07c_RustStreaks_Color.png M07d_RustStreaks_Color.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,cut into four single decals
 M13_WallCracks,M13,贴花四变体,M13a_WallCracks_Color.png M13b_WallCracks_Color.png M13c_WallCracks_Color.png M13d_WallCracks_Color.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,cut into four single decals
+N02_GasStationBrands,N02,平面印刷品,N02_GasStationBrands_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
 N17_MissingFlyers,N17,平面印刷品,N17_MissingFlyers_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+N25_DrinkBeerBrands,N25,平面印刷品,N25_DrinkBeerBrands_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+N27_ApplianceToolBrands,N27,平面印刷品,N27_ApplianceToolBrands_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+O28_MeatAndShellFragments,O28,平面印刷品,O28_MeatAndShellFragments_Color.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
+P18_Handcuffs,P18,多视图,P18_Handcuffs_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,"modelling reference, not a texture"
+P20_KeyRing,P20,平面印刷品,P20_KeyRing_Color.jpg,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,
 Q06_ButtonGlyphs,Q06,平面印刷品,Q06_ButtonGlyphs_Color.png,gpt-image-2.6-sunburst,xiaoyu/textures-20261112,generated,2026-11-12,thresholded into clean white icons on transparency

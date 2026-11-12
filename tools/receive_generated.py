@@ -207,6 +207,9 @@ def main():
             clean_glyphs(im).save(os.path.join(folder, stem + "_Color.png"), optimize=True)
             files = [stem + "_Color.png"]
             note = "thresholded into clean white icons on transparency"
+        elif im.mode == "RGBA" and (np.asarray(im)[..., 3] < 128).mean() > 0.02:
+            im.save(os.path.join(folder, stem + "_Color.png"), optimize=True)      # an atlas on transparency
+            files = [stem + "_Color.png"]
         else:                                               # faces, print sheets, reference sheets
             save_jpg(im, os.path.join(folder, stem + "_Color.jpg"), "Color")
             files = [stem + "_Color.jpg"]
