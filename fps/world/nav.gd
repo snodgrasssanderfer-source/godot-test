@@ -10,22 +10,25 @@ const CELL_HEIGHT := 0.1
 
 ## Bakes everything under `root` that is a static collider on `mask`, inside
 ## `bounds`, into a new NavigationRegion3D child of `root`. Takes a moment.
-static func bake(root: Node3D, bounds: AABB, mask: int = 1, agent_radius: float = 0.5) -> NavigationRegion3D:
+## A finer `cell_size` keeps narrow doors and stairs open (the radius is rounded
+## up to whole cells on both sides), at the cost of a slower bake.
+static func bake(root: Node3D, bounds: AABB, mask: int = 1, agent_radius: float = 0.5,
+		cell_size: float = CELL_SIZE) -> NavigationRegion3D:
 	var mesh := NavigationMesh.new()
 	mesh.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_STATIC_COLLIDERS
 	mesh.geometry_collision_mask = mask
-	mesh.cell_size = CELL_SIZE
+	mesh.cell_size = cell_size
 	mesh.cell_height = CELL_HEIGHT
 	mesh.agent_radius = agent_radius
 	mesh.agent_height = 1.0
 	mesh.agent_max_climb = 0.2          # curbs and door sills; not suitcases, cartons or car bonnets
 	# Drop walkable patches too small to matter (the tops of cars and clutter):
 	# nothing can reach them, and a goal up there would send walkers into the side of the thing.
-	mesh.region_min_size = 12.0         # in cells, squared: 9 square metres
+	mesh.region_min_size = 3.0 / cell_size      # in cells, squared: 9 square metres
 	mesh.agent_max_slope = 40.0
 	mesh.filter_baking_aabb = bounds
 	var map := root.get_world_3d().navigation_map
-	NavigationServer3D.map_set_cell_size(map, CELL_SIZE)
+	NavigationServer3D.map_set_cell_size(map, cell_size)
 	NavigationServer3D.map_set_cell_height(map, CELL_HEIGHT)
 	var source := NavigationMeshSourceGeometryData3D.new()
 	NavigationServer3D.parse_source_geometry_data(mesh, source, root)

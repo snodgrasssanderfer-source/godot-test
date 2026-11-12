@@ -463,13 +463,22 @@ func _try_mantle() -> bool:
 	if body.mods.mantle_max_override > 0.0:
 		reach = minf(reach, body.mods.mantle_max_override)
 
-	var near := _surface_below(wall + fwd * 0.08, probe_top, mantle_max + 1.0)
+	# Probe down onto the obstacle. Under a low ceiling, or in a window with a
+	# lintel over it, the probe would start inside something solid: lower the
+	# start until it is in the open. A solid wall never gives one, so it is
+	# still refused.
+	var near := NAN
+	while probe_top > feet + mantle_min + 0.2:
+		near = _surface_below(wall + fwd * 0.08, probe_top, probe_top - feet + 0.7)
+		if not is_nan(near):
+			break
+		probe_top -= 0.3
 	if is_nan(near):
 		return false
 	var h := near - feet
 	if h < mantle_min or h > reach:
 		return false
-	var far := _surface_below(wall + fwd * 0.55, probe_top, mantle_max + 4.0)
+	var far := _surface_below(wall + fwd * 0.55, probe_top, probe_top - feet + 3.7)
 	var target := wall + fwd * 0.48
 	var vault := false
 	if not is_nan(far) and far >= near - 0.25:

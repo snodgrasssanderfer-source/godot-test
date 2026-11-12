@@ -158,8 +158,10 @@ class Lot:
 	## A flight of stairs. `foot` is the middle of the bottom edge, `dir` the
 	## way it climbs (a unit axis in lot space). The treads are for show; what
 	## feet and navigation use is one slanted slab under them.
+	## `rails` adds a solid balustrade down both sides, so that nothing (player,
+	## creature, navigation mesh) gets onto the flight except at its foot or head.
 	func stairs(tag: StringName, foot: Vector3, dir: Vector3, rise: float, run: float, width: float,
-			steps := 0) -> void:
+			steps := 0, rails := false) -> void:
 		var n := steps if steps > 0 else maxi(int(ceil(rise / 0.19)), 1)
 		var side := Vector3.UP.cross(dir).normalized() * (width * 0.5)
 		for i in n:
@@ -178,6 +180,18 @@ class Lot:
 		slab.level = level
 		slab.plan = false
 		boxes.append(slab)
+		if rails:
+			for sgn: float in [-1.0, 1.0]:
+				var rail := Box.new()
+				rail.tag = tag
+				# Stops 0.7 m short of the foot: the panel leans back over its lower end,
+				# and a full-length one would stick out across the floor in front of the flight.
+				rail.size = Vector3(0.05, 1.0, length - 0.7)
+				rail.xform = Transform3D(basis, slab.xform.origin + basis.y * 0.6 + basis.z * 0.35
+						+ basis.x * sgn * (width * 0.5 + 0.025))
+				rail.level = level
+				rail.plan = false
+				boxes.append(rail)
 
 
 	func marker(id: StringName, at: Vector3, label: String, label_zh: String) -> void:

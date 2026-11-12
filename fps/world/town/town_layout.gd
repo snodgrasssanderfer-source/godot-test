@@ -224,7 +224,7 @@ static func _gas_station(b: TownBuilder, lights: Array[Dictionary]) -> void:
 	lot.wall_z(&"block", 14.1, 20, 30, f, top)
 	lot.wall_z(&"block", 31.9, 20, 30, f, top)
 	lot.box(&"roof", Vector3(13.7, top, 19.3), Vector3(32.3, top + 0.25, 30.3))
-	lot.wall_x(&"wall_in", 26.0, 26, 31.8, f, top, 0.12, [[O.DOOR, 27.0, 0.9]])
+	lot.wall_x(&"wall_in", 26.0, 26, 31.8, f, top, 0.12, [[O.DOOR, 27.0, 1.0]])
 	lot.wall_z(&"wall_in", 26.0, 26, 29.8, f, top, 0.12)
 	for x: float in [16.6, 19.2]:
 		lot.box(&"shelf", Vector3(x, f, 22.5), Vector3(x + 0.9, f + 1.5, 28.0))
@@ -287,8 +287,8 @@ static func _miller(b: TownBuilder, lights: Array[Dictionary]) -> void:
 	lot.marker(&"miller_door", Vector3(8.0, f + 0.1, 1.1), "hardware shop entrance", "五金店入口")
 	lot.marker(&"shelf_ambush", Vector3(8.0, f + 2.9, 7.5), "small creatures drop from the shelf tops", "小型怪从货架顶上扑下")
 
-	# Workshop behind it, 14 x 16 m and 5 m high, with the inspection pit.
-	var roof := f + 5.0
+	# Workshop behind it, 14 x 16 m and 5.3 m high, with the inspection pit.
+	var roof := f + 5.3
 	lot.box(&"concrete", Vector3(1, -0.3, 15), Vector3(7.4, f, 31))
 	lot.box(&"concrete", Vector3(8.5, -0.3, 15), Vector3(15, f, 31))
 	lot.box(&"concrete", Vector3(7.4, -0.3, 15), Vector3(8.5, f, 18.5))
@@ -299,16 +299,16 @@ static func _miller(b: TownBuilder, lights: Array[Dictionary]) -> void:
 	lot.box(&"concrete", Vector3(7.2, -1.6, 18.3), Vector3(8.7, -0.3, 18.5))
 	lot.box(&"concrete", Vector3(7.2, -1.6, 25.5), Vector3(8.7, -0.3, 25.7))
 	lot.stairs(&"concrete", Vector3(7.95, f - 1.5, 23.3), Vector3.BACK, 1.5, 2.2, 1.1)
-	lot.wall_x(&"block", 15.0, 1, 15, f, roof, 0.2, [[O.DOOR, 10.0, 1.0], [O.WINDOW_OPEN, 2.5, 2.0, 3.63, 4.63]])
+	lot.wall_x(&"block", 15.0, 1, 15, f, roof, 0.2, [[O.DOOR, 10.0, 1.0], [O.WINDOW_OPEN, 2.5, 2.0, 3.63, 5.3]])
 	lot.wall_x(&"block", 30.9, 1, 15, f, roof, 0.2, [[O.DOOR_CLOSED, 3.0, 0.9]])
 	lot.wall_z(&"block", 1.1, 15, 31, f, roof)
 	lot.wall_z(&"block", 14.9, 15, 31, f, roof, 0.2, [[O.SHUTTER, 17.5, 4.0, 0.0, 3.2]])
 	lot.box(&"roof", Vector3(0.7, roof, 14.7), Vector3(15.3, roof + 0.25, 31.3))
 	# A car over the pit, up on its wheels.
-	lot.box(&"car", Vector3(6.95, 0.62, 19.0), Vector3(8.95, 1.25, 23.2))
-	lot.box(&"car", Vector3(7.1, 1.25, 20.0), Vector3(8.8, 1.75, 22.4))
+	lot.box(&"car", Vector3(6.95, 0.62, 18.6), Vector3(8.95, 1.25, 22.2))
+	lot.box(&"car", Vector3(7.1, 1.25, 19.4), Vector3(8.8, 1.75, 21.6))
 	for x: float in [6.95, 8.7]:
-		for z: float in [19.5, 22.0]:
+		for z: float in [18.9, 21.3]:
 			lot.box(&"oil", Vector3(x, f, z), Vector3(x + 0.25, f + 0.66, z + 0.66))
 	lot.box(&"shelf", Vector3(1.2, f, 23.6), Vector3(1.9, f + 1.05, 30.5))                 # workbench
 	lot.box(&"metal", Vector3(11.0, f, 15.3), Vector3(14.6, f + 1.9, 16.0))                # tyre rack
@@ -331,14 +331,14 @@ static func _miller(b: TownBuilder, lights: Array[Dictionary]) -> void:
 	lot.set_level(1, loft)
 	lot.box(&"floor", Vector3(1.2, loft - 0.2, 15.1), Vector3(6.0, loft, 23.0))
 	lot.box(&"metal", Vector3(5.94, loft, 15.1), Vector3(6.0, loft + 1.0, 23.0))
-	lot.box(&"metal", Vector3(1.2, loft, 22.94), Vector3(4.7, loft + 1.0, 23.0))
+	lot.box(&"metal", Vector3(1.2, loft, 22.94), Vector3(4.4, loft + 1.0, 23.0))
 	lot.box(&"furniture", Vector3(1.4, loft, 17.6), Vector3(2.2, loft + 0.75, 19.4))
 	lot.box(&"metal", Vector3(1.4, loft, 20.2), Vector3(1.9, loft + 1.3, 21.6))
 	lot.marker(&"loft", Vector3(3.6, loft + 0.1, 19.0), "loft office: overlooks the workshop", "账房阁楼（可俯射车间）")
 	lot.marker(&"awning_window", Vector3(3.5, loft + 1.0, 15.0), "window out onto the shop roof", "翻窗上遮雨棚")
 	_light(lights, lot, Vector3(3.5, loft + 1.9, 19.0), &"bulb", 0.7, Color(1.0, 0.8, 0.55), 5.0)
 	lot.set_level(0, f)
-	lot.stairs(&"metal", Vector3(5.3, f, 26.9), Vector3.FORWARD, 2.73, 3.9, 1.0)
+	lot.stairs(&"metal", Vector3(5.2, f, 26.9), Vector3.FORWARD, 2.73, 3.9, 1.5, 0, true)
 
 	# Yard: a dead car, tyres, chain fence.
 	lot.box(&"car", Vector3(21.5, 0.3, 21.0), Vector3(23.4, 1.0, 25.4))
@@ -387,7 +387,7 @@ static func _brick_row(b: TownBuilder, lights: Array[Dictionary]) -> void:
 	for z: float in [3.6, 7.6]:
 		lot.box(&"furniture", Vector3(24.5, f, z), Vector3(26.5, f + 0.9, z + 1.1))            # folding tables
 	lot.box(&"appliance", Vector3(27.6, f, 12.6), Vector3(28.4, f + 1.9, 13.3))                # change machine
-	lot.wall_x(&"wall_in", 13.5, 19.7, 31.4, f, top, 0.12, [[O.DOOR, 25.0, 0.9]])
+	lot.wall_x(&"wall_in", 13.5, 19.7, 31.4, f, top, 0.12, [[O.DOOR, 25.0, 1.0]])
 	for z: float in [3.0, 9.0]:
 		_light(lights, lot, Vector3(25.5, top - 0.3, z), &"tube", 1.8, Color(0.85, 0.95, 1.0), 8.0)
 	lot.marker(&"laundry_door", Vector3(25.5, f + 0.1, 0.4), "laundromat entrance", "洗衣房入口")
@@ -406,7 +406,7 @@ static func _brick_row(b: TownBuilder, lights: Array[Dictionary]) -> void:
 			lot.box(&"furniture", Vector3(x0, f, z + 2.1), Vector3(x0 + 1.3, f + 1.2, z + 2.6))
 	lot.box(&"furniture", Vector3(33.4, f, 12.6), Vector3(35.8, f + 0.8, 13.9))                # pool table
 	lot.box(&"appliance", Vector3(36.6, f, 15.3), Vector3(37.5, f + 1.5, 16.0))                # jukebox
-	lot.wall_x(&"wall_in", 13.0, 39, 45.3, f, top, 0.12, [[O.DOOR, 40.0, 0.9]])
+	lot.wall_x(&"wall_in", 13.0, 39, 45.3, f, top, 0.12, [[O.DOOR, 40.0, 1.0]])
 	lot.wall_z(&"wall_in", 39.0, 13, 16.1, f, top, 0.12)
 	lot.box(&"furniture", Vector3(43.6, f, 14.9), Vector3(45.1, f + 0.75, 15.8))               # office desk
 	for p: Vector2 in [Vector2(38.5, 3.5), Vector2(38.5, 8.3), Vector2(34.5, 13.0)]:
@@ -448,7 +448,7 @@ static func _clark(b: TownBuilder, lights: Array[Dictionary]) -> void:
 	lot.wall_z(&"siding", 13.9, 7, 16, f, f1)
 	lot.wall_z(&"wall_in", 9.0, 7.2, 15.8, f, f1 - 0.2, 0.12, [[O.DOOR, 8.0, 1.0], [O.DOOR, 13.0, 1.0]])
 	lot.wall_x(&"wall_in", 12.0, 4.2, 9.0, f, f1 - 0.2, 0.12, [[O.DOOR, 5.0, 1.0]])
-	lot.stairs(&"wood", Vector3(13.3, f, 14.6), Vector3.FORWARD, STOREY, 4.0, 1.0)
+	lot.stairs(&"wood", Vector3(13.05, f, 14.6), Vector3.FORWARD, STOREY, 4.0, 1.5, 0, true)
 	lot.box(&"furniture", Vector3(4.4, f, 8.0), Vector3(5.3, f + 0.8, 10.2))                    # sofa
 	lot.box(&"appliance", Vector3(8.2, f, 9.6), Vector3(8.85, f + 1.2, 10.6))                   # television
 	lot.box(&"furniture", Vector3(5.5, f, 13.3), Vector3(7.5, f + 0.75, 14.5))                  # table, a meal left on it
@@ -462,20 +462,20 @@ static func _clark(b: TownBuilder, lights: Array[Dictionary]) -> void:
 
 	# Upstairs: the nest bedroom, a walk-in closet with the gun cabinet, a bathroom.
 	lot.set_level(1, f1)
-	lot.box(&"floor", Vector3(4, f1 - 0.2, 7), Vector3(12.8, f1, 16))
-	lot.box(&"floor", Vector3(12.8, f1 - 0.2, 7), Vector3(14, f1, 10.6))
-	lot.box(&"floor", Vector3(12.8, f1 - 0.2, 14.8), Vector3(14, f1, 16))
-	lot.box(&"wall_in", Vector3(12.7, f1, 10.6), Vector3(12.8, f1 + 1.0, 14.8))                  # stair rail
+	lot.box(&"floor", Vector3(4, f1 - 0.2, 7), Vector3(12.3, f1, 16))
+	lot.box(&"floor", Vector3(12.3, f1 - 0.2, 7), Vector3(14, f1, 10.6))
+	lot.box(&"floor", Vector3(12.3, f1 - 0.2, 14.8), Vector3(14, f1, 16))
+	lot.box(&"wall_in", Vector3(12.2, f1, 10.6), Vector3(12.3, f1 + 1.0, 14.8))                  # stair rail
 	lot.wall_x(&"siding", 7.1, 4, 14, f1, top, 0.2, [[O.WINDOW, 5.0, 2.5], [O.WINDOW, 10.5, 2.0]])
 	lot.wall_x(&"siding", 15.9, 4, 14, f1, top, 0.2, [[O.WINDOW, 8.0, 2.0]])
 	lot.wall_z(&"siding", 4.1, 7, 16, f1, top, 0.2, [[O.WINDOW, 9.0, 2.0]])
 	lot.wall_z(&"siding", 13.9, 7, 16, f1, top, 0.2, [[O.WINDOW, 8.0, 1.5]])
-	lot.wall_z(&"wall_in", 9.5, 7.2, 13.0, f1, top, 0.12, [[O.DOOR, 11.6, 0.9]])
-	lot.wall_x(&"wall_in", 13.0, 4.2, 12.8, f1, top, 0.12, [[O.DOOR, 5.0, 0.9], [O.DOOR, 10.8, 0.9]])
+	lot.wall_z(&"wall_in", 9.5, 7.2, 13.0, f1, top, 0.12, [[O.DOOR, 11.6, 1.0]])
+	lot.wall_x(&"wall_in", 13.0, 4.2, 12.3, f1, top, 0.12, [[O.DOOR, 5.0, 1.0], [O.DOOR, 10.8, 1.0]])
 	lot.wall_z(&"wall_in", 7.0, 13.0, 15.8, f1, top, 0.12)
 	lot.box(&"furniture", Vector3(4.3, f1, 7.4), Vector3(6.3, f1 + 0.55, 9.6))                  # bed
 	lot.box(&"appliance", Vector3(6.6, f1, 10.4), Vector3(7.6, f1 + 1.9, 11.3))                 # the refrigerator
-	for p: Vector2 in [Vector2(5.4, 11.2), Vector2(8.1, 10.0), Vector2(7.0, 12.0), Vector2(8.3, 11.6)]:
+	for p: Vector2 in [Vector2(5.4, 11.2), Vector2(8.1, 10.0), Vector2(7.6, 12.1), Vector2(5.9, 9.9)]:
 		lot.box(&"appliance", Vector3(p.x, f1, p.y), Vector3(p.x + 0.45, f1 + 0.4, p.y + 0.4))   # what crawled up to it
 	lot.box(&"metal", Vector3(4.25, f1, 14.5), Vector3(4.8, f1 + 1.8, 15.7))                    # gun cabinet
 	lot.box(&"appliance", Vector3(7.3, f1, 15.0), Vector3(9.0, f1 + 0.6, 15.75))                # bath

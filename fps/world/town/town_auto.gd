@@ -12,8 +12,10 @@ extends Node
 const TICKS := 120.0
 ## What the navigation mesh covers: the whole walkable town, pit to upper floors.
 const NAV_BOUNDS := AABB(Vector3(-78.0, -2.0, -116.0), Vector3(176.0, 9.0, 238.0))
-## Narrow enough for a 0.9 m door on a 0.25 m grid.
+## The town is laid out at an angle to the grid and has 1 m doors: on the
+## range's 0.25 m cells a door can close up, so the town bakes at half that.
 const NAV_RADIUS := 0.25
+const NAV_CELL := 0.125
 
 var scene: Node3D
 var player: Player
@@ -114,6 +116,11 @@ func _walk_to(goal: Vector3, sprint := false, limit := 120.0) -> float:
 	var path := _route(player.global_position, goal)
 	if path.is_empty():
 		return -1.0
+	if OS.has_environment("TOWN_DEBUG"):
+		var text := ""
+		for q in path:
+			text += "  (%.1f %.2f %.1f)" % [q.x, q.y, q.z]
+		print("ROUTE from %s:%s" % [_pos(), text])
 	var i := 0
 	var t := 0.0
 	var best := INF
@@ -216,7 +223,7 @@ func _destinations() -> Array:
 		["the tavern, inside the U of the bar", "brick_row", Vector3(38.5, shop, 8.3)],
 		["the tavern office", "brick_row", Vector3(42.5, shop, 14.5)],
 		["the Clarks' living room", "clark", Vector3(6.5, house, 9.5)],
-		["the Clarks' kitchen", "clark", Vector3(6.5, house, 14.4)],
+		["the Clarks' kitchen", "clark", Vector3(4.9, house, 13.6)],
 		["the nest bedroom upstairs", "clark", Vector3(8.6, up, 8.6)],
 		["the closet with the gun cabinet", "clark", Vector3(5.6, up, 14.5)],
 		["the upstairs bathroom", "clark", Vector3(10.5, up, 14.5)],
@@ -228,16 +235,26 @@ func _destinations() -> Array:
 func _test_navigation() -> void:
 	var town: Node3D = scene.get_node("Town")
 	var started := Time.get_ticks_msec()
-	scene.nav_region = Nav.bake(town, NAV_BOUNDS, 1, NAV_RADIUS)
+	scene.nav_region = Nav.bake(town, NAV_BOUNDS, 1, NAV_RADIUS, NAV_CELL)
 	var took := (Time.get_ticks_msec() - started) / 1000.0
-	await _secs(0.2)
+	# The map takes the new region in on its own time (asynchronously): wait until it has.
+	var map := scene.get_world_3d().navigation_map
+	for i in 1200:
+		await get_tree().physics_frame
+		if NavigationServer3D.map_get_iteration_id(map) > 0 and not NavigationServer3D.map_get_path(
+				map, scene.extras["spawn"].origin, scene.extras["spawn"].origin + Vector3(3, 0, 0), true).is_empty():
+			break
 	var polygons: int = scene.nav_region.navigation_mesh.get_polygon_count()
 	_check("navigation: the mesh bakes from the town's collision", polygons > 300, "%d polygons in %.1f s" % [polygons, took])
 	var from: Vector3 = scene.extras["spawn"].origin
 	var unreachable: Array[String] = []
 	for d: Array in _destinations():
-		if _route(from, _at(d[1], d[2])).is_empty():
-			unreachable.append(d[0])
+		var goal := _at(d[1], d[2])
+		if _route(from, goal).is_empty():
+			var raw := Nav.path(scene.get_world_3d(), from, goal)
+			var end := raw[raw.size() - 1] if not raw.is_empty() else Vector3.INF
+			unreachable.append("%s (the route stops %.1f m short and %.1f m lower, at %.1f %.1f %.1f; goal %.1f %.1f %.1f)" % [
+					d[0], _flat(end, goal), goal.y - end.y, end.x, end.y, end.z, goal.x, goal.y, goal.z])
 	_check("navigation: one mesh joins the police car to every room of every building", unreachable.is_empty(),
 			"no route to: " + "; ".join(unreachable))
 	var north := Nav.path(scene.get_world_3d(), from, TownLayout.beside(-122.0, 0.0))
@@ -292,7 +309,7 @@ func _test_walks() -> void:
 
 	# The Clark house: porch, hall, kitchen, stairs, bedroom, closet; then the garage.
 	await _place(scene.stop_at(&"clark_door", 5.0).origin)
-	t = await _walk_to(_at("clark", Vector3(6.5, house, 14.4)))
+	t = await _walk_to(_at("clark", Vector3(4.9, house, 13.6)))
 	_check("walk: up the Clarks' porch and through to the kitchen", t > 0.0 and absf(player.global_position.y - house) < 0.06,
 			"%.1f s, %s" % [t, _pos()])
 	t = await _walk_to(_at("clark", Vector3(8.6, up, 8.6)))

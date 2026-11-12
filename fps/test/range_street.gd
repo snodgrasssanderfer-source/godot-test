@@ -15,7 +15,7 @@ extends Node3D
 ##   F6 F7 F8 F9  hurt a leg / the support arm / the gun arm / the torso
 ##   J    tape the worst bleeding   K  painkiller   H  heal everything
 ##   N    jolt the nearest grid cell (+25)   M  creatures on / off
-##   F1   help    F2  numbers     F5  back to the start       F11 fullscreen
+##   F1   help    F2  numbers     F3  the town greybox    F5  back to the start       F11 fullscreen
 ##   Esc  free the mouse          F10 quit
 ##
 ## Command line (after "--"):
@@ -34,7 +34,7 @@ LMB fire   RMB aim   R reload   1 2 3 or wheel: weapons   F flashlight
 [ ] time   T clock   P power   G SDFGI   V fog   B benchmark   - = mouse sensitivity
 F6 F7 F8 F9 hurt leg / support arm / gun arm / torso   J tape   K painkiller   H heal
 N jolt the power grid here (+25)   M creatures on / off
-F1 help   F2 numbers   F5 respawn   F11 fullscreen   Esc mouse   F10 quit"""
+F1 help   F2 numbers   F3 town   F5 respawn   F11 fullscreen   Esc mouse   F10 quit"""
 
 @onready var atmosphere: Atmosphere = $Atmosphere
 @onready var street: StreetSet = $StreetSet
@@ -258,6 +258,7 @@ func _input(event: InputEvent) -> void:
 			KEY_EQUAL: Controls.mouse_sensitivity = minf(Controls.mouse_sensitivity * 1.1, 0.012)
 			KEY_F1: _help.visible = not _help.visible
 			KEY_F2: _overlay.visible = not _overlay.visible
+			KEY_F3: get_tree().change_scene_to_file("res://world/town/town.tscn")
 			KEY_F5: _respawn()
 			KEY_F6: _hurt(BodySim.Part.LEG_L, 30.0, BodySim.Kind.CUT)
 			KEY_F7: _hurt(BodySim.Part.ARM_L, 25.0, BodySim.Kind.CUT)

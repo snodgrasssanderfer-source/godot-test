@@ -83,6 +83,14 @@ blender --background --factory-startup --python art/concept/make_concepts.py -- 
 godot --headless --fixed-fps 60 --path fps -- --selftest
 ```
 
+**小镇灰盒**（`fps/world/town/town.tscn`，靶场里按 `F3` 切过去）：设计稿那张 250 × 250 米地图的可行走灰盒，四栋核心建筑都能进，
+纯色方块，没有怪和物品。`F6`–`F9` 跳到四栋楼，`L` 显示关键物品的标记。平面图在 `art/town/`。它有自己的自测（25 项：布局、寻路、
+让玩家真的走进每栋楼、上两处楼梯、下地沟、翻窗上遮雨棚）：
+
+```bash
+godot --headless --fixed-fps 60 --path fps res://world/town/town.tscn -- --selftest
+```
+
 **氛围测试场景**（`fps/test/tone_street.tscn`）：WASD + 鼠标飞行，`[` `]` 调时间，
 `T` 让时间流动，`P` 开关电力，`F` 手电，`F1` 隐藏左上角的帧率和帧时间。
 
