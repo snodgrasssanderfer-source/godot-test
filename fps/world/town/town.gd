@@ -70,6 +70,30 @@ var _automated := false
 var _frame_ms := 0.0
 
 
+## Lots that have been modelled in Blender (art/town/blender/build_<lot>.py).
+## The model is what you see; the greybox boxes of that lot are hidden but stay
+## as what you bump into, so the model has to keep their footprint.
+const LOT_MODELS := {"gas_station": "res://assets/town/gas_station.glb"}
+## What a "light_<kind>_<n>" empty in a model becomes:
+## [spot or omni, energy, colour, range, casts shadows].
+const MODEL_LIGHTS := {
+	&"canopy": ["spot", 9.0, Color(0.82, 0.92, 1.0), 10.0, true],
+	&"tube": ["omni", 1.5, Color(0.85, 0.93, 1.0), 7.5, false],
+	&"bulb": ["omni", 0.8, Color(1.0, 0.82, 0.6), 5.0, true],
+	&"door": ["omni", 0.7, Color(1.0, 0.8, 0.55), 5.0, false],
+	&"wallpack": ["omni", 1.1, Color(1.0, 0.68, 0.38), 8.0, true],
+	&"cooler": ["omni", 0.45, Color(0.75, 0.9, 1.0), 4.5, false],
+	&"vending": ["omni", 0.6, Color(0.95, 0.75, 0.6), 4.0, false],
+	&"neon": ["omni", 0.5, Color(1.0, 0.25, 0.3), 4.0, false],
+	&"sign_green": ["omni", 0.7, Color(0.75, 1.0, 0.8), 7.0, false],
+	&"sign_warm": ["omni", 0.6, Color(1.0, 0.85, 0.6), 6.0, false],
+	&"sign_blue": ["omni", 0.6, Color(0.7, 0.8, 1.0), 6.0, false],
+}
+## False (or --greybox on the command line) shows the plain boxes everywhere.
+static var use_models := true
+var models := {}               # lot name -> TownModel
+
+
 func _ready() -> void:
 	var render_size := Vector2i(1920, 1080)
 	var auto_mode := ""
@@ -81,6 +105,8 @@ func _ready() -> void:
 				render_size = Vector2i(int(parts[0]), int(parts[1]))
 		elif arg == "--selftest":
 			auto_mode = "selftest"
+		elif arg == "--greybox":
+			use_models = false
 		elif arg.begins_with("--shoot="):
 			auto_mode = "shoot"
 			auto_arg = arg.trim_prefix("--shoot=")
@@ -131,6 +157,7 @@ func _ready() -> void:
 	town.name = "Town"
 	add_child(town)
 	builder.commit(town)
+	_apply_models()
 	_make_lights()
 	_make_labels()
 	build_grid(false)
@@ -256,8 +283,34 @@ func _label(layer: CanvasLayer) -> Label:
 
 ## Street lamps are shadowed spots over the road; everything indoors is a
 ## plain point light. All of them follow the atmosphere's power switch.
+func _apply_models() -> void:
+	if not use_models:
+		return
+	for lot_name: String in LOT_MODELS:
+		var lot := builder.find_lot(lot_name)
+		if lot == null or not ResourceLoader.exists(LOT_MODELS[lot_name]):
+			continue
+		for child in lot.node.get_children():
+			if child is MeshInstance3D:
+				(child as MeshInstance3D).visible = false
+		var scene := (load(LOT_MODELS[lot_name]) as PackedScene).instantiate() as Node3D
+		scene.name = "Model"
+		models[lot_name] = TownModel.from_scene(scene, lot.node)
+
+
 func _make_lights() -> void:
-	for l: Dictionary in extras["lights"]:
+	var listed: Array = extras["lights"].duplicate()
+	for lot_name: String in models:
+		var model: TownModel = models[lot_name]
+		if model.lights.is_empty():
+			continue
+		# the model brings its own lamps: they replace the ones the layout lists for that lot
+		listed = listed.filter(func(l: Dictionary) -> bool: return l["lot"] != lot_name)
+		for m: Dictionary in model.lights:
+			var spec: Array = MODEL_LIGHTS.get(m["kind"], MODEL_LIGHTS[&"tube"])
+			listed.append({"kind": StringName(spec[0]), "at": m["at"], "energy": spec[1], "color": spec[2],
+					"range": spec[3], "shadow": spec[4], "lot": lot_name})
+	for l: Dictionary in listed:
 		var light: Light3D
 		if l["kind"] == &"street":
 			var spot := SpotLight3D.new()
@@ -278,11 +331,22 @@ func _make_lights() -> void:
 			bulb.mesh = mesh
 			bulb.position = Vector3(0.0, 0.0, 0.07)
 			spot.add_child(bulb)
+		elif l["kind"] == &"spot":                              # a ceiling fitting: light falls straight down
+			var down := SpotLight3D.new()
+			down.rotation_degrees.x = -90.0
+			down.spot_angle = 72.0
+			down.spot_angle_attenuation = 0.5
+			down.spot_range = l["range"]
+			down.spot_attenuation = 1.2
+			down.light_volumetric_fog_energy = 1.2
+			down.shadow_enabled = l.get("shadow", false)
+			light = down
 		else:
 			var omni := OmniLight3D.new()
 			omni.omni_range = l["range"]
 			omni.omni_attenuation = 1.4
 			omni.light_volumetric_fog_energy = 0.6
+			omni.shadow_enabled = l.get("shadow", false)
 			light = omni
 		light.light_color = l["color"]
 		light.light_energy = l["energy"]

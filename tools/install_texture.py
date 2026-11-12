@@ -4,8 +4,10 @@
   tools/install_texture.py red_brick Asphalt015 C14_PeelingClapboard ...
   tools/install_texture.py --list            what is installed, and its import settings
 
-For every set (a folder under textures/materials or textures/generated holding
-<name>_Color, <name>_Normal and <name>_ORM) it
+A set with a single image (a sign, a lightbox, a printed face: just <name>_Color
+or <name>_Emission) becomes a plain StandardMaterial3D; an _Emission image also
+glows, and so does a _Color image asked for as <name>+glow (a lit machine front). For every full set (a folder under textures/materials or
+textures/generated holding <name>_Color, <name>_Normal and <name>_ORM) it
 
   * copies the three maps to fps/assets/textures/<name>/
   * writes their .import files so that Godot stores them VRAM-compressed with
@@ -75,6 +77,23 @@ texture_filter = 5
 """
 
 
+SINGLE = """[gd_resource type="StandardMaterial3D" load_steps=2 format=3]
+
+[ext_resource type="Texture2D" path="{image}" id="1"]
+
+[resource]
+resource_name = "{name}"
+albedo_texture = ExtResource("1")
+roughness = 0.6
+texture_filter = 5
+{glow}"""
+
+GLOW = """emission_enabled = true
+emission_texture = ExtResource("1")
+emission_energy_multiplier = 1.8
+"""
+
+
 def find(name):
     for lib in LIBRARY:
         d = os.path.join(lib, name)
@@ -91,17 +110,32 @@ def channel(folder, name, ch):
     return None
 
 
-def install(name):
+def install(name, force_glow=False):
     src = find(name)
     if src is None:
         print("%s: not in the library" % name)
         return False
     maps = {ch: channel(src, name, ch) for ch in ("Color", "Normal", "ORM")}
     missing = [ch for ch, p in maps.items() if p is None]
-    if missing:
-        print("%s: no %s map (this tool installs full material sets only)" % (name, ", ".join(missing)))
-        return False
     out = os.path.join(TEX_OUT, name)
+    if missing:
+        single = channel(src, name, "Emission") or maps["Color"]
+        if single is None or len(missing) < 2:
+            print("%s: no %s map, and not a single-image set either" % (name, ", ".join(missing)))
+            return False
+        os.makedirs(out, exist_ok=True)
+        os.makedirs(MAT_OUT, exist_ok=True)
+        dst = os.path.join(out, os.path.basename(single))
+        shutil.copyfile(single, dst)
+        res_path = "res://assets/textures/%s/%s" % (name, os.path.basename(single))
+        if not os.path.exists(dst + ".import"):
+            with open(dst + ".import", "w", newline="\n") as fh:
+                fh.write(IMPORT.format(res=res_path, normal=0))
+        with open(os.path.join(MAT_OUT, name + ".tres"), "w", newline="\n") as fh:
+            glows = force_glow or "_Emission" in single
+            fh.write(SINGLE.format(name=name, image=res_path, glow=GLOW if glows else ""))
+        print("%s: installed as a single-image material%s" % (name, " (glowing)" if glows else ""))
+        return True
     os.makedirs(out, exist_ok=True)
     os.makedirs(MAT_OUT, exist_ok=True)
     res = {}
@@ -145,7 +179,7 @@ def main():
     if args[0] == "--list":
         listing()
         return 0
-    ok = all([install(a) for a in args])
+    ok = all([install(a.split("+")[0], a.endswith("+glow")) for a in args])
     print("now run: godot --headless --path fps --import")
     return 0 if ok else 1
 

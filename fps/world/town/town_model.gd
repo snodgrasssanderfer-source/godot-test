@@ -12,6 +12,12 @@ extends RefCounted
 ##   collision   every mesh is solid (exact triangles) unless its object name
 ##               ends in "-nocol"; "-colonly" makes an invisible collider.
 ##   markers     empties named "marker_<id>" say where things are.
+##   lights      empties named "light_<kind>_<n>" say where lamps go; what each
+##               kind is, is up to the scene (Town.MODEL_LIGHTS).
+##
+## A whole town comes in with load_file(); a single lot that has been modelled
+## (res://assets/town/<lot>.glb, built in lot space) with from_scene(), as a
+## child of that lot's node.
 
 const MATERIALS := "res://assets/materials/%s.tres"
 
@@ -20,6 +26,7 @@ var markers := {}              # StringName -> Vector3 (world)
 var mesh_count := 0
 var collider_count := 0
 var materials := {}            # material name -> "set" / "tag" / "kept"
+var lights: Array[Dictionary] = []      # {"kind": StringName, "at": Vector3 (world)}
 
 
 ## Loads a .glb / .gltf straight from disk (no import step) and prepares it.
@@ -31,6 +38,16 @@ static func load_file(path: String, parent: Node3D) -> TownModel:
 	var scene := doc.generate_scene(state) as Node3D
 	if scene == null:
 		return null
+	parent.add_child(scene)
+	var model := TownModel.new()
+	model.root = scene
+	model._prepare(scene)
+	return model
+
+
+## Takes a scene Godot has imported (the importer has already turned its
+## "-colonly" objects into static bodies) and prepares it under `parent`.
+static func from_scene(scene: Node3D, parent: Node3D) -> TownModel:
 	parent.add_child(scene)
 	var model := TownModel.new()
 	model.root = scene
@@ -81,8 +98,16 @@ func _prepare(node: Node) -> void:
 					mi.remove_child(body)
 					mi.get_parent().add_child(body)
 					(body as Node3D).global_transform = xf
+	elif node is StaticBody3D:                              # made by Godot's importer from "-colonly"
+		(node as StaticBody3D).collision_layer = TownBuilder.LAYER_WORLD
+		(node as StaticBody3D).collision_mask = 0
+		collider_count += 1
 	elif node is Node3D and node_name.begins_with("marker_"):
 		markers[StringName(node_name.trim_prefix("marker_"))] = (node as Node3D).global_position
+	elif node is Node3D and node_name.begins_with("light_"):
+		var kind := node_name.trim_prefix("light_")
+		kind = kind.substr(0, kind.rfind("_"))
+		lights.append({"kind": StringName(kind), "at": (node as Node3D).global_position})
 
 
 func summary() -> String:

@@ -193,8 +193,29 @@ func _test_layout() -> void:
 	for lamp: Light3D in lamps:
 		if lamp.shadow_enabled:
 			shadowed += 1
-	_check("layout: street lamps and indoor lights are all on the power switch", lamps.size() > 30 and shadowed == 9,
+	_check("layout: street lamps and indoor lights are all on the power switch", lamps.size() > 30 and shadowed >= 9,
 			"%d lights, %d with shadows" % [lamps.size(), shadowed])
+	# The lots that have a Blender model: the model is shown, the boxes only collide.
+	for lot_name: String in scene.LOT_MODELS:
+		var model: TownModel = scene.models.get(lot_name)
+		var boxes_shown := 0
+		for child in builder.find_lot(lot_name).node.get_children():
+			if child is MeshInstance3D and (child as MeshInstance3D).visible:
+				boxes_shown += 1
+		var by_set := 0
+		var unknown_lights := []
+		if model != null:
+			for key: String in model.materials:
+				if model.materials[key][1] == "set":
+					by_set += 1
+			for l: Dictionary in model.lights:
+				if not scene.MODEL_LIGHTS.has(l["kind"]) and not unknown_lights.has(l["kind"]):
+					unknown_lights.append(l["kind"])
+		_check("model: %s is shown by its Blender model, with its own lamps and textures" % lot_name,
+				model != null and boxes_shown == 0 and model.mesh_count >= 5 and model.collider_count >= 1
+				and by_set >= 15 and model.lights.size() >= 10 and unknown_lights.is_empty(),
+				"no model" if model == null else "%s; %d lamps; greybox meshes still shown: %d; lamp kinds without a spec: %s" % [
+				model.summary(), model.lights.size(), boxes_shown, str(unknown_lights)])
 	_check("layout: the player starts on the forecourt beside the police car", player.is_on_floor()
 			and absf(player.global_position.y - 0.03) < 0.03 and _flat(player.global_position, car) < 3.0, _pos())
 
@@ -446,6 +467,16 @@ func _shoot(dir: String) -> void:
 		["11_clark_hall", "clark", Vector3(11.0, house, 8.0), Vector3(12.0, house + 1.6, 14.5)],
 		["12_clark_nest", "clark", Vector3(8.9, up, 7.8), Vector3(6.6, up + 0.9, 10.8)],
 		["13_south_end", "street", TownLayout.beside(96.0, -1.0, 0.05), TownLayout.beside(114.0, 0.0, 1.5)],
+		# the gas station, modelled (--shots=g1,g2,...)
+		["g1_from_the_street", "gas_station", Vector3(5.5, 0.05, 2.5), Vector3(18.0, 2.4, 12.0)],
+		["g2_car_and_store", "gas_station", Vector3(13.0, 0.05, 9.0), Vector3(24.0, 1.9, 20.0)],
+		["g3_store_front", "gas_station", Vector3(22.0, 0.05, 15.2), Vector3(23.0, 2.3, 20.0)],
+		["g4_aisle", "gas_station", Vector3(18.35, shop, 21.6), Vector3(18.3, 1.0, 28.0)],
+		["g5_counter", "gas_station", Vector3(24.6, shop, 21.2), Vector3(29.6, 1.35, 24.8)],
+		["g6_staff_room", "gas_station", Vector3(27.5, shop, 27.6), Vector3(31.0, 0.9, 27.2)],
+		["g7_alley", "gas_station", Vector3(27.5, 0.05, 33.6), Vector3(19.5, 0.9, 32.5)],
+		["g8_pylon", "gas_station", Vector3(9.5, 0.05, 3.2), Vector3(3.05, 4.6, 1.65)],
+		["g9_pump", "gas_station", Vector3(16.2, 0.05, 6.0), Vector3(14.0, 1.2, 7.6)],
 	]
 	for shot: Array in shots:
 		if not only.is_empty() and not only.has(String(shot[0]).left(2)):
