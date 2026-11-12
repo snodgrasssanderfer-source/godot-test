@@ -258,7 +258,7 @@ func _input(event: InputEvent) -> void:
 			KEY_EQUAL: Controls.mouse_sensitivity = minf(Controls.mouse_sensitivity * 1.1, 0.012)
 			KEY_F1: _help.visible = not _help.visible
 			KEY_F2: _overlay.visible = not _overlay.visible
-			KEY_F3: get_tree().change_scene_to_file("res://world/town/town.tscn")
+			KEY_F3: get_tree().change_scene_to_file("res://world/block/block.tscn")
 			KEY_F5: _respawn()
 			KEY_F6: _hurt(BodySim.Part.LEG_L, 30.0, BodySim.Kind.CUT)
 			KEY_F7: _hurt(BodySim.Part.ARM_L, 25.0, BodySim.Kind.CUT)

@@ -47,10 +47,10 @@ jobs:
         run: godot --headless --path fps --import
 
       - name: Self-test (movement and weapons, headless)
-        run: godot --headless --path fps -- --selftest
+        run: godot --headless --path fps res://test/range_street.tscn -- --selftest
 
-      - name: "Self-test (the town: layout, navigation, walking every building)"
-        run: godot --headless --path fps res://world/town/town.tscn -- --selftest
+      - name: "Self-test (the block, loads and can be walked)"
+        run: godot --headless --path fps res://world/block/block.tscn -- --selftest
 
       - name: Export
         run: tools/export_windows.sh

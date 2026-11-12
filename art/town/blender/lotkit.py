@@ -240,7 +240,7 @@ class Part:
 			self.map_rect(f, c, r, u, w, h, rect)
 		return f
 
-	def decal(self, mat, at, normal, w, h, turn_deg=0.0, rect=None, lift=0.004):
+	def decal(self, mat, at, normal, w, h, turn_deg=0.0, rect=None, lift=0.004, m=None):
 		"""A stain, crack or painted mark: a see-through panel lying `lift` off the
 		surface whose outward direction is `normal`, turned about that direction.
 		On a floor (normal up) the image's top points to +z before turning; on a
@@ -248,7 +248,7 @@ class Part:
 		n = Vector(normal).normalized()
 		up = Vector((0, 0, 1)) if abs(n.y) > 0.9 else Vector((0, 1, 0))
 		up = Matrix.Rotation(math.radians(turn_deg), 3, n) @ up
-		return self.quad(mat, Vector(at) + n * lift, n, w, h, rect=rect or (0.0, 0.0, 1.0, 1.0), up=up)
+		return self.quad(mat, Vector(at) + n * lift, n, w, h, rect=rect or (0.0, 0.0, 1.0, 1.0), up=up, m=m)
 
 	def cyl(self, mat, a, b, r, seg=10, r2=None, m=None, cap_mat=None):
 		"""Cylinder (or cone, with r2) from point a to point b."""
@@ -321,12 +321,12 @@ class Part:
 		bmesh.ops.recalc_face_normals(self.bm, faces=made)
 		return made
 
-	def hull(self, mat, bottom, top, faces=None):
+	def hull(self, mat, bottom, top, faces=None, m=None):
 		"""A tapered block: `bottom` and `top` are (x0, y, z0, x1, z1). `faces`
 		like box()."""
 		x0, y0, z0, x1, z1 = bottom
 		a0, y1, c0, a1, c1 = top
-		vs = [self._v(p) for p in ((x0, y0, z0), (x1, y0, z0), (a0, y1, c0), (a1, y1, c0),
+		vs = [self._v(p, m) for p in ((x0, y0, z0), (x1, y0, z0), (a0, y1, c0), (a1, y1, c0),
 				(x0, y0, z1), (x1, y0, z1), (a0, y1, c1), (a1, y1, c1))]
 		for key, idx in BOX_FACES.items():
 			self._face([vs[i] for i in idx], (faces or {}).get(key, mat))
