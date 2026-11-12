@@ -29,7 +29,7 @@
 - 要写一个工具（建议 `tools/install_texture.py <素材名>`）：把一套拷进 `fps/assets/textures/`，同时写好每张图的 `.import`：
   `compress/mode=2`（显存压缩）、`mipmaps/generate=true`；法线图再加 `compress/normal_map=1`；ORM 图和法线图不是颜色数据，材质里不要当 sRGB 用。
 - 同一个工具顺手生成材质资源 `fps/assets/materials/<素材>.tres`：用 `ORMMaterial3D`（它的 ORM 图正好是红 = 遮蔽、绿 = 粗糙度、蓝 = 金属度，和库里的打包一致），法线是 OpenGL 约定，Godot 直接用，不用翻绿通道。
-- 做完用软件渲染截一张图确认（`xvfb-run ... --rendering-driver vulkan`，见第 2 节的截图办法），不要只看文件存在。
+- 做完用软件渲染截一张图确认（`xvfb-run ... --rendering-driver vulkan`，命令在第 4 节"环境"里），不要只看文件存在。
 
 **任务 2：平铺材质（库里 137 套，对应清单 178 项）**
 
