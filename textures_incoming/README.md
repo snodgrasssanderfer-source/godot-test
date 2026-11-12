@@ -2,6 +2,12 @@
 
 《凌晨三点公路镇》按 `texture_prompts-1.md` / `texture_prompts-2.md` 生成的贴图，共 289 张，文件名 `{编号}_{英文名}_{Color|Emission|Mask}.png`，子目录按编号首字母分。
 
+## 第四轮（2026-11-12，docs/texture_prompts_redo.md 第四节）
+
+- 3 张：E17 香烟和彩票灯箱、E30 香烟条盒和打火机架、N26 香烟和零食品牌，文件名与第三轮相同，直接覆盖
+- 原因：HARLAN REDS 烟盒画得像万宝路、CRUNCHLEY'S 标志像乐事；名字不换，换画法（深红底 + 单条奶油色横带 + 金色椭圆，无折线/屋顶形；CRUNCHLEY'S 改纯色块字母加一片薯片，无飘带圆圈）
+- 出处文件在 `ccr-288ba2a4-9j5wy5` 分支，这份文档不在本分支
+
 ## 第三轮（2026-11-12，按 texture_prompts_redo.md）
 
 - 145 张，对应 125 个编号，含变体字母（N14a-c、C70a-f、J47a-f、L16a/b、L18a/b、M33a/b、Q07a-f）
