@@ -206,7 +206,6 @@ goods = Part("goods-nocol")
 alley = Part("alley")
 car = Part("vehicles")
 street = Part("street")
-backdrop = Part("backdrop")
 dirt = Part("dirt-nocol")
 col = Part("props-colonly")
 
@@ -855,21 +854,14 @@ for a, b in (((46.0, 8.45, 9.0), (55.0, 8.45, 26.0)), ((55.0, 8.45, 26.0), (46.0
 	mid = ((a[0] + b[0]) / 2, 7.7, (a[2] + b[2]) / 2)
 	for dx in (-0.9, 0.9):
 		trim.tube("black", [(a[0] + dx, a[1], a[2]), (mid[0] + dx, mid[1], mid[2]), (b[0] + dx, b[1], b[2])], 0.012, seg=4, steps=5)
-# Not built yet: the brick row facing up the street. A dark mass for now, so the corner has a
-# side; it gets its own script later. (Miller's, across the street, is build_miller.py.)
-backdrop.box("red_brick", (37.0, 0.0, 62.0), (70.0, 7.8, 82.0))
-backdrop.box("red_brick", (36.8, 7.8, 61.8), (70.2, 8.2, 82.2))
-for x in (39.0, 47.0, 55.0, 63.0):
-	trim.box("night", (x, 0.8, 61.97), (x + 5.0, 3.0, 62.0))
-	trim.box("night", (x + 0.5, 4.6, 61.97), (x + 4.5, 6.6, 62.0))
 # the edges of what exists so far
 solid((44.0, 0.0, 1.5), (57.0, 4.0, 1.8))            # north: the fog
-solid((24.0, 0.0, 61.5), (57.0, 4.0, 61.8))          # south
+solid((24.0, 0.0, 61.5), (37.0, 4.0, 61.8))          # south of the short leg, west of the tavern
 solid((26.2, 0.0, 51.0), (26.5, 4.0, 62.0))          # west end of the short leg
 solid((2.7, 0.0, 5.7), (3.0, 4.0, 51.3))
 solid((2.7, 0.0, 5.7), (45.3, 4.0, 6.0))
 
-for part in (ground, kerbs, shell, trim, glass, canopy, pumps, fit, goods, alley, car, street, backdrop, dirt, col):
+for part in (ground, kerbs, shell, trim, glass, canopy, pumps, fit, goods, alley, car, street, dirt, col):
 	part.finish()
 
 os.makedirs(os.path.join(lotkit.ROOT, "fps", "assets", "block"), exist_ok=True)

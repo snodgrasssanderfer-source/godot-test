@@ -630,7 +630,6 @@ marker("gate_b", (57.4, 0.05, 55.5))
 # the edges of what exists so far
 solid((77.9, 0.0, 5.7), (78.2, 4.0, 62.0))
 solid((56.0, 0.0, 5.7), (78.2, 4.0, 6.0))
-solid((56.0, 0.0, 61.5), (78.2, 4.0, 61.8))       # the lane to the back of the brick row: not built yet
 solid((56.0, 0.0, 0.0), (56.3, 4.0, 10.0))        # the street's east side north of the shop
 
 for part in (ground, shell, trim, glass, fit, goods, yard, dirt, col):

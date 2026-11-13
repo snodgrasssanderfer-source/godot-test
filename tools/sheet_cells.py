@@ -53,7 +53,8 @@ def cells(path, min_share=0.004):
 
 def main():
     for name in sys.argv[1:]:
-        hits = glob.glob(os.path.join(ROOT, "textures", "generated", name, name + "_Color.*"))
+        hits = (glob.glob(os.path.join(ROOT, "textures", "generated", name, name + "_Color.*"))
+                or glob.glob(os.path.join(ROOT, "textures", "generated", name, name + "_Emission.*")))      # lit signs: on black
         if not hits:
             print(name, "not found")
             continue
