@@ -16,7 +16,7 @@ extends Node3D
 ##   --selftest       loads the block, checks every marked place can be walked to, then quits
 
 const RANGE_SCENE := "res://test/range_street.tscn"
-const MODELS: Array[String] = ["res://assets/block/gas_station.glb"]
+const MODELS: Array[String] = ["res://assets/block/gas_station.glb", "res://assets/block/miller.glb"]
 const HELP := """WASD move   Shift sprint   Ctrl/C crouch   Space jump / climb   Q E lean   F flashlight   LMB fire   RMB aim   R reload
 F1 help   F2 numbers   F3 shooting range   F5 back to the car   P power   V fog on/off   - = fog thinner/thicker   F11 fullscreen   F10 quit"""
 ## What a "light_<kind>_<n>" empty in a model becomes:
@@ -24,6 +24,7 @@ F1 help   F2 numbers   F3 shooting range   F5 back to the car   P power   V fog 
 const LIGHTS := {
 	&"canopy": ["spot", 9.0, Color(0.82, 0.92, 1.0), 10.0, true],
 	&"street": ["spot", 16.0, Color(1.0, 0.50, 0.14), 22.0, true],
+	&"highbay": ["spot", 10.0, Color(1.0, 0.85, 0.65), 12.0, true],
 	&"tube": ["omni", 1.5, Color(0.85, 0.93, 1.0), 7.5, false],
 	&"bulb": ["omni", 0.9, Color(1.0, 0.82, 0.6), 6.0, true],
 	&"door": ["omni", 0.7, Color(1.0, 0.8, 0.55), 5.0, false],
@@ -40,7 +41,7 @@ const LIGHTS := {
 const FOG_DENSITY := 0.05
 const FOG_VOLUMETRIC := 0.035
 ## What the navigation mesh covers (the part of the block that exists).
-const NAV_BOUNDS := AABB(Vector3(0.0, -1.0, 0.0), Vector3(58.0, 6.0, 63.0))
+const NAV_BOUNDS := AABB(Vector3(0.0, -2.0, 0.0), Vector3(80.0, 9.0, 63.0))
 
 var atmosphere: Atmosphere
 var player: Player
@@ -252,14 +253,14 @@ func _selftest() -> void:
 	results.append(["a navigation mesh bakes from the models' collision", nav_region.navigation_mesh.get_polygon_count() > 100,
 			"%d polygons" % nav_region.navigation_mesh.get_polygon_count()])
 	var unreachable: Array[String] = []
-	for id: StringName in [&"staff_room", &"stock_room", &"alley", &"pipe", &"first_creature", &"corner"]:
+	for id: StringName in [&"staff_room", &"stock_room", &"alley", &"pipe", &"first_creature", &"corner",
+			&"miller_shop", &"storeroom", &"workshop", &"pit", &"loft", &"yard", &"court", &"gate_b"]:
 		var goal: Vector3 = markers.get(id, Vector3.INF)
-		goal.y = minf(goal.y, 0.2)
 		var path := NavigationServer3D.map_get_path(map, p, goal, true)
 		var end := path[path.size() - 1] if not path.is_empty() else Vector3.INF
-		if path.is_empty() or Vector2(end.x - goal.x, end.z - goal.z).length() > 1.0:
+		if path.is_empty() or Vector2(end.x - goal.x, end.z - goal.z).length() > 1.0 or absf(end.y - goal.y) > 0.8:
 			unreachable.append("%s (stops %.1f m short)" % [id, Vector2(end.x - goal.x, end.z - goal.z).length()])
-	results.append(["on foot from the car: staff room, stock room, alley, the pipe, the machine, the street corner",
+	results.append(["on foot from the car: every marked place of the station and of Miller's (shop, storeroom, pit, loft, yard, court)",
 			unreachable.is_empty(), "; ".join(unreachable)])
 	var out := NavigationServer3D.map_get_path(map, p, Vector3(50.5, 0.0, -6.0), true)
 	results.append(["nothing leads out past the fog at the north end", out.is_empty() or out[out.size() - 1].z > 1.0])
